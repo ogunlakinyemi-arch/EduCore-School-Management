@@ -1,0 +1,18 @@
+[
+  {
+    "id": "legacy-fee-method-check",
+    "table": "fee_payments",
+    "object": "fee_payments_method_check",
+    "classification": "PRESENT BUT DIFFERENT — REQUIRES CONTROLLED RECONCILIATION",
+    "reason": "Retaining the noncanonical legacy CHECK rejects CASH accepted by the canonical schema. It is NOT a harmless metadata difference.",
+    "legacyDefinition": "CHECK ((method = ANY (ARRAY['BANK_TRANSFER'::text, 'REMITA'::text, 'FLUTTERWAVE'::text, 'PAYSTACK'::text])))",
+    "canonicalReplacement": "CHECK ((method = ANY (ARRAY['BANK_TRANSFER'::text, 'REMITA'::text, 'FLUTTERWAVE'::text, 'PAYSTACK'::text, 'CASH'::text])))",
+    "proof": {
+      "legacy_allows_cash": false,
+      "canonical_allows_cash": true
+    },
+    "sourceEvidence": "0013_phase7_finance.sql creates the legacy CHECK. 0055_academic_calendar_fee_lines_cash.sql lines 15–18 explicitly retires it and creates the CASH-capable CHECK.",
+    "action": "STOP. A separately reviewed, explicitly proven-safe constraint-retirement/replacement plan is required. No retirement migration or constraint DROP was added.",
+    "migration0060Defect": false
+  }
+]

@@ -1,0 +1,260 @@
+{
+  "label": "populated",
+  "counts": {
+    "tables": 173,
+    "columns": 2309,
+    "constraints": 1438,
+    "indexes": 671,
+    "functions": 18,
+    "triggers": 22,
+    "sequences": 158
+  },
+  "missing": [],
+  "differences": [],
+  "equivalences": [
+    {
+      "section": "columns",
+      "name": "actor_user_id",
+      "existingName": "actor_user_id",
+      "expectedOrdinal": 4,
+      "actualOrdinal": 10,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "clerk_user_id",
+      "existingName": "clerk_user_id",
+      "expectedOrdinal": 5,
+      "actualOrdinal": 11,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "school_id",
+      "existingName": "school_id",
+      "expectedOrdinal": 6,
+      "actualOrdinal": 4,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "action",
+      "existingName": "action",
+      "expectedOrdinal": 7,
+      "actualOrdinal": 5,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "module",
+      "existingName": "module",
+      "expectedOrdinal": 8,
+      "actualOrdinal": 6,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "record_id",
+      "existingName": "record_id",
+      "expectedOrdinal": 9,
+      "actualOrdinal": 7,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "timestamp",
+      "existingName": "timestamp",
+      "expectedOrdinal": 10,
+      "actualOrdinal": 8,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "severity",
+      "existingName": "severity",
+      "expectedOrdinal": 11,
+      "actualOrdinal": 9,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "user_id",
+      "existingName": "user_id",
+      "expectedOrdinal": 3,
+      "actualOrdinal": 6,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "name",
+      "existingName": "name",
+      "expectedOrdinal": 4,
+      "actualOrdinal": 3,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "email",
+      "existingName": "email",
+      "expectedOrdinal": 5,
+      "actualOrdinal": 4,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "phone",
+      "existingName": "phone",
+      "expectedOrdinal": 6,
+      "actualOrdinal": 5,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "user_id",
+      "existingName": "user_id",
+      "expectedOrdinal": 3,
+      "actualOrdinal": 13,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "admission_no",
+      "existingName": "admission_no",
+      "expectedOrdinal": 4,
+      "actualOrdinal": 3,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "first_name",
+      "existingName": "first_name",
+      "expectedOrdinal": 5,
+      "actualOrdinal": 4,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "last_name",
+      "existingName": "last_name",
+      "expectedOrdinal": 6,
+      "actualOrdinal": 5,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "gender",
+      "existingName": "gender",
+      "expectedOrdinal": 7,
+      "actualOrdinal": 6,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "class_name",
+      "existingName": "class_name",
+      "expectedOrdinal": 8,
+      "actualOrdinal": 7,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "section",
+      "existingName": "section",
+      "expectedOrdinal": 9,
+      "actualOrdinal": 8,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "parent_name",
+      "existingName": "parent_name",
+      "expectedOrdinal": 10,
+      "actualOrdinal": 9,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "parent_phone",
+      "existingName": "parent_phone",
+      "expectedOrdinal": 11,
+      "actualOrdinal": 10,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "status",
+      "existingName": "status",
+      "expectedOrdinal": 12,
+      "actualOrdinal": 11,
+      "validationPreserved": false
+    },
+    {
+      "section": "columns",
+      "name": "joined_at",
+      "existingName": "joined_at",
+      "expectedOrdinal": 13,
+      "actualOrdinal": 12,
+      "validationPreserved": false
+    },
+    {
+      "section": "constraints",
+      "name": "platform_devices_class_school_fk",
+      "existingName": "platform_devices_class_school_fk",
+      "validationPreserved": true
+    },
+    {
+      "section": "constraints",
+      "name": "platform_devices_status_check",
+      "existingName": "platform_devices_status_supported_check",
+      "validationPreserved": true
+    },
+    {
+      "section": "indexes",
+      "name": "academic_sessions_id_school_unique",
+      "existingName": "academic_sessions_id_school_tenant_key",
+      "validationPreserved": false
+    },
+    {
+      "section": "indexes",
+      "name": "academic_terms_id_school_unique",
+      "existingName": "academic_terms_id_school_tenant_key",
+      "validationPreserved": false
+    },
+    {
+      "section": "indexes",
+      "name": "attendance_discrepancies_id_school_unique",
+      "existingName": "attendance_discrepancies_id_school_tenant_key",
+      "validationPreserved": false
+    },
+    {
+      "section": "indexes",
+      "name": "attendance_events_id_school_unique",
+      "existingName": "attendance_events_id_school_tenant_key",
+      "validationPreserved": false
+    },
+    {
+      "section": "indexes",
+      "name": "employees_id_school_unique",
+      "existingName": "employees_id_school_tenant_key",
+      "validationPreserved": false
+    },
+    {
+      "section": "indexes",
+      "name": "nfc_cards_id_school_unique",
+      "existingName": "nfc_cards_id_school_tenant_key",
+      "validationPreserved": false
+    },
+    {
+      "section": "indexes",
+      "name": "school_operation_categories_id_school_type_unique",
+      "existingName": "school_operation_categories_id_school_type_key",
+      "validationPreserved": false
+    },
+    {
+      "section": "indexes",
+      "name": "subjects_id_school_unique",
+      "existingName": "subjects_id_school_tenant_key",
+      "validationPreserved": false
+    }
+  ]
+}

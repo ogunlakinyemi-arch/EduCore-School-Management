@@ -1,0 +1,8 @@
+{
+  "privateClusterOnly": true,
+  "clusterStopped": true,
+  "clusterDirectoryRemoved": true,
+  "privateSocketRemoved": true,
+  "sharedServicesTouched": false,
+  "evidence": "Tracked private postgres background task stopped; pg_ctl confirmed not running before removal; exact private cluster path and socket no longer exist."
+}

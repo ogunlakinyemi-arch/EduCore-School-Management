@@ -1,0 +1,9 @@
+{
+  "queries": 1890,
+  "status": "PASS",
+  "method": "PostgreSQL EXPLAIN against typed empty isolated relations; specification parsing/planning only",
+  "productionQueriesExecuted": 0,
+  "dataPreflightsRun": false,
+  "productionPreflightStatus": "NOT RUN",
+  "databaseDestroyed": true
+}

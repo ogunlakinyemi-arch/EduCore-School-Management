@@ -1,0 +1,86 @@
+{
+  "reports/schema-2i/already-canonical-catalog-comparison.json": {
+    "bytes": 260,
+    "sha256": "724a435d34ed1cfaf0fce155bfa2447a88e551ebcde61e6cf77f761f24ad77e8"
+  },
+  "reports/schema-2i/check-deparse-diagnostic.json": {
+    "bytes": 1307,
+    "sha256": "d091a277cd80e23db00b037dfbfca39ecdd226b28e496955cae7124e4b33700d"
+  },
+  "reports/schema-2i/check-expression-reparse.json": {
+    "bytes": 1400,
+    "sha256": "8d71f91be0795fdd97397bb31b5aa535e57dbbcc2718c94e6c6ff0058496ef8f"
+  },
+  "reports/schema-2i/cleanup.json": {
+    "bytes": 326,
+    "sha256": "39da73bfb05b1ccbb6aa97c52de17daf8f7689e4c31969f69d38afc3627938db"
+  },
+  "reports/schema-2i/journal-review.json": {
+    "bytes": 20472,
+    "sha256": "c6f6e229bb007e6ec1517cb3a05015b4586deb5ca9831909949678f6745a4ede"
+  },
+  "reports/schema-2i/manifest.json": {
+    "bytes": 3158005,
+    "sha256": "8ba0ad038984b94d80cf03e3a7072efac0d931a8d279e99e2bbbb9144acd274d"
+  },
+  "reports/schema-2i/populated-catalog-comparison.json": {
+    "bytes": 6549,
+    "sha256": "629efd171d6256b19935e5c568a36405edc13b893cb474f339000db4facc59b6"
+  },
+  "reports/schema-2i/preflight-specification.json": {
+    "bytes": 1264091,
+    "sha256": "51b8d9abcb92e8f939c3f93ece26404d625438c7164794494333a29ffd5ee5ba"
+  },
+  "reports/schema-2i/preflight-syntax-validation.json": {
+    "bytes": 286,
+    "sha256": "4a0a895788b45432eb4e5551a7263319af1ce7af1c3614a78413910ed34358ad"
+  },
+  "reports/schema-2i/preservation-verification.json": {
+    "bytes": 201,
+    "sha256": "decc1709b9be72a96a042bd0fa4e207e66640ed7d7ab09fad4e2adf0baac8d4f"
+  },
+  "reports/schema-2i/replica-catalog-comparison.json": {
+    "bytes": 6547,
+    "sha256": "a6832a5b2549880b0667494d8237abcd672af1719f59d4a68aed433ce2cecae4"
+  },
+  "reports/schema-2i/report.html": {
+    "bytes": 82417,
+    "sha256": "f0913cd00b44d125d18c5989dd8506fa4b2014f274cf5288278961830afb8165"
+  },
+  "reports/schema-2i/report.json": {
+    "bytes": 504754,
+    "sha256": "a81bbe1e1d86636b59cfbac354e627515d0c531b0c50f499468d040277a779e5"
+  },
+  "reports/schema-2i/report.md": {
+    "bytes": 907,
+    "sha256": "35828c8d7f8159e38480f4f8659162e3b88d4cce22de1b9b7fa55ab595085ff2"
+  },
+  "reports/schema-2i/semantic-blocker.json": {
+    "bytes": 1132,
+    "sha256": "5ce202ff1f0a929d62bd1aa66c87621815a868996d092d8ed511504b86ac0b57"
+  },
+  "reports/schema-2i/validation.json": {
+    "bytes": 623603,
+    "sha256": "00867d056c1343fe994781aa107837098d553ae7927078f86744ba29b95bb350"
+  },
+  "reports/schema-2h/replay.json": {
+    "bytes": 78760,
+    "sha256": "9e36b98ac75e8e058c4815b219b3245c153a1cda61d4c292c58a1089d3d04039"
+  },
+  "reports/schema-2h/comparison.json": {
+    "bytes": 6238722,
+    "sha256": "c84a18680de9a273c3565d0a6844e97291c72ea417582d260cd48af8af2736eb"
+  },
+  "reports/schema-2h/canonical-catalog.json": {
+    "bytes": 6692109,
+    "sha256": "cab98f35a649e23e5b65ba66144a9aee2b59caa5e9866fa89ddaba03a8193c76"
+  },
+  "reports/schema-2h/production-catalog.json": {
+    "bytes": 2119955,
+    "sha256": "38ca6da3c1c228bbf9464fc7e75ac7989186ad3e363bb6ad20b09af5868e307f"
+  },
+  "reports/finance-2g1/report.json": {
+    "bytes": 533264,
+    "sha256": "c6bebb863d690cd828d7c00db56f73c55128fe3650c0449fd12a78204f0ff468"
+  }
+}

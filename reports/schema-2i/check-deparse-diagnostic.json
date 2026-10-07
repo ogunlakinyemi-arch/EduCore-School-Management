@@ -1,0 +1,32 @@
+{
+  "expected": {
+    "kind": "c",
+    "name": "transport_history_event_reason_check",
+    "schema": "public",
+    "columns": [
+      "event_type",
+      "reason"
+    ],
+    "validated": true,
+    "deferrable": false,
+    "definition": "CHECK ((((length(btrim(event_type)) >= 3) AND (length(btrim(event_type)) <= 80)) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000))))",
+    "match_type": " ",
+    "no_inherit": false,
+    "table_name": "transport_history",
+    "delete_action": " ",
+    "dependent_fks": [],
+    "update_action": " ",
+    "check_expression": "(((length(btrim(event_type)) >= 3) AND (length(btrim(event_type)) <= 80)) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))",
+    "referenced_table": null,
+    "supporting_index": null,
+    "referenced_schema": null,
+    "initially_deferred": false,
+    "referenced_columns": []
+  },
+  "actual": {
+    "definition": "CHECK (((length(btrim(event_type)) >= 3) AND (length(btrim(event_type)) <= 80) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000))))",
+    "expression": "((length(btrim(event_type)) >= 3) AND (length(btrim(event_type)) <= 80) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))",
+    "no_inherit": false,
+    "columns": "{event_type,reason}"
+  }
+}

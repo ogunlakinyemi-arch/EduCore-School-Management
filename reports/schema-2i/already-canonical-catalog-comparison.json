@@ -1,0 +1,15 @@
+{
+  "label": "already-canonical",
+  "counts": {
+    "tables": 173,
+    "columns": 2309,
+    "constraints": 1432,
+    "indexes": 674,
+    "functions": 18,
+    "triggers": 22,
+    "sequences": 158
+  },
+  "missing": [],
+  "differences": [],
+  "equivalences": []
+}

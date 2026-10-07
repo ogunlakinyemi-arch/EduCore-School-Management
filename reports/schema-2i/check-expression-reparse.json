@@ -1,0 +1,16 @@
+[
+  {
+    "table": "transport_history",
+    "name": "transport_history_event_reason_check",
+    "canonicalExpression": "(((length(btrim(event_type)) >= 3) AND (length(btrim(event_type)) <= 80)) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))",
+    "reparsedExpression": "((length(btrim(event_type)) >= 3) AND (length(btrim(event_type)) <= 80) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))",
+    "proof": "Executed the exact canonical pg_get_constraintdef DDL against identically named/typed columns in isolated PostgreSQL; only PostgreSQL Boolean-expression deparse grouping differs."
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_weekdays_check",
+    "canonicalExpression": "(((cardinality(weekdays) >= 1) AND (cardinality(weekdays) <= 7)) AND (weekdays <@ ARRAY['MONDAY'::text, 'TUESDAY'::text, 'WEDNESDAY'::text, 'THURSDAY'::text, 'FRIDAY'::text, 'SATURDAY'::text, 'SUNDAY'::text]))",
+    "reparsedExpression": "((cardinality(weekdays) >= 1) AND (cardinality(weekdays) <= 7) AND (weekdays <@ ARRAY['MONDAY'::text, 'TUESDAY'::text, 'WEDNESDAY'::text, 'THURSDAY'::text, 'FRIDAY'::text, 'SATURDAY'::text, 'SUNDAY'::text]))",
+    "proof": "Executed the exact canonical pg_get_constraintdef DDL against identically named/typed columns in isolated PostgreSQL; only PostgreSQL Boolean-expression deparse grouping differs."
+  }
+]

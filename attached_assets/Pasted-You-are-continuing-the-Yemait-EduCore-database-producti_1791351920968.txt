@@ -1,0 +1,668 @@
+You are continuing the Yemait EduCore database production-readiness work.
+
+STAGE 2I — BUILD REMAINING DEPENDENCY-ORDERED RECONCILIATION MIGRATIONS
+
+OBJECTIVE
+
+Build the remaining forward reconciliation migrations required to bring the current Production-routed database schema toward the verified canonical schema produced by replaying migrations "0000" through "0060".
+
+This is a SOURCE-ONLY / BUILD-ONLY stage.
+
+Do NOT modify Production.
+Do NOT modify Development.
+Do NOT publish/deploy.
+Do NOT run "db push".
+Do NOT run migrations against any shared database.
+Do NOT alter application behavior.
+Do NOT alter secrets or environment variables.
+Do NOT change the Drizzle journal yet.
+
+The only permitted repository changes are the new reconciliation migration files and narrowly scoped build/audit helper files required to generate and validate them.
+
+---
+
+1. AUTHORITATIVE BASELINE
+
+Use the completed Stage 2H evidence as the authoritative planning baseline.
+
+Canonical schema after a clean disposable replay of "0000"–"0060":
+
+- 173 public tables
+- 2,309 public columns
+- 1,432 constraints
+- 674 indexes
+- 18 application functions
+- 22 application triggers
+- 158 sequences
+
+Production-routed comparison:
+
+Object| Expected| Replica| Missing| Different| Equivalent
+Tables| 173| 91| 82| 0| 0
+Columns| 2,309| 1,127| 1,182| 2| 24
+PK| 173| 91| 82| 0| 0
+UNIQUE constraints| 171| 76| 100| 0| 0
+CHECK| 429| 144| 286| 0| 1
+FKs| 659| 304| 355| 1| 0
+Indexes| 674| 331| 344| 0| 4
+Functions| 18| 0| 18| 0| 0
+Triggers| 22| 0| 22| 0| 0
+Sequences| 158| 86| 72| 0| 0
+
+The canonical replay itself passed all 61 migrations.
+
+Do not blindly reproduce these numbers as SQL. Derive every migration object from the actual checked-in canonical migrations/source and the Stage 2H evidence.
+
+---
+
+2. IMPORTANT FINANCE RULE
+
+Migration:
+
+"0060_reconcile_student_subscription_finance.sql"
+
+already exists and has passed:
+
+- source validation
+- offline parsing
+- dependency validation
+- disposable empty-database rehearsal
+- historical-schema reconciliation rehearsal
+- current-shape reconciliation rehearsal
+- writer/finalizer tests
+- idempotency tests
+- concurrency tests
+- immutability tests
+- 35/35 actual-migration disposable checks
+
+DO NOT create another Finance migration duplicating the work of 0060.
+
+Treat 0060 as the canonical Finance reconciliation migration.
+
+Any migration created in this stage that depends on Finance objects must explicitly depend on the objects created/prerequisite by 0060.
+
+Do not modify 0060 unless a factual defect is discovered. If a defect is discovered, STOP and report it rather than silently changing it.
+
+---
+
+3. MIGRATION NUMBERING
+
+First inspect the existing migration directory and current migration numbering.
+
+Do NOT assume the next migration number.
+
+Determine the safest forward numbering strategy from the repository.
+
+Because the Drizzle journal currently has 54 registrations for 61 migration files, with these files currently unregistered:
+
+- 0037
+- 0038
+- 0039
+- 0040
+- 0041
+- 0057
+- 0060
+
+DO NOT stamp, rewrite, or repair the journal in this stage.
+
+Journal reconciliation is a separate release-control task.
+
+Do not create fake journal entries merely to make the build appear complete.
+
+---
+
+4. BUILD STRATEGY
+
+Build the remaining reconciliation migrations as multiple small, dependency-ordered, additive forward migrations.
+
+Do NOT create one enormous migration containing all missing objects.
+
+Do NOT blindly replay historical migrations.
+
+The migration sequence must be derived from the canonical dependency graph.
+
+The migration groups should generally follow this order, but the exact grouping must be determined from actual dependencies:
+
+Migration Group A — Foundation / missing base structures
+
+Create missing base tables, columns, sequences, primary keys and prerequisite unique structures that do not depend on later application objects.
+
+Requirements:
+
+- preserve existing objects
+- do not drop existing production objects
+- do not rename existing production objects merely for cosmetic consistency
+- do not overwrite existing data
+- do not fabricate data
+- do not create duplicate equivalent indexes
+- do not create invalid foreign keys before their parent keys exist
+
+Migration Group B — People / RBAC / school ownership
+
+Reconcile missing structures required by:
+
+- schools
+- app_users
+- users/roles
+- parents
+- students
+- teachers
+- staff
+- partner profiles
+- school ownership structures
+
+Pay particular attention to composite tenant keys such as:
+
+"(id, school_id)"
+
+where the canonical schema requires them.
+
+Preserve the previously established Finance ownership rule:
+
+Historical Finance remains owned by its original school.
+
+Do not introduce a transfer implementation in these migrations.
+
+Migration Group C — Academic structures
+
+Reconcile:
+
+- academic sessions
+- academic terms
+- classes
+- subjects
+- enrollments
+- academic relationships
+- required tenant composite keys
+
+Ensure all parent keys required by Finance and attendance exist before dependent foreign keys are created.
+
+Migration Group D — Attendance / devices / operations
+
+Reconcile:
+
+- attendance structures
+- platform devices
+- device assignment/history
+- NFC structures
+- school operation categories
+- operational relationships
+- device/class ownership relationships
+
+Preserve the Stage 2E finding that:
+
+"platform_devices(school_class_id, school_id)"
+
+historical composite ownership protection is already understood and should not be weakened.
+
+Do not add standalone relationships unless the canonical schema explicitly requires them.
+
+Migration Group E — Communication / reporting / supporting modules
+
+Reconcile remaining missing structures for:
+
+- communication
+- notifications
+- reporting
+- school configuration
+- branding
+- supporting operational tables
+- required indexes and constraints
+
+Migration Group F — Finance dependencies
+
+Only create Finance dependencies that are genuinely outside 0060 and required by the canonical schema.
+
+0060 remains the Finance reconciliation migration.
+
+Ensure the final dependency graph permits:
+
+- payment ownership
+- allocation ownership
+- student-school ownership
+- academic session/term ownership
+- partner attribution ownership
+- commission relationships
+- NFC/payment enforcement dependencies
+
+Do not modify application finalizer logic.
+
+Migration Group G — Functions / triggers
+
+Create the remaining canonical functions and triggers not already supplied by 0060.
+
+Use the exact canonical function/trigger bodies from the verified source/history.
+
+Do not invent business behavior.
+
+Do not add triggers simply because they seem useful.
+
+Do not create destructive triggers.
+
+Preserve known Finance immutability behavior already implemented by 0060.
+
+---
+
+5. OBJECT-BY-OBJECT RECONCILIATION RULE
+
+For every canonical object, classify it as exactly one of:
+
+1. PRESENT AND EQUIVALENT
+2. PRESENT WITH PROVEN EQUIVALENT DIFFERENCE
+3. MISSING — SAFE TO CREATE
+4. PRESENT BUT DIFFERENT — REQUIRES CONTROLLED RECONCILIATION
+5. AMBIGUOUS — STOP
+
+Never use name-only matching.
+
+For constraints and indexes compare:
+
+- columns
+- order
+- uniqueness
+- predicate
+- expression
+- referenced table
+- referenced columns
+- ON DELETE
+- ON UPDATE
+- MATCH behavior
+- validation status where applicable
+- immediate/deferred behavior where applicable
+
+For functions compare the actual body/definition.
+
+For triggers compare:
+
+- timing
+- event
+- level
+- function
+- enabled state
+- semantic behavior
+
+---
+
+6. EXISTING OBJECT SAFETY
+
+Every migration must be safe against an already-partially-reconciled database.
+
+Use guarded/idempotent DDL where appropriate.
+
+However:
+
+DO NOT use "IF NOT EXISTS" as a substitute for equivalence checking.
+
+For example, if an index exists with the same name but different definition:
+
+STOP.
+
+Do not silently accept it.
+
+If an existing object is equivalent but differently named:
+
+- preserve it when safe
+- record the equivalence
+- only create a new named object when required by a dependent canonical constraint or FK
+- never drop an existing object merely to normalize naming
+
+---
+
+7. FOREIGN KEY ORDERING
+
+Foreign keys must only be created after:
+
+1. referenced table exists
+2. referenced columns exist
+3. qualifying unique/primary key exists
+4. referenced key has the required uniqueness semantics
+5. child columns exist
+6. child data safety has been established where the migration will eventually be run against Production
+
+For this BUILD stage, do not connect to Production to perform data checks.
+
+Where Production data validation will be required before applying a migration, mark the migration as having a preflight gate.
+
+Do not fabricate a successful preflight.
+
+---
+
+8. DATA SAFETY
+
+All migrations must be additive/non-destructive.
+
+Forbidden:
+
+- DROP TABLE
+- DROP COLUMN
+- DROP SEQUENCE
+- DELETE
+- TRUNCATE
+- mass UPDATE
+- destructive index replacement
+- destructive constraint replacement without an explicit proven-safe plan
+- data backfills invented without evidence
+
+A controlled replacement is allowed only where:
+
+- equivalence has been established,
+- the dependency graph permits it,
+- no data is destroyed,
+- the replacement is atomic,
+- and it is explicitly documented.
+
+If a required canonical object cannot safely be created without a destructive operation:
+
+STOP and report it.
+
+Do not work around the problem.
+
+---
+
+9. PRODUCTION DATA PRECONDITIONS
+
+For every migration containing a foreign key or CHECK constraint that could fail because of existing Production data, generate a separate read-only preflight specification.
+
+The preflight must state:
+
+- exact table
+- exact columns
+- exact violation query
+- expected result
+- whether NULL is allowed
+- whether existing orphan/cross-tenant data would block deployment
+
+Do NOT run these against Production in this stage.
+
+Do not claim they passed.
+
+---
+
+10. SPECIAL TENANT-OWNERSHIP RULE
+
+The canonical system is multi-tenant.
+
+Where a relationship is tenant-owned, prefer the canonical composite ownership relationship.
+
+Examples include:
+
+"(student_id, school_id)"
+
+"(academic_session_id, school_id)"
+
+"(academic_term_id, school_id)"
+
+"(subscription_id, school_id, student_id)"
+
+Do not weaken composite ownership relationships into standalone IDs.
+
+Do not add new standalone FKs unless they are explicitly present in the canonical schema.
+
+This is especially important for:
+
+- students
+- subscriptions
+- academic sessions
+- academic terms
+- Partner attribution
+- Finance allocations
+- Finance payments
+- device/class ownership
+
+---
+
+11. PRESERVE THE TRANSFER DECISION
+
+Do not implement student transfer behavior in this stage.
+
+The canonical business rule is:
+
+A student record referenced by historical Finance retains its original school ownership.
+
+A later transfer establishes a separately authorized destination enrollment/ownership identity.
+
+Historical payment, subscription, allocation, Partner attribution, commission and receipt history must remain associated with the original school/accounting period.
+
+The migration must not rewrite historical Finance ownership.
+
+---
+
+12. DRIZZLE JOURNAL
+
+Do NOT modify the Drizzle migration journal during this stage.
+
+Do NOT mark migrations as executed.
+
+Do NOT insert journal rows.
+
+Do NOT rewrite migration hashes.
+
+Instead produce a separate report containing:
+
+- all migration files
+- journal registrations
+- missing registrations
+- hash differences
+- recommended journal reconciliation procedure
+
+The seven currently known unregistered migration files are:
+
+- 0037
+- 0038
+- 0039
+- 0040
+- 0041
+- 0057
+- 0060
+
+Verify this against the current repository before reporting it as final.
+
+---
+
+13. DISPOSABLE VALIDATION REQUIRED
+
+After building the migrations, create a disposable PostgreSQL rehearsal environment.
+
+Do not use Production.
+
+Do not use Development.
+
+Use an isolated disposable PostgreSQL instance/database.
+
+Run:
+
+Test A — Clean canonical replay
+
+Replay:
+
+"0000" through "0060"
+
+and verify:
+
+- 173 tables
+- 2,309 columns
+- 1,432 constraints
+- 674 indexes
+- 18 functions
+- 22 triggers
+- 158 sequences
+
+Test B — Apply reconciliation migrations
+
+Starting from an appropriate simulated legacy/Production-shaped schema, apply the newly built reconciliation migrations in their exact intended order.
+
+Verify:
+
+- no dependency failures
+- no duplicate-object failures
+- no unexpected destructive operations
+- all expected objects exist
+
+Test C — Existing-object preservation
+
+Where the rehearsal contains equivalent existing objects, verify they are preserved rather than unnecessarily rebuilt.
+
+Test D — Finance
+
+Verify 0060 remains unchanged and continues to pass its already-established 35/35 rehearsal.
+
+Do not duplicate Finance tests unnecessarily if the existing Stage 2G-1 evidence can be reused, but confirm the new migration ordering does not invalidate its prerequisites.
+
+Test E — Idempotency
+
+Test both:
+
+1. migration-runner replay/idempotency
+2. direct SQL rerun behavior where applicable
+
+Do not confuse these two tests.
+
+Test F — Catalog verification
+
+Compare the resulting disposable database against the canonical schema.
+
+Report:
+
+- tables
+- columns
+- PKs
+- UNIQUE constraints
+- CHECK constraints
+- FKs
+- indexes
+- functions
+- triggers
+- sequences
+
+Expected final result:
+
+exact canonical equivalence, except for any explicitly documented PostgreSQL metadata differences that do not affect semantics.
+
+---
+
+14. DO NOT APPLY TO PRODUCTION
+
+At the end of this stage:
+
+DO NOT:
+
+- migrate Production
+- migrate Development
+- publish
+- deploy
+- run db push
+- update secrets
+- update environment variables
+- modify the Drizzle journal
+- stamp migration history
+- repair Production data
+- run backfills
+
+This stage ends after the migration build and disposable validation.
+
+---
+
+15. REQUIRED FINAL REPORT
+
+Return a concise but complete Stage 2I report containing:
+
+A. Files created
+
+List every migration/helper file created.
+
+For each migration include:
+
+- filename
+- purpose
+- dependency prerequisites
+- number of statements
+- whether it contains guarded DDL
+- whether it contains any controlled replacement
+- whether it requires a Production data preflight
+
+B. Dependency order
+
+Show:
+
+"Migration A → Migration B → Migration C → ... → 0060"
+
+or the exact dependency ordering discovered.
+
+Do not invent a linear order if the graph permits parallel groups; clearly state dependencies.
+
+C. Canonical coverage
+
+Report:
+
+- canonical tables
+- covered tables
+- canonical columns
+- covered columns
+- canonical constraints
+- covered constraints
+- canonical indexes
+- covered indexes
+- canonical functions
+- covered functions
+- canonical triggers
+- covered triggers
+- canonical sequences
+- covered sequences
+
+D. Unresolved items
+
+List every:
+
+- ambiguous object
+- differing object
+- migration requiring Production preflight
+- dependency that cannot yet be safely created
+- journal issue
+
+Do not hide unresolved items.
+
+E. Disposable validation
+
+Report:
+
+- PostgreSQL version
+- database/cluster isolation
+- canonical replay result
+- reconciliation migration result
+- catalog comparison
+- idempotency result
+- Finance compatibility result
+- failures
+- warnings
+
+F. Safety statement
+
+Explicitly confirm:
+
+- Production connections: 0
+- Production writes: 0
+- Development writes: 0
+- shared database writes: 0
+- publish/deploy: NO
+- "db push": NO
+- journal changes: NO
+- secrets exposed: NO
+- application behavior changed: NO
+
+G. Final status
+
+Use exactly one:
+
+PASS — READY FOR PRODUCTION PREFLIGHT
+
+or
+
+PASS WITH GATES — MIGRATIONS BUILT BUT SPECIFIC PREFLIGHTS REMAIN
+
+or
+
+BLOCKED — DO NOT PROCEED
+
+Do not say Production is ready merely because the disposable rehearsal passes.
+
+The purpose of Stage 2I is to build and validate the forward reconciliation migration set safely. Production application will be a separate stage after this report is reviewed.

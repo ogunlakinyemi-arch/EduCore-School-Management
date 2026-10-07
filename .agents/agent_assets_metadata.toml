@@ -448,3 +448,31 @@ mtime_ms = 1791341686798
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0860b379-d70e-4db0-b80e-5eb62641b903/0598ec37-d0f7-46ba-b27e-561bfa49106d"
 storage_version_token = "1791341708942296"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "a7JQa2diPgCkPjIblO6bc"
+uri = "file://reports/schema-2i/report.html"
+type = "html"
+title = "Stage 2I report — BLOCKED"
+description = "Complete migration/helper inventory, dependency order, coverage, validation, preflight gates and the legacy CASH-blocking CHECK."
+logical_id = "925634b8-7bd5-4070-9b57-99fbbfb1e38b"
+content_hash = "sha256:f0913cd00b44d125d18c5989dd8506fa4b2014f274cf5288278961830afb8165"
+size = 82417
+mtime_ms = 1791353987556
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/925634b8-7bd5-4070-9b57-99fbbfb1e38b/ef0de116-5ac9-477e-bf1c-f85f69918916"
+storage_version_token = "1791354115042601"
+content_type = "text/html"
+
+[[outputs]]
+id = "EDfTgPc6XqZn7-eLt_Ckh"
+uri = "file://reports/schema-2i-evidence.zip"
+type = "unspecified"
+title = "Stage 2I evidence bundle"
+description = "Reports, manifests, preservation and cleanup proofs, canonical references and the synthetic CASH counterexample. No shared database execution."
+logical_id = "7bd512e2-2766-4b72-bd96-7cd41392b7b9"
+content_hash = "sha256:25053585ad1f83a189bdcd38129f2fbd33ea340e9e5bd81c0e831582fac4157d"
+size = 1026343
+mtime_ms = 1791354071405
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/7bd512e2-2766-4b72-bd96-7cd41392b7b9/48610706-4e74-41df-ae0e-666adfe0944c"
+storage_version_token = "1791354115930344"
+content_type = "application/octet-stream"
