@@ -1,0 +1,10 @@
+{
+  "accessPath": "executeSql environment=production; platform Production-routed read-only replica",
+  "runtimeBinding": "TARGET BINDING UNVERIFIED",
+  "response": {
+    "exitCode": 0,
+    "exitReason": null,
+    "output": "database_name,postgresql_version,server_address,server_port,read_replica,transaction_read_only,default_read_only,postmaster_started,last_replay_timestamp,public_tables\nneondb,\"PostgreSQL 16.15 (9e87aff) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit\",169.254.254.254/32,5432,t,on,off,2026-10-07 06:39:18.093718+00,,91\n",
+    "success": true
+  }
+}

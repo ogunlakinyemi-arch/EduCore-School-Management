@@ -1,0 +1,1298 @@
+{
+  "status": "BLOCKED — DO NOT APPLY MIGRATIONS",
+  "summary": {
+    "total": 1890,
+    "passed": 793,
+    "warnings": 86,
+    "failed": 5,
+    "notApplicable": 0,
+    "blocked": 1006,
+    "executed": 884,
+    "notExecuted": 1006
+  },
+  "byKind": {
+    "required missing column": {
+      "total": 8,
+      "passed": 3,
+      "warnings": 0,
+      "failed": 5,
+      "blocked": 0
+    },
+    "u": {
+      "total": 171,
+      "passed": 72,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 99
+    },
+    "primary key NULL": {
+      "total": 173,
+      "passed": 91,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 82
+    },
+    "p": {
+      "total": 173,
+      "passed": 91,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 82
+    },
+    "f": {
+      "total": 659,
+      "passed": 318,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 341
+    },
+    "c": {
+      "total": 429,
+      "passed": 145,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 284
+    },
+    "unique index": {
+      "total": 119,
+      "passed": 73,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 46
+    },
+    "sequence position": {
+      "total": 158,
+      "passed": 0,
+      "warnings": 86,
+      "failed": 0,
+      "blocked": 72
+    }
+  },
+  "coverage": {
+    "tables": {
+      "total": 173,
+      "present": 91,
+      "green": 91,
+      "yellow": 82,
+      "red": 0
+    },
+    "columns": {
+      "total": 2309,
+      "present": 1127,
+      "green": 1125,
+      "yellow": 1184,
+      "red": 0
+    },
+    "constraints": {
+      "total": 1432,
+      "present": 609,
+      "green": 607,
+      "yellow": 825,
+      "red": 0
+    },
+    "indexes": {
+      "total": 674,
+      "present": 334,
+      "green": 326,
+      "yellow": 348,
+      "red": 0
+    },
+    "functions": {
+      "total": 18,
+      "present": 0,
+      "green": 0,
+      "yellow": 18,
+      "red": 0
+    },
+    "triggers": {
+      "total": 22,
+      "present": 0,
+      "green": 0,
+      "yellow": 22,
+      "red": 0
+    },
+    "sequences": {
+      "total": 158,
+      "present": 86,
+      "green": 86,
+      "yellow": 72,
+      "red": 0
+    }
+  },
+  "constraintCoverage": {
+    "p": {
+      "total": 173,
+      "present": 91,
+      "red": 0
+    },
+    "u": {
+      "total": 171,
+      "present": 71,
+      "red": 0
+    },
+    "c": {
+      "total": 429,
+      "present": 143,
+      "red": 0
+    },
+    "f": {
+      "total": 659,
+      "present": 304,
+      "red": 0
+    }
+  },
+  "blockers": [
+    {
+      "severity": "RED",
+      "object": "Production target binding",
+      "problem": "Authorized Production-routed replica is verified; binding to the published runtime primary remains unverified.",
+      "affected": "Entire 0061–0165 chain / 0060",
+      "action": "Operator must bind these observations to the intended production resource/primary without exposing credentials; do not apply based only on database name."
+    },
+    {
+      "severity": "RED",
+      "object": "communication_deliveries.push_attempts",
+      "problem": "Absent required jsonb column on 4 existing rows; no approved mapping.",
+      "affected": "0105_reconcile_columns_h_1.sql",
+      "action": "Separately define and approve values/provenance for every existing row, plus a reviewed staged mapping/enforcement plan. The current draft refuses automatic/default backfill. No data or draft was fixed.",
+      "rows": 4,
+      "canonicalDefault": "'{}'::jsonb"
+    },
+    {
+      "severity": "RED",
+      "object": "communication_deliveries.receipt_ids",
+      "problem": "Absent required jsonb column on 4 existing rows; no approved mapping.",
+      "affected": "0105_reconcile_columns_h_1.sql",
+      "action": "Separately define and approve values/provenance for every existing row, plus a reviewed staged mapping/enforcement plan. The current draft refuses automatic/default backfill. No data or draft was fixed.",
+      "rows": 4,
+      "canonicalDefault": "'[]'::jsonb"
+    },
+    {
+      "severity": "RED",
+      "object": "partner_profile_users.nfc_activation_enabled",
+      "problem": "Absent required boolean column on 1 existing rows; no approved mapping.",
+      "affected": "0087_reconcile_columns_b_1.sql",
+      "action": "Separately define and approve values/provenance for every existing row, plus a reviewed staged mapping/enforcement plan. The current draft refuses automatic/default backfill. No data or draft was fixed.",
+      "rows": 1,
+      "canonicalDefault": "false"
+    },
+    {
+      "severity": "RED",
+      "object": "partner_profiles.nfc_activation_enabled",
+      "problem": "Absent required boolean column on 1 existing rows; no approved mapping.",
+      "affected": "0087_reconcile_columns_b_1.sql",
+      "action": "Separately define and approve values/provenance for every existing row, plus a reviewed staged mapping/enforcement plan. The current draft refuses automatic/default backfill. No data or draft was fixed.",
+      "rows": 1,
+      "canonicalDefault": "false"
+    },
+    {
+      "severity": "RED",
+      "object": "schools.communication_defaults",
+      "problem": "Absent required jsonb column on 6 existing rows; no approved mapping.",
+      "affected": "0086_reconcile_columns_a_9.sql",
+      "action": "Separately define and approve values/provenance for every existing row, plus a reviewed staged mapping/enforcement plan. The current draft refuses automatic/default backfill. No data or draft was fixed.",
+      "rows": 6,
+      "canonicalDefault": "'{}'::jsonb"
+    },
+    {
+      "severity": "RED",
+      "object": "Unassessed prerequisite-dependent data gates",
+      "problem": "1006 original SELECTs cannot execute because required relations, columns or sequences are absent.",
+      "affected": "Forward chain, including 0060 Finance-owned tables",
+      "action": "Separately authorize a staged plan that supplies prerequisites and runs these unchanged gates before constraints are enabled/validated. Do not mark missing-source checks as passing; no prerequisite DDL is authorized here."
+    }
+  ],
+  "target": {
+    "replica": true,
+    "database": "neondb",
+    "checked_at": "2026-10-07T06:49:56.143294+00:00",
+    "server_port": 5432,
+    "server_address": "169.254.254.254/32",
+    "postmaster_started": "2026-10-07T06:49:55.267094+00:00",
+    "transaction_read_only": "on",
+    "runtimeBinding": "TARGET BINDING UNVERIFIED",
+    "resourceIdentity": "Platform callback environment=production; resource/deployment database ID not exposed.",
+    "authorizedRoute": true,
+    "publicTables": 91,
+    "rlsActiveTables": 0
+  },
+  "extraConstraints": [
+    {
+      "table": "attendance_discrepancies",
+      "name": "attendance_discrepancies_id_school_tenant_key",
+      "severity": "GREEN",
+      "reason": "Redundant UNIQUE contains existing PK; no additional accepted-domain restriction."
+    },
+    {
+      "table": "attendance_events",
+      "name": "attendance_events_id_school_tenant_key",
+      "severity": "GREEN",
+      "reason": "Redundant UNIQUE contains existing PK; no additional accepted-domain restriction."
+    },
+    {
+      "table": "fee_payments",
+      "name": "fee_payments_method_check",
+      "severity": "YELLOW",
+      "reason": "Exact approved obsolete four-method restriction; present until guarded 0149 retirement. CASH is still restricted today."
+    },
+    {
+      "table": "nfc_cards",
+      "name": "nfc_cards_id_school_tenant_key",
+      "severity": "GREEN",
+      "reason": "Redundant UNIQUE contains existing PK; no additional accepted-domain restriction."
+    },
+    {
+      "table": "school_operation_categories",
+      "name": "school_operation_categories_id_school_type_key",
+      "severity": "GREEN",
+      "reason": "Redundant UNIQUE contains existing PK; no additional accepted-domain restriction."
+    },
+    {
+      "table": "student_class_assignments",
+      "name": "student_class_assignments_id_school_tenant_key",
+      "severity": "GREEN",
+      "reason": "Redundant UNIQUE contains existing PK; no additional accepted-domain restriction."
+    }
+  ],
+  "extraUniqueIndexes": [],
+  "namespaceCollisions": [],
+  "aggregateCompatibility": {
+    "rowsExamined": 698,
+    "nullSkipped": 99,
+    "orphans": 0,
+    "crossSchool": 0,
+    "otherOwnership": 0
+  },
+  "foreignKeyMetadata": {
+    "required": 659,
+    "currentlyQualifiedParentKeys": 592,
+    "actualFkSupportDependenciesVerified": 304,
+    "invalidActualSupportDependencies": 0,
+    "comparisons": "Referenced schema/table/ordered child and parent columns/MATCH/ON DELETE/ON UPDATE/deferrability and validation reviewed; equivalent current OIDs and stronger validation retained."
+  },
+  "finance": {
+    "migration0060Unchanged": true,
+    "parents": [
+      {
+        "table": "subscriptions",
+        "columns": [
+          "id",
+          "school_id",
+          "student_id"
+        ],
+        "columnsAvailable": true,
+        "qualifyingKeyPresent": false,
+        "existingPrimaryKey": [
+          "id"
+        ],
+        "dataGate": "PASSED",
+        "violations": 0,
+        "state": "Staged key creation needed; existing PK implies uniqueness if included in the target key."
+      },
+      {
+        "table": "academic_sessions",
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "columnsAvailable": true,
+        "qualifyingKeyPresent": true,
+        "existingPrimaryKey": [
+          "id"
+        ],
+        "dataGate": "PASSED",
+        "violations": 0,
+        "state": "Existing qualifying parent key"
+      },
+      {
+        "table": "academic_terms",
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "columnsAvailable": true,
+        "qualifyingKeyPresent": true,
+        "existingPrimaryKey": [
+          "id"
+        ],
+        "dataGate": "PASSED",
+        "violations": 0,
+        "state": "Existing qualifying parent key"
+      },
+      {
+        "table": "students",
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "columnsAvailable": true,
+        "qualifyingKeyPresent": true,
+        "existingPrimaryKey": [
+          "id"
+        ],
+        "dataGate": "PASSED",
+        "violations": 0,
+        "state": "Existing qualifying parent key"
+      },
+      {
+        "table": "school_partner_attributions",
+        "columns": [
+          "id",
+          "partner_profile_id"
+        ],
+        "columnsAvailable": true,
+        "qualifyingKeyPresent": false,
+        "existingPrimaryKey": [
+          "id"
+        ],
+        "dataGate": "PASSED",
+        "violations": 0,
+        "state": "Staged key creation needed; existing PK implies uniqueness if included in the target key."
+      }
+    ],
+    "prerequisiteRowsCompatible": true,
+    "existingQualifyingParentKeys": 3,
+    "twoOwnedTablesAbsent": true,
+    "dataGateStats": {
+      "total": 105,
+      "passed": 55,
+      "warnings": 5,
+      "failed": 0,
+      "blocked": 45
+    },
+    "dataGateIds": [
+      273,
+      274,
+      275,
+      513,
+      514,
+      515,
+      516,
+      517,
+      518,
+      519,
+      520,
+      521,
+      522,
+      523,
+      524,
+      525,
+      526,
+      527,
+      552,
+      553,
+      554,
+      555,
+      556,
+      557,
+      558,
+      559,
+      560,
+      561,
+      562,
+      563,
+      564,
+      565,
+      566,
+      567,
+      568,
+      569,
+      570,
+      571,
+      572,
+      573,
+      1048,
+      1049,
+      1050,
+      1051,
+      1052,
+      1053,
+      1410,
+      1411,
+      1412,
+      1413,
+      1414,
+      1415,
+      1416,
+      1417,
+      1418,
+      1419,
+      1420,
+      1421,
+      1422,
+      1423,
+      1424,
+      1425,
+      1426,
+      1427,
+      1428,
+      1429,
+      1430,
+      1431,
+      1432,
+      1433,
+      1434,
+      1435,
+      1436,
+      1437,
+      1438,
+      1439,
+      1440,
+      1473,
+      1474,
+      1475,
+      1476,
+      1477,
+      1478,
+      1644,
+      1645,
+      1646,
+      1695,
+      1696,
+      1710,
+      1711,
+      1712,
+      1713,
+      1714,
+      1715,
+      1716,
+      1717,
+      1723,
+      1724,
+      1756,
+      1785,
+      1789,
+      1843,
+      1873,
+      1874,
+      1878
+    ],
+    "status": "YELLOW — forward parent prerequisites needed; absent Finance tables cannot be data-tested in this read-only stage."
+  },
+  "ownership": {
+    "historicalFinanceMustRetainOriginalSchool": true,
+    "allStudentSchool": {
+      "total": 37,
+      "passed": 11,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 26
+    },
+    "financeStudentSchool": {
+      "total": 5,
+      "passed": 2,
+      "warnings": 0,
+      "failed": 0,
+      "blocked": 3
+    },
+    "supplementalHistoricalSubscriptionOwnership": {
+      "total_rows": 3,
+      "violations": 0,
+      "orphan_rows": 0,
+      "relationship": "subscriptions(student_id,school_id) -> students(id,school_id)",
+      "null_skipped_rows": 0,
+      "cross_school_mismatches": 0
+    },
+    "financeRelationships": [
+      {
+        "table": "fee_invoices",
+        "object": "fee_invoices_student_school_fk",
+        "status": "PASSED",
+        "violations": 0,
+        "orphan_rows": 0,
+        "null_skipped_rows": 0,
+        "total_rows_examined": 0,
+        "cross_school_mismatches": 0,
+        "other_ownership_mismatches": 0
+      },
+      {
+        "table": "fee_payments",
+        "object": "fee_payments_student_school_fk",
+        "status": "PASSED",
+        "violations": 0,
+        "orphan_rows": 0,
+        "null_skipped_rows": 0,
+        "total_rows_examined": 0,
+        "cross_school_mismatches": 0,
+        "other_ownership_mismatches": 0
+      },
+      {
+        "table": "student_subscription_allocations",
+        "object": "student_subscription_allocations_payment_owner_term_fk",
+        "status": "BLOCKED_PREREQUISITE",
+        "violations": null
+      },
+      {
+        "table": "student_subscription_allocations",
+        "object": "student_subscription_allocations_student_school_fk",
+        "status": "BLOCKED_PREREQUISITE",
+        "violations": null
+      },
+      {
+        "table": "student_subscription_payments",
+        "object": "student_subscription_payments_subscription_owner_fk",
+        "status": "BLOCKED_PREREQUISITE",
+        "violations": null
+      }
+    ],
+    "rule": "Never fix an ownership mismatch by moving historical payments, allocations, receipt, attribution or commission history to the student's current school."
+  },
+  "cash": {
+    "obsoleteNamedCheckPresent": true,
+    "exactApprovedObsoleteDefinition": true,
+    "unknownMethodChecks": 0,
+    "replacementCurrentlyPresent": false,
+    "status": "YELLOW — approved controlled retirement still required; no conflicting unreviewed method CHECK observed.",
+    "migration0149SafeOnlyAfterValidatedCanonicalReplacement": true,
+    "productionCashBehaviorRestored": false
+  },
+  "rowScale": {
+    "totalPublicTableRows": 128,
+    "counts": [
+      {
+        "exact_rows": 0,
+        "table_name": "academic_assessment_types"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "academic_assessments"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "academic_assignments"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "academic_grading_rules"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "academic_report_card_lines"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "academic_report_cards"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "academic_results"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "academic_sessions"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "academic_terms"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "academic_timetable_entries"
+      },
+      {
+        "exact_rows": 7,
+        "table_name": "app_users"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "attendance_corrections"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "attendance_discrepancies"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "attendance_events"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "attendance_notification_events"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "attendance_settings"
+      },
+      {
+        "exact_rows": 65,
+        "table_name": "audit_logs"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "biometric_enrollments"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "class_subjects"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "commission_ledger"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "commission_rules"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "communication_campaign_recipients"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "communication_campaigns"
+      },
+      {
+        "exact_rows": 4,
+        "table_name": "communication_deliveries"
+      },
+      {
+        "exact_rows": 4,
+        "table_name": "communication_notifications"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "communication_preferences"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "communication_push_devices"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "communication_templates"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "device_assignment_history"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "device_credentials"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "device_school_bindings"
+      },
+      {
+        "exact_rows": 2,
+        "table_name": "employees"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_adjustments"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_categories"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_invoice_lines"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_invoice_notification_outbox"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_invoice_notifications"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_invoices"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_payment_notification_outbox"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_payment_notifications"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_payments"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_provider_checkout_sessions"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_provider_webhook_events"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_receipts"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_refunds"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_school_settings"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_structure_lines"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "fee_structures"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_authors"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_book_copies"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_books"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_categories"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_copy_status_history"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_loans"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_publishers"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_renewals"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_settings"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "library_staff"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "maintenance_request_status_history"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "maintenance_requests"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "nfc_card_history"
+      },
+      {
+        "exact_rows": 3,
+        "table_name": "nfc_cards"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "operational_task_status_history"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "operational_tasks"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "parent_student_relationships"
+      },
+      {
+        "exact_rows": 8,
+        "table_name": "parents"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "partner_attribution_conflicts"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "partner_invitations"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "partner_payout_information"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "partner_payouts"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "partner_profile_users"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "partner_profiles"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "partner_referral_links"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "platform_company_employees"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "platform_devices"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "platform_notifications"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "school_asset_history"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "school_assets"
+      },
+      {
+        "exact_rows": 4,
+        "table_name": "school_classes"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "school_facilities"
+      },
+      {
+        "exact_rows": 7,
+        "table_name": "school_memberships"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "school_operation_categories"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "school_operations_settings"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "school_partner_attributions"
+      },
+      {
+        "exact_rows": 6,
+        "table_name": "schools"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "student_class_assignments"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "student_identification_policies"
+      },
+      {
+        "exact_rows": 7,
+        "table_name": "students"
+      },
+      {
+        "exact_rows": 1,
+        "table_name": "subjects"
+      },
+      {
+        "exact_rows": 3,
+        "table_name": "subscriptions"
+      },
+      {
+        "exact_rows": 0,
+        "table_name": "teacher_class_assignments"
+      }
+    ],
+    "maximumTableBytes": 16384,
+    "sequencesWithObservedCatalogPosition": 20
+  },
+  "integrity": {
+    "preflightSourceHash": "51b8d9abcb92e8f939c3f93ece26404d625438c7164794494333a29ffd5ee5ba",
+    "preflightLogicUnchanged": true,
+    "draftHashesUnchanged": true,
+    "historicalHashesUnchanged": true,
+    "journalUnchanged": true,
+    "applicationProtectedFilesUnchanged": true,
+    "finance0060Unchanged": true
+  },
+  "scopeNotes": [
+    "Read-only Production-routed replica, not proven published runtime primary.",
+    "Bounded catalog slices and data batches are separate snapshots, not a shared transaction.",
+    "A missing prerequisite is not a passing data check. No DDL/backfill is used to make it runnable.",
+    "Counts are query-level aggregates; rows may be examined repeatedly across checks."
+  ],
+  "safety": {
+    "productionWrites": 0,
+    "productionSchemaChanges": 0,
+    "developmentWrites": 0,
+    "sharedDatabaseWrites": 0,
+    "migrationsExecuted": 0,
+    "dbPush": "NO",
+    "publishDeploy": "NO",
+    "journalChanges": "NO",
+    "secretsEnvironmentChanges": "NO",
+    "applicationChanges": "NO",
+    "previousDisposableDatabases": "Untouched; no private cluster started or recreated."
+  },
+  "blockedPrerequisiteGroups": [
+    {
+      "table": "admission_applications",
+      "checks": 25
+    },
+    {
+      "table": "security_events",
+      "checks": 24
+    },
+    {
+      "table": "student_subscription_allocations",
+      "checks": 21
+    },
+    {
+      "table": "student_subscription_payments",
+      "checks": 20
+    },
+    {
+      "table": "promotion_batch_students",
+      "checks": 19
+    },
+    {
+      "table": "payroll_transfers",
+      "checks": 18
+    },
+    {
+      "table": "school_pickup_requests",
+      "checks": 18
+    },
+    {
+      "table": "staff_nfc_allocations",
+      "checks": 18
+    },
+    {
+      "table": "staff_nfc_payments",
+      "checks": 18
+    },
+    {
+      "table": "staff_nfc_subscriptions",
+      "checks": 18
+    },
+    {
+      "table": "student_nfc_replacement_requests",
+      "checks": 18
+    },
+    {
+      "table": "transport_fee_invoices",
+      "checks": 18
+    },
+    {
+      "table": "lesson_notes",
+      "checks": 17
+    },
+    {
+      "table": "payroll_employee_profiles",
+      "checks": 17
+    },
+    {
+      "table": "promotion_batches",
+      "checks": 17
+    },
+    {
+      "table": "payroll_periods",
+      "checks": 16
+    },
+    {
+      "table": "school_security_incidents",
+      "checks": 16
+    },
+    {
+      "table": "settlement_payroll_profiles",
+      "checks": 16
+    },
+    {
+      "table": "student_behaviour_records",
+      "checks": 16
+    },
+    {
+      "table": "transport_parent_requests",
+      "checks": 16
+    },
+    {
+      "table": "academic_result_batches",
+      "checks": 15
+    },
+    {
+      "table": "exam_question_papers",
+      "checks": 15
+    },
+    {
+      "table": "school_calendar_events",
+      "checks": 15
+    },
+    {
+      "table": "school_security_visitors",
+      "checks": 15
+    },
+    {
+      "table": "student_medical_profiles",
+      "checks": 15
+    },
+    {
+      "table": "transport_routes",
+      "checks": 15
+    },
+    {
+      "table": "transport_student_assignments",
+      "checks": 15
+    },
+    {
+      "table": "campus_presence",
+      "checks": 14
+    },
+    {
+      "table": "communication_message_threads",
+      "checks": 14
+    },
+    {
+      "table": "payroll_items",
+      "checks": 14
+    },
+    {
+      "table": "school_authorized_pickup_persons",
+      "checks": 14
+    },
+    {
+      "table": "staff_nfc_partner_commissions",
+      "checks": 14
+    },
+    {
+      "table": "student_welfare_records",
+      "checks": 14
+    },
+    {
+      "table": "payroll_payslips",
+      "checks": 13
+    },
+    {
+      "table": "school_curriculum_assignments",
+      "checks": 13
+    },
+    {
+      "table": "school_security_incident_attachments",
+      "checks": 13
+    },
+    {
+      "table": "staff_nfc_billing_rules",
+      "checks": 13
+    },
+    {
+      "table": "transport_history",
+      "checks": 13
+    },
+    {
+      "table": "security_readers",
+      "checks": 12
+    },
+    {
+      "table": "security_staff_grants",
+      "checks": 12
+    },
+    {
+      "table": "teacher_subject_assignments",
+      "checks": 12
+    },
+    {
+      "table": "transport_buses",
+      "checks": 12
+    },
+    {
+      "table": "transport_route_stops",
+      "checks": 12
+    },
+    {
+      "table": "admission_portal_settings",
+      "checks": 11
+    },
+    {
+      "table": "employee_nfc_card_bindings",
+      "checks": 11
+    },
+    {
+      "table": "exam_question_versions",
+      "checks": 11
+    },
+    {
+      "table": "staff_nfc_refunds",
+      "checks": 11
+    },
+    {
+      "table": "student_care_idempotency",
+      "checks": 11
+    },
+    {
+      "table": "teacher_duty_roster",
+      "checks": 11
+    },
+    {
+      "table": "employee_nfc_attendance_discrepancies",
+      "checks": 10
+    },
+    {
+      "table": "employee_nfc_card_history",
+      "checks": 10
+    },
+    {
+      "table": "promotion_history",
+      "checks": 10
+    },
+    {
+      "table": "school_security_operation_history",
+      "checks": 10
+    },
+    {
+      "table": "security_locations",
+      "checks": 10
+    },
+    {
+      "table": "student_subscription_terms",
+      "checks": 10
+    },
+    {
+      "table": "transport_route_staff",
+      "checks": 10
+    },
+    {
+      "table": "admission_application_documents",
+      "checks": 9
+    },
+    {
+      "table": "communication_messages",
+      "checks": 9
+    },
+    {
+      "table": "curriculum_progress",
+      "checks": 9
+    },
+    {
+      "table": "curriculum_topics",
+      "checks": 9
+    },
+    {
+      "table": "exam_question_reviews",
+      "checks": 9
+    },
+    {
+      "table": "school_branding_logos",
+      "checks": 9
+    },
+    {
+      "table": "student_care_grants",
+      "checks": 9
+    },
+    {
+      "table": "student_care_record_history",
+      "checks": 9
+    },
+    {
+      "table": "student_medical_visits",
+      "checks": 9
+    },
+    {
+      "table": "lesson_note_documents",
+      "checks": 8
+    },
+    {
+      "table": "lesson_note_reviews",
+      "checks": 8
+    },
+    {
+      "table": "settlement_payroll_audit_events",
+      "checks": 8
+    },
+    {
+      "table": "staff_nfc_provider_events",
+      "checks": 8
+    },
+    {
+      "table": "staff_nfc_receipts",
+      "checks": 8
+    },
+    {
+      "table": "curriculum_versions",
+      "checks": 7
+    },
+    {
+      "table": "fee_payment_line_allocations",
+      "checks": 7
+    },
+    {
+      "table": "student_behaviour_configurations",
+      "checks": 7
+    },
+    {
+      "table": "employee_nfc_discrepancy_actions",
+      "checks": 6
+    },
+    {
+      "table": "school_subscription_manual_locks",
+      "checks": 6
+    },
+    {
+      "table": "curriculum_imports",
+      "checks": 5
+    },
+    {
+      "table": "transport_school_policies",
+      "checks": 5
+    },
+    {
+      "table": "admission_application_counters",
+      "checks": 4
+    },
+    {
+      "table": "admission_portal_classes",
+      "checks": 4
+    },
+    {
+      "table": "school_subscription_enforcement",
+      "checks": 4
+    },
+    {
+      "table": "security_school_settings",
+      "checks": 4
+    },
+    {
+      "table": "admission_request_rate_limits",
+      "checks": 3
+    },
+    {
+      "table": "fee_invoices",
+      "checks": 2
+    },
+    {
+      "table": "fee_payments",
+      "checks": 2
+    },
+    {
+      "table": "academic_sessions",
+      "checks": 1
+    },
+    {
+      "table": "academic_terms",
+      "checks": 1
+    },
+    {
+      "table": "communication_campaigns",
+      "checks": 1
+    }
+  ]
+}

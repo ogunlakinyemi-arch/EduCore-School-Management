@@ -1,0 +1,402 @@
+Perform the COMPLETE Production preflight for the validated reconciliation migration set "0061–0165".
+
+This is a READ-ONLY Production preflight.
+
+ABSOLUTE RULE
+
+DO NOT apply any migration.
+
+DO NOT run:
+
+- migration
+- db push
+- publish
+- deploy
+- schema repair
+- backfill
+- DELETE
+- UPDATE
+- INSERT
+- ALTER
+- DROP
+- TRUNCATE
+
+Do not modify the Drizzle journal.
+
+Do not modify application code.
+
+Do not modify secrets/environment variables.
+
+The only permitted Production activity is read-only metadata/data validation.
+
+---
+
+1. TARGET VERIFICATION
+
+Before running the 1,890 checks, verify that the database being queried is the intended Production target.
+
+Report:
+
+- database name
+- PostgreSQL version
+- server identity where safely available
+- read replica status
+- transaction read-only status
+- public table count
+- connection/resource identity if safely exposed
+
+IMPORTANT:
+
+The previously identified "neondb" Production-routed database/read replica was NOT proven to be the published runtime database.
+
+Do not claim that it is the published runtime database unless the current evidence proves that.
+
+If target identity cannot be conclusively established, report:
+
+TARGET BINDING UNVERIFIED
+
+and continue only if the connection is still explicitly identified as the authorized Production-routed preflight target.
+
+Do not attempt another expensive hidden runtime-binding investigation.
+
+---
+
+2. RUN ALL PRODUCTION PREFLIGHTS IN ONE OPERATION
+
+Use the already-generated 1,890 Production preflight specifications from Stage 2I.
+
+Do NOT regenerate them unnecessarily.
+
+Execute them as a consolidated read-only validation suite.
+
+Do not perform one Replit task per check.
+
+Group compatible read-only queries into as few database operations as safely possible.
+
+Do not change the logic of any preflight.
+
+---
+
+3. PREFLIGHT CATEGORIES
+
+Report results by category:
+
+A. Tables
+
+Check whether every required canonical table exists.
+
+B. Columns
+
+Check:
+
+- existence
+- data type
+- nullability
+- defaults
+- identity/serial behavior where applicable
+
+Do not treat harmless physical column ordering differences as failures unless the canonical contract requires ordering.
+
+C. Primary keys
+
+Verify required PKs.
+
+D. UNIQUE constraints/indexes
+
+Verify:
+
+- columns
+- order
+- uniqueness
+- predicates
+- expressions
+- dependency relationships
+
+E. CHECK constraints
+
+Verify canonical CHECK behavior.
+
+Pay particular attention to the previously corrected:
+
+"fee_payments_method_check"
+
+Confirm the obsolete CASH-rejecting constraint is not present.
+
+F. Foreign keys
+
+For every required FK:
+
+- verify target
+- verify target key
+- verify child columns
+- verify ON DELETE
+- verify ON UPDATE
+- verify validation state
+- verify tenant ownership semantics
+
+G. Existing data compatibility
+
+For every FK/CHECK that could reject existing Production rows, run the corresponding read-only violation query.
+
+Report:
+
+- total rows examined
+- violations
+- NULL-skipped rows where applicable
+- orphan rows
+- cross-school mismatches
+- invalid enum/status values
+- invalid money values
+- invalid ownership relationships
+
+Do not modify violating rows.
+
+H. Index compatibility
+
+Verify that required indexes can be created without conflicting with existing data or equivalent structures.
+
+Do not create any index.
+
+I. Functions and triggers
+
+Verify whether canonical functions/triggers are currently absent/present and whether their deployment would conflict with existing objects.
+
+Do not create or replace them.
+
+J. Sequences
+
+Check:
+
+- sequence existence
+- ownership
+- compatibility
+- current position where safely readable
+
+Do not alter sequence values.
+
+K. Finance prerequisites
+
+Verify the prerequisites for migration 0060 and the later reconciliation chain.
+
+Do not execute 0060.
+
+Do not execute any Finance migration.
+
+L. Migration 0149 / CASH
+
+Explicitly confirm the Production database does not contain a conflicting obsolete CASH-rejecting CHECK that would make the corrected migration unsafe.
+
+---
+
+4. DATA-SAFETY CLASSIFICATION
+
+Every failed or concerning preflight must be classified as:
+
+GREEN
+
+No issue. Migration can proceed for this object.
+
+YELLOW
+
+Needs review but does not necessarily block the entire migration.
+
+RED
+
+Applying the migration could:
+
+- fail
+- alter existing semantics unexpectedly
+- invalidate existing data
+- cause data loss
+- break tenant ownership
+- break Finance integrity
+- require destructive remediation
+
+Any RED result blocks Production migration.
+
+---
+
+5. DO NOT AUTOMATICALLY FIX ANYTHING
+
+If a preflight finds:
+
+- orphan rows
+- duplicate values
+- conflicting indexes
+- incompatible constraints
+- invalid CHECK data
+- missing parent keys
+- cross-school ownership conflicts
+- unexpected objects
+
+STOP at diagnosis.
+
+Do not repair the data.
+
+Do not drop constraints.
+
+Do not delete duplicates.
+
+Do not backfill.
+
+Do not modify Production.
+
+Report the exact remediation that would be required.
+
+---
+
+6. SPECIAL STUDENT/FINANCE OWNERSHIP CHECKS
+
+Explicitly verify the previously established rule:
+
+Historical Finance retains original school ownership.
+
+Check for any existing Production data that would conflict with:
+
+"(student_id, school_id)"
+
+Finance ownership relationships.
+
+Do not change student ownership.
+
+Do not implement student transfer functionality.
+
+---
+
+7. PRODUCTION DATABASE SIZE / SCALE
+
+Report approximate row counts for relevant tables where already available or inexpensive to obtain.
+
+Do not perform expensive full-table scans unless required by an existing preflight.
+
+Do not download or expose PII.
+
+Do not return:
+
+- names
+- phone numbers
+- email addresses
+- addresses
+- passwords
+- tokens
+- payment credentials
+- other sensitive personal information
+
+Use aggregate counts and identifiers only where necessary for diagnosis.
+
+---
+
+8. ONE CONSOLIDATED RESULT
+
+Do not return 1,890 separate verbose results.
+
+Produce:
+
+Summary
+
+- total preflights
+- passed
+- warnings
+- failed
+- not applicable
+- blocked
+
+Results by category
+
+Tables:
+X/Y
+
+Columns:
+X/Y
+
+Constraints:
+X/Y
+
+Indexes:
+X/Y
+
+Foreign keys:
+X/Y
+
+CHECKs:
+X/Y
+
+Functions:
+X/Y
+
+Triggers:
+X/Y
+
+Sequences:
+X/Y
+
+Data compatibility:
+X/Y
+
+Finance:
+X/Y
+
+Ownership:
+X/Y
+
+---
+
+9. BLOCKER LIST
+
+If anything failed, provide a concise table:
+
+Severity| Object| Problem| Migration affected| Required action
+
+Do not hide any RED issue.
+
+---
+
+10. FINAL DECISION
+
+Use exactly one:
+
+PASS — PRODUCTION MIGRATION MAY PROCEED TO SEPARATE AUTHORIZATION
+
+Only if:
+
+- target is sufficiently verified
+- all blocking preflights pass
+- no RED data issues exist
+- no destructive remediation is required
+- Finance prerequisites pass
+- tenant ownership checks pass
+
+OR:
+
+PASS WITH WARNINGS — REVIEW BEFORE PRODUCTION MIGRATION
+
+Only for non-blocking issues.
+
+OR:
+
+BLOCKED — DO NOT APPLY MIGRATIONS
+
+If any RED issue exists or target verification is insufficient.
+
+---
+
+11. SAFETY REPORT
+
+Explicitly confirm:
+
+Production writes: 0
+Production schema changes: 0
+Development writes: 0
+Shared database writes: 0
+Migrations executed: 0
+db push: NO
+Publish/deploy: NO
+Journal changes: NO
+Secrets/environment changes: NO
+Application changes: NO
+
+The disposable databases used during previous stages must remain untouched/destroyed.
+
+Do not apply anything to Production even if every preflight passes.
+
+The result of this stage only determines whether a separate Production migration-authorization step can begin.

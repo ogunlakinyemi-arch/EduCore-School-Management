@@ -490,3 +490,17 @@ mtime_ms = 1791354933809
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/e45aef9d-6b38-4691-9eff-619d73cd522d/2847146e-15b8-4d7a-bfa8-02b2f58c0fe5"
 storage_version_token = "1791354934475255"
 content_type = "text/html"
+
+[[outputs]]
+id = "YgDe_mTzRzaA5AuwE3wMU"
+uri = "file://reports/schema-production-preflight/report.html"
+type = "html"
+title = "Complete Production preflight — consolidated report"
+description = "BLOCKED — DO NOT APPLY MIGRATIONS. All 1,890 specifications accounted for: 793 passed, 86 warnings, 5 failed, 1,006 prerequisite-blocked. No Production changes."
+logical_id = "84292402-de89-48de-80c9-61db22c1e3ff"
+content_hash = "sha256:224a60fdf53f9b1fb821b9d6032454318a6674867283fa5642a69edcaa244d13"
+size = 35751
+mtime_ms = 1791356452356
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/84292402-de89-48de-80c9-61db22c1e3ff/ab63ebc3-7429-4589-89ca-1d81e229eb0c"
+storage_version_token = "1791356453102040"
+content_type = "text/html"

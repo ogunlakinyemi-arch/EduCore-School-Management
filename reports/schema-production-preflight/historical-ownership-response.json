@@ -1,0 +1,6 @@
+{
+  "exitCode": 0,
+  "exitReason": null,
+  "output": "ownership\n\"{\"\"total_rows\"\": 3, \"\"violations\"\": 0, \"\"orphan_rows\"\": 0, \"\"relationship\"\": \"\"subscriptions(student_id,school_id) -> students(id,school_id)\"\", \"\"null_skipped_rows\"\": 0, \"\"cross_school_mismatches\"\": 0}\"\n",
+  "success": true
+}

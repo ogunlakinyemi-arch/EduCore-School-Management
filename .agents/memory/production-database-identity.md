@@ -21,3 +21,15 @@ also does not test restoration of Production data.
 these facts. If binding/recovery metadata is absent, mark it unverified and
 require operator evidence from the intended database resource; do not substitute
 documented retention defaults or an enabled backup setting for observed points.
+
+Replica sequence reads can succeed. A successful read, or a zero-violation
+aggregate, must not be treated as authoritative evidence of the current primary
+sequence position.
+
+**Why:** The Production-routed read-only replica accepted sequence-relation
+preflight SELECTs, but their release gate required verified primary evidence.
+Replica observations and cached sequence positions do not establish that.
+
+**How to apply:** Preserve the read-only result as an observation; require
+separate primary identity and cache/recovery review before certifying sequence
+safety for migration authorization. Never call nextval/setval to test access.
