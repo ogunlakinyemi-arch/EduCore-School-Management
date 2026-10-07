@@ -574,3 +574,17 @@ mtime_ms = 1791360829496
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/aed11f48-d9b7-42ec-92b4-46e1431055ee/00114cc1-9937-4542-a5bf-9f56a0398369"
 storage_version_token = "1791360863099915"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "vmij48axERIojuOakQEhH"
+uri = "file://reports/production-infrastructure-evidence/recovery-readiness.md"
+type = "text"
+title = "Production recovery readiness"
+description = "Resource-specific PITR, backup and recovery adequacy evidence remains unverified. Production writes: 0."
+logical_id = "f36dff77-0fca-45f6-b86a-355665132feb"
+content_hash = "sha256:6b9c0ed37cc644fe1df57437ac49ce65ec07d547279df8312c9a75b111d4ee64"
+size = 5546
+mtime_ms = 1791362310161
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f36dff77-0fca-45f6-b86a-355665132feb/cd58a9d1-0284-4ffe-a9bf-6ec8e420a099"
+storage_version_token = "1791362343316331"
+content_type = "text/markdown"

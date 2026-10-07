@@ -1,0 +1,131 @@
+{
+  "status": "RECOVERY PROTECTION UNVERIFIED",
+  "checkedAt": "2026-10-07T08:38:29.806Z",
+  "resource": {
+    "id": "ep-proud-sound-b4nsr0y3",
+    "database": "neondb",
+    "provider": "PostgreSQL / Neon",
+    "environment": "Production",
+    "designation": "Primary",
+    "usedBy": "Active Production deployment",
+    "provenance": "Resource identification/designation/deployment use supplied by user from Replit interface; accepted as scope, not independently retrieved resource binding."
+  },
+  "pitrStatus": "UNKNOWN — resource-specific enabled/disabled status not exposed",
+  "pitrEnabled": null,
+  "earliestRecoveryTimestamp": null,
+  "latestRecoveryTimestamp": null,
+  "retentionPeriod": null,
+  "actualRecoveryWindow": null,
+  "backupStatus": "UNKNOWN — no resource-bound backup inventory/status exposed",
+  "latestSuccessfulBackupTimestamp": null,
+  "latestSuccessfulBackupStatus": null,
+  "automatedBackupsEnabled": null,
+  "automatedBackupFrequency": null,
+  "recoveryPointAvailable": null,
+  "recoveryPointInventory": null,
+  "healthStatus": "UNKNOWN — no resource-specific primary health/status metadata exposed",
+  "healthy": null,
+  "adequacyAssessment": {
+    "result": "UNVERIFIED",
+    "plannedForwardMigrationCount": 105,
+    "controlledBatchCount": 5,
+    "actualRecoveryEvidenceSupportingAdequacy": [],
+    "reason": "No enabled/status confirmation, actual recovery interval, successful backup/restore point or primary health evidence tied to this resource. Documentation capabilities, default retention, successful deployment build and Agent standby reads do not demonstrate usable recovery protection.",
+    "gateCleared": false,
+    "gateBlocked": true,
+    "noExecutionApproval": true
+  },
+  "primaryAndAgentRoute": {
+    "resourceDesignation": "Primary, per supplied Replit interface resource metadata",
+    "priorAgentReadRoute": {
+      "source": "Previous read-only Production binding verification; existing reports/schema-production-preflight/identity.json agrees with the standby indicators.",
+      "databaseName": "neondb",
+      "pgIsInRecovery": true,
+      "transactionReadOnly": "on",
+      "defaultTransactionReadOnly": "off",
+      "repeatedThisReview": false
+    },
+    "relationship": "UNVERIFIED — no supported resource metadata maps the Agent backend to ep-proud-sound-b4nsr0y3.",
+    "distinction": "Resource-level Primary designation and standby/recovery status of the separate Agent query backend are different evidence. Neither refutes the other or proves a common underlying resource. No test write attempted."
+  },
+  "freshAvailableMetadata": {
+    "neonIntegration": [
+      {
+        "id": "mcp:neon",
+        "displayName": "Neon",
+        "status": "not_setup",
+        "integrationType": "mcp"
+      }
+    ],
+    "authorizedNeonMetadataConnectionAvailable": false,
+    "apiSecretExistence": {
+      "environmentScope": "Production and shared only; existence checks do not read values or rule out every possible credential/configuration name elsewhere.",
+      "secrets": {
+        "NEON_API_KEY": false,
+        "NEON_API_TOKEN": false,
+        "REPLIT_API_KEY": false
+      }
+    },
+    "deploymentMetadata": {
+      "additionalUrls": [],
+      "deploymentType": "autoscale",
+      "hasSuccessfulBuild": true,
+      "isDeployed": true,
+      "primaryUrl": "https://edu-pulse-school-management--ogunlakinyemi.replit.app",
+      "success": true,
+      "visibility": "public"
+    },
+    "deploymentEvidenceLimit": "Active Autoscale successful build is deployment state only, not primary database health, backup status, restore-point availability or recoverability.",
+    "authenticatedRecoveryResourceInventoryAvailable": false,
+    "actionsNotTaken": "No integration authorization/addition, new credentials, private endpoints or uncredentialed provider API probes."
+  },
+  "documentation": {
+    "previousDirectOfficialPage": "https://docs.replit.com/features/data-and-storage/data-recovery",
+    "freshOfficialDocsLookupPerformed": true,
+    "operatorReadOnlySurface": "Database tool → Production → Settings; inspect existing PITR/recovery history and scheduled-backup inventory. Monitoring can show resource metrics/status. Do not change controls or expose connection credentials.",
+    "generalCapabilities": "PITR and scheduled backups; Core up to 7 days, Pro/Enterprise up to 28 days (7 by default). These are capabilities/defaults, not observed protection for this resource.",
+    "generalScheduledBackupLimitations": "When enabled, one full restore point per day, near midnight using the browser offset at schedule creation/update. DST can shift time by one hour; fractional offsets use nearest hour. No actual schedule/offset/success inventory was exposed.",
+    "generalRestoreLimitations": "Database restore does not restore application code. No restore was attempted.",
+    "resourceCertification": false,
+    "notInferredFromSevenDays": true
+  },
+  "unavailableEvidence": [
+    "Resource-specific PITR enabled/disabled",
+    "Earliest recoverable timestamp with timezone",
+    "Latest recoverable timestamp with timezone",
+    "Configured retention and actual recoverable window",
+    "Latest successful backup timestamp/status and inventory",
+    "Automated backup enablement and actual schedule/frequency",
+    "Usable recoverable restore-point availability",
+    "Current authoritative primary resource health",
+    "Resource mapping between Primary and Agent standby read route",
+    "Operation-adequate recovery protection for 105 forward migrations/five batches"
+  ],
+  "remainingRequiredEvidence": "Non-secret read-only Replit/Neon metadata tied to ep-proud-sound-b4nsr0y3: current PITR status, earliest/latest recovery times/timezone and configured window, successful backup/restore-point inventory, automated schedule/status, primary health and evidence meeting the operation’s recovery objectives. Do not activate backups, create snapshots or restore to obtain this evidence under current authorization.",
+  "gateCleared": false,
+  "safety": {
+    "productionWrites": 0,
+    "developmentWrites": 0,
+    "databaseConnectionsOpened": 0,
+    "sqlQueriesExecuted": 0,
+    "migrationsExecuted": 0,
+    "migration0060Executed": false,
+    "pitrChanges": 0,
+    "backupScheduleChanges": 0,
+    "snapshotsCreated": 0,
+    "snapshotsDeleted": 0,
+    "restoresTriggered": 0,
+    "journalChanges": 0,
+    "deploymentsPerformed": 0,
+    "secretValuesAccessed": 0,
+    "secretsChanged": 0,
+    "schemaDataSequenceChanges": 0,
+    "applicationChanges": 0,
+    "previousEvidenceReportsChanged": 0,
+    "batch1Approved": false,
+    "allowedWorkspaceWrites": [
+      "reports/production-infrastructure-evidence/recovery-readiness.md",
+      "reports/production-infrastructure-evidence/recovery-readiness.json"
+    ]
+  }
+}

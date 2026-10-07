@@ -1,0 +1,137 @@
+Perform a READ-ONLY Production PITR and recovery safety check for the identified Production database resource.
+
+IDENTIFIED PRODUCTION RESOURCE
+
+- Provider: PostgreSQL / Neon
+- Database: "neondb"
+- Resource ID: "ep-proud-sound-b4nsr0y3"
+- Environment: Production
+- Designation: Primary
+- Used by: Active Production deployment
+
+ABSOLUTE SAFETY RULE
+
+Do NOT:
+
+- run any migration;
+- execute migration 0060;
+- modify Production or Development;
+- modify database settings;
+- enable/disable PITR;
+- change backup schedules;
+- create/delete snapshots;
+- modify the migration journal;
+- publish/deploy;
+- modify secrets;
+- perform any data or schema changes.
+
+Production writes MUST remain 0.
+
+1. Inspect available recovery metadata
+
+Using only officially available Replit/Neon resource metadata, determine:
+
+- whether PITR is enabled;
+- earliest available recovery timestamp;
+- latest available recovery timestamp;
+- current retention period/window;
+- latest successful backup timestamp/status;
+- whether automated backups are enabled;
+- backup frequency, if exposed;
+- whether the resource has a recoverable restore point;
+- whether the resource is currently healthy.
+
+Do not infer values that are not explicitly available.
+
+2. Determine migration recovery adequacy
+
+The planned operation involves 105 forward migrations in five controlled batches.
+
+Using the actual available recovery evidence, determine whether the recovery protection is adequate for this operation.
+
+Do NOT simply say "PITR exists = safe."
+
+Report the actual evidence supporting the conclusion.
+
+If recovery protection cannot be verified, state:
+
+RECOVERY PROTECTION UNVERIFIED
+
+and keep the gate blocked.
+
+3. Distinguish Primary from Agent read route
+
+Do not confuse the earlier Agent connection result:
+
+- "pg_is_in_recovery() = true"
+- "transaction_read_only = on"
+
+with the resource-level Primary designation.
+
+Do not attempt any write to determine the difference.
+
+If Replit/Neon exposes the relationship between the Primary resource and the Agent read route, report it. Otherwise state that the relationship remains unverified.
+
+4. Do not change anything
+
+This is an evidence-only operation.
+
+Production writes must remain:
+
+0
+
+5. Create report
+
+Create:
+
+"reports/production-infrastructure-evidence/recovery-readiness.md"
+
+and, if useful:
+
+"reports/production-infrastructure-evidence/recovery-readiness.json"
+
+Include:
+
+- resource ID;
+- database name;
+- PITR status;
+- earliest recovery timestamp;
+- latest recovery timestamp;
+- retention;
+- backup status;
+- latest successful backup;
+- recovery-point availability;
+- health status;
+- adequacy assessment;
+- unavailable evidence;
+- whether this gate is cleared.
+
+FINAL RESULT
+
+Return:
+
+Recovery item| Result
+Production resource| "ep-proud-sound-b4nsr0y3"
+PITR enabled| ...
+Recovery window| ...
+Earliest recovery point| ...
+Latest recovery point| ...
+Latest successful backup| ...
+Automated backups| ...
+Recovery point available| ...
+Adequate for migration| YES/NO/UNVERIFIED
+Production writes| 0
+
+Use exactly one final status:
+
+RECOVERY GATE CLEARED
+
+or
+
+RECOVERY PROTECTION UNVERIFIED
+
+or
+
+RECOVERY GATE BLOCKED
+
+Do not execute any migration regardless of the result.
