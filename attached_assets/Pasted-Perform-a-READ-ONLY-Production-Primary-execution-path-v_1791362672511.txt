@@ -1,0 +1,110 @@
+Perform a READ-ONLY Production Primary execution-path verification for Yemait EduCore.
+
+Authoritative Production resource
+
+- Environment: Production
+- Database: "neondb"
+- Resource ID: "ep-proud-sound-b4nsr0y3"
+- Resource designation: Primary
+- Used by: Production Deployment
+- Production URL: "https://edu-pulse-school-management-ogunlakinyemi.replit.app/"
+
+Objective
+
+Determine exactly how the approved 105 forward migrations ("0061–0165") can be executed against the actual Production Primary database.
+
+We previously confirmed that an Agent database connection reported:
+
+- "current_database() = neondb"
+- "pg_is_in_recovery() = true"
+- "transaction_read_only = on"
+
+That indicates the Agent connection was reaching a standby/read-only route. Do NOT assume that this is the same connection used by the live Production Deployment.
+
+READ-ONLY restrictions
+
+Do NOT:
+
+- execute any migration
+- execute migration "0060"
+- create, alter or drop tables
+- create or modify indexes, constraints, functions or triggers
+- insert, update or delete data
+- modify the Drizzle journal
+- modify Production secrets
+- change "DATABASE_URL"
+- change database resources
+- change replicas or endpoints
+- publish or redeploy the application
+- change PITR, backups or recovery settings
+- restart or modify the Production database
+
+Only inspect existing configuration, metadata and officially exposed resource information.
+
+Verify
+
+Determine, using available Replit/Neon metadata and project configuration:
+
+1. Which database endpoint/resource the live Production Deployment actually uses.
+2. Whether the Production Deployment connects to:
+   - the Primary
+   - a read replica
+   - a proxy that automatically routes writes to the Primary
+   - or another endpoint.
+3. Whether the runtime "DATABASE_URL" or equivalent database binding resolves to "ep-proud-sound-b4nsr0y3".
+4. Whether Replit provides an approved mechanism for running database migrations against the Production Primary.
+5. Whether the Agent's earlier standby/read-only connection is merely an inspection route separate from the application's Production runtime.
+6. Whether the migration execution mechanism can safely run transactional DDL against the Production Primary.
+7. Whether the 105 migrations "0061–0165" can be executed in the previously established five batches:
+   - Batch 1: "0061–0115"
+   - Batch 2: "0116–0138"
+   - Batch 3: "0139–0155"
+   - Batch 4: "0156–0160"
+   - Batch 5: "0161–0165"
+8. Confirm that migration "0060" remains a separate unchanged Finance boundary and must not be automatically replayed.
+9. Confirm that PITR protection is active with the verified 7-day recovery window, but do not modify recovery settings.
+10. Identify any remaining blocker that must be resolved before migration execution.
+
+Important
+
+If the authoritative Production Primary execution route cannot be verified, report:
+
+EXECUTION PATH UNVERIFIED — DO NOT MIGRATE
+
+Do not guess, infer, or substitute the Agent standby connection for the Production Primary.
+
+If the Production Primary route and approved migration mechanism are verified, report:
+
+EXECUTION PATH VERIFIED — READY FOR FINAL MIGRATION APPROVAL
+
+This is still only a readiness check. Do not execute any migration.
+
+Required report
+
+Create:
+
+"reports/production-infrastructure-evidence/primary-execution-path-verification.md"
+
+Optionally also create:
+
+"reports/production-infrastructure-evidence/primary-execution-path-verification.json"
+
+The report must clearly state:
+
+- authoritative Production resource
+- Production runtime database binding
+- Primary endpoint/resource relationship
+- Agent standby relationship
+- approved migration execution mechanism
+- whether the five-batch plan can target the Primary
+- remaining blockers
+- Production writes performed: 0
+- final status
+
+Use exactly one final status:
+
+EXECUTION PATH VERIFIED — READY FOR FINAL MIGRATION APPROVAL
+
+or
+
+EXECUTION PATH UNVERIFIED — DO NOT MIGRATE

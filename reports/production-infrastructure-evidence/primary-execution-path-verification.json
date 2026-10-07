@@ -1,0 +1,211 @@
+{
+  "status": "EXECUTION PATH UNVERIFIED — DO NOT MIGRATE",
+  "checkedAt": "2026-10-07T08:48:03.543Z",
+  "authoritativeProductionResource": {
+    "resourceId": "ep-proud-sound-b4nsr0y3",
+    "database": "neondb",
+    "environment": "Production",
+    "designation": "Primary",
+    "usedBy": "Production Deployment",
+    "source": "User-supplied Replit resource information; accepted as identified scope, not independently fetched primary binding."
+  },
+  "productionDeployment": {
+    "supportedMetadata": {
+      "additionalUrls": [],
+      "deploymentType": "autoscale",
+      "hasSuccessfulBuild": true,
+      "isDeployed": true,
+      "primaryUrl": "https://edu-pulse-school-management--ogunlakinyemi.replit.app",
+      "success": true,
+      "visibility": "public"
+    },
+    "userSuppliedUrl": "https://edu-pulse-school-management-ogunlakinyemi.replit.app/",
+    "urlMatchesIgnoringTrailingSlash": false,
+    "urlDiscrepancy": "Deployment service returns edu-pulse-school-management--ogunlakinyemi.replit.app (double hyphen), whereas supplied URL has one. No alias/redirect tested or assumed.",
+    "deploymentIdentifier": null,
+    "resourceBinding": null
+  },
+  "productionRuntimeBinding": {
+    "sourceConfiguration": "lib/db/src/index.ts creates pg Pool with symbolic process.env.DATABASE_URL. Drizzle config also uses symbolic DATABASE_URL. Values not accessed.",
+    "existenceOnlyMetadata": {
+      "runtimeManaged": [
+        "DATABASE_URL"
+      ],
+      "secrets": {
+        "DATABASE_URL": true,
+        "EXTERNAL_DATABASE_URL": false,
+        "NEON_API_KEY": false,
+        "REPLIT_API_KEY": false
+      }
+    },
+    "databaseUrlRuntimeManaged": true,
+    "databaseUrlExists": true,
+    "resolvesToSpecifiedResource": "UNVERIFIED",
+    "actualEndpointResource": "UNVERIFIED",
+    "connectionType": "UNVERIFIED — supplied designation Primary; runtime connection type not independently exposed.",
+    "proxyAutomaticWriteRouting": "UNVERIFIED",
+    "reason": "No supported returned deployment metadata maps the runtime variable to a database endpoint/resource ID."
+  },
+  "primaryEndpointRelationship": {
+    "resourceDesignation": "Primary per supplied Replit interface information",
+    "runtimeToResourceRelationship": "UNVERIFIED",
+    "agentRouteToResourceRelationship": "UNVERIFIED",
+    "neonMetadataConnection": [
+      {
+        "id": "mcp:neon",
+        "status": "not_setup",
+        "integrationType": "mcp"
+      }
+    ],
+    "managedVersusExternal": "UNVERIFIED — Neon provider/name alone does not establish whether Replit owns/manages the Production resource or Publish can affect it."
+  },
+  "agentStandbyRelationship": {
+    "previousEvidence": {
+      "database": "neondb",
+      "pgIsInRecovery": true,
+      "transactionReadOnly": "on",
+      "defaultTransactionReadOnly": "off"
+    },
+    "inspectionRoute": "Agent production executeSql is documented read-only; not a configured migration execution route.",
+    "logicalAccessPaths": "Agent inspection interface and deployed application pg Pool are separate access paths; no runtime SQL observation taken here.",
+    "underlyingResourceMapping": "UNVERIFIED — cannot establish that both connect to the same primary/branch or endpoint.",
+    "standbySubstitutedForPrimary": false,
+    "noTestWrite": true,
+    "queryRepeated": false
+  },
+  "approvedMigrationExecutionMechanism": {
+    "result": "NOT ESTABLISHED for this exact package and primary",
+    "supportedManagedReplitRoute": "Conditional managed Publish schema-diff flow, per directly fetched official docs and database-migrations-on-publish reference. No Publish performed.",
+    "externalNeonRoute": "If application uses externally managed Neon, the project’s separately documented/authorized external migration workflow is required; none established here. Managed Publish cannot be assumed to touch an external database.",
+    "existingConfiguration": {
+      "dbScripts": "push and push-force use drizzle-kit schema push, not a configured staged migration-file executor.",
+      "postMerge": "Development merge setup invokes schema push.",
+      "deploymentPostBuild": "pnpm store prune only.",
+      "runtime": "pg Pool references DATABASE_URL; no demonstrated approved startup/file-level migration mechanism."
+    },
+    "transactionalDdlAgainstActualPrimary": "UNVERIFIED — PostgreSQL transactional DDL capability and prior DO-statement atomicity do not certify target, role, executor boundaries, commits, errors or pauses.",
+    "durablePerMigrationHistory": "UNVERIFIED",
+    "safeAbortAndResume": "UNVERIFIED",
+    "specificProductionRunnerConfigured": false,
+    "noCustomRunnerOrDeploymentDdlHookCreated": true,
+    "documentationSummaryCaution": "Generalized search summaries suggesting deployment-build DDL or a Production Shell were not accepted as established execution paths; provided managed DB safety instructions and directly fetched source govern this review.",
+    "directOfficialSourceUrl": "https://docs.replit.com/features/data-and-storage/development-and-production"
+  },
+  "fiveBatchPlan": {
+    "source": "Previously established plan reused; no dependency map or Batch 1 checklist regenerated.",
+    "forwardMigrationCount": 105,
+    "batchCount": 5,
+    "batches": [
+      {
+        "batch": 1,
+        "range": "0061–0115",
+        "count": 55,
+        "primaryTargetVerified": false,
+        "transactionalExecutionVerified": false,
+        "batchPauseVerified": false,
+        "executionApproved": false
+      },
+      {
+        "batch": 2,
+        "range": "0116–0138",
+        "count": 23,
+        "primaryTargetVerified": false,
+        "transactionalExecutionVerified": false,
+        "batchPauseVerified": false,
+        "executionApproved": false
+      },
+      {
+        "batch": 3,
+        "range": "0139–0155",
+        "count": 17,
+        "primaryTargetVerified": false,
+        "transactionalExecutionVerified": false,
+        "batchPauseVerified": false,
+        "executionApproved": false
+      },
+      {
+        "batch": 4,
+        "range": "0156–0160",
+        "count": 5,
+        "primaryTargetVerified": false,
+        "transactionalExecutionVerified": false,
+        "batchPauseVerified": false,
+        "executionApproved": false
+      },
+      {
+        "batch": 5,
+        "range": "0161–0165",
+        "count": 5,
+        "primaryTargetVerified": false,
+        "transactionalExecutionVerified": false,
+        "batchPauseVerified": false,
+        "executionApproved": false
+      }
+    ],
+    "canTargetVerifiedPrimary": "UNVERIFIED",
+    "notExecuted": true
+  },
+  "finance0060": {
+    "file": "0060_reconcile_student_subscription_finance.sql",
+    "expectedSha256": "a827ad709347eaa22b9bf70a4c2a4012f2c2bd86c5ba3d624623710f98d41f57",
+    "actualSha256": "a827ad709347eaa22b9bf70a4c2a4012f2c2bd86c5ba3d624623710f98d41f57",
+    "unchanged": true,
+    "countedIn105": false,
+    "afterBatch": 2,
+    "beforeBatch": 3,
+    "separateFinanceBoundary": true,
+    "neverAutomaticallyReplay": true,
+    "primaryContractCertification": "UNVERIFIABLE using available supported primary evidence",
+    "contractObjectCount": 96
+  },
+  "pitr": {
+    "userConfirmation": {
+      "active": true,
+      "windowDays": 7,
+      "source": "Current user instruction states active PITR with verified seven-day window."
+    },
+    "independentlyVerifiedResourceMetadata": false,
+    "actualEarliestRecoveryTimestamp": null,
+    "actualLatestRecoveryTimestamp": null,
+    "successfulBackupInventory": null,
+    "adequacyForOperation": "UNVERIFIED",
+    "existingRecoveryReport": "reports/production-infrastructure-evidence/recovery-readiness.json — preserved unchanged; earlier observations remain scoped to that review.",
+    "notAssumedSafeFromWindowAlone": true,
+    "settingsChanged": false
+  },
+  "remainingBlockers": [
+    "Non-secret runtime binding metadata tying the actual active deployment and its DATABASE_URL to ep-proud-sound-b4nsr0y3; runtime-managed key existence is not that mapping.",
+    "Actual deployed endpoint classification and provider/resource relationship: Primary, replica or write-routing proxy; distinction between managed Replit Production and external Neon ownership.",
+    "A supported authorized executor for this exact 105-file package, with Primary targeting, reviewed dependency order, five batch pauses, transactional DDL/error rollback, committed results and durable hash/history records.",
+    "Authoritative Production migration history and already-present effects: prior 105 AMBIGUOUS classifications remain unresolved; no registration stamping or replay inferred.",
+    "Resource-bound recovery evidence for the reported active seven-day PITR window: actual earliest/latest usable points, backup success/status and operation adequacy. User confirmation recorded separately; existing unknown report preserved.",
+    "Authoritative 96-object 0060 contract certification at its separate Finance boundary between Batch 2 and Batch 3, plus a separately approved handling decision if not satisfied. No automatic 0060 replay.",
+    "Reconciliation of the supplied Production URL with the deployment service URL; no alias/redirect equivalence established here.",
+    "Final migration approval and pre-execution primary preservation/writer-quiescence evidence are still separate prerequisites; no approval provided by this read-only report."
+  ],
+  "productionWritesPerformed": 0,
+  "safety": {
+    "productionWrites": 0,
+    "developmentWrites": 0,
+    "databaseConnectionsOpened": 0,
+    "sqlQueriesExecuted": 0,
+    "migrationsExecuted": 0,
+    "migration0060Executed": false,
+    "journalChanges": 0,
+    "secretsChanged": 0,
+    "secretValuesAccessed": 0,
+    "databaseUrlChanged": false,
+    "resourceOrEndpointChanges": 0,
+    "publishesOrRedeploys": 0,
+    "pitrOrBackupChanges": 0,
+    "productionRestarts": 0,
+    "schemaDataSequenceChanges": 0,
+    "executionApproved": false,
+    "batch1Approved": false,
+    "existingSourceAndReportsChanged": false,
+    "allowedReportOutputs": [
+      "primary-execution-path-verification.md",
+      "primary-execution-path-verification.json"
+    ]
+  }
+}

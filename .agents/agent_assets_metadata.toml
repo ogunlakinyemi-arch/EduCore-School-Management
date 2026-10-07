@@ -588,3 +588,17 @@ mtime_ms = 1791362310161
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f36dff77-0fca-45f6-b86a-355665132feb/cd58a9d1-0284-4ffe-a9bf-6ec8e420a099"
 storage_version_token = "1791362343316331"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "GN_on29KEqcMD4V1PSFsu"
+uri = "file://reports/production-infrastructure-evidence/primary-execution-path-verification.md"
+type = "text"
+title = "Production Primary execution-path verification"
+description = "Runtime binding and supported five-batch executor remain unverified. 0060 unchanged and separate; Production writes: 0."
+logical_id = "14deccd6-644f-4601-9d5b-a0413f48dceb"
+content_hash = "sha256:83ee636b74ffe4f5e0e1448a32cac4efc4b3a873275967336bfd168a1d3efd43"
+size = 7875
+mtime_ms = 1791362883953
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/14deccd6-644f-4601-9d5b-a0413f48dceb/d9d90b4c-0b5d-44ba-a472-4d38001bdf18"
+storage_version_token = "1791362905324506"
+content_type = "text/markdown"
