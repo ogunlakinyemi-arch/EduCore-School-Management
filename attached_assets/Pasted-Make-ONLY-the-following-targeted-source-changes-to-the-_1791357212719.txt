@@ -1,0 +1,143 @@
+Make ONLY the following targeted source changes to the already-built reconciliation migrations.
+
+DO NOT:
+
+- rebuild the migration set
+- create new migration numbers
+- connect to Production
+- connect to Development
+- execute migrations against any shared database
+- run db push
+- publish/deploy
+- modify the Drizzle journal
+- modify application code
+- modify secrets/environment variables
+- change migration 0060
+- change migration 0149 except if required to preserve its existing CASH correction
+
+REQUIRED FIX
+
+The canonical schema requires these five columns to have inline defaults when initially added to populated tables.
+
+Change ONLY the existing ADD COLUMN definitions:
+
+Migration 0105
+
+Change:
+
+"push_attempts jsonb NOT NULL"
+
+to:
+
+"push_attempts jsonb NOT NULL DEFAULT '{}'::jsonb"
+
+Change:
+
+"receipt_ids jsonb NOT NULL"
+
+to:
+
+"receipt_ids jsonb NOT NULL DEFAULT '[]'::jsonb"
+
+Migration 0087
+
+Change:
+
+"partner_profile_users.nfc_activation_enabled boolean NOT NULL"
+
+to:
+
+"partner_profile_users.nfc_activation_enabled boolean NOT NULL DEFAULT false"
+
+Change:
+
+"partner_profiles.nfc_activation_enabled boolean NOT NULL"
+
+to:
+
+"partner_profiles.nfc_activation_enabled boolean NOT NULL DEFAULT false"
+
+Migration 0086
+
+Change:
+
+"schools.communication_defaults jsonb NOT NULL"
+
+to:
+
+"schools.communication_defaults jsonb NOT NULL DEFAULT '{}'::jsonb"
+
+Use the exact existing migration syntax/quoting style.
+
+IMPORTANT
+
+Do not add separate UPDATE backfills.
+
+Do not add manual data transformations.
+
+Do not fabricate historical delivery, receipt or NFC permission information.
+
+The PostgreSQL inline defaults are the canonical initialization mechanism.
+
+Do not change any other migration.
+
+Do not reorder migrations.
+
+Do not modify 0060.
+
+Do not modify 0149's existing CASH correction.
+
+VALIDATION
+
+After the five edits, perform ONE disposable PostgreSQL validation only.
+
+Verify:
+
+1. Each migration parses.
+2. Each column has the exact canonical type.
+3. Each column is NOT NULL.
+4. Each column has the exact canonical default.
+5. Existing rows in the disposable populated-table fixtures receive:
+   - "{}" for "push_attempts"
+   - "[]" for "receipt_ids"
+   - "false" for both NFC activation columns
+   - "{}" for "communication_defaults"
+6. No manual UPDATE/backfill was introduced.
+7. No destructive operation was introduced.
+8. 0060 remains byte-for-byte/source-equivalent to its current validated version.
+9. 0149 still contains its guarded CASH-check retirement.
+10. Migration ordering remains unchanged.
+
+Do NOT run the migrations against Production or Development.
+
+FINAL RESPONSE
+
+Return:
+
+Files modified: exactly which files
+
+Columns fixed: 5/5
+
+Inline defaults: 5/5
+
+Existing-row initialization: PASS/FAIL
+
+Manual backfill introduced: YES/NO
+
+Destructive operations introduced: YES/NO
+
+0060 unchanged: YES/NO
+
+0149 unchanged except existing correction: YES/NO
+
+Production changes: 0
+
+Then give exactly one status:
+
+PASS — FIVE DEFAULTS CORRECTED AND DISPOSABLE VALIDATION PASSED
+
+or
+
+BLOCKED — CORRECTION FAILED
+
+Do not perform any Production migration.
