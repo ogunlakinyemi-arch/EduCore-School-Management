@@ -1,0 +1,137 @@
+Task: Implement Flutterwave-Controlled NFC Subscription Payments
+
+You are working on the existing Yemait EduCore school management platform, owned by YETENIA TECHNOLOGIES LIMITED.
+
+Implement a focused extension to the existing finance, payment, subscription, and partner commission modules. Do not rebuild or replace any existing system.
+
+1. Inspect Before Changing Anything
+
+Inspect only the relevant existing implementation:
+
+- Flutterwave payment integration and webhook verification
+- NFC subscription fee generation
+- Student subscription payment records
+- School and platform revenue allocation
+- Partner attribution and commission calculation
+- Existing payment receipts and parent notifications
+- Existing School Admin finance interface
+
+Reuse the existing services, tables, payment records, and allocation logic wherever possible. Do not create duplicate payment or subscription systems.
+
+2. Required Payment Flow
+
+The NFC subscription costs ₦5,000 per student per term.
+
+The parent does not need an EduCore dashboard or account to pay.
+
+Provide the following workflow:
+
+1. An authorized School Admin opens the student's fee or subscription record.
+2. The Admin selects Pay NFC Subscription via Flutterwave or generates a student-specific payment link/QR code.
+3. The parent can scan the QR code or open the link on any available device.
+4. The payment page clearly identifies the school, student, term, NFC subscription, and amount due.
+5. The parent pays through Flutterwave.
+6. EduCore verifies the transaction server-side.
+7. Only after successful verification does EduCore record the payment, allocate the shares, issue the receipt, and activate or extend the applicable subscription.
+
+The School Admin must be able to display or print the payment link/QR code for parents without smartphones or internet access. If the parent has no device, school staff may assist using an approved device and payment method. Do not record a cash payment as a successful Flutterwave payment.
+
+3. Automatic Revenue Allocation
+
+Use the existing allocation rules:
+
+- School: ₦2,000
+- YETENIA Technologies Limited / EduCore: ₦3,000 before partner commission
+- Eligible partner: ₦100 per student per term, deducted from EduCore's share
+- EduCore net after an eligible partner commission: ₦2,900
+
+When a partner is not eligible, retain the full ₦3,000 platform allocation.
+
+The allocation must total ₦5,000 before Flutterwave processing charges. Confirm how fees, subaccount settlement, and net settlement work with the existing Flutterwave account configuration. Do not invent account IDs or claim that money has been split automatically if the actual Flutterwave setup does not support it.
+
+Important: Inspect the existing Flutterwave integration and account capabilities first. Use supported Flutterwave split-payment/subaccount functionality if available and correctly configured. If it requires additional account setup or verified subaccount IDs, implement only the safe prerequisite work and clearly report what is still required. Do not send real transactions while configuration is incomplete.
+
+4. Secure Payment Confirmation
+
+- Verify Flutterwave webhooks using the existing secure implementation or Flutterwave's documented verification process.
+- Never trust a browser redirect or client-side success message as proof of payment.
+- Verify the transaction reference, expected amount, currency, payment status, and intended student/subscription.
+- Use idempotency and unique transaction references so repeated webhooks cannot create duplicate payments, receipts, commissions, or subscription activations.
+- Reject invalid, mismatched, failed, or already-processed transactions.
+- Do not expose secret keys in frontend code, logs, API responses, or source control.
+- Do not hard-code payment credentials.
+
+5. School Admin Interface
+
+Add the smallest necessary changes to the existing School Admin finance interface:
+
+- View the student's NFC subscription and outstanding amount.
+- Generate or retrieve the Flutterwave payment link.
+- Display a QR code where supported.
+- Copy or print the payment instructions.
+- See pending, successful, failed, or expired payment status.
+- View the receipt after verified payment.
+
+The Admin must not be able to mark an unpaid Flutterwave transaction as successful or manually change the platform/school/partner allocation.
+
+6. Parent Without a Dashboard
+
+The public payment page must work without a parent login.
+
+Use a secure, unguessable, student-specific payment reference or token. Do not expose unnecessary student information through the URL. The parent must not be able to change the student, term, amount, or allocation by editing browser parameters.
+
+If the existing payment-link architecture cannot safely support this, explain the blocker before implementing a workaround.
+
+7. Preserve Existing Behaviour
+
+- Ordinary school fees must continue to use their existing payment arrangements.
+- Preserve existing NFC subscription generation and pricing.
+- Preserve existing partner attribution and eligibility rules.
+- Preserve receipts, finance records, audit logs, notification preferences, and deduplication.
+- Keep Clerk authentication unchanged.
+- Keep existing Resend and SMS configuration unchanged.
+- Do not activate Termii.
+- Do not create a second payment system.
+
+8. Development and Credit Limits
+
+- Work in Development only.
+- Do not modify Production.
+- Do not reset or delete databases or test data.
+- Do not run destructive migrations.
+- Avoid unnecessary schema changes.
+- Do not run the entire test suite.
+- Run only focused tests for payment verification, allocation, webhook idempotency, and subscription activation.
+- Do not send real payments or mass notifications.
+- Do not add unrelated features or perform broad repository audits.
+
+If a required capability is already implemented, reuse it rather than recreating it.
+
+9. Acceptance Criteria
+
+The task is complete when the existing Development implementation demonstrates, using safe test data:
+
+1. A School Admin can generate a student-specific NFC subscription payment link.
+2. A parent can access the payment page without an EduCore account.
+3. The server determines the correct student, term, and ₦5,000 amount.
+4. A verified successful payment creates exactly one payment record.
+5. The applicable school, platform, and partner allocations are recorded correctly.
+6. The subscription is activated or extended exactly once.
+7. Duplicate webhook delivery cannot duplicate payments, commissions, or receipts.
+8. Failed or unverified payments do not activate the subscription.
+9. Existing ordinary school-fee payment workflows remain unchanged.
+
+Do not claim that actual funds were split unless this has been verified against the configured Flutterwave account and settlement mechanism.
+
+10. Final Report
+
+Keep the report concise. State:
+
+- What was reused
+- What changed
+- Focused tests passed/failed
+- Whether actual Flutterwave split settlement is configured and verified
+- Any required subaccount IDs, credentials, or dashboard configuration still outstanding
+- Whether any Production changes or real payments occurred
+
+If everything required is already implemented, make no unnecessary code changes. If an external configuration is required, stop at the safe boundary and tell me exactly what I must configure.

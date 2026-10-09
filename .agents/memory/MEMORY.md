@@ -56,3 +56,4 @@
 - [Schema export ordering](schema-export-dependency-ordering.md) — distinguish missing keys from premature FK emission; preserve index ownership and report raw versus reordered validation separately.
 - [Student Finance ownership](student-finance-ownership.md) — school transfers never move original-school payments, allocations, attribution, receipts or subscription history.
 - [Controlled default initialization](controlled-default-initialization.md) — only reviewed empty metadata/default-deny fields may initialize populated rows; keep generation evidence aligned.
+- [Guest NFC payments](guest-nfc-payment-policy.md) — parents need no EduCore account; support printed and assisted online payment without mislabelling cash or internal allocations.
