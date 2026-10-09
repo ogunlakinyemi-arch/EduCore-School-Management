@@ -29,6 +29,7 @@ vi.mock("../lib/fee-providers/factory",async original=>{
 });
 import finance from "./finance";
 import obligations from "./student-nfc-obligations";
+import paymentLinks from "./nfc-payment-links";
 import subscriptions from "./edupulse";
 import {finalizeVerifiedStudentSubscriptionPayment} from "../lib/student-subscription-billing";
 import {ensureStudentNfcSubscription} from "../lib/student-nfc-obligations";
@@ -62,7 +63,12 @@ beforeAll(async()=>{
   // pg_dump deliberately leaves the restoring connection's search path empty.
   await q("SET search_path TO public");
   vi.stubEnv("NODE_ENV","development");
-  await q(readFileSync(new URL("../../../../lib/db/drizzle/0058_student_subscription_terms.sql",import.meta.url),"utf8"));
+  vi.stubEnv("REPLIT_DEPLOYMENT","");
+  vi.stubEnv("SESSION_SECRET","private-disposable-nfc-preview-signing-only");
+  vi.stubEnv("REPLIT_DEV_DOMAIN","nfc-preview-fixture.replit.dev");
+  if (!(await q("SELECT to_regclass('student_subscription_terms') AS existing")).rows[0].existing) {
+    await q(readFileSync(new URL("../../../../lib/db/drizzle/0058_student_subscription_terms.sql",import.meta.url),"utf8"));
+  }
   await q("SET search_path TO public");
   await q(`
     INSERT INTO app_users(id,clerk_user_id,email) SELECT n,'nfc-native-'||n,'nfc-native-'||n||'@example.com' FROM generate_series(1,8)n;
@@ -104,7 +110,7 @@ beforeAll(async()=>{
       VALUES(1,100,1,'Tuition','Tuition',800000),(1,100,2,'NfC ID Card subscription','NfC ID Card subscription',500000);
     SELECT setval('fee_invoices_id_seq',100);
   `);
-  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations);
+  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations,paymentLinks);
   app.use((error:any,_req:any,res:any,_next:any)=>res.status(error instanceof AuthError?error.statusCode:500).json({error:error.message}));
   server=app.listen(0,"127.0.0.1");await new Promise<void>(r=>server.once("listening",()=>r()));
   base=`http://127.0.0.1:${(server.address() as any).port}`;
@@ -195,6 +201,63 @@ it.skipIf(!snapshot)("executes automatic attachment, scoped views, canonical uni
   await finalizeVerifiedStudentSubscriptionPayment(state.db,partnerRetry.body.payment.paymentId,{
     reference:partnerRetry.body.payment.reference,amountMinor:500000,currency:"NGN",status:"succeeded",providerTransactionId:"90003",
   });
+  const verifyFamilyPortalIntegration=async()=>{
+  await q(`INSERT INTO app_users(id,clerk_user_id,email) VALUES(9,'nfc-native-9','nfc-native-9@example.com');
+    INSERT INTO school_classes(id,school_id,name,section) VALUES(3,1,'SS3','C');
+    INSERT INTO students(id,school_id,admission_no,first_name,last_name,gender,class_name,section,user_id,status)
+      VALUES(9,1,'NFC9','Example','Student','Male','SS3','C',9,'active');
+    INSERT INTO school_memberships(user_id,school_id,role) VALUES(9,1,'STUDENT');
+    INSERT INTO parent_student_relationships(parent_id,student_id,relationship_type,status) VALUES(1,9,'Guardian','ACTIVE');
+    INSERT INTO fee_categories(id,school_id,name,created_by) VALUES
+      (4,1,'School fees',2),(5,1,'Books',2),(6,1,'Bus',2),(7,1,'Result',2),(8,1,'Medical',2),(9,1,'Lesson',2);`);
+  const input={sessionId:1,termId:1,classId:3,section:"C",
+    lines:[100000,500000,2000000,100000,200000,500000].map((amountMinor,index)=>({categoryId:4+index,amountMinor}))};
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  const draft=await call("/school/finance/structures?schoolId=1",input);
+  expect(draft.status,JSON.stringify(draft.body)).toBe(201);
+  const published=await call(`/school/finance/structures/${draft.body.id}/publish?schoolId=1`,{});
+  expect(published.status,JSON.stringify(published.body)).toBe(200);
+  expect((await call(`/school/finance/structures/${draft.body.id}/publish?schoolId=1`,{})).status).toBe(200);
+  const invoices=await q("SELECT id,total_minor,outstanding_minor FROM fee_invoices WHERE student_id=9");
+  expect(invoices.rows).toHaveLength(1);
+  expect(Number(invoices.rows[0].total_minor)).toBe(3400000);
+  expect((await call("/school/finance/assignments?schoolId=1",{studentId:9,structureId:draft.body.id,issueDate:new Date().toISOString().slice(0,10),dueDate:new Date().toISOString().slice(0,10)})).status).toBe(201);
+  expect((await call("/school/finance/structures?schoolId=1",input)).status).toBe(201);
+  expect(Number((await q("SELECT count(*) FROM subscriptions WHERE student_id=9")).rows[0].count)).toBe(1);
+  state.actor=actor(3,"PARENT");
+  const row=(await call("/student-nfc/obligations?studentId=9")).body.rows[0];
+  expect(row).toMatchObject({amountMinor:500000,ordinaryFeesMinor:3400000,totalMinor:3900000,status:"UNPAID"});
+  const signed=await call(`/subscriptions/${row.subscriptionId}/payment-link`,{termId:1,mode:"DEVELOPMENT_SIMULATION"});
+  expect(signed.status,JSON.stringify(signed.body)).toBe(200);
+  expect(signed.body.paymentUrl).toContain("/nfc/pay#");
+  const token=new URL(signed.body.paymentUrl).hash.slice(1);
+  const retry=await call(`/subscriptions/${row.subscriptionId}/payment-link`,{termId:1,mode:"DEVELOPMENT_SIMULATION"});
+  expect(retry.body.reference).toBe(signed.body.reference);
+  state.actor=actor(9,"STUDENT");
+  expect((await call(`/subscriptions/${row.subscriptionId}/payment-link`,{termId:1,mode:"DEVELOPMENT_SIMULATION"})).body.reference).toBe(signed.body.reference);
+  state.actor=actor(4,"STUDENT");
+  expect((await call(`/subscriptions/${row.subscriptionId}/payment-link`,{termId:1,mode:"DEVELOPMENT_SIMULATION"})).status).toBe(404);
+  state.actor=actor(3,"PARENT");
+  expect((await call(`/subscriptions/${row.subscriptionId}/payment-link/cancel`,{})).status).toBeGreaterThanOrEqual(400);
+  const before=await q("SELECT status,verification_status FROM subscriptions WHERE id=$1",[row.subscriptionId]);
+  // Simulate an ordinary school payment only in this disposable database.
+  await q("UPDATE fee_invoices SET paid_minor=total_minor,outstanding_minor=0,status='PAID' WHERE student_id=9");
+  expect((await call("/student-nfc/obligations?studentId=9")).body.rows[0].status).toBe("UNPAID");
+  const anonymous=await call("/public/nfc-payment-links/view",{token});
+  expect(anonymous.status).toBe(200);
+  const simulated=await call("/public/nfc-payment-links/simulate",{token,outcome:"SUCCESS"});
+  expect(simulated.body).toMatchObject({status:"SIMULATED_SUCCESS",subscriptionActivated:false,receiptReference:null});
+  expect((await q("SELECT status,verification_status FROM subscriptions WHERE id=$1",[row.subscriptionId])).rows).toEqual(before.rows);
+  expect(Number((await q("SELECT count(*) FROM student_subscription_payments WHERE subscription_id=$1",[row.subscriptionId])).rows[0].count)).toBe(0);
+  expect((await call("/student-nfc/obligations?studentId=9")).body.rows[0]).toMatchObject({status:"UNPAID",paymentLinkStatus:"SIMULATED_SUCCESS"});
+  await q("UPDATE nfc_payment_links SET status='PENDING',expires_at=NOW()-INTERVAL '1 second' WHERE subscription_id=$1",[row.subscriptionId]);
+  expect((await call("/student-nfc/obligations?studentId=9")).body.rows[0]).toMatchObject({status:"UNPAID",paymentLinkStatus:"EXPIRED"});
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  const replacement=await call(`/subscriptions/${row.subscriptionId}/payment-link`,{termId:1,mode:"DEVELOPMENT_SIMULATION"});
+  expect(replacement.status,JSON.stringify(replacement.body)).toBe(200);
+  expect(replacement.body.reference).not.toBe(signed.body.reference);
+  expect(Number((await q("SELECT count(*) FROM subscriptions WHERE student_id=9")).rows[0].count)).toBe(1);
+  };
   state.actor=actor(1,"PLATFORM_OWNER",null);
   const partnerRow=(await call("/student-nfc/obligations?studentId=6")).body.rows[0];
   expect(partnerRow).toMatchObject({status:"PAID",schoolAllocatedMinor:200000,platformAllocatedMinor:290000,partnerAllocatedMinor:10000});
@@ -237,4 +300,5 @@ it.skipIf(!snapshot)("executes automatic attachment, scoped views, canonical uni
   const ordinary={id:100,school_id:1};
   const stub={query:async()=>({rows:[]})};
   expect(await selectedFeeAmount(stub,ordinary,undefined)).toBeNull();
+  await verifyFamilyPortalIntegration();
 },60000);

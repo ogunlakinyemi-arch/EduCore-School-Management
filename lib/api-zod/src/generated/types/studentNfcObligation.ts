@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { StudentNfcObligationPaymentLinkStatus } from './studentNfcObligationPaymentLinkStatus';
 import type { StudentNfcObligationPaymentMethod } from './studentNfcObligationPaymentMethod';
 import type { StudentNfcObligationStatus } from './studentNfcObligationStatus';
 
@@ -37,4 +38,9 @@ export interface StudentNfcObligation {
   paymentMethod: StudentNfcObligationPaymentMethod;
   systemFee: boolean;
   canPay: boolean;
+  /**
+     * Latest public link state; simulated outcomes never change the subscription payment status.
+     * @nullable
+     */
+  paymentLinkStatus?: StudentNfcObligationPaymentLinkStatus;
 }

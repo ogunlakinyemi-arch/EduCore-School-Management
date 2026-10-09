@@ -78,3 +78,7 @@ components:
         paymentMethod: {type: string, enum: ["Flutterwave — Platform Owner"]}
         systemFee: {type: boolean}
         canPay: {type: boolean}
+        paymentLinkStatus:
+          type: [string, "null"]
+          enum: [PENDING, SIMULATED_SUCCESS, SIMULATED_FAILED, EXPIRED, CANCELLED, PAID, FAILED, RECONCILIATION_REQUIRED, null]
+          description: Latest public link state; simulated outcomes never change the subscription payment status.

@@ -10,6 +10,7 @@ import {
   getStudentNfcObligationsUrl,
   minorToNaira,
   nfcStatusLabel,
+  nfcFeeStatusLabel,
 } from './student-nfc-obligations';
 
 describe('student NFC obligations contract', () => {
@@ -32,5 +33,12 @@ describe('student NFC obligations contract', () => {
   it('formats the fixed split from minor units', () => {
     expect(minorToNaira(200000)).toContain('2,000');
     expect(minorToNaira(300000)).toContain('3,000');
+  });
+  it('keeps payment verification status separate from public link outcomes', () => {
+    const row = { status: 'UNPAID', paymentLinkStatus: 'SIMULATED_SUCCESS' } as Parameters<typeof nfcFeeStatusLabel>[0];
+    expect(nfcFeeStatusLabel(row)).toBe('Awaiting payment');
+    expect(nfcFeeStatusLabel({ ...row, paymentLinkStatus: 'EXPIRED' })).toBe('Link expired');
+    expect(nfcFeeStatusLabel({ ...row, status: 'PAID', paymentLinkStatus: 'EXPIRED' })).toBe('Paid and verified');
+    expect(nfcFeeStatusLabel({ ...row, status: 'PENDING', paymentLinkStatus: 'EXPIRED' })).toBe('Payment pending verification');
   });
 });

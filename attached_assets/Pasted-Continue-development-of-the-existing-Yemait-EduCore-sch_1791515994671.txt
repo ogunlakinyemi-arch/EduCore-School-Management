@@ -1,0 +1,91 @@
+Continue development of the existing Yemait EduCore school management system in Development only.
+
+Objective
+
+Integrate the existing NFC subscription workflow into the current school fee structure and student/parent payment portals.
+
+When a school creates or updates its fee structure, EduCore must automatically include the existing NFC card subscription fee of ₦5,000 per student per term in the student's and parent's outstanding fee list, without requiring school staff to create it manually.
+
+NFC must remain a separate payment item that is payable through its dedicated Flutterwave payment link when live payments are configured.
+
+1. Automatic NFC fee creation
+
+- Inspect the existing fee structure, student billing, parent portal and student portal workflows before making changes.
+- When ordinary school fee items are created or assigned to students for a term, automatically ensure that the applicable students also have one NFC subscription fee of ₦5,000 for that term.
+- Do not add duplicate NFC charges when fees are edited, reassigned, recalculated or processed more than once.
+- Apply the charge to the correct school, student, academic session and term.
+- Use the existing subscription and billing records where possible rather than introducing a competing billing system.
+- Do not charge students who are outside the school's applicable billing scope or create duplicate charges for existing NFC subscriptions.
+
+2. Student and parent portals
+
+Display the NFC subscription alongside the student's other fees, with a clear description such as:
+
+NFC Card Subscription — ₦5,000 per term
+
+Display its payment status independently from ordinary school fees:
+
+- Awaiting payment
+- Payment pending verification
+- Paid and verified
+- Link expired, where applicable
+
+The NFC item must not be incorrectly marked paid just because ordinary school fees have been paid.
+
+3. Separate NFC payment method
+
+For the NFC fee, display a dedicated action:
+
+Pay NFC Card Fees Through Flutterwave
+
+- Generate or retrieve the existing secure student-specific, term-specific NFC payment link.
+- Open the public payment page without requiring the parent to sign in again.
+- Preserve the existing QR code, print, expiry and security functionality.
+- If the link is expired, allow authorised staff to generate a replacement without creating another NFC fee.
+- If live Flutterwave payments are not configured, clearly explain that genuine payment is not currently available. Do not pretend a simulation is a real payment.
+
+Ordinary school fee items must continue using the school's existing configured payment method. Do not route all school fees through the NFC payment link.
+
+4. Example for verification
+
+For a student whose school fee structure contains:
+
+- School fees: ₦1,000
+- Books: ₦5,000
+- Bus: ₦20,000
+- Result: ₦1,000
+- Medical: ₦2,000
+- Lesson: ₦5,000
+
+The portal should also show:
+
+- NFC Card Subscription: ₦5,000, payable separately through the dedicated Flutterwave payment link.
+
+The displayed combined total should be ₦39,000, with ordinary school fees and NFC clearly distinguished by their payment methods.
+
+5. Allocation and payment safety
+
+Preserve the existing NFC allocation rules:
+
+- School: ₦2,000
+- YETENIA/EduCore: ₦3,000 before eligible partner commission
+- Eligible partner: ₦100 per student per term, deducted from the platform share
+- Platform net with an eligible partner: ₦2,900
+
+These are expected allocations until real provider settlement is configured and verified.
+
+Never mark an NFC fee paid, issue a genuine receipt or activate a subscription based on a simulated payment or an unverified callback.
+
+6. Constraints
+
+- Make the smallest safe changes and reuse existing services.
+- Development only. Do not modify Production.
+- Do not change the existing ₦5,000 NFC price or unrelated billing rules.
+- Do not change Clerk, Resend or the existing secure payment-link implementation unless strictly necessary.
+- Do not require Flutterwave credentials to implement the billing and portal workflow.
+- Do not invent subaccount IDs or claim that real fund splitting is configured.
+- Run only focused tests for automatic NFC fee creation, duplicate prevention, parent/student portal display, separate payment actions and payment-status integrity. Do not run a broad audit or full test suite.
+
+Final report
+
+Report the files changed, how automatic NFC billing is triggered, how duplicate charges are prevented, and the focused test results. Clearly identify anything that still requires Flutterwave account approval or live settlement configuration.

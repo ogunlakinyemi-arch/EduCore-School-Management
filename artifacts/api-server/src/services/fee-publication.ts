@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import { AuthError } from "../middlewares/auth";
 import { ensureTransportInvoiceForTerm } from "../routes/transport";
+import { classFeeBillingStudents } from "../lib/class-fee-billing-scope";
 
 type Sql = { query(sql:string, values?:any[]):Promise<{rows:any[]}> };
 type InvoiceWriter = (db:any,req:Request,schoolId:number,structure:any,student:any,lines:any[],issueDate:string,dueDate:string,actor:number,bulk?:boolean)=>Promise<number>;
@@ -21,16 +22,7 @@ export async function assignPublishedClassFees(db:Sql,req:Request,schoolId:numbe
   if(!lines.length) throw new AuthError(409,"Add at least one fee before publishing");
   const sum=ordinary.reduce((v,l)=>v+BigInt(l.amount_minor),0n);
   if(sum>2147483647n) throw new AuthError(400,"Combined invoice amount exceeds the ledger limit");
-  const students=(await db.query(`SELECT DISTINCT ON (st.id) st.id,st.first_name,st.last_name,st.admission_no,
-      sc.name AS class_name,a.section
-    FROM students st LEFT JOIN student_class_assignments a ON a.student_id=st.id AND a.school_id=st.school_id
-      AND a.academic_session_id=$2 AND (a.academic_term_id=$3 OR a.academic_term_id IS NULL)
-    JOIN school_classes sc ON sc.id=$4 AND sc.school_id=st.school_id
-    WHERE st.school_id=$1 AND LOWER(st.status)='active' AND UPPER(st.admission_status)='ADMITTED'
-      AND ((a.school_class_id=$4 AND (a.status='ACTIVE' OR (NOT $6::boolean AND a.status='INACTIVE')))
-        OR ($6::boolean AND a.id IS NULL AND st.class_name=sc.name AND (sc.section='' OR sc.section=COALESCE(st.section,''))))
-      AND ($5::text IS NULL OR COALESCE(a.section,st.section,'')=$5)
-    ORDER BY st.id,a.id DESC`,[schoolId,structure.academic_session_id,structure.academic_term_id,structure.school_class_id,structure.section,structure.current_period===true])).rows;
+  const students=await classFeeBillingStudents(db,schoolId,structure.academic_session_id,structure.academic_term_id,structure.school_class_id,structure.section);
   let assignedCount=0;
   for(const student of students) {
     if(ordinary.length) {

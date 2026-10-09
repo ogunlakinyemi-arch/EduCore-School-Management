@@ -65,8 +65,10 @@ export function useStudentNfcObligations(filters: NfcObligationFilters = {}) {
 }
 
 export const nfcStatusLabel: Record<NfcObligationStatus, string> = {
-  UNPAID: 'Unpaid', PAID: 'Paid', PENDING: 'Pending', FAILED: 'Failed', EXEMPT: 'Exempt', LEGACY_REVIEW: 'Owner review',
+  UNPAID: 'Awaiting payment', PAID: 'Paid and verified', PENDING: 'Payment pending verification', FAILED: 'Payment failed', EXEMPT: 'Exempt', LEGACY_REVIEW: 'Owner review',
 };
+export const nfcFeeStatusLabel = (row: NfcObligationRow) =>
+  ['UNPAID', 'FAILED'].includes(row.status) && row.paymentLinkStatus === 'EXPIRED' ? 'Link expired' : nfcStatusLabel[row.status];
 export const minorToNaira = (minor: number) => money(minor / 100);
 
 function RowPayment({ row, onPaid }: { row: NfcObligationRow; onPaid: () => void }) {
@@ -94,11 +96,13 @@ function RowPayment({ row, onPaid }: { row: NfcObligationRow; onPaid: () => void
 }
 
 export function StudentNfcObligationsPanel({
-  studentId, schoolId, canSeeSplit = false, teacherView = false, compact = false, manageReturn = true,
-}: { studentId?: number; schoolId?:number; canSeeSplit?: boolean; teacherView?: boolean; compact?: boolean; manageReturn?: boolean }) {
+  studentId, schoolId, canSeeSplit = false, teacherView = false, compact = false, manageReturn = true, familyPortal = false,
+}: { studentId?: number; schoolId?:number; canSeeSplit?: boolean; teacherView?: boolean; compact?: boolean; manageReturn?: boolean; familyPortal?: boolean }) {
   const qc = useQueryClient();
   const context = useGetAuthorizedContext().data;
   const isOwner = context?.isPlatformOwner === true;
+  const familyView = !isOwner && (familyPortal || ((context?.roles ?? []).some(r => r.status === 'ACTIVE' && ['PARENT', 'STUDENT'].includes(r.role))
+    && !(context?.roles ?? []).some(r => r.status === 'ACTIVE' && ['SCHOOL_ADMIN', 'ACCOUNTANT'].includes(r.role))));
   const query = useStudentNfcObligations({studentId,schoolId});
   const verify = useVerifyStudentSubscriptionPayment();
   const checkout = useMutation({
@@ -243,8 +247,8 @@ export function StudentNfcObligationsPanel({
       <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />Automatic NFC subscription</div>
       <h2 className="display-font mt-1 text-xl font-bold">Term NFC fee, shown separately</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
-        A fixed system fee of {minorToNaira(500000)} per student per term, paid through Flutterwave to the Platform Owner. Schools cannot create or change it.
-        {' '}{minorToNaira(200000)} is the school allocation and {minorToNaira(300000)} the platform share.
+        NFC Card Subscription — {minorToNaira(500000)} per term. Payable separately through Flutterwave when genuine payments are configured. Schools cannot create or change it.
+        {' '}Expected allocations: {minorToNaira(200000)} to the school and {minorToNaira(300000)} to the platform before eligible Partner commission. These are not verified bank settlements.
         {teacherView && ' The school allocation is school revenue; it is not personal Teacher income and not an amount a Teacher pays.'}
         {' '}Terms already paid under the older school NFC charge are kept and flagged for Owner review; no second charge is made.
       </p>
@@ -275,13 +279,13 @@ export function StudentNfcObligationsPanel({
             <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-center">
               <div><div className="text-sm font-bold">{r.studentName}</div>
                 <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{r.className} {r.section} · {r.sessionName}, {r.termName}{isOwner && ` · ${r.schoolName}`}</div></div>
-              <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">NFC fee (system)</div>
+              <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">NFC Card Subscription — ₦5,000 per term</div>
                 <div className="font-bold tabular-nums">{r.status === 'EXEMPT' || r.status === 'LEGACY_REVIEW' ? minorToNaira(0) : minorToNaira(r.amountMinor)}</div></div>
               {teacherView ? <div /> : <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">Ordinary fees + NFC</div>
                 <div className="font-bold tabular-nums">{minorToNaira(r.ordinaryFeesMinor)} + {minorToNaira(r.amountMinor)} = {minorToNaira(r.totalMinor)}</div>
                 {r.ordinaryFeesAssigned === false && <div className="mt-0.5 text-[hsl(var(--muted-foreground))]" data-testid={`nfc-scheduled-${r.studentId}-${r.termId}`}>Ordinary fees scheduled, not yet invoiced</div>}</div>}
-              <div className="flex items-center gap-2"><span title={nfcStatusLabel[r.status]}><StatusPill value={r.status === 'LEGACY_REVIEW' ? 'Owner review' : r.status} /></span>
-                {r.canPay && !isOwner && ['UNPAID', 'FAILED'].includes(r.status) && r.subscriptionId && (
+              <div className="flex items-center gap-2"><span title={nfcFeeStatusLabel(r)}><StatusPill value={nfcFeeStatusLabel(r)} /></span>
+                {!familyView && r.canPay && !isOwner && ['UNPAID', 'FAILED'].includes(r.status) && r.subscriptionId && (
                   <Button onClick={() => void pay(r)} disabled={checkout.isPending} testId={`button-pay-nfc-${r.studentId}-${r.termId}`}>
                     <CreditCard size={14} />{r.status === 'FAILED' ? 'Start new checkout' : 'Pay NFC fee'}</Button>)}
               </div>
@@ -290,7 +294,7 @@ export function StudentNfcObligationsPanel({
             {r.status === 'EXEMPT' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Exempt for this term. No payment is required.</p>}
             {(r.reference || r.paidAt) && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{r.reference && <>Ref <span className="font-mono">{r.reference}</span></>}{r.paidAt && <> · {date(r.paidAt)}</>} · {r.paymentMethod}</p>}
             {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · Partner {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}
-            {!teacherView && !isOwner && <NfcPaymentLinkControls row={r} />}
+            {!teacherView && !isOwner && <NfcPaymentLinkControls row={r} familyView={familyView} />}
             {!teacherView && !isOwner && <RowPayment row={r} onPaid={onPaid} />}
           </article>)}
         </div>

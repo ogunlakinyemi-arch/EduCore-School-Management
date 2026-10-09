@@ -47,6 +47,7 @@ router.get("/student-nfc/obligations",async(req,res,next)=>{
       binding.subscription_id AS "subscriptionId",binding.legacy_invoice_id AS "legacyInvoiceId",
       s.status AS "subscriptionStatus",s.verification_status AS "verificationStatus",
       latest.id AS "lastPaymentId",latest.status AS "lastPaymentStatus",latest.reference AS "reference",latest.paid_at AS "paidAt",
+      payment_link.status AS "paymentLinkStatus",
       ${payerScope} AS "payerAllowed",s.provider_reference AS "providerReference",
       (t.is_current AND ses.is_current AND upper(t.status)='ACTIVE' AND upper(ses.status)='ACTIVE'
         AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE) AS "currentTerm",
@@ -77,6 +78,11 @@ router.get("/student-nfc/obligations",async(req,res,next)=>{
       LEFT JOIN LATERAL(SELECT p.id,p.status,p.reference,p.paid_at FROM student_subscription_payments p
         WHERE p.subscription_id=s.id AND p.school_id=s.school_id
         ORDER BY CASE WHEN p.status='PAID' THEN 0 ELSE 1 END,p.created_at DESC,p.id DESC LIMIT 1) latest ON TRUE
+      LEFT JOIN LATERAL(SELECT CASE WHEN l.status='PENDING' AND l.expires_at<=NOW() THEN 'EXPIRED' ELSE l.status END AS status
+        FROM nfc_payment_links l WHERE l.subscription_id=s.id AND l.school_id=binding.school_id
+          AND l.student_id=binding.student_id AND l.academic_session_id=binding.academic_session_id
+          AND l.academic_term_id=binding.academic_term_id
+        ORDER BY l.created_at DESC,l.id DESC LIMIT 1) payment_link ON TRUE
       WHERE ${conditions.join(" AND ")}
       ORDER BY sc.name,st.class_name,st.section,st.first_name,binding.academic_term_id DESC`,values);
     const rows=result.rows.map(row=>{
@@ -96,6 +102,7 @@ router.get("/student-nfc/obligations",async(req,res,next)=>{
         partnerAllocatedMinor:owner && status==="PAID"?Number(row.partnerAllocatedMinor):0,
         lastPaymentId:row.lastPaymentId==null?null:Number(row.lastPaymentId),reference:row.reference??null,
         paidAt:row.paidAt?new Date(row.paidAt).toISOString():null,
+        paymentLinkStatus:row.paymentLinkStatus??null,
         paymentMethod:"Flutterwave — Platform Owner",systemFee:true,
         canPay:!owner && !!row.payerAllowed && !teacherOnly && !!row.currentTerm && String(row.studentStatus).toLowerCase()==="active"
           && ["UNPAID","FAILED"].includes(status) && row.subscriptionId!=null && !row.providerReference,

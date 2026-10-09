@@ -23,13 +23,24 @@ export function canManageNfcPaymentLink(
   return (context.roles ?? []).some(r => r.status === 'ACTIVE' && (r.role === 'SCHOOL_ADMIN' || r.role === 'ACCOUNTANT') && r.schoolId === row.schoolId);
 }
 
-export function NfcPaymentLinkControls({ row }: { row: StudentNfcObligation }) {
+export function canOpenFamilyNfcPaymentLink(
+  context: Parameters<typeof canManageNfcPaymentLink>[0],
+  row: StudentNfcObligation,
+) {
+  return !!context && !context.isPlatformOwner && row.canPay && row.subscriptionId != null
+    && ['UNPAID', 'FAILED'].includes(row.status)
+    && (context.roles ?? []).some(r => r.status === 'ACTIVE' && r.schoolId === row.schoolId
+      && ['PARENT', 'STUDENT'].includes(r.role));
+}
+
+export function NfcPaymentLinkControls({ row, familyView = false }: { row: StudentNfcObligation; familyView?: boolean }) {
   const context = useGetAuthorizedContext().data;
   const [link, setLink] = useState<NfcPaymentLink | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [copyMsg, setCopyMsg] = useState('');
-  if (!canManageNfcPaymentLink(context as never, row)) return null;
+  const staff = canManageNfcPaymentLink(context as never, row);
+  if (!staff && !(familyView && canOpenFamilyNfcPaymentLink(context as never, row))) return null;
   const subscriptionId = row.subscriptionId as number;
   const url = link?.paymentUrl;
 
@@ -54,9 +65,14 @@ export function NfcPaymentLinkControls({ row }: { row: StudentNfcObligation }) {
 
   return <div className="mt-3 rounded-xl border border-[hsl(var(--border))] p-3 text-xs" data-testid={`nfc-link-${tid}`}>
     <NfcServiceBranding />
+    {familyView && <div className="mb-3 space-y-2">
+      <Button disabled testId={`button-live-nfc-${tid}`}>Pay NFC Card Fees Through Flutterwave</Button>
+      <p>Genuine Flutterwave payment is not currently available. Account approval and verified live settlement configuration are required.</p>
+      <p>Use the Development preview below to inspect the public payment page. A simulation does not collect money, issue a genuine receipt or activate a subscription. Ordinary school fees use the school's separate configured payment methods.</p>
+    </div>}
     <div className="flex flex-wrap items-center gap-2">
-      <Button onClick={() => void generate()} disabled={busy} testId={`button-generate-nfc-link-${tid}`}><Link2 size={14} />{link ? 'Retrieve / refresh link' : 'Generate payment link'}</Button>
-      {link && <Button onClick={() => void cancel()} disabled={busy} testId={`button-cancel-nfc-link-${tid}`}><XCircle size={14} />Cancel link</Button>}
+      <Button onClick={() => void generate()} disabled={busy} testId={`button-generate-nfc-link-${tid}`}><Link2 size={14} />{link ? 'Retrieve / refresh link' : familyView ? 'Preview Development payment link' : 'Generate payment link'}</Button>
+      {link && staff && <Button onClick={() => void cancel()} disabled={busy} testId={`button-cancel-nfc-link-${tid}`}><XCircle size={14} />Cancel link</Button>}
       <span className="text-[hsl(var(--muted-foreground))]">Development simulation link</span>
     </div>
     {error && <p role="alert" className="mt-2 font-semibold text-[hsl(var(--destructive))]">{error}</p>}
@@ -71,7 +87,7 @@ export function NfcPaymentLinkControls({ row }: { row: StudentNfcObligation }) {
           <div className="break-all rounded-lg bg-[hsl(var(--secondary))] p-2 font-mono" data-testid="nfc-link-url">{url}</div>
           <div className="flex flex-wrap gap-2 pt-1">
             <Button onClick={() => void copy()} testId={`button-copy-nfc-link-${tid}`}><Copy size={14} />Copy link</Button>
-            <a className="inline-flex items-center gap-1 rounded-lg border border-[hsl(var(--border))] px-3 py-1.5 font-semibold" href={url} target="_blank" rel="noreferrer noopener"><ExternalLink size={14} />Open in new tab</a>
+             <a className="inline-flex items-center gap-1 rounded-lg border border-[hsl(var(--border))] px-3 py-1.5 font-semibold" href={url} target="_blank" rel="noreferrer noopener"><ExternalLink size={14} />Open NFC payment page</a>
             <SchoolDocumentPrintButton label="Print instructions" testId={`button-print-nfc-link-${tid}`}>
               <div style={{ padding: 32, fontFamily: 'sans-serif', maxWidth: 560 }}>
                 <h1 style={{ fontSize: 22 }}>NFC term fee payment instructions</h1>

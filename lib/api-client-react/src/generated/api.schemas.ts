@@ -24,6 +24,24 @@ export const StudentNfcObligationPaymentMethod = {
   'Flutterwave_—_Platform_Owner': 'Flutterwave — Platform Owner',
 } as const;
 
+/**
+ * Latest public link state; simulated outcomes never change the subscription payment status.
+ * @nullable
+ */
+export type StudentNfcObligationPaymentLinkStatus = typeof StudentNfcObligationPaymentLinkStatus[keyof typeof StudentNfcObligationPaymentLinkStatus] | null;
+
+
+export const StudentNfcObligationPaymentLinkStatus = {
+  PENDING: 'PENDING',
+  SIMULATED_SUCCESS: 'SIMULATED_SUCCESS',
+  SIMULATED_FAILED: 'SIMULATED_FAILED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
 export interface StudentNfcObligation {
   schoolId: number;
   schoolName: string;
@@ -53,6 +71,11 @@ export interface StudentNfcObligation {
   paymentMethod: StudentNfcObligationPaymentMethod;
   systemFee: boolean;
   canPay: boolean;
+  /**
+     * Latest public link state; simulated outcomes never change the subscription payment status.
+     * @nullable
+     */
+  paymentLinkStatus?: StudentNfcObligationPaymentLinkStatus;
 }
 
 export interface StudentNfcSummary {

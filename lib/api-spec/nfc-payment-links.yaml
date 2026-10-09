@@ -12,7 +12,7 @@ paths:
             schema: {$ref: "#/components/schemas/NfcPaymentLinkInput"}
       responses:
         "200":
-          description: Secure staff payment instructions
+          description: Secure payment instructions for authorized staff, the student or a linked parent; Development only
           content:
             application/json:
               schema: {$ref: "#/components/schemas/NfcPaymentLink"}

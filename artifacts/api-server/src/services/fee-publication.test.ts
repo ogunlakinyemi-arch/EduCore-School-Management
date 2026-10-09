@@ -37,7 +37,10 @@ describe("published class fee invoice assignment safeguards",()=>{
   });
   it("keeps school, session, term, class and section bound to the stored structure",async()=>{
     await assignPublishedClassFees(db,{} as Request,1496,3,966,writer);
-    expect(state.calls.find(c=>c.sql.includes("SELECT DISTINCT ON"))?.values).toEqual([1496,386,27,580,"B",true]);
+    const scope=state.calls.find(c=>c.sql.includes("SELECT DISTINCT ON"));
+    expect(scope?.values).toEqual([1496,386,27,580,"B"]);
+    expect(scope?.sql).toContain("COALESCE(a.section,st.section,'') AS section");
+    expect(scope?.sql).toContain("term.is_current AND ses.is_current");
   });
   it("does not rewrite any existing payment or invoice",async()=>{
     await assignPublishedClassFees(db,{} as Request,1496,3,966,writer);

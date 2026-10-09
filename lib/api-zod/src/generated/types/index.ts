@@ -2044,6 +2044,7 @@ export * from './studentNfcLedger';
 export * from './studentNfcLedger4b96100';
 export * from './studentNfcObligation';
 export * from './studentNfcObligation4b96100';
+export * from './studentNfcObligationPaymentLinkStatus';
 export * from './studentNfcObligationPaymentMethod';
 export * from './studentNfcObligationStatus';
 export * from './studentNfcSummary';

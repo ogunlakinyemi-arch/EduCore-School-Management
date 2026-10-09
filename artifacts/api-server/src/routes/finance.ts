@@ -631,6 +631,7 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     if (!current.rows[0]) throw new AuthError(404, "Fee structure not found");
     if (current.rows[0].status === "PUBLISHED") {
       const response = await getStructure(client, schoolId, structureId);
+      await ensureClassNfcSubscriptions(client,schoolId,response.sessionId,response.termId,response.classId,response.section);
       Object.assign(response,await assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent));
       await client.query("COMMIT");
       res.json(PublishFeeStructureResponse.parse(response));
@@ -655,6 +656,7 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     if (!result.rows[0]) throw new AuthError(409, "Structure publication did not complete");
     await audit(req, client, schoolId, "published", "fee structure", structureId);
     const response = await getStructure(client, schoolId, structureId);
+    await ensureClassNfcSubscriptions(client,schoolId,response.sessionId,response.termId,response.classId,response.section);
     Object.assign(response,await assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent));
     await client.query("COMMIT");
     res.json(PublishFeeStructureResponse.parse(response));
@@ -677,6 +679,8 @@ router.post("/school/finance/assignments", async (req, res): Promise<void> => {
     );
     if (found.rows[0]) {
       const existing = await client.query(`SELECT ${invoiceShape} FROM fee_invoices i WHERE i.id=$1 AND i.school_id=$2`, [found.rows[0].id, schoolId]);
+      const invoice = existing.rows[0];
+      await ensureStudentNfcSubscription(client,schoolId,body.studentId,invoice.sessionId,invoice.termId);
       await client.query("COMMIT");
       res.status(201).json(AssignFeeStructureResponse.parse(existing.rows[0]));
       return;

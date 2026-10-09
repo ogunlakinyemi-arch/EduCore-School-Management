@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { AuthError, assertSchoolAccess, assertSchoolOperationalAccess, getUserContext, isPlatformOwner } from "../middlewares/auth";
 import { familyChildSchoolScope } from "./family-child-school-scope";
 import { NFC_CATEGORY_PATTERN } from "./student-nfc-policy";
+import { classFeeBillingStudents } from "./class-fee-billing-scope";
 export { NFC_CATEGORY_PATTERN,isSystemNfcCategory } from "./student-nfc-policy";
 
 type Sql = { query: (sql: string, values?: any[]) => Promise<any> };
@@ -74,7 +75,7 @@ export async function ensureStudentNfcSubscription(db: Sql, schoolId: number, st
   const eligible = await db.query(`SELECT t.name,t.end_date::text AS "endDate"
     FROM students st JOIN academic_terms t ON t.school_id=st.school_id
     JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
-    WHERE st.id=$2 AND st.school_id=$1 AND lower(st.status)='active'
+    WHERE st.id=$2 AND st.school_id=$1 AND lower(st.status)='active' AND upper(st.admission_status)='ADMITTED'
       AND t.id=$4 AND ses.id=$3 AND upper(t.status) IN ('ACTIVE','PLANNED') AND upper(ses.status) IN ('ACTIVE','PLANNED')
       AND t.end_date>=(now() AT TIME ZONE 'Africa/Lagos')::date`,
     [schoolId,studentId,sessionId,termId]);
@@ -112,9 +113,6 @@ export async function ensureStudentNfcSubscription(db: Sql, schoolId: number, st
 }
 
 export async function ensureClassNfcSubscriptions(db: Sql, schoolId: number, sessionId: number, termId: number, classId: number, section: string|null) {
-  const students = await db.query(`SELECT st.id FROM students st JOIN school_classes sc
-    ON sc.school_id=st.school_id AND sc.name=st.class_name
-    WHERE st.school_id=$1 AND sc.id=$2 AND lower(st.status)='active' AND ($3::text IS NULL OR st.section=$3)
-    ORDER BY st.id`,[schoolId,classId,section]);
-  for (const st of students.rows) await ensureStudentNfcSubscription(db,schoolId,st.id,sessionId,termId);
+  const students = await classFeeBillingStudents(db,schoolId,sessionId,termId,classId,section);
+  for (const st of students) await ensureStudentNfcSubscription(db,schoolId,st.id,sessionId,termId);
 }

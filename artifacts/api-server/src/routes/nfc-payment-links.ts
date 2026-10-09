@@ -4,6 +4,7 @@ import { pool } from "@workspace/db";
 import { AuthError, assertSchoolOperationalAccess, getUserContext, requireAuthentication } from "../middlewares/auth";
 import { configuredTestAdapter } from "../lib/fee-providers/factory";
 import { configuredStudentSubscriptionCheckoutBaseUrl } from "../lib/student-subscription-return-url";
+import { assertStudentNfcPaymentAccess } from "../lib/student-nfc-obligations";
 import {
   expectedNfcAllocations, linkScopeSql, newNfcLinkReference, nfcLinkToken, nfcLinkTokenHash,
   publicLinkSql, publicNfcLink, requireNfcLinkDevelopment, simulateNfcLink,
@@ -59,7 +60,24 @@ router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication
     await db.query("BEGIN");
     const scope = (await db.query(`${linkScopeSql} WHERE b.subscription_id=$1 AND b.academic_term_id=$2`, [subscriptionId, input.termId])).rows[0];
     if (!scope) throw new AuthError(404, "The student's term subscription was not found");
-    assertSchoolOperationalAccess(req, scope.schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    const roles = getUserContext(req).roles ?? [];
+    const staff = roles.some(r => r.status === "ACTIVE" && r.schoolId === scope.schoolId
+      && ["SCHOOL_ADMIN", "ACCOUNTANT"].includes(r.role));
+    const family = !staff && roles.some(r => r.status === "ACTIVE" && r.schoolId === scope.schoolId
+      && ["PARENT", "STUDENT"].includes(r.role));
+    if (family) {
+      // Use the same live child/student relationship checks as the existing checkout.
+      await assertStudentNfcPaymentAccess(req, subscriptionId, db);
+      const current = await db.query(`SELECT 1 FROM academic_terms t JOIN academic_sessions ses
+        ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
+        WHERE t.id=$1 AND ses.id=$2 AND t.school_id=$3 AND t.is_current AND ses.is_current
+          AND upper(t.status)='ACTIVE' AND upper(ses.status)='ACTIVE'
+          AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE`,
+        [scope.termId, scope.sessionId, scope.schoolId]);
+      if (!current.rows[0]) throw new AuthError(409, "Ask school staff for this term's payment instructions");
+    } else {
+      assertSchoolOperationalAccess(req, scope.schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    }
     if (Number(scope.amount) !== 5000 || scope.legacyInvoiceId
       || String(scope.verificationStatus).toLowerCase() === "verified"
       || ["active", "waived"].includes(String(scope.subscriptionStatus).toLowerCase())) {

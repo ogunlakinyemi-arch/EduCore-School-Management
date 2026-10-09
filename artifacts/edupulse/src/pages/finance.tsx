@@ -23,6 +23,7 @@ import { ParentOnlineMethods } from './finance-online';
 import { ParentFeeSelection } from './fee-selection';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 import { StudentNfcObligationsPanel } from '@/components/student-nfc-obligations';
+import { FamilyFeeBalances } from '@/components/family-fee-balances';
 import { eligibleFeeAssignmentStudents } from './fee-assignment-eligibility';
 
 const naira = (minor: number) => {
@@ -414,7 +415,7 @@ function FamilyInvoiceRows({ invoices, onTransfer, payment }: { invoices: FeeInv
 export function MyFeesPage() {
   const query = useListStudentFeeInvoices();
   const invoices = query.data ?? [];
-  return <div className="fade-up"><PageHeading eyebrow="Student portal / Finance" title="My fees" description="Your school invoices and verified balances in one place." />{query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => query.refetch()} /> : <><div className="grid gap-4 sm:grid-cols-2"><FinanceCard dark label="Outstanding" amount={naira(invoices.reduce((sum, item) => sum + item.outstandingMinor, 0))} detail="Across all issued invoices" /><FinanceCard label="Verified paid" amount={naira(invoices.reduce((sum, item) => sum + item.paidMinor, 0))} detail="Pending transfers are excluded" /></div><section className="panel mt-6 overflow-hidden"><div className="border-b border-[hsl(var(--border))] p-5"><div className="eyebrow">School-issued records</div><h2 className="display-font mt-1 text-xl font-bold">Invoices</h2></div><FamilyInvoiceRows invoices={invoices} payment={null} /></section><FamilyPaymentHistory audience="student" invoices={invoices} /><StudentNfcObligationsPanel compact /></>}</div>;
+  return <div className="fade-up"><PageHeading eyebrow="Student portal / Finance" title="My fees" description="School invoices and NFC subscriptions have separate payment methods and verification." />{query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => query.refetch()} /> : <><FamilyFeeBalances invoices={invoices} /><section className="panel mt-6 overflow-hidden"><div className="border-b border-[hsl(var(--border))] p-5"><div className="eyebrow">School-issued records</div><h2 className="display-font mt-1 text-xl font-bold">Invoices</h2></div><FamilyInvoiceRows invoices={invoices} payment={null} /></section><FamilyPaymentHistory audience="student" invoices={invoices} /><StudentNfcObligationsPanel compact familyPortal /></>}</div>;
 }
 
 export function ParentFeesPage({ studentId }: { studentId: number }) {
@@ -480,10 +481,7 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
     <Link href={`/parent/children/${studentId}`} className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]" data-testid="link-back-child"><ArrowLeft size={15} />Back to child profile</Link>
     <PageHeading eyebrow="Parent portal / Finance" title="Fees & payments" description="Review this child's school-issued invoices. A submitted transfer stays pending until the school verifies it." />
     {query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => query.refetch()} /> : <>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FinanceCard dark label="Still due" amount={naira(invoices.reduce((sum, item) => sum + item.outstandingMinor, 0))} detail="Excludes transfers awaiting verification" />
-        <FinanceCard label="Verified paid" amount={naira(invoices.reduce((sum, item) => sum + item.paidMinor, 0))} detail="Confirmed by the school" />
-      </div>
+      <FamilyFeeBalances invoices={invoices} studentId={studentId} />
       <ParentFeeSelection studentId={studentId} invoices={invoices} onBankTransfer={(item,ids,selectedAmount)=>{
         setInvoice(item);setSelectedBankLineIds(ids);setAmount(minorInput(selectedAmount));setFailure('');
         setBank('');setReference('');setProofUrl('');setTransferDate(new Date().toISOString().slice(0,10));
@@ -493,7 +491,7 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
         <FamilyInvoiceRows invoices={invoices} payment={payment} onTransfer={item => { setInvoice(item);setSelectedBankLineIds(undefined);setBank('');setReference('');setProofUrl('');setTransferDate(new Date().toISOString().slice(0,10)); setAmount(minorInput(item.outstandingMinor)); setFailure(''); }} />
       </section>
         <FamilyPaymentHistory audience="parent" studentId={studentId} invoices={invoices} />
-        <StudentNfcObligationsPanel studentId={studentId} compact />
+        <StudentNfcObligationsPanel studentId={studentId} compact familyPortal />
       <div className={`mt-4 flex items-start gap-2 ${note}`}><ShieldCheck size={16} className="shrink-0" />Only invoices belonging to linked children are available. Your school will verify transfers against its bank records before they affect the balance or produce a receipt.</div>
     </>}
     {invoice && <Modal title="Bank transfer" eyebrow={invoice.invoiceNumber} onClose={() => setInvoice(null)}>

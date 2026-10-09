@@ -357,7 +357,8 @@ export const GetStudentNfcObligationsResponse = zod.object({
   "paidAt": zod.string().nullable(),
   "paymentMethod": zod.enum(['Flutterwave — Platform Owner']),
   "systemFee": zod.boolean(),
-  "canPay": zod.boolean()
+  "canPay": zod.boolean(),
+  "paymentLinkStatus": zod.union([zod.literal('PENDING'),zod.literal('SIMULATED_SUCCESS'),zod.literal('SIMULATED_FAILED'),zod.literal('EXPIRED'),zod.literal('CANCELLED'),zod.literal('PAID'),zod.literal('FAILED'),zod.literal('RECONCILIATION_REQUIRED'),zod.literal(null)]).nullish().describe('Latest public link state; simulated outcomes never change the subscription payment status.')
 })),
   "summary": zod.object({
   "eligible": zod.number().int(),

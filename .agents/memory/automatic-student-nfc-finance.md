@@ -15,6 +15,12 @@ The Teacher-side allocation remains school revenue, not personal Teacher earning
 
 **How to apply:** Expose only allocations authorized for assigned classes; never credit individual teachers merely because their pupils paid NFC subscriptions.
 
+Family combined outstanding totals are informational, not a combined payment request. Ordinary school fees retain the school's configured payment methods; NFC uses its separate fixed-price payment link and independent verification.
+
+**Why:** On 2026-10-09 the user required NFC to appear alongside ordinary fees without routing the combined total through NFC or treating a school-fee payment as NFC verification.
+
+**How to apply:** Reuse the existing NFC subscription ledger and the same applicable class/session/term billing scope as ordinary fees. Keep legacy charges protected. Combined balances must not silently omit NFC when its read fails, and genuine payment actions must remain unavailable until reviewed account approval and settlement configuration.
+
 Attachment's advisory lock and checkout's parent-row locks must be compatible with foreign-key KEY SHARE locks.
 
 **Why:** A previously unbound subscription can be attached while checkout holds its student/subscription rows. FOR UPDATE would block the attachment's foreign-key check while checkout waits for its advisory lock, creating an opposing lock order.
