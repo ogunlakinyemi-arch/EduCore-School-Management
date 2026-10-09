@@ -17092,7 +17092,7 @@ export const GetPlatformPaymentSettlementResponse = zod.object({
 
 /**
  * Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
- * @summary Configure the Yemait Technologies Limited Flutterwave settlement recipient (Platform Owner)
+ * @summary Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
  */
 export const updatePlatformPaymentSettlementBodyBusinessNameMin = 2;
 export const updatePlatformPaymentSettlementBodyBusinessNameMax = 160;
@@ -18634,7 +18634,7 @@ export const ListCompanyPayrollEmployeesResponse = zod.array(ListCompanyPayrollE
 
 /**
  * Platform Owner only. Company payroll uses the existing platform_company_employees directory and a separate company tenancy from school employees.
- * @summary Securely create/update a Yemait Technologies Limited company employee monthly salary and bank profile
+ * @summary Securely create/update a YETENIA TECHNOLOGIES LIMITED company employee monthly salary and bank profile
  */
 
 export const upsertCompanyPayrollEmployeeBodyOneMonthlySalaryMinorMin = 0;
@@ -18703,7 +18703,7 @@ export const UpsertCompanyPayrollEmployeeResponse = zod.object({
 
 
 /**
- * @summary List Yemait Technologies monthly payroll runs, with school payroll completely excluded
+ * @summary List YETENIA TECHNOLOGIES LIMITED monthly payroll runs, with school payroll completely excluded
  */
 export const listCompanyPayrollPeriodsQueryStatusMax = 40;
 
@@ -19541,7 +19541,7 @@ export const ReconcileCompanyPayrollTransferResponse = zod.object({
 
 
 /**
- * @summary Show Platform Owner Yemait Technologies Limited monthly salary expense and transfer status independently from all school runs
+ * @summary Show Platform Owner YETENIA TECHNOLOGIES LIMITED monthly salary expense and transfer status independently from all school runs
  */
 export const getCompanyPayrollReportQueryFromMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
 export const getCompanyPayrollReportQueryToMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');

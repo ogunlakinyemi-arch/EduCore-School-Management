@@ -16,7 +16,7 @@ export function FinanceWorkspacePage() {
         ['/staff-nfc-finance', 'Staff NFC subscriptions', 'Payment allocations, provider fees, refunds and reconciliation.'],
         ['/billing-rules', 'Billing rules', 'Effective-dated rules for new term subscriptions.'],
         ['/payment-settlement', 'Payment & settlement', 'Platform configuration and school settlement oversight.'],
-        ['/payroll', 'Company payroll', 'Yemait Technologies employees, approvals and verified salary outcomes.'],
+        ['/payroll', 'Company payroll', 'YETENIA TECHNOLOGIES LIMITED employees, approvals and verified salary outcomes.'],
       ]
     : schoolFinance
       ? [

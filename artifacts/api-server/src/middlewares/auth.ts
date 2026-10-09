@@ -182,7 +182,7 @@ export async function assertDeviceActivationOfficer(req: Request): Promise<UserC
   if (!eligible.rows[0]) {
     throw new AuthError(
       403,
-      "An active matching Yemait Technologies employee record and officer grant are required",
+      "An active matching YETENIA TECHNOLOGIES LIMITED employee record and officer grant are required",
     );
   }
   return context;

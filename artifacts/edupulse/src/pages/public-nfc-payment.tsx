@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { simulateNfcPaymentLink, viewPublicNfcPaymentLink, type NfcPaymentLink } from '@workspace/api-client-react';
+import { NfcServiceBranding } from '@/components/nfc-service-branding';
 
 const minor = (n: number) => `NGN ${(n / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 const readToken = () => (typeof window === 'undefined' ? '' : window.location.hash.slice(1));
@@ -42,9 +43,12 @@ export default function PublicNfcPaymentPage() {
     <div className="panel w-full max-w-md p-6 fade-up" data-testid="public-nfc-payment">
       <div className="eyebrow">NFC term fee</div>
       <h1 className="display-font mt-1 text-2xl font-bold">Payment link</h1>
+      <NfcServiceBranding />
       {!link && !error && <div className="skeleton mt-4 h-28 rounded-xl" />}
       {error && <p role="alert" className="mt-4 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}
       {link && <>
+        {link.mode === 'DEVELOPMENT_SIMULATION' && <p className="mt-4 rounded-xl bg-[hsl(var(--secondary))] p-3 text-xs font-semibold">
+          Development simulation. No money moves, no real receipt is issued and no subscription is activated.</p>}
         <dl className="mt-4 space-y-1 text-sm">
           <div>{link.schoolName}</div>
           <div className="font-bold">{link.studentIdentifier}</div>
@@ -60,8 +64,6 @@ export default function PublicNfcPaymentPage() {
         </p>
         <p className="mt-2 text-xs">Actual bank settlement: unverified.</p>
         {link.receiptReference && <p className="mt-2 text-xs">Verified receipt reference: {link.receiptReference}</p>}
-        {link.mode === 'DEVELOPMENT_SIMULATION' && <p className="mt-4 rounded-xl bg-[hsl(var(--secondary))] p-3 text-xs font-semibold">
-          Development simulation. No money moves, no real receipt is issued and no subscription is activated.</p>}
         {link.status === 'SIMULATED_SUCCESS' && <p className="mt-3 text-xs">The test finished. This is not a payment.</p>}
         {!pending && ['EXPIRED', 'CANCELLED', 'FAILED', 'PAID'].includes(link.status) && <p className="mt-3 text-xs">This link can no longer be used to pay.</p>}
         {pending && link.mode === 'DEVELOPMENT_SIMULATION' && <div className="mt-4 flex flex-wrap gap-2">

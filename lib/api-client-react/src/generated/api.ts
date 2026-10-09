@@ -38949,7 +38949,7 @@ export const getUpdatePlatformPaymentSettlementUrl = () => {
 
 /**
  * Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
- * @summary Configure the Yemait Technologies Limited Flutterwave settlement recipient (Platform Owner)
+ * @summary Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
  */
 export const updatePlatformPaymentSettlement = async (companySettlementInput: CompanySettlementInput, options?: Parameters<typeof customFetch>[1]): Promise<PaymentSettlementProfile> => {
 
@@ -39015,7 +39015,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdatePlatformPaymentSettlementMutationVariables = {data: BodyType<CompanySettlementInput>}
 
     /**
- * @summary Configure the Yemait Technologies Limited Flutterwave settlement recipient (Platform Owner)
+ * @summary Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
  */
 export const useUpdatePlatformPaymentSettlement = <TError = ErrorType<PayrollError | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>, TError,UpdatePlatformPaymentSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -40640,7 +40640,7 @@ export const getUpsertCompanyPayrollEmployeeUrl = () => {
 
 /**
  * Platform Owner only. Company payroll uses the existing platform_company_employees directory and a separate company tenancy from school employees.
- * @summary Securely create/update a Yemait Technologies Limited company employee monthly salary and bank profile
+ * @summary Securely create/update a YETENIA TECHNOLOGIES LIMITED company employee monthly salary and bank profile
  */
 export const upsertCompanyPayrollEmployee = async (companyPayrollEmployeeInput: CompanyPayrollEmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollEmployeeProfile> => {
 
@@ -40706,7 +40706,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpsertCompanyPayrollEmployeeMutationVariables = {data: BodyType<CompanyPayrollEmployeeInput>}
 
     /**
- * @summary Securely create/update a Yemait Technologies Limited company employee monthly salary and bank profile
+ * @summary Securely create/update a YETENIA TECHNOLOGIES LIMITED company employee monthly salary and bank profile
  */
 export const useUpsertCompanyPayrollEmployee = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCompanyPayrollEmployee>>, TError,UpsertCompanyPayrollEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -40735,7 +40735,7 @@ export const getListCompanyPayrollPeriodsUrl = (params?: ListCompanyPayrollPerio
 }
 
 /**
- * @summary List Yemait Technologies monthly payroll runs, with school payroll completely excluded
+ * @summary List YETENIA TECHNOLOGIES LIMITED monthly payroll runs, with school payroll completely excluded
  */
 export const listCompanyPayrollPeriods = async (params?: ListCompanyPayrollPeriodsParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriodSummary[]> => {
 
@@ -40782,7 +40782,7 @@ export type ListCompanyPayrollPeriodsQueryError = ErrorType<void>
 
 
 /**
- * @summary List Yemait Technologies monthly payroll runs, with school payroll completely excluded
+ * @summary List YETENIA TECHNOLOGIES LIMITED monthly payroll runs, with school payroll completely excluded
  */
 
 export function useListCompanyPayrollPeriods<TData = Awaited<ReturnType<typeof listCompanyPayrollPeriods>>, TError = ErrorType<void>>(
@@ -41386,7 +41386,7 @@ export const getGetCompanyPayrollReportUrl = (params: GetCompanyPayrollReportPar
 }
 
 /**
- * @summary Show Platform Owner Yemait Technologies Limited monthly salary expense and transfer status independently from all school runs
+ * @summary Show Platform Owner YETENIA TECHNOLOGIES LIMITED monthly salary expense and transfer status independently from all school runs
  */
 export const getCompanyPayrollReport = async (params: GetCompanyPayrollReportParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollReportRow[]> => {
 
@@ -41433,7 +41433,7 @@ export type GetCompanyPayrollReportQueryError = ErrorType<void>
 
 
 /**
- * @summary Show Platform Owner Yemait Technologies Limited monthly salary expense and transfer status independently from all school runs
+ * @summary Show Platform Owner YETENIA TECHNOLOGIES LIMITED monthly salary expense and transfer status independently from all school runs
  */
 
 export function useGetCompanyPayrollReport<TData = Awaited<ReturnType<typeof getCompanyPayrollReport>>, TError = ErrorType<void>>(

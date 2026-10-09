@@ -10,6 +10,7 @@ import {
 } from '@workspace/api-client-react';
 import { Button } from '@/components/shared';
 import { SchoolDocumentPrintButton } from '@/components/school-document';
+import { NfcServiceBranding } from '@/components/nfc-service-branding';
 
 const minor = (n: number) => `NGN ${(n / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
@@ -52,6 +53,7 @@ export function NfcPaymentLinkControls({ row }: { row: StudentNfcObligation }) {
   const tid = `${row.studentId}-${row.termId}`;
 
   return <div className="mt-3 rounded-xl border border-[hsl(var(--border))] p-3 text-xs" data-testid={`nfc-link-${tid}`}>
+    <NfcServiceBranding />
     <div className="flex flex-wrap items-center gap-2">
       <Button onClick={() => void generate()} disabled={busy} testId={`button-generate-nfc-link-${tid}`}><Link2 size={14} />{link ? 'Retrieve / refresh link' : 'Generate payment link'}</Button>
       {link && <Button onClick={() => void cancel()} disabled={busy} testId={`button-cancel-nfc-link-${tid}`}><XCircle size={14} />Cancel link</Button>}
@@ -73,10 +75,12 @@ export function NfcPaymentLinkControls({ row }: { row: StudentNfcObligation }) {
             <SchoolDocumentPrintButton label="Print instructions" testId={`button-print-nfc-link-${tid}`}>
               <div style={{ padding: 32, fontFamily: 'sans-serif', maxWidth: 560 }}>
                 <h1 style={{ fontSize: 22 }}>NFC term fee payment instructions</h1>
+                <NfcServiceBranding />
                 <p>{link.schoolName} · {link.studentIdentifier}</p>
                 <p>{link.termName}, {link.sessionName} · Amount due {minor(link.amountDueMinor)}</p>
                 <p>Reference {link.reference}. Expires {new Date(link.expiresAt).toLocaleString()}.</p>
                 <p>Scan the code or open the link below on a phone. No account is needed.</p>
+                <p>School staff can assist if you do not have a suitable device. Cash given to the school does not count as a verified NFC subscription payment.</p>
                 <QRCodeSVG value={url} size={180} />
                 <p style={{ wordBreak: 'break-all', fontSize: 12 }}>{url}</p>
                 <p style={{ fontSize: 12 }}>Development simulation only. This does not collect money or activate a subscription.</p>

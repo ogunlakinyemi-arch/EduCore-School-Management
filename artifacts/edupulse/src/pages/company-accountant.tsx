@@ -70,7 +70,7 @@ export function CompanyAccountantPage() {
   return (
     <div className="fade-up">
       <PageHeading
-        eyebrow="Yemait Technologies / Restricted access"
+        eyebrow="YETENIA TECHNOLOGIES LIMITED / Restricted access"
         title="Company Finance."
         description="Company-level subscription revenue, partner commissions and payouts only. School fees and school finance records are not available here."
         action={

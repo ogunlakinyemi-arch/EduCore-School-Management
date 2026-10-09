@@ -1,7 +1,7 @@
 export const PWA_METADATA = {
   name: 'Yemait EduCore',
   shortName: 'EduCore',
-  description: 'Secure school operations, academics, payments, attendance, and family engagement from Yemait Technologies Limited.',
+  description: 'Secure school operations, academics, payments, attendance, and family engagement from YETENIA TECHNOLOGIES LIMITED.',
   themeColor: '#FF3C00',
   backgroundColor: '#FF3C00',
   display: 'standalone',

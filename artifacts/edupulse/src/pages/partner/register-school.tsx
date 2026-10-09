@@ -253,7 +253,7 @@ export default function RegisterSchool() {
                     {onboard.isPending ? 'Registering School...' : 'Register School'} <ChevronRight size={18} />
                   </Button>
                   <p className="text-center text-xs text-[hsl(var(--muted-foreground))] mt-4">
-                    By registering, you agree to the Yemait Technologies Limited Terms of Service and Privacy Policy.
+                    By registering, you agree to the YETENIA TECHNOLOGIES LIMITED Terms of Service and Privacy Policy.
                   </p>
                 </div>
               </div>

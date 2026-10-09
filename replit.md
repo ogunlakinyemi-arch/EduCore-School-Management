@@ -1,6 +1,6 @@
 # Yemait EduCore School Management
 
-Yemait EduCore is a multi-tenant school operations platform from Yemait Technologies Limited for Nigerian private schools, covering platform administration, school master data, subscriptions, NFC cards, and audit activity.
+Yemait EduCore is a multi-tenant school operations platform from YETENIA TECHNOLOGIES LIMITED (yetenia.com) for Nigerian private schools, covering platform administration, school master data, subscriptions, NFC cards, and audit activity.
 
 ## Run & Operate
 

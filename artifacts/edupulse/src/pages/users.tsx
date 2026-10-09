@@ -517,7 +517,7 @@ function PlatformMembershipForm({ onDone, onCancel }: { onDone: () => void; onCa
         Assign platform access to an existing account by its verified email identity. This does not create or change that user's password.
       </div>
       <Field label="Account Email">
-        <input required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="operator@yemait.com" />
+        <input required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="operator@yetenia.com" />
       </Field>
 
       <div className="flex justify-end gap-3 pt-5 border-t border-[hsl(var(--border))]">

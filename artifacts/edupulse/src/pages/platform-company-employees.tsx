@@ -264,9 +264,9 @@ export function PlatformCompanyEmployeesPage() {
   return (
     <div className="fade-up">
       <PageHeading
-        eyebrow="Platform / Yemait Technologies"
+        eyebrow="Platform / YETENIA TECHNOLOGIES LIMITED"
         title="Company Employees."
-        description="Invite internal Yemait Technologies employees into one restricted role. Company finance and school-scoped device activation are separate from school staff access."
+        description="Invite internal YETENIA TECHNOLOGIES LIMITED employees into one restricted role. Company finance and school-scoped device activation are separate from school staff access."
         action={
           <Button onClick={() => { createEmployee.reset(); setCreating(true); }} testId="button-add-company-employee">
             <Plus size={16} />Add employee
@@ -382,7 +382,7 @@ export function PlatformCompanyEmployeesPage() {
         <EmptyState
           icon={BriefcaseBusiness}
           title="No company profiles yet"
-          description="Add a Yemait Technologies employee profile to start the internal directory."
+          description="Add a YETENIA TECHNOLOGIES LIMITED employee profile to start the internal directory."
           action={<Button onClick={() => { createEmployee.reset(); setCreating(true); }}><Plus size={16} />Add employee</Button>}
         />
       ) : (
@@ -400,7 +400,7 @@ export function PlatformCompanyEmployeesPage() {
               <div key={employee.id} className="grid gap-3 p-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] md:grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div className="min-w-0">
                   <div className="font-bold">{employee.fullName}</div>
-                  <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Yemait Technologies</div>
+                  <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">YETENIA TECHNOLOGIES LIMITED</div>
                 </div>
                 <div className="min-w-0 text-sm">
                   <div className="truncate">{employee.email}</div>
@@ -502,7 +502,7 @@ export function PlatformCompanyEmployeesPage() {
       {(creating || editing) && (
         <Modal
           title={creating ? 'Add company employee' : 'Edit company employee'}
-          eyebrow="Yemait Technologies"
+          eyebrow="YETENIA TECHNOLOGIES LIMITED"
           onClose={() => {
             setCreating(false);
             setEditing(null);
@@ -636,7 +636,7 @@ function CompanyEmployeeForm({
           value={form.email}
           onChange={(event) => setForm({ ...form, email: event.target.value })}
           readOnly={Boolean(initial)}
-          placeholder="name@yemait.com"
+          placeholder="name@yetenia.com"
         />
       </Field>
       <div className="grid gap-5 sm:grid-cols-2">

@@ -129,7 +129,7 @@ describe("GET /cards/:cardId/printable", () => {
     expect(pdf).toContain("/MediaBox [0 0 242.6457 153.0142]");
     expect(unicodeMapped(pdf, "Amina Example")).toBe(true);
     expect(unicodeMapped(pdf, "PERM-101")).toBe(true);
-    expect(unicodeMapped(pdf, "PROPERTY OF YEMAIT TECHNOLOGIES LIMITED")).toBe(true);
+    expect(unicodeMapped(pdf, "PROPERTY OF YETENIA TECHNOLOGIES LIMITED")).toBe(true);
     expect(unicodeMapped(pdf, "Yemait EduCore NFC Identification Card")).toBe(true);
     expect(pdf).not.toContain("UID-RAW");
     expect(pdf).not.toContain("private-token");

@@ -215,7 +215,7 @@ router.post("/platform/schools/:schoolId/device-activation-officers", run(async 
         [email],
       );
       if (!employee.rows[0]) {
-        throw new AuthError(409, "An active Yemait Technologies employee profile matching this email is required");
+        throw new AuthError(409, "An active YETENIA TECHNOLOGIES LIMITED employee profile matching this email is required");
       }
       targetUserId = Number(user.id);
     } else {
@@ -229,7 +229,7 @@ router.post("/platform/schools/:schoolId/device-activation-officers", run(async 
         [targetUserId],
       );
       if (!user.rows[0]) {
-        throw new AuthError(409, "An active app user with a matching active Yemait Technologies employee email is required");
+        throw new AuthError(409, "An active app user with a matching active YETENIA TECHNOLOGIES LIMITED employee email is required");
       }
     }
     if (targetUserId === undefined) throw new AuthError(400, "Provide exactly one of userId or email");

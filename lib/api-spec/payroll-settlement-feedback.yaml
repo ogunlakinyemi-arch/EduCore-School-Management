@@ -14,7 +14,7 @@ paths:
     put:
       operationId: updatePlatformPaymentSettlement
       tags: [finance]
-      summary: Configure the Yemait Technologies Limited Flutterwave settlement recipient (Platform Owner)
+      summary: Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
       description: Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
       requestBody:
         required: true
@@ -406,7 +406,7 @@ paths:
     put:
       operationId: upsertCompanyPayrollEmployee
       tags: [finance]
-      summary: Securely create/update a Yemait Technologies Limited company employee monthly salary and bank profile
+      summary: Securely create/update a YETENIA TECHNOLOGIES LIMITED company employee monthly salary and bank profile
       description: Platform Owner only. Company payroll uses the existing platform_company_employees directory and a separate company tenancy from school employees.
       requestBody:
         required: true
@@ -426,7 +426,7 @@ paths:
     get:
       operationId: listCompanyPayrollPeriods
       tags: [finance]
-      summary: List Yemait Technologies monthly payroll runs, with school payroll completely excluded
+      summary: List YETENIA TECHNOLOGIES LIMITED monthly payroll runs, with school payroll completely excluded
       parameters:
         - { name: status, in: query, required: false, schema: { type: string, maxLength: 40 } }
         - { name: year, in: query, required: false, schema: { type: integer, minimum: 2000, maximum: 2200 } }
@@ -568,7 +568,7 @@ paths:
     get:
       operationId: getCompanyPayrollReport
       tags: [finance]
-      summary: Show Platform Owner Yemait Technologies Limited monthly salary expense and transfer status independently from all school runs
+      summary: Show Platform Owner YETENIA TECHNOLOGIES LIMITED monthly salary expense and transfer status independently from all school runs
       parameters:
         - { name: fromMonth, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
         - { name: toMonth, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }

@@ -56,7 +56,7 @@ const SCHOOL_SALARY_AD = (schoolId: number, employeeId: number, field: string) =
   `payroll:school:${schoolId}:employee:${employeeId}:${field}`;
 const COMPANY_SALARY_AD = (employeeId: number, field: string) =>
   `payroll:yemait-company:employee:${employeeId}:${field}`;
-const EMPTY_COMPANY_NAME = "Yemait Technologies Limited";
+const EMPTY_COMPANY_NAME = "YETENIA TECHNOLOGIES LIMITED";
 
 function run(handler: RequestHandler) {
   return (req: Request, res: Response, next: (error?: unknown) => void) =>
@@ -1282,7 +1282,7 @@ router.put("/platform/finance/company-payroll/employees", run(async (req, res) =
        WHERE id=$1 AND status='ACTIVE' FOR UPDATE`,
       [input.employeeId],
     ))[0];
-    if (!employee) throw new AuthError(404, "Active Yemait Technologies company employee not found");
+    if (!employee) throw new AuthError(404, "Active YETENIA TECHNOLOGIES LIMITED company employee not found");
     const existing = poolRows(await client.query(
       `SELECT id,monthly_salary_minor,allowance_minor,deduction_minor,status
        FROM payroll_employee_profiles

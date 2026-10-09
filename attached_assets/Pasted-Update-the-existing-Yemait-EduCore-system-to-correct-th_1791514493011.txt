@@ -1,0 +1,75 @@
+Update the existing Yemait EduCore system to correct the company branding from Yemait Technologies Limited to YETENIA TECHNOLOGIES LIMITED.
+
+The company has changed its name. The correct company name is YETENIA TECHNOLOGIES LIMITED, and its domain is yetenia.com. The platform product name remains Yemait EduCore.
+
+1. Correct company name references
+
+Find and replace remaining user-facing references to:
+
+- Yemait Technologies Limited
+- Yemait Technologies Ltd
+- Any other spelling or capitalisation variations referring to the old company name
+
+Replace them with YETENIA TECHNOLOGIES LIMITED wherever they identify the company.
+
+Check relevant user-facing areas, including:
+
+- Public NFC payment pages and payment-link screens
+- Login, registration and invitation pages
+- Headers, footers and dashboards
+- School Admin and Accountant screens
+- Parent-facing messages and payment instructions
+- Receipts and other document templates
+- Partner programme pages and agreements
+- Company profile, contact and about sections
+- Email templates and notification text that explicitly names the company
+- Relevant page titles and metadata
+
+Do not rename the product itself. Yemait EduCore remains Yemait EduCore. Do not change historical audit records or financial transaction records where preserving the original record is necessary for accuracy.
+
+2. Correct the public NFC payment page
+
+Display prominently:
+
+- Platform: Yemait EduCore
+- Company: YETENIA TECHNOLOGIES LIMITED
+- Service: NFC Student Attendance and School Entry Notifications
+
+Keep the existing school name, student identifier, academic term, ₦5,000 fee, payment status, payment reference and expiry date visible.
+
+Include this explanation:
+
+“This NFC subscription is provided through Yemait EduCore, operated by YETENIA TECHNOLOGIES LIMITED. Your payment is processed according to the configured payment arrangements for your school and the platform.”
+
+Preserve the message that parents do not need an EduCore account and that school staff can assist parents who lack a suitable device.
+
+Keep the cash-payment warning: cash given to the school does not count as a verified NFC subscription payment.
+
+3. Preserve payment safeguards
+
+- Keep Development simulation warnings clearly visible.
+- Never describe simulated payments as genuine payments or settlements.
+- Do not claim that Flutterwave payments or automatic fund sharing are active.
+- Do not change the ₦5,000 subscription fee or the existing school/platform/partner allocation calculations.
+- Do not change link security, expiry rules, payment verification, webhook handling, receipts or subscription activation.
+
+4. Technical and cost constraints
+
+- Inspect the relevant files and make the smallest safe changes.
+- Search for remaining old company-name references in the application and correct applicable user-facing references.
+- Do not perform a broad application audit or rewrite unrelated modules.
+- Do not modify Production, Clerk authentication, Resend configuration, payment provider credentials or database schema.
+- Do not run a full test suite. Run only a focused check for the branding changes and public NFC payment page.
+- Do not alter historical records simply to make old company names disappear.
+
+5. Final report
+
+Report:
+
+1. Which files were changed.
+2. Which old company-name references were corrected.
+3. Any remaining references and why they remain.
+4. The focused verification result.
+5. Confirmation that the payment workflow and Development-only safeguards remain unchanged.
+
+Complete the changes in Development only.
