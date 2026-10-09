@@ -34,6 +34,14 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /subscriptions/{subscriptionId}/payment-link:
+    $ref: "./nfc-payment-links.yaml#/paths/~1subscriptions~1{subscriptionId}~1payment-link"
+  /subscriptions/{subscriptionId}/payment-link/cancel:
+    $ref: "./nfc-payment-links.yaml#/paths/~1subscriptions~1{subscriptionId}~1payment-link~1cancel"
+  /public/nfc-payment-links/view:
+    $ref: "./nfc-payment-links.yaml#/paths/~1public~1nfc-payment-links~1view"
+  /public/nfc-payment-links/simulate:
+    $ref: "./nfc-payment-links.yaml#/paths/~1public~1nfc-payment-links~1simulate"
   /partners/{partnerId}/nfc-permission:
     $ref: "./partner-nfc.yaml#/paths/~1partners~1{partnerId}~1nfc-permission"
   /partner/nfc/access:

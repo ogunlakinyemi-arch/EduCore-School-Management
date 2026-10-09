@@ -1,0 +1,112 @@
+paths:
+  /subscriptions/{subscriptionId}/payment-link:
+    post:
+      operationId: createNfcPaymentLink
+      tags: [subscriptions]
+      parameters:
+        - {name: subscriptionId, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NfcPaymentLinkInput"}
+      responses:
+        "200":
+          description: Secure staff payment instructions
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NfcPaymentLink"}
+  /subscriptions/{subscriptionId}/payment-link/cancel:
+    post:
+      operationId: cancelNfcPaymentLink
+      tags: [subscriptions]
+      parameters:
+        - {name: subscriptionId, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: Cancellation complete
+          content:
+            application/json:
+              schema: {type: object, properties: {cancelled: {type: boolean}}, required: [cancelled]}
+  /public/nfc-payment-links/view:
+    post:
+      operationId: viewPublicNfcPaymentLink
+      security: []
+      tags: [subscriptions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NfcPaymentToken"}
+      responses:
+        "200":
+          description: Limited public payment details
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NfcPaymentLink"}
+  /public/nfc-payment-links/simulate:
+    post:
+      operationId: simulateNfcPaymentLink
+      security: []
+      tags: [subscriptions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NfcPaymentSimulationInput"}
+      responses:
+        "200":
+          description: Development-only result; no money or subscription activation
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NfcPaymentLink"}
+components:
+  schemas:
+    NfcPaymentToken:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: {type: string, minLength: 43, maxLength: 43}
+    NfcPaymentSimulationInput:
+      type: object
+      additionalProperties: false
+      required: [token, outcome]
+      properties:
+        token: {type: string, minLength: 43, maxLength: 43}
+        outcome: {type: string, enum: [SUCCESS, FAILED]}
+    NfcPaymentLinkInput:
+      type: object
+      additionalProperties: false
+      required: [termId, mode]
+      properties:
+        termId: {type: integer, minimum: 1}
+        mode: {type: string, enum: [DEVELOPMENT_SIMULATION, FLUTTERWAVE_SANDBOX]}
+    NfcPaymentLink:
+      type: object
+      required: [reference, schoolName, studentIdentifier, termName, sessionName, amountMinor, amountDueMinor, currency, mode, status, expiresAt, settlementStatus, subscriptionActivated, expectedAllocations]
+      properties:
+        reference: {type: string}
+        schoolName: {type: string}
+        studentIdentifier: {type: string}
+        termName: {type: string}
+        sessionName: {type: string}
+        amountMinor: {type: integer}
+        amountDueMinor: {type: integer}
+        currency: {type: string}
+        mode: {type: string, enum: [DEVELOPMENT_SIMULATION, FLUTTERWAVE_SANDBOX]}
+        status: {type: string, enum: [PENDING, SIMULATED_SUCCESS, SIMULATED_FAILED, EXPIRED, CANCELLED, PAID, FAILED, RECONCILIATION_REQUIRED]}
+        expiresAt: {type: string}
+        settlementStatus: {type: string, enum: [UNVERIFIED]}
+        subscriptionActivated: {type: boolean}
+        paymentUrl: {type: string}
+        checkoutUrl: {type: [string, "null"]}
+        receiptReference: {type: [string, "null"]}
+        expectedAllocations:
+          type: array
+          items:
+            type: object
+            required: [recipientType, amountMinor]
+            properties:
+              recipientType: {type: string, enum: [SCHOOL, PLATFORM, PARTNER]}
+              amountMinor: {type: integer}

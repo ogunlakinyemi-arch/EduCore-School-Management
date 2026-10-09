@@ -1,0 +1,59 @@
+Continue the existing Yemait EduCore school management system from its current state. Implement only the missing NFC subscription payment workflow in the Development environment.
+
+Important constraints
+
+- Do not modify Production, perform real payments, or require live Flutterwave credentials.
+- Do not change the existing ₦5,000/student/term pricing or existing payment verification, receipt, subscription activation, allocation, and webhook-deduplication services.
+- Do not modify Clerk authentication, Resend email configuration, or unrelated modules.
+- Inspect existing relevant files before editing. Reuse existing components and services. Do not rebuild existing functionality.
+- Do not create real Flutterwave subaccounts or invent subaccount IDs.
+
+1. Student-specific payment link
+
+- Allow an authorised School Admin or Accountant to generate a unique, secure payment link for a student's NFC subscription for a selected term.
+- The payment page must work without requiring the parent to sign in.
+- Show the school, student identifier, term, amount due (₦5,000), payment status, and clear payment instructions.
+- Use an unguessable token; do not expose unnecessary student or parent information in the URL.
+- Expired, cancelled, already-paid, or invalid links must be handled safely.
+- Prevent unauthorised users from generating or changing payment amounts.
+
+2. School Admin controls
+
+- Add controls to generate, copy, view, and print the student payment link.
+- Provide a QR code that opens the same secure payment page.
+- Show the term, amount due, payment status, and payment reference.
+- Keep access restricted to authorised school staff.
+
+3. Payment workflow
+
+- Reuse the existing Flutterwave adapter and server-side verification service.
+- When live credentials and settlement configuration are absent, provide an explicitly labelled Development simulation mode.
+- Simulation must never call a live payment endpoint or mark a transaction as genuinely settled.
+- Test pending, successful simulated payment, failed payment, expired link, duplicate callback, and repeated payment attempts.
+- Ensure that only a verified payment can activate a subscription in live mode.
+- Keep simulated and live transactions clearly distinguishable in storage and the interface.
+
+4. Allocation records
+For a ₦5,000 student subscription, preserve the existing intended allocation:
+
+- School: ₦2,000
+- YETENIA/EduCore: ₦3,000 before partner commission
+- Eligible partner: ₦100 per student per term, deducted from the platform share
+- Platform net allocation after eligible partner commission: ₦2,900
+
+Record these as internal expected allocations only. Do not represent them as actual bank settlements. Mark actual settlement as unverified until confirmed through the configured payment provider.
+
+Do not hardcode or assume that Flutterwave can settle every allocation directly. Keep the settlement integration configurable for later completion after account approval.
+
+5. Parent payment without a smartphone
+The school should be able to print the payment link and QR code or assist the parent using an authorised device. A cash payment to the school must not automatically count as a verified NFC subscription payment. The subscription should only become paid after the configured payment process verifies it.
+
+6. Focused verification
+
+- Run only targeted tests for the new payment-link workflow and any directly affected payment services.
+- Preserve existing data and avoid destructive migrations.
+- Do not run a full test suite unless a focused test reveals a necessary reason.
+- Report changed files, focused test results, remaining blockers, and any required manual configuration.
+- Stop if the implementation requires unavailable secrets, account approval, or settlement IDs. Do not attempt real payments.
+
+Complete the workflow in Development and leave live settlement configuration for a later stage when YETENIA's CAC and Flutterwave account setup are approved.

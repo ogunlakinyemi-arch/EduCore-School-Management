@@ -49,10 +49,12 @@ import promotionExpansionRouter from "./promotion-expansion";
 import subscriptionEnforcementRouter from "./subscription-enforcement";
 import studentCardReplacementRouter from "./student-card-replacement";
 import partnerNfcRouter from "./partner-nfc";
+import nfcPaymentLinksRouter from "./nfc-payment-links";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(nfcPaymentLinksRouter);
 router.use(bootstrapRouter);
 if (process.env.NODE_ENV === "development") {
   router.use(devOwnerAccessDiagnosticRouter);

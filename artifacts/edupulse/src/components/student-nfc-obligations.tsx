@@ -15,6 +15,7 @@ import {
   type StudentNfcObligation,
   type StudentNfcSummary,
 } from '@workspace/api-client-react';
+import { NfcPaymentLinkControls } from '@/components/nfc-payment-link-controls';
 import { Button, EmptyState, ErrorState, StatusPill, money, date } from '@/components/shared';
 import {
   checkoutEvidenceMatchesServer,
@@ -289,6 +290,7 @@ export function StudentNfcObligationsPanel({
             {r.status === 'EXEMPT' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Exempt for this term. No payment is required.</p>}
             {(r.reference || r.paidAt) && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{r.reference && <>Ref <span className="font-mono">{r.reference}</span></>}{r.paidAt && <> · {date(r.paidAt)}</>} · {r.paymentMethod}</p>}
             {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · Partner {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}
+            {!teacherView && !isOwner && <NfcPaymentLinkControls row={r} />}
             {!teacherView && !isOwner && <RowPayment row={r} onPaid={onPaid} />}
           </article>)}
         </div>

@@ -12950,6 +12950,110 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface NfcPaymentToken {
+  /**
+     * @minLength 43
+     * @maxLength 43
+     */
+  token: string;
+}
+
+export type NfcPaymentSimulationInputOutcome = typeof NfcPaymentSimulationInputOutcome[keyof typeof NfcPaymentSimulationInputOutcome];
+
+
+export const NfcPaymentSimulationInputOutcome = {
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+} as const;
+
+export interface NfcPaymentSimulationInput {
+  /**
+     * @minLength 43
+     * @maxLength 43
+     */
+  token: string;
+  outcome: NfcPaymentSimulationInputOutcome;
+}
+
+export type NfcPaymentLinkInputMode = typeof NfcPaymentLinkInputMode[keyof typeof NfcPaymentLinkInputMode];
+
+
+export const NfcPaymentLinkInputMode = {
+  DEVELOPMENT_SIMULATION: 'DEVELOPMENT_SIMULATION',
+  FLUTTERWAVE_SANDBOX: 'FLUTTERWAVE_SANDBOX',
+} as const;
+
+export interface NfcPaymentLinkInput {
+  /** @minimum 1 */
+  termId: number;
+  mode: NfcPaymentLinkInputMode;
+}
+
+export type NfcPaymentLinkMode = typeof NfcPaymentLinkMode[keyof typeof NfcPaymentLinkMode];
+
+
+export const NfcPaymentLinkMode = {
+  DEVELOPMENT_SIMULATION: 'DEVELOPMENT_SIMULATION',
+  FLUTTERWAVE_SANDBOX: 'FLUTTERWAVE_SANDBOX',
+} as const;
+
+export type NfcPaymentLinkStatus = typeof NfcPaymentLinkStatus[keyof typeof NfcPaymentLinkStatus];
+
+
+export const NfcPaymentLinkStatus = {
+  PENDING: 'PENDING',
+  SIMULATED_SUCCESS: 'SIMULATED_SUCCESS',
+  SIMULATED_FAILED: 'SIMULATED_FAILED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export type NfcPaymentLinkSettlementStatus = typeof NfcPaymentLinkSettlementStatus[keyof typeof NfcPaymentLinkSettlementStatus];
+
+
+export const NfcPaymentLinkSettlementStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export type NfcPaymentLinkExpectedAllocationsItemRecipientType = typeof NfcPaymentLinkExpectedAllocationsItemRecipientType[keyof typeof NfcPaymentLinkExpectedAllocationsItemRecipientType];
+
+
+export const NfcPaymentLinkExpectedAllocationsItemRecipientType = {
+  SCHOOL: 'SCHOOL',
+  PLATFORM: 'PLATFORM',
+  PARTNER: 'PARTNER',
+} as const;
+
+export type NfcPaymentLinkExpectedAllocationsItem = {
+  recipientType: NfcPaymentLinkExpectedAllocationsItemRecipientType;
+  amountMinor: number;
+};
+
+export interface NfcPaymentLink {
+  reference: string;
+  schoolName: string;
+  studentIdentifier: string;
+  termName: string;
+  sessionName: string;
+  amountMinor: number;
+  amountDueMinor: number;
+  currency: string;
+  mode: NfcPaymentLinkMode;
+  status: NfcPaymentLinkStatus;
+  expiresAt: string;
+  settlementStatus: NfcPaymentLinkSettlementStatus;
+  subscriptionActivated: boolean;
+  paymentUrl?: string;
+  /** @nullable */
+  checkoutUrl?: string | null;
+  /** @nullable */
+  receiptReference?: string | null;
+  expectedAllocations: NfcPaymentLinkExpectedAllocationsItem[];
+}
+
 export interface NfcPermissionInput {
   enabled: boolean;
 }
@@ -20656,6 +20760,10 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type CancelNfcPaymentLink200 = {
+  cancelled: boolean;
+};
 
 export type GetMyPartnerNfcStudentsParams = {
 /**
