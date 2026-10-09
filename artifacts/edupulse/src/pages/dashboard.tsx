@@ -230,6 +230,9 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
         <Link href="/audit" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-audit">
           <FileClock size={16} />Audit trail
         </Link>
+        <Link href="/communications" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-communications">
+          <UsersRound size={16} /> Communications Center — Send Message to Schools
+        </Link>
       </div>
       
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">

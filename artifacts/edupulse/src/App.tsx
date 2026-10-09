@@ -338,18 +338,20 @@ export function ProtectedRoutes() {
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']}><FinancePage /></RoleGuard>
           </Route>
           <Route path="/communications">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']} ownerCanView><CommunicationsPage /></RoleGuard>
           </Route>
           <Route path="/communication/threads/:threadId">{params=><RoleGuard allowedRoles={['PARENT','SCHOOL_ADMIN','TEACHER','STAFF','ACCOUNTANT']}><ThreadLinkPage threadId={params.threadId} /></RoleGuard>}</Route>
           <Route path="/communication">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+            <Redirect to="/communications" />
           </Route>
           <Route path="/communication-center">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+            <Redirect to="/communications" />
           </Route>
           <Route path="/communication-centre">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+            <Redirect to="/communications" />
           </Route>
+          <Route path="/communications-center"><Redirect to="/communications" /></Route>
+          <Route path="/communications-centre"><Redirect to="/communications" /></Route>
           <Route path="/inbox"><CommunicationInbox /></Route>
           <Route path="/notification-settings"><NotificationSettings /></Route>
           <Route path="/classes">

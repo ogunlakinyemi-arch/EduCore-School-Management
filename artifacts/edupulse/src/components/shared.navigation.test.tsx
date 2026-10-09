@@ -69,7 +69,7 @@ describe('Platform Owner navigation', () => {
       <Shell><div>Dashboard content</div></Shell>,
     );
 
-    for (const href of ['/schools', '/students', '/company-employees', '/partners', '/devices', '/cards', '/audit', '/users', '/results']) {
+    for (const href of ['/schools', '/students', '/company-employees', '/partners', '/devices', '/cards', '/audit', '/users', '/results', '/communications']) {
       expect(html).toContain(`href="${href}"`);
     }
     for (const href of ['/parents', '/employees', '/academics', '/subjects', '/classes', '/academic-work', '/timetable', '/attendance', '/finance', '/people/imports', '/my-academics', '/my-fees']) {
@@ -91,6 +91,7 @@ describe('Platform Owner navigation', () => {
 
     expect(html).not.toContain('Owner school context');
     expect(html).not.toContain('Suspended School');
+    expect(html).toContain('data-testid="button-nav-section-communication"');
   });
 
   it('hides Library for a Teacher without librarian duty', () => {

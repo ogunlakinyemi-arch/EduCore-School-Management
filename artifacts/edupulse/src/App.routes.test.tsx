@@ -31,6 +31,25 @@ describe('dashboard route compatibility', () => {
   });
 });
 
+describe('Owner Communications route wiring', () => {
+  it('opens the existing role-aware page for Owners and the original school roles', () => {
+    expect(appSource).toContain('<RoleGuard allowedRoles={[\'SCHOOL_ADMIN\', \'TEACHER\', \'ACCOUNTANT\']} ownerCanView><CommunicationsPage /></RoleGuard>');
+    expect(appSource.match(/<CommunicationsPage \/>/g)).toHaveLength(1);
+    expect(appSource).toContain("import { CommunicationsPage } from '@/pages/communications'");
+  });
+
+  it.each(['/communication', '/communication-center', '/communication-centre', '/communications-center', '/communications-centre'])('canonicalizes %s rather than reaching the 404 fallback', path => {
+    const aliases = [...appSource.matchAll(/<Route path="([^"]+)">\s*<Redirect to="\/communications" \/>/g)].map(m=>m[1]);
+    expect(aliases.find(alias=>matchRoute(parser,alias,path)[0])).toBe(path);
+    expect(aliases.some(alias=>matchRoute(parser,alias,'/communications-unknown')[0])).toBe(false);
+  });
+
+  it('links the Owner dashboard to the canonical page', () => {
+    const dashboard = readFileSync(new URL('./pages/dashboard.tsx', import.meta.url),'utf8');
+    expect(dashboard).toMatch(/<Link href="\/communications"[^>]+data-testid="link-owner-communications"/);
+  });
+});
+
 describe('family and partner portal navigation', () => {
   it('links parents to transport and the academic calendar', () => {
     expect(parentPortalSource).toContain('<Link href="/my-transport" data-testid="link-parent-transport"');

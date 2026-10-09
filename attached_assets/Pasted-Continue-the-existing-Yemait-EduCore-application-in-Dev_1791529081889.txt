@@ -1,0 +1,72 @@
+Continue the existing Yemait EduCore application in Development only.
+
+Critical issues:
+
+1. The Platform Owner cannot find where to send messages to selected schools.
+2. The Communications Center displays “404 Page Not Found”.
+3. The previous implementation report claimed that Platform Owner-to-school messaging was implemented, but the actual interface is inaccessible.
+
+Fix the actual problems instead of adding another disconnected messaging component.
+
+1. Diagnose and fix the 404
+
+- Inspect the existing application router, route registration, navigation links, Platform Owner dashboard and Communications page.
+- Identify the exact URL that produces the 404 and why it is not resolving.
+- Correct the route, navigation target, page export/import or permission-based routing as appropriate.
+- Ensure the Communications Center opens successfully when selected from the Platform Owner dashboard.
+- Ensure a page refresh on the Communications route does not produce a 404.
+- Check that School Admin and other roles still reach their own authorised communication interfaces.
+- Do not create duplicate Communications pages if an existing implementation already exists.
+
+2. Make Platform Owner messaging visible
+
+Provide an obvious Send Message to Schools action in the Platform Owner Communications Center.
+
+The workflow must allow the Platform Owner to:
+
+- View a list of schools they are authorised to manage.
+- Select one school or multiple schools using checkboxes.
+- Search and filter the school list.
+- See the number and names of selected schools before sending.
+- Compose a message with a subject and message body.
+- Review the recipient list and confirm before sending.
+- Send the message using the existing Platform Owner messaging service.
+- View message history, recipient schools and the actual stored processing status.
+
+Do not broadcast to all schools by default. Require explicit recipient selection and confirmation.
+
+3. Verify message delivery through the existing system
+
+- Reuse the existing Platform Owner messaging API and in-app notification services.
+- Ensure authorised recipients can see the message in their existing inbox or Communications interface.
+- Persist message history and recipient records.
+- Prevent duplicate messages when the send action is retried.
+- Display accurate statuses such as queued, sent or failed, based on what the system actually knows.
+- Do not claim that email, SMS or push notifications were delivered unless those channels are configured and delivery is confirmed.
+- Enforce Platform Owner permissions and school-tenant isolation.
+
+4. Focused verification
+
+Use Development test data only.
+
+Verify:
+
+1. The Communications Center route opens without a 404.
+2. The page remains accessible after refresh.
+3. The Platform Owner can select one school and send a test message.
+4. The Platform Owner can select multiple schools and review the recipient list.
+5. The message appears in the intended school's authorised inbox.
+6. An unauthorised user cannot access Platform Owner messaging or another school's messages.
+7. Retrying the same send request does not create duplicate messages.
+
+Run only focused tests for these issues. Do not run a full test suite or broad audit.
+
+Constraints
+
+- Development only; do not modify Production.
+- Inspect the current implementation before editing.
+- Fix the existing feature rather than rebuilding unrelated communications functionality.
+- Do not change Clerk, Resend, SMS configuration, NFC billing or payment settings.
+- Report the exact 404 cause, changed files, focused test results and any remaining limitations.
+
+Do not mark the task complete just because the page exists. Confirm that the route opens and that an actual Development message reaches the selected school's inbox.

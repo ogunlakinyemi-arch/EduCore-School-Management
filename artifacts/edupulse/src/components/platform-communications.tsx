@@ -16,6 +16,9 @@ export function PlatformCommunications() {
   const dir = useQuery<{ schools: DirSchool[] }>({ queryKey: ['platform', 'schools-directory'], queryFn: () => phase9Request('/platform/schools/directory'), staleTime: 15_000 });
   const history = useQuery<{ campaigns: Campaign[] }>({ queryKey: ['platform', 'communications'], queryFn: () => phase9Request('/platform/communications'), staleTime: 5_000, refetchInterval: 20_000 });
   const [selected, setSelected] = useState<number[]>([]);
+  const [search,setSearch] = useState('');
+  const [schoolFilter,setSchoolFilter] = useState('all');
+  const composeRef = useRef<HTMLInputElement>(null);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -26,13 +29,15 @@ export function PlatformCommunications() {
   const busy = useRef(false);
   const active = useMemo(() => (dir.data?.schools ?? []).filter(s => s.status.toUpperCase() === 'ACTIVE'), [dir.data]);
   const names = (ids: number[]) => ids.map(id => active.find(s => s.id === id)?.name ?? `School #${id}`);
-  const locked = !!pending;
   const dirty = () => { setPreview(null); setNotice(''); setConfirming(false); };
   const sub = subject.trim(), bod = body.trim();
   const valid = selected.length >= 1 && selected.length <= 50 && sub.length >= 1 && sub.length <= 160 && bod.length >= 1 && bod.length <= 5000;
 
   const previewM = useMutation({ mutationFn: (ids: number[]) => phase9Request<Preview>('/platform/communications/preview', 'POST', { schoolIds: ids }) });
   const sendM = useMutation({ mutationFn: (p: Payload) => phase9Request<{ campaigns: Campaign[] }>('/platform/communications', 'POST', p) });
+  const locked = !!pending || previewM.isPending || sendM.isPending;
+  const visibleSchools = active.filter(s => `${s.name} ${s.code}`.toLowerCase().includes(search.trim().toLowerCase()) &&
+    (schoolFilter==='all' || (schoolFilter==='selected' ? selected.includes(s.id) : !selected.includes(s.id))));
 
   const onPreview = async () => {
     if (busy.current || !valid) return; busy.current = true; setError('');
@@ -55,19 +60,27 @@ export function PlatformCommunications() {
   const startNew = () => { if (!window.confirm('Start a new message? The unconfirmed one may already have been sent; the new one will be treated as separate.')) return; setPending(null); setError(''); setPreview(null); };
 
   return <div className="fade-up">
-    <PageHeading eyebrow="Platform / Communications" title="Platform communications." description="Send an in-app message to the School Admins of schools you explicitly choose. There is no broadcast to all schools. Messages appear in their existing inbox; no email or SMS is sent." />
+    <PageHeading eyebrow="Platform / Communications" title="Communications Center." description="Send an in-app message to the School Admins of schools you explicitly choose. There is no broadcast to all schools. Messages appear in their existing inbox; no email or SMS is sent."
+      action={<Button testId="button-send-message-to-schools" disabled={locked} onClick={()=>{composeRef.current?.scrollIntoView({block:'center',behavior:'smooth'});composeRef.current?.focus();}}>Send Message to Schools</Button>} />
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,.8fr)]">
       <section className="panel p-5 md:p-7">
         <div className="eyebrow">01 / Schools</div>
         <h2 className="display-font mt-1 text-xl font-bold">Choose recipients</h2>
         {dir.isLoading ? <SkeletonPage /> : dir.isError ? <ErrorState retry={() => void dir.refetch()} /> : <>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Field label="Search schools"><input className={inputClass} type="search" placeholder="School name or code" value={search} onChange={e=>setSearch(e.target.value)} data-testid="input-comm-school-search" /></Field>
+            <Field label="Filter schools"><select className={inputClass} value={schoolFilter} onChange={e=>setSchoolFilter(e.target.value)} data-testid="select-comm-school-filter">
+              <option value="all">All active schools</option><option value="selected">Selected schools</option><option value="unselected">Unselected schools</option>
+            </select></Field>
+          </div>
           <div className="mt-2 text-xs font-bold" data-testid="text-comm-count">{selected.length} of 50 active schools selected</div>
           <div className="mt-2 max-h-60 divide-y divide-[hsl(var(--border))] overflow-y-auto rounded-xl border border-[hsl(var(--border))]">
-            {active.map(s => <label key={s.id} className="flex items-center gap-3 p-3 text-sm"><input type="checkbox" data-testid={`checkbox-comm-school-${s.id}`} disabled={locked || (!selected.includes(s.id) && selected.length >= 50)} checked={selected.includes(s.id)} onChange={() => { setSelected(p => p.includes(s.id) ? p.filter(x => x !== s.id) : [...p, s.id]); dirty(); }} /><span className="flex-1 font-semibold">{s.name}</span><span className="text-xs text-[hsl(var(--muted-foreground))]">{s.code}</span></label>)}
-            {!active.length && <p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">No active schools.</p>}
+            {visibleSchools.map(s => <label key={s.id} className="flex items-center gap-3 p-3 text-sm"><input type="checkbox" data-testid={`checkbox-comm-school-${s.id}`} disabled={locked || (!selected.includes(s.id) && selected.length >= 50)} checked={selected.includes(s.id)} onChange={() => { setSelected(p => p.includes(s.id) ? p.filter(x => x !== s.id) : [...p, s.id]); dirty(); }} /><span className="flex-1 font-semibold">{s.name}</span><span className="text-xs text-[hsl(var(--muted-foreground))]">{s.code}</span></label>)}
+            {!visibleSchools.length && <p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">{active.length?'No schools match your search/filter.':'No active schools.'}</p>}
           </div></>}
+        {selected.length>0 && <p className="mt-3 text-sm" data-testid="text-comm-selected-schools"><strong>Selected schools:</strong> {names(selected).join(', ')}</p>}
         <div className="mt-6 space-y-4">
-          <Field label="Subject (1-160 characters)"><input className={inputClass} data-testid="input-comm-subject" maxLength={160} disabled={locked} value={subject} onChange={e => { setSubject(e.target.value); dirty(); }} /></Field>
+          <Field label="Subject (1-160 characters)"><input ref={composeRef} className={inputClass} data-testid="input-comm-subject" maxLength={160} disabled={locked} value={subject} onChange={e => { setSubject(e.target.value); dirty(); }} /></Field>
           <Field label="Message (1-5000 characters)"><textarea className={`${inputClass} min-h-40 resize-y`} data-testid="textarea-comm-body" maxLength={5000} disabled={locked} value={body} onChange={e => { setBody(e.target.value); dirty(); }} /></Field>
         </div>
         <div className="mt-5 rounded-xl bg-[hsl(var(--secondary)/.4)] p-4 text-sm">
@@ -82,8 +95,8 @@ export function PlatformCommunications() {
             <Button testId="button-comm-retry" disabled={sendM.isPending} onClick={() => void send(pending.payload)}><Send size={15} />{sendM.isPending ? 'Sending...' : 'Retry same message'}</Button>
             <Button variant="outline" disabled={sendM.isPending} onClick={startNew}>Start a new message</Button>
           </> : <>
-            <Button variant="outline" testId="button-comm-preview" disabled={!valid || previewM.isPending} onClick={() => void onPreview()}><UsersRound size={16} />{previewM.isPending ? 'Checking...' : 'Preview recipients'}</Button>
-            <Button testId="button-comm-send" disabled={!preview || !preview.recipientCount || sendM.isPending || !valid} onClick={startConfirm}><Send size={16} />{sendM.isPending ? 'Sending...' : 'Review and send'}</Button>
+            <Button variant="outline" testId="button-comm-preview" disabled={!valid || locked} onClick={() => void onPreview()}><UsersRound size={16} />{previewM.isPending ? 'Checking...' : 'Preview recipients'}</Button>
+            <Button testId="button-comm-send" disabled={!preview || !preview.recipientCount || locked || !valid} onClick={startConfirm}><Send size={16} />{sendM.isPending ? 'Sending...' : 'Review and send'}</Button>
           </>}
         </div>
       </section>
