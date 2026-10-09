@@ -24,6 +24,7 @@ import { ParentFeeSelection } from './fee-selection';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 import { StudentNfcObligationsPanel } from '@/components/student-nfc-obligations';
 import { FamilyFeeBalances } from '@/components/family-fee-balances';
+import { PublishedFeeCorrections } from '@/components/published-fee-corrections';
 import { eligibleFeeAssignmentStudents } from './fee-assignment-eligibility';
 
 const naira = (minor: number) => {
@@ -326,6 +327,7 @@ export function FinancePage() {
         <FinanceCard label="Reversals" amount={naira(summary.data?.totalReversedMinor ?? 0)} detail="Recorded reversals; not provider payout proof" />
         <FinanceCard label="Awaiting review" amount={String(summary.data?.pendingPayments ?? 0)} detail="Manual transfers pending verification" />
       </div>
+      {tab==='structures' && canEditSettings && <PublishedFeeCorrections key={schoolId} schoolId={schoolId} structures={structures.data??[]} onSaved={message=>{setFeedback(message);setFailure('');refresh();}}/>}
       <div className="mt-7 flex gap-1 overflow-x-auto border-b border-[hsl(var(--border))]" role="tablist" aria-label="Finance sections">
         {([['overview', 'Overview'], ['transfers', 'Transfers'], ['adjustments', 'Approvals'], ['refunds', 'Refunds'], ['invoices', 'Invoices'], ['structures', 'Fee structures'], ['bulk', 'Bulk assignment'], ['reports', 'Reports'], ['nfc', 'NFC fees'], ['categories', 'Categories'], ['controls', 'Controls']] as const).map(([id, label]) =>
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-testid={`tab-finance-${id}`} className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-bold transition-colors ${tab === id ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]' : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>{label}</button>)}

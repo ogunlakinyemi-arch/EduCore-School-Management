@@ -10,6 +10,7 @@ const db={query:vi.fn(async(sql:string,values:any[]=[])=>{
     current_period:true,start_date:"2026-10-04",end_date:"2026-12-20",
   }]:[]};
   if(sql.includes("FROM fee_structure_lines l"))return{rows:[{id:1,amount_minor:800000,transport_only:false}]};
+  if(sql.includes("FROM audit_logs"))return{rows:[]};
   if(sql.includes("SELECT DISTINCT ON (st.id)"))return{rows:state.students};
   if(sql.includes("SELECT id FROM fee_invoices"))return{rows:state.existing.has(values[1])?[{id:42}]:[]};
   throw Error("Unexpected publication query");

@@ -1,0 +1,122 @@
+paths:
+  /school/finance/structures/{structureId}/corrections:
+    post:
+      operationId: createPublishedFeeCorrection
+      tags: [Finance]
+      parameters:
+        - {name: structureId, in: path, required: true, schema: {type: integer, minimum: 1}}
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmed, expectedVersion, reason, requestKey, lines]
+              properties:
+                confirmed: {type: boolean, enum: [true]}
+                expectedVersion: {type: integer, minimum: 1}
+                reason: {type: string, minLength: 3, maxLength: 500}
+                requestKey: {type: string, format: uuid}
+                lines:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [categoryId, amountMinor]
+                    properties:
+                      categoryId: {type: integer, minimum: 1}
+                      amountMinor: {type: integer, minimum: 1, maximum: 2147483647}
+                      description: {type: string, maxLength: 500}
+      responses:
+        "201":
+          description: Audited correction draft saved, ready for explicit publication
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: integer}
+        "200":
+          description: Idempotent retrieval of the already saved correction
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: integer}
+  /platform/communications/preview:
+    post:
+      operationId: previewPlatformSchoolMessage
+      tags: [Platform]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PlatformSchoolSelection"}
+      responses:
+        "200":
+          description: Explicit schools and active administrator recipient counts
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+  /platform/communications:
+    get:
+      operationId: listPlatformSchoolMessages
+      tags: [Platform]
+      responses:
+        "200":
+          description: Owner-created campaigns and actual delivery status counts
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+    post:
+      operationId: sendPlatformSchoolMessage
+      tags: [Platform]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [schoolIds, subject, body, idempotencyKey, confirmedRecipientCount]
+              properties:
+                schoolIds: {type: array, minItems: 1, maxItems: 50, uniqueItems: true, items: {type: integer, minimum: 1}}
+                subject: {type: string, minLength: 1, maxLength: 160}
+                body: {type: string, minLength: 1, maxLength: 5000}
+                idempotencyKey: {type: string, minLength: 16, maxLength: 80}
+                confirmedRecipientCount: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: Saved campaigns; not a claim of external delivery
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+  /platform/exports/schools:
+    post:
+      operationId: exportPlatformSchoolDirectory
+      tags: [Platform]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PlatformSchoolSelection"}
+      responses:
+        "200":
+          description: Privacy-limited school directory CSV, not a database backup
+          content:
+            text/csv:
+              schema: {type: string}
+components:
+  schemas:
+    PlatformSchoolSelection:
+      type: object
+      additionalProperties: false
+      required: [schoolIds]
+      properties:
+        schoolIds: {type: array, minItems: 1, maxItems: 50, uniqueItems: true, items: {type: integer, minimum: 1}}

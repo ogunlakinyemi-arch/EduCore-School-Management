@@ -8,6 +8,101 @@
 import * as zod from 'zod';
 
 
+
+
+
+export const CreatePublishedFeeCorrectionParams = zod.object({
+  "structureId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const CreatePublishedFeeCorrectionQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const createPublishedFeeCorrectionBodyReasonMin = 3;
+export const createPublishedFeeCorrectionBodyReasonMax = 500;
+
+
+export const createPublishedFeeCorrectionBodyLinesItemAmountMinorMax = 2147483647;
+
+export const createPublishedFeeCorrectionBodyLinesItemDescriptionMax = 500;
+
+export const createPublishedFeeCorrectionBodyLinesMax = 50;
+
+
+
+export const CreatePublishedFeeCorrectionBody = zod.object({
+  "confirmed": zod.literal(true),
+  "expectedVersion": zod.number().int().min(1),
+  "reason": zod.string().min(createPublishedFeeCorrectionBodyReasonMin).max(createPublishedFeeCorrectionBodyReasonMax),
+  "requestKey": zod.string().uuid(),
+  "lines": zod.array(zod.object({
+  "categoryId": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1).max(createPublishedFeeCorrectionBodyLinesItemAmountMinorMax),
+  "description": zod.string().max(createPublishedFeeCorrectionBodyLinesItemDescriptionMax).optional()
+})).min(1).max(createPublishedFeeCorrectionBodyLinesMax)
+})
+
+export const CreatePublishedFeeCorrectionResponse = zod.object({
+  "id": zod.number().int()
+})
+
+
+
+export const previewPlatformSchoolMessageBodySchoolIdsMax = 50;
+
+
+
+export const PreviewPlatformSchoolMessageBody = zod.object({
+  "schoolIds": zod.array(zod.number().int().min(1)).min(1).max(previewPlatformSchoolMessageBodySchoolIdsMax)
+})
+
+export const PreviewPlatformSchoolMessageResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const ListPlatformSchoolMessagesResponse = zod.record(zod.string(), zod.unknown())
+
+
+
+export const sendPlatformSchoolMessageBodySchoolIdsMax = 50;
+
+export const sendPlatformSchoolMessageBodySubjectMax = 160;
+
+export const sendPlatformSchoolMessageBodyBodyMax = 5000;
+
+export const sendPlatformSchoolMessageBodyIdempotencyKeyMin = 16;
+export const sendPlatformSchoolMessageBodyIdempotencyKeyMax = 80;
+
+
+
+
+export const SendPlatformSchoolMessageBody = zod.object({
+  "schoolIds": zod.array(zod.number().int().min(1)).min(1).max(sendPlatformSchoolMessageBodySchoolIdsMax),
+  "subject": zod.string().min(1).max(sendPlatformSchoolMessageBodySubjectMax),
+  "body": zod.string().min(1).max(sendPlatformSchoolMessageBodyBodyMax),
+  "idempotencyKey": zod.string().min(sendPlatformSchoolMessageBodyIdempotencyKeyMin).max(sendPlatformSchoolMessageBodyIdempotencyKeyMax),
+  "confirmedRecipientCount": zod.number().int().min(1)
+})
+
+export const SendPlatformSchoolMessageResponse = zod.record(zod.string(), zod.unknown())
+
+
+
+export const exportPlatformSchoolDirectoryBodySchoolIdsMax = 50;
+
+
+
+export const ExportPlatformSchoolDirectoryBody = zod.object({
+  "schoolIds": zod.array(zod.number().int().min(1)).min(1).max(exportPlatformSchoolDirectoryBodySchoolIdsMax)
+})
+
+export const ExportPlatformSchoolDirectoryResponse = zod.unknown()
+
+
 export const CreateNfcPaymentLinkParams = zod.object({
   "subscriptionId": zod.coerce.number().int()
 })
@@ -15016,6 +15111,7 @@ export const updateAcademicResultBodyRemarkMax = 500;
 export const UpdateAcademicResultBody = zod.object({
   "schoolId": zod.number().int().min(1),
   "score": zod.number().min(updateAcademicResultBodyScoreMin).optional(),
+  "confirmedPublishedCorrection": zod.boolean().optional().describe('School Admin acknowledgement before correcting an approved or published result'),
   "remark": zod.string().max(updateAcademicResultBodyRemarkMax).nullish()
 })
 
@@ -15272,6 +15368,7 @@ export const createAcademicReportCardBodySchoolRemarkMax = 500;
 export const CreateAcademicReportCardBody = zod.object({
   "schoolId": zod.number().int().min(1),
   "studentId": zod.number().int().min(1),
+  "confirmedPublishedCorrection": zod.boolean().optional().describe('Preserve the prior snapshot in audit history and regenerate a correction draft'),
   "sessionId": zod.number().int().min(1),
   "termId": zod.number().int().min(1),
   "classId": zod.number().int().min(1).optional(),

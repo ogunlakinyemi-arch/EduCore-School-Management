@@ -60,11 +60,20 @@ export function CardsPage() {
   const students: any[] = studentsQuery.data ?? [];
   
   const toggleStatus = useUpdateCardStatus();
+  const [cardMessage, setCardMessage] = useState('');
+  const [cardError, setCardError] = useState('');
 
   const handleToggle = (id: number, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'locked' : 'active';
+    const current = currentStatus.toLowerCase();
+    if (!['active', 'locked'].includes(current) || toggleStatus.isPending) return;
+    const newStatus = current === 'active' ? 'locked' : 'active';
+    setCardError(''); setCardMessage('');
     toggleStatus.mutate({ cardId: id, data: { status: newStatus as any } }, {
-      onSuccess: () => qc.invalidateQueries({ queryKey: getListCardsQueryKey({ schoolId }) })
+      onSuccess: async () => {
+        await qc.invalidateQueries({ queryKey: getListCardsQueryKey({ schoolId }) });
+        setCardMessage(newStatus === 'active' ? 'Card unlocked in EduCore. School, subscription and reader checks still apply; no physical-device change is claimed.' : 'Card locked.');
+      },
+      onError: error => setCardError(error instanceof Error ? error.message : 'Card status could not be saved.'),
     });
   };
 
@@ -97,6 +106,8 @@ export function CardsPage() {
       />
       
       {canProvision && <OwnerCardLink />}
+      {cardMessage && <p role="status" className="mb-4">{cardMessage}</p>}
+      {cardError && <p role="alert" className="mb-4 text-[hsl(var(--destructive))]">{cardError}</p>}
       <Link href="/card-replacements" className="mb-5 inline-block text-sm font-bold text-[hsl(var(--primary))] underline" data-testid="link-card-replacements">Card replacements</Link>
       {!schoolId ? (
         <EmptyState icon={CreditCard} title="Select a school context" description="You must select a school to manage its hardware fleet." />
@@ -148,9 +159,9 @@ export function CardsPage() {
                   <Button variant="outline" onClick={() => setModal({ reassign: card })} disabled={studentsQuery.isLoading || !students.length}>
                     Reassign
                   </Button>
-                  <Button variant="outline" onClick={() => handleToggle(card.id, card.status)} disabled={toggleStatus.isPending}>
-                    {card.status === 'active' ? 'Lock Card' : 'Unlock Card'}
-                  </Button>
+                  {['active','locked'].includes(String(card.status).toLowerCase()) && <Button variant="outline" onClick={() => handleToggle(card.id, card.status)} disabled={toggleStatus.isPending} testId={`button-card-status-${card.id}`}>
+                    {String(card.status).toLowerCase() === 'active' ? 'Lock Card' : 'Unlock Card'}
+                  </Button>}
                  </div>}
                   </div>
               </div>

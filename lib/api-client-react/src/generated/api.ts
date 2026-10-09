@@ -188,6 +188,10 @@ import type {
   CreateFeeCategoryParams,
   CreateFeeStructureParams,
   CreateParentParams,
+  CreatePublishedFeeCorrection200,
+  CreatePublishedFeeCorrection201,
+  CreatePublishedFeeCorrectionBody,
+  CreatePublishedFeeCorrectionParams,
   CreateSchoolCalendarEventBody,
   CreateSchoolTeacherAssignmentBody,
   CreateStaffNfcCheckoutParams,
@@ -438,6 +442,7 @@ import type {
   ListPartnersParams,
   ListPendingFeeAdjustmentsParams,
   ListPeopleImportClassesParams,
+  ListPlatformSchoolMessages200,
   ListPlatformSchoolSettlementsParams,
   ListPlatformSettlementHistoryParams,
   ListPromotionBatchHistoryParams,
@@ -597,11 +602,13 @@ import type {
   PlatformOwnerBootstrapInput,
   PlatformOwnerBootstrapResult,
   PlatformOwnerBootstrapStatus,
+  PlatformSchoolSelection,
   PreparePromotionBatchInput,
   PreparePromotionBatchParams,
   PresenceReviewInput,
   PreviewCurriculumImportBody,
   PreviewPeopleImportParams,
+  PreviewPlatformSchoolMessage200,
   PromotionBatch,
   PromotionBatchDetail,
   PromotionHistoryEntry,
@@ -700,6 +707,8 @@ import type {
   SecurityVisitor,
   SecurityVisitorInput,
   SecurityVisitorPatch,
+  SendPlatformSchoolMessage200,
+  SendPlatformSchoolMessageBody,
   SettlementHistoryEntry,
   StaffAdmissionApplicationInput,
   StaffNfcBillingRule,
@@ -838,6 +847,415 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getCreatePublishedFeeCorrectionUrl = (structureId: number,
+    params: CreatePublishedFeeCorrectionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/structures/${structureId}/corrections?${stringifiedParams}` : `/api/school/finance/structures/${structureId}/corrections`
+}
+
+export const createPublishedFeeCorrection = async (structureId: number,
+    createPublishedFeeCorrectionBody: CreatePublishedFeeCorrectionBody,
+    params: CreatePublishedFeeCorrectionParams, options?: Parameters<typeof customFetch>[1]): Promise<CreatePublishedFeeCorrection200 | CreatePublishedFeeCorrection201> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CreatePublishedFeeCorrection200 | CreatePublishedFeeCorrection201>(getCreatePublishedFeeCorrectionUrl(structureId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createPublishedFeeCorrectionBody)
+  }
+);}
+
+
+
+
+
+export const getCreatePublishedFeeCorrectionMutationKey = () => ['createPublishedFeeCorrection'] as const;
+
+export const getCreatePublishedFeeCorrectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublishedFeeCorrection>>, TError,CreatePublishedFeeCorrectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPublishedFeeCorrection>>, TError,CreatePublishedFeeCorrectionMutationVariables, TContext> => {
+
+const mutationKey = getCreatePublishedFeeCorrectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPublishedFeeCorrection>>, CreatePublishedFeeCorrectionMutationVariables> = (props) => {
+          const {structureId,data,params} = props ?? {};
+
+          return  createPublishedFeeCorrection(structureId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePublishedFeeCorrectionMutationResult = NonNullable<Awaited<ReturnType<typeof createPublishedFeeCorrection>>>
+    export type CreatePublishedFeeCorrectionMutationBody = BodyType<CreatePublishedFeeCorrectionBody>
+    export type CreatePublishedFeeCorrectionMutationError = ErrorType<unknown>
+    export type CreatePublishedFeeCorrectionMutationVariables = {structureId: number;data: BodyType<CreatePublishedFeeCorrectionBody>;params: CreatePublishedFeeCorrectionParams}
+
+    export const useCreatePublishedFeeCorrection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublishedFeeCorrection>>, TError,CreatePublishedFeeCorrectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPublishedFeeCorrection>>,
+        TError,
+        CreatePublishedFeeCorrectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePublishedFeeCorrectionMutationOptions(options));
+    }
+
+export const getPreviewPlatformSchoolMessageUrl = () => {
+
+
+
+
+  return `/api/platform/communications/preview`
+}
+
+export const previewPlatformSchoolMessage = async (platformSchoolSelection: PlatformSchoolSelection, options?: Parameters<typeof customFetch>[1]): Promise<PreviewPlatformSchoolMessage200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PreviewPlatformSchoolMessage200>(getPreviewPlatformSchoolMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(platformSchoolSelection)
+  }
+);}
+
+
+
+
+
+export const getPreviewPlatformSchoolMessageMutationKey = () => ['previewPlatformSchoolMessage'] as const;
+
+export const getPreviewPlatformSchoolMessageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewPlatformSchoolMessage>>, TError,PreviewPlatformSchoolMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewPlatformSchoolMessage>>, TError,PreviewPlatformSchoolMessageMutationVariables, TContext> => {
+
+const mutationKey = getPreviewPlatformSchoolMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewPlatformSchoolMessage>>, PreviewPlatformSchoolMessageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewPlatformSchoolMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewPlatformSchoolMessageMutationResult = NonNullable<Awaited<ReturnType<typeof previewPlatformSchoolMessage>>>
+    export type PreviewPlatformSchoolMessageMutationBody = BodyType<PlatformSchoolSelection>
+    export type PreviewPlatformSchoolMessageMutationError = ErrorType<unknown>
+    export type PreviewPlatformSchoolMessageMutationVariables = {data: BodyType<PlatformSchoolSelection>}
+
+    export const usePreviewPlatformSchoolMessage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewPlatformSchoolMessage>>, TError,PreviewPlatformSchoolMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewPlatformSchoolMessage>>,
+        TError,
+        PreviewPlatformSchoolMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewPlatformSchoolMessageMutationOptions(options));
+    }
+
+export const getListPlatformSchoolMessagesUrl = () => {
+
+
+
+
+  return `/api/platform/communications`
+}
+
+export const listPlatformSchoolMessages = async ( options?: Parameters<typeof customFetch>[1]): Promise<ListPlatformSchoolMessages200> => {
+
+  return customFetch<ListPlatformSchoolMessages200>(getListPlatformSchoolMessagesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlatformSchoolMessagesQueryKey = () => {
+    return [
+    `/api/platform/communications`
+    ] as const;
+    }
+
+
+export const getListPlatformSchoolMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listPlatformSchoolMessages>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformSchoolMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlatformSchoolMessagesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlatformSchoolMessages>>> = ({ signal }) => listPlatformSchoolMessages({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlatformSchoolMessages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlatformSchoolMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listPlatformSchoolMessages>>>
+export type ListPlatformSchoolMessagesQueryError = ErrorType<unknown>
+
+
+
+export function useListPlatformSchoolMessages<TData = Awaited<ReturnType<typeof listPlatformSchoolMessages>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformSchoolMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlatformSchoolMessagesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendPlatformSchoolMessageUrl = () => {
+
+
+
+
+  return `/api/platform/communications`
+}
+
+export const sendPlatformSchoolMessage = async (sendPlatformSchoolMessageBody: SendPlatformSchoolMessageBody, options?: Parameters<typeof customFetch>[1]): Promise<SendPlatformSchoolMessage200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SendPlatformSchoolMessage200>(getSendPlatformSchoolMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sendPlatformSchoolMessageBody)
+  }
+);}
+
+
+
+
+
+export const getSendPlatformSchoolMessageMutationKey = () => ['sendPlatformSchoolMessage'] as const;
+
+export const getSendPlatformSchoolMessageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPlatformSchoolMessage>>, TError,SendPlatformSchoolMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendPlatformSchoolMessage>>, TError,SendPlatformSchoolMessageMutationVariables, TContext> => {
+
+const mutationKey = getSendPlatformSchoolMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendPlatformSchoolMessage>>, SendPlatformSchoolMessageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendPlatformSchoolMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendPlatformSchoolMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendPlatformSchoolMessage>>>
+    export type SendPlatformSchoolMessageMutationBody = BodyType<SendPlatformSchoolMessageBody>
+    export type SendPlatformSchoolMessageMutationError = ErrorType<unknown>
+    export type SendPlatformSchoolMessageMutationVariables = {data: BodyType<SendPlatformSchoolMessageBody>}
+
+    export const useSendPlatformSchoolMessage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPlatformSchoolMessage>>, TError,SendPlatformSchoolMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendPlatformSchoolMessage>>,
+        TError,
+        SendPlatformSchoolMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendPlatformSchoolMessageMutationOptions(options));
+    }
+
+export const getExportPlatformSchoolDirectoryUrl = () => {
+
+
+
+
+  return `/api/platform/exports/schools`
+}
+
+export const exportPlatformSchoolDirectory = async (platformSchoolSelection: PlatformSchoolSelection, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<string>(getExportPlatformSchoolDirectoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(platformSchoolSelection)
+  }
+);}
+
+
+
+
+
+export const getExportPlatformSchoolDirectoryMutationKey = () => ['exportPlatformSchoolDirectory'] as const;
+
+export const getExportPlatformSchoolDirectoryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportPlatformSchoolDirectory>>, TError,ExportPlatformSchoolDirectoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof exportPlatformSchoolDirectory>>, TError,ExportPlatformSchoolDirectoryMutationVariables, TContext> => {
+
+const mutationKey = getExportPlatformSchoolDirectoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof exportPlatformSchoolDirectory>>, ExportPlatformSchoolDirectoryMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  exportPlatformSchoolDirectory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExportPlatformSchoolDirectoryMutationResult = NonNullable<Awaited<ReturnType<typeof exportPlatformSchoolDirectory>>>
+    export type ExportPlatformSchoolDirectoryMutationBody = BodyType<PlatformSchoolSelection>
+    export type ExportPlatformSchoolDirectoryMutationError = ErrorType<unknown>
+    export type ExportPlatformSchoolDirectoryMutationVariables = {data: BodyType<PlatformSchoolSelection>}
+
+    export const useExportPlatformSchoolDirectory = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportPlatformSchoolDirectory>>, TError,ExportPlatformSchoolDirectoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof exportPlatformSchoolDirectory>>,
+        TError,
+        ExportPlatformSchoolDirectoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExportPlatformSchoolDirectoryMutationOptions(options));
+    }
 
 export const getCreateNfcPaymentLinkUrl = (subscriptionId: number,) => {
 

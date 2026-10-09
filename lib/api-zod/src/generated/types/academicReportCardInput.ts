@@ -11,6 +11,8 @@ export interface AcademicReportCardInput {
   schoolId: number;
   /** @minimum 1 */
   studentId: number;
+  /** Preserve the prior snapshot in audit history and regenerate a correction draft */
+  confirmedPublishedCorrection?: boolean;
   /** @minimum 1 */
   sessionId: number;
   /** @minimum 1 */

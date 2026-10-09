@@ -168,7 +168,7 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
                     schoolId={schoolId}
                     sessionId={activeSession?.id}
                     termId={activeTerm?.id}
-                    disabled={selectedAssessment.status === 'PUBLISHED' || (isPlatformOwner && !canManage)}
+                    disabled={(selectedAssessment.status === 'PUBLISHED' && !canManage) || (isPlatformOwner && !canManage)}
                     canManage={canManage}
                   />
                 );
@@ -191,7 +191,7 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
                     key={result.id}
                     result={result}
                     schoolId={schoolId}
-                    disabled={selectedAssessment.status === 'PUBLISHED'}
+                    disabled={selectedAssessment.status === 'PUBLISHED' && !canManage}
                     onReviewed={() => {
                       qc.invalidateQueries({ queryKey: ['academic-result-review', schoolId, assessmentId] });
                       qc.invalidateQueries({ queryKey: getListAcademicResultsQueryKey({ schoolId, assessmentId: assessmentId as number }) });
@@ -233,6 +233,7 @@ export function ResultRow({ student, existing, assessmentId, maxScore, schoolId,
     }
   }, [existing]);
 
+  const [editingPublished,setEditingPublished] = useState(false);
   const handleSave = () => {
     setSaveError('');
     const numericScore = parseFloat(score);
@@ -241,14 +242,19 @@ export function ResultRow({ student, existing, assessmentId, maxScore, schoolId,
        return;
     }
 
+    const publishedCorrection = existing?.status === 'PUBLISHED' || existing?.reviewStatus === 'APPROVED';
+    if(publishedCorrection && (!canManage || !window.confirm('Save this published result correction? The previous result is kept in audit history. Review the corrected score, regenerate the report card, then approve and republish it.'))) return;
     const data = { schoolId, studentId: student.id, assessmentId, score: numericScore, remark: remarks };
     const onSuccess = () => {
        setIsDirty(false);
+       setEditingPublished(false);
        qc.invalidateQueries({ queryKey: getListAcademicResultsQueryKey({ schoolId, assessmentId }) });
+       qc.invalidateQueries({ queryKey: ['academic-result-review',schoolId,assessmentId] });
+       qc.invalidateQueries({ queryKey: getListAcademicReportCardsQueryKey() });
     };
 
     if (existing) {
-      update.mutate({ resultId: existing.id, data: { schoolId, score: numericScore, remark: remarks } }, { onSuccess });
+      update.mutate({ resultId: existing.id, data: { schoolId, score: numericScore, remark: remarks, ...(publishedCorrection ? {confirmedPublishedCorrection:true} : {}) } }, { onSuccess });
     } else {
       create.mutate({ data }, { onSuccess });
     }
@@ -277,7 +283,8 @@ export function ResultRow({ student, existing, assessmentId, maxScore, schoolId,
   const canEdit = !disabled && (
     !existing ||
     existing.status === 'DRAFT' ||
-    (canManage && existing.status === 'PUBLISHED')
+    (canManage && ['PUBLISHED','SUBMITTED'].includes(existing.status) &&
+      (!(existing.status==='PUBLISHED'||existing.reviewStatus==='APPROVED') || editingPublished))
   );
 
   return (
@@ -317,6 +324,8 @@ export function ResultRow({ student, existing, assessmentId, maxScore, schoolId,
         ) : existing ? (
           <>
             <span role="status" className="text-[10px] font-bold text-[hsl(157_37%_43%)] bg-[hsl(157_37%_43%/.15)] px-2 py-1 rounded">{existing.status}</span>
+             {canManage && (existing.status==='PUBLISHED'||existing.reviewStatus==='APPROVED') && !editingPublished &&
+               <Button variant="outline" onClick={()=>setEditingPublished(true)} disabled={pending} className="h-9 px-3 py-0" testId={`button-edit-published-result-${existing.id}`}>Edit</Button>}
             {!canManage && existing.status === 'DRAFT' && !disabled && !isDirty && (
               <Button variant="outline" onClick={handleSubmitForReview} disabled={submitPending} className="h-9 px-3 py-0">
                 {submitPending ? 'Submitting…' : 'Submit for review'}
@@ -420,9 +429,10 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
   const cards = query.data ?? [];
   const students = (studentsQuery.data ?? []) as any[];
 
-  const handleGenerate = (studentId: number) => {
+  const handleGenerate = (studentId: number, correction = false) => {
     if (!periodReady || !classId) return;
-    createCard.mutate({ data: { schoolId, studentId, sessionId: sessionId as number, termId: termId as number, classId: Number(classId), ...(section ? { section } : {}) } }, {
+    if(correction && !window.confirm('Regenerate this published report card for correction? Its previous snapshot is kept in audit history. The corrected draft must be reviewed, approved and republished before family access is restored.')) return;
+    createCard.mutate({ data: { schoolId, studentId, sessionId: sessionId as number, termId: termId as number, classId: Number(classId), ...(section ? { section } : {}), ...(correction ? {confirmedPublishedCorrection:true} : {}) } }, {
       onSuccess: () => qc.invalidateQueries({ queryKey: getListAcademicReportCardsQueryKey() })
     });
   };
@@ -483,6 +493,7 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
                             </div>
                             <div className="w-32"><StatusPill value={card.status} /></div>
                             <div className="w-32 flex justify-end">
+                              {card.status === 'PUBLISHED' && <Button variant="outline" className="h-8 text-xs py-0" onClick={()=>handleGenerate(student.id,true)} disabled={createCard.isPending || !periodReady} testId={`button-correct-report-card-${card.id}`}>Edit / regenerate</Button>}
                               {card.status === 'DRAFT' && !card.isApproved && <Button variant="outline" className="h-8 text-xs py-0" disabled={publishCard.isPending}
                                 onClick={() => publishCard.mutate({ cardId:card.id,data:{schoolId,decision:'APPROVE'} },{ onSuccess:()=>qc.invalidateQueries({queryKey:getListAcademicReportCardsQueryKey()}) })}>Approve</Button>}
                               {card.status === 'DRAFT' && !card.isApproved && <Button variant="quiet" className="h-8 text-xs py-0" disabled={createCard.isPending || !periodReady} onClick={()=>handleGenerate(student.id)}>Refresh draft</Button>}

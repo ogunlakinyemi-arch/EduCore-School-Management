@@ -1532,7 +1532,8 @@ router.patch("/cards/:cardId/status", async (req, res) => {
     await client.query("BEGIN");
     const card = await client.query(
       `SELECT nc.school_id AS "schoolId",employee."bindingId" AS "employeeBindingId"
-             , nc.status AS "status", nc.student_id AS "studentId"
+             , nc.status AS "status", nc.student_id AS "studentId", nc.replaced_by_card_id AS "replacedByCardId",
+               nc.replaced_at AS "replacedAt",nc.expires_at AS "expiresAt"
        FROM nfc_cards nc
        LEFT JOIN students st ON st.id = nc.student_id
         LEFT JOIN LATERAL (
@@ -1562,13 +1563,31 @@ router.patch("/cards/:cardId/status", async (req, res) => {
     }
     rejectManualCardDeviceIds(req.body);
     rejectManualCardDeviceIds(req.query);
+    if(status==="locked" && !["active","locked"].includes(previousStatus)) {
+      throw new AuthError(409,"Only an active or already locked card can be locked. Invalid cards require their existing activation or replacement workflow.");
+    }
+    if(status==="active" && (card.rows[0].replacedByCardId!=null || card.rows[0].replacedAt!=null ||
+        (card.rows[0].expiresAt && new Date(card.rows[0].expiresAt).getTime()<=Date.now()))) {
+      throw new AuthError(409,"A replaced or expired card cannot be unlocked");
+    }
+    if (status === "active" && previousStatus !== "active" &&
+        (previousStatus !== "locked" || card.rows[0].replacedByCardId != null || card.rows[0].studentId == null)) {
+      throw new AuthError(409, "Only a locked, assigned and unreplaced student card can be unlocked");
+    }
+    if (status === previousStatus) {
+      const unchanged = await client.query(`SELECT id,school_id AS "schoolId",uid,student_id AS "studentId",status,scans,last_scan AS "lastScan"
+        FROM nfc_cards WHERE id=$1`, [cardId]);
+      await client.query("COMMIT");
+      res.json({...unchanged.rows[0],studentName:null,lastScan:dateString(unchanged.rows[0].lastScan)});
+      return;
+    }
     if (terminalCardStatuses.has(previousStatus) && status !== previousStatus) {
       throw new AuthError(409, `A ${previousStatus} card cannot change status`);
     }
     if (status === "active" && card.rows[0].studentId !== null) {
       await assertSchoolHasActiveNfcDevice(client,card.rows[0].schoolId);
       const student = await client.query(
-        `SELECT id FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE`,
+        `SELECT id FROM students WHERE id = $1 AND school_id = $2 AND lower(status)='active' FOR UPDATE`,
         [card.rows[0].studentId, card.rows[0].schoolId],
       );
       if (!student.rows[0]) throw new AuthError(404, "Student not found in card's school");
@@ -1584,7 +1603,7 @@ router.patch("/cards/:cardId/status", async (req, res) => {
       UPDATE nfc_cards
       SET status = $1,
           activated_at = CASE WHEN $1 = 'active' AND activated_at IS NULL THEN NOW() ELSE activated_at END,
-          deactivated_at = CASE WHEN $1 IN ('inactive','lost','blocked','replaced','expired','suspended') THEN COALESCE(deactivated_at, NOW()) ELSE deactivated_at END,
+          deactivated_at = CASE WHEN $1='active' THEN NULL WHEN $1 IN ('inactive','lost','blocked','replaced','expired','suspended') THEN COALESCE(deactivated_at, NOW()) ELSE deactivated_at END,
           replaced_at = CASE WHEN $1 = 'replaced' THEN COALESCE(replaced_at, NOW()) ELSE replaced_at END
       WHERE id = $2
       RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId", status, scans, last_scan AS "lastScan"

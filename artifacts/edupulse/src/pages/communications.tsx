@@ -1,4 +1,5 @@
 import { SchoolThreads } from './school-threads';
+import { PlatformCommunications } from '@/components/platform-communications';
 import { useState, type FormEvent } from 'react';
 import { checkEmergency, EMERGENCY_CONFIRMATION } from './security/security-contract';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,7 +30,7 @@ export function CommunicationsPage() {
   const teacher = !context?.isPlatformOwner && roles.includes('TEACHER');
   const accountant = !context?.isPlatformOwner && roles.includes('ACCOUNTANT');
   const [tab, setTab] = useState<'compose' | 'history' | 'templates' | 'messages'>('compose');
-  if (context?.isPlatformOwner) return <div className="panel p-8" role="alert">School communication is not available to Platform Owners.</div>;
+  if (context?.isPlatformOwner) return <PlatformCommunications />;
   return <div className="fade-up">
     <PageHeading eyebrow="School / Community" title="Communications." description={accountant && !admin && !teacher ? 'Send general finance notices to families and review communication history. This is not a payment confirmation channel.' : 'Write with care. Preview the audience before sending a school message.'} action={<TenantPicker />} />
     {!schoolId ? <EmptyState icon={UsersRound} title="Choose a school" description="Select an authorized school to view its communication workspace." /> : !(admin || teacher || accountant) ? <div className="panel p-8" role="alert">You do not have communication access for this school.</div> : <>

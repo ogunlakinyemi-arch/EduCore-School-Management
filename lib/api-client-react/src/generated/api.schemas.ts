@@ -5650,6 +5650,8 @@ export interface AcademicResultUpdate {
   schoolId: number;
   /** @minimum 0 */
   score?: number;
+  /** School Admin acknowledgement before correcting an approved or published result */
+  confirmedPublishedCorrection?: boolean;
   /**
      * @maxLength 500
      * @nullable
@@ -5767,6 +5769,8 @@ export interface AcademicReportCardInput {
   schoolId: number;
   /** @minimum 1 */
   studentId: number;
+  /** Preserve the prior snapshot in audit history and regenerate a correction draft */
+  confirmedPublishedCorrection?: boolean;
   /** @minimum 1 */
   sessionId: number;
   /** @minimum 1 */
@@ -12973,6 +12977,15 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface PlatformSchoolSelection {
+  /**
+     * @minItems 1
+     * @maxItems 50
+     * @items.minimum 1
+     */
+  schoolIds: number[];
+}
+
 export interface NfcPaymentToken {
   /**
      * @minLength 43
@@ -18445,6 +18458,8 @@ export interface AcademicResultUpdate4b96100 {
   schoolId: number;
   /** @minimum 0 */
   score?: number;
+  /** School Admin acknowledgement before correcting an approved or published result */
+  confirmedPublishedCorrection?: boolean;
   /**
      * @maxLength 500
      * @nullable
@@ -18562,6 +18577,8 @@ export interface AcademicReportCardInput4b96100 {
   schoolId: number;
   /** @minimum 1 */
   studentId: number;
+  /** Preserve the prior snapshot in audit history and regenerate a correction draft */
+  confirmedPublishedCorrection?: boolean;
   /** @minimum 1 */
   sessionId: number;
   /** @minimum 1 */
@@ -20783,6 +20800,82 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type CreatePublishedFeeCorrectionParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type CreatePublishedFeeCorrectionBodyLinesItem = {
+  /** @minimum 1 */
+  categoryId: number;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  amountMinor: number;
+  /** @maxLength 500 */
+  description?: string;
+};
+
+export type CreatePublishedFeeCorrectionBody = {
+  confirmed: true;
+  /** @minimum 1 */
+  expectedVersion: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  requestKey: string;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  lines: CreatePublishedFeeCorrectionBodyLinesItem[];
+};
+
+export type CreatePublishedFeeCorrection200 = {
+  id: number;
+};
+
+export type CreatePublishedFeeCorrection201 = {
+  id: number;
+};
+
+export type PreviewPlatformSchoolMessage200 = { [key: string]: unknown };
+
+export type ListPlatformSchoolMessages200 = { [key: string]: unknown };
+
+export type SendPlatformSchoolMessageBody = {
+  /**
+     * @minItems 1
+     * @maxItems 50
+     * @items.minimum 1
+     */
+  schoolIds: number[];
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  subject: string;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
+  /**
+     * @minLength 16
+     * @maxLength 80
+     */
+  idempotencyKey: string;
+  /** @minimum 1 */
+  confirmedRecipientCount: number;
+};
+
+export type SendPlatformSchoolMessage200 = { [key: string]: unknown };
 
 export type CancelNfcPaymentLink200 = {
   cancelled: boolean;

@@ -34,6 +34,14 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /school/finance/structures/{structureId}/corrections:
+    $ref: "./platform-workspace.yaml#/paths/~1school~1finance~1structures~1{structureId}~1corrections"
+  /platform/communications/preview:
+    $ref: "./platform-workspace.yaml#/paths/~1platform~1communications~1preview"
+  /platform/communications:
+    $ref: "./platform-workspace.yaml#/paths/~1platform~1communications"
+  /platform/exports/schools:
+    $ref: "./platform-workspace.yaml#/paths/~1platform~1exports~1schools"
   /subscriptions/{subscriptionId}/payment-link:
     $ref: "./nfc-payment-links.yaml#/paths/~1subscriptions~1{subscriptionId}~1payment-link"
   /subscriptions/{subscriptionId}/payment-link/cancel:
@@ -8459,6 +8467,7 @@ components:
       properties:
         schoolId: { type: integer, minimum: 1 }
         score: { type: number, minimum: 0 }
+        confirmedPublishedCorrection: { type: boolean, description: School Admin acknowledgement before correcting an approved or published result }
         remark: { type: ["string", "null"], maxLength: 500 }
     AcademicResultsPublicationInput:
       type: object
@@ -8547,6 +8556,7 @@ components:
       properties:
         schoolId: { type: integer, minimum: 1 }
         studentId: { type: integer, minimum: 1 }
+        confirmedPublishedCorrection: { type: boolean, description: Preserve the prior snapshot in audit history and regenerate a correction draft }
         sessionId: { type: integer, minimum: 1 }
         termId: { type: integer, minimum: 1 }
         classId: { type: integer, minimum: 1 }

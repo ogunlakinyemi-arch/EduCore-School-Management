@@ -1,0 +1,113 @@
+Continue development of the existing Yemait EduCore school management system in Development only.
+
+Fix the four areas below. Inspect the relevant existing components, API routes, database models and permissions before editing. Reuse existing services and patterns wherever possible. Do not rebuild unrelated modules.
+
+1. Allow School Admins to edit published items
+
+Problem: After fees, results or other documents are published, School Admins need to correct mistakes or make adjustments, but an Edit action is missing or unavailable.
+
+Implement the following:
+
+- Add an appropriate Edit action to published fee structures, results and other existing document types that support corrections.
+- Restrict editing to authorised users, respecting school tenancy and role permissions.
+- Allow School Admins to save corrections, validate changes and republish the updated version where required.
+- Display a clear confirmation before saving changes that affect published information.
+- Preserve previous versions or an audit record showing who changed the item, when it changed, and what was changed, using existing audit/versioning functionality where available.
+- Ensure fee corrections recalculate affected balances correctly without creating duplicate invoices, duplicate NFC charges or duplicate payments.
+- Ensure corrected results are reflected in the appropriate student and parent views after republishing.
+- Do not silently alter historical payment transactions, issued receipts or audit records.
+- If a document type cannot safely be edited after publication, explain the restriction and provide an appropriate correction or replacement workflow instead of adding a nonfunctional Edit button.
+
+2. Fix Platform Owner NFC card unlocking
+
+Problem: The Platform Owner can lock an NFC card, but clicking Unlock does not restore its permitted operation.
+
+Investigate the existing card-locking and unlocking flow from the interface through the API to the database.
+
+Implement:
+
+- A working Unlock action for cards that are legitimately locked and eligible for unlocking.
+- Correct server-side state updates and persistence.
+- Appropriate Platform Owner permission checks and school-tenant safeguards.
+- Clear success and error messages.
+- Updated card status in the interface without requiring a manual page reload.
+- Safe handling of repeated clicks and already-unlocked cards.
+- An audit record of lock and unlock actions where supported by the existing system.
+
+Verify that unlocking a card restores its authorised operation while preserving the existing security checks. Do not reactivate a replaced, revoked, lost or otherwise invalid card merely because the Unlock button is clicked. Respect existing NFC hardware integration limitations; do not claim physical-device changes occurred unless they were confirmed.
+
+3. Fix Platform Owner settings
+
+Problem: The Platform Owner settings sections—General, Security, Notifications and Data Export—do not respond or perform their intended functions.
+
+Inspect each section and fix its actual functionality.
+
+General
+
+- Ensure the section opens and displays the existing supported settings.
+- Make editable settings save correctly and persist after refreshing the page.
+- Validate inputs and display appropriate success or error messages.
+
+Security
+
+- Ensure the section opens and existing supported security controls respond.
+- Enforce server-side permissions and validation.
+- Do not expose secrets, passwords, authentication tokens or sensitive configuration values.
+- Do not add security controls that are merely visual but have no backend effect.
+
+Notifications
+
+- Ensure the section opens and existing notification preferences can be viewed and updated.
+- Persist changes and make the application respect the supported preferences.
+- Do not change the existing Clerk authentication or Resend email configuration.
+
+Data Export
+
+- Ensure the section opens and the existing supported export workflow works.
+- Allow only authorised Platform Owner access.
+- Validate export requests, show progress or clear completion/error feedback, and provide a working download when an export is ready.
+- Protect sensitive data, respect school tenancy and avoid exposing other schools' data to unauthorised users.
+- Do not claim that an export succeeded unless a valid export file was generated.
+
+Do not invent new settings or change global application behaviour unnecessarily. Reuse the existing settings and export services where possible.
+
+4. Enable Platform Owner messaging to schools
+
+Problem: The Platform Owner needs to communicate with schools through the Communications section.
+
+Implement a working workflow using the existing communication architecture:
+
+- Allow the Platform Owner to select an individual school or an authorised group of schools.
+- Compose and send a message with a subject and message body where supported.
+- Display the recipient school or schools clearly before sending.
+- Validate recipients and message content.
+- Save messages and their delivery/status records using the existing communication services.
+- Show message history and appropriate statuses, such as queued, sent, failed or delivered where that status is actually available.
+- Prevent accidental duplicate submissions and unintended broadcasts.
+- Ensure school recipients can access messages through the existing authorised communication interface.
+- Enforce Platform Owner permissions and school-tenant isolation.
+- Reuse existing in-app notifications and configured communication providers. Do not claim delivery if only queued or saved.
+- Do not introduce a new paid provider or change Clerk, Resend or SMS configuration.
+
+Development and testing constraints
+
+- Work in Development only. Do not modify Production.
+- Inspect relevant files before making changes.
+- Preserve existing billing, NFC subscription pricing and allocation rules.
+- Do not modify unrelated modules or introduce unnecessary database migrations.
+- Run focused tests for each affected workflow: published-item editing, fee recalculation and duplicate prevention, NFC lock/unlock persistence, settings persistence and permissions, and Platform Owner messaging.
+- Do not run the full test suite or a broad application audit.
+- Do not spend time fixing unrelated pre-existing TypeScript errors unless one directly blocks these requested changes.
+- If a feature depends on an unavailable external service or hardware integration, implement what can safely be completed in Development and report the remaining dependency honestly.
+
+Final report
+
+When finished, report:
+
+1. The files changed for each of the four areas.
+2. The specific cause of each problem.
+3. Which workflows now work and how they were verified.
+4. Focused test results.
+5. Any remaining limitations or external dependencies.
+
+Do not mark any feature complete merely because its button is visible. Verify that the action performs the intended operation and that its result persists.

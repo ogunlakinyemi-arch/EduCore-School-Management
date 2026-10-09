@@ -10,8 +10,9 @@ import { WebPushControl } from '@/components/web-push-control';
 import { SchoolCommunicationDefaultsControl } from '@/components/school-communication-defaults';
 import { useSchoolAdminAccess } from '@/components/shared';
 
-export function NotificationSettings({ standalone = false }: { standalone?: boolean }) {
-  const { schoolId } = useTenant();
+export function NotificationSettings({ standalone = false, globalOnly = false }: { standalone?: boolean; globalOnly?: boolean }) {
+  const { schoolId: tenantSchoolId } = useTenant();
+  const schoolId = globalOnly ? 0 : tenantSchoolId;
   const schoolAccess = useSchoolAdminAccess();
   const qc = useQueryClient();
   const [error, setError] = useState('');
@@ -57,7 +58,7 @@ export function NotificationSettings({ standalone = false }: { standalone?: bool
           </div>)}</div>}
       </section>
       <section className="panel h-fit overflow-hidden">
-        <WebPushControl schoolId={schoolId ?? null} />
+        <WebPushControl schoolId={schoolId || null} />
         <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><Smartphone size={22} className="text-[hsl(var(--primary))]" /><h2 className="display-font mt-3 text-xl font-bold">Push device readiness</h2><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Device references are for development testing. Registering one does not subscribe this browser to Web Push or prove that any real notification will arrive.</p></div>
         <div className="p-5 md:p-6">
           <label className="block text-xs font-bold" htmlFor="device-reference">Opaque test device reference</label>

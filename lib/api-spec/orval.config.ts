@@ -37,6 +37,7 @@ export default defineConfig({
             "./subscription-enforcement.yaml",
             "./exam-record.yaml",
             "./student-nfc.yaml",
+            "./platform-workspace.yaml",
             "./partner-nfc.yaml",
             "./nfc-payment-links.yaml",
           ],
@@ -71,6 +72,7 @@ export default defineConfig({
       parserOptions: {
         externalRefs: {
           allow: [
+            "./platform-workspace.yaml",
             "./employee-nfc-feedback.yaml",
             "./payroll-settlement-feedback.yaml",
             "./school-core-feedback.yaml",

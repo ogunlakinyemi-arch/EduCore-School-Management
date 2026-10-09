@@ -31,6 +31,11 @@ import finance from "./finance";
 import obligations from "./student-nfc-obligations";
 import paymentLinks from "./nfc-payment-links";
 import subscriptions from "./edupulse";
+import academicResults from "./academic-results";
+import platformWorkspace from "./platform-workspace";
+import communicationInbox from "./communication-inbox";
+import {studentNfcCardLookupSql} from "../lib/nfc-device-first";
+import {queueCommunicationNotification} from "../services/communication-service";
 import {finalizeVerifiedStudentSubscriptionPayment} from "../lib/student-subscription-billing";
 import {ensureStudentNfcSubscription} from "../lib/student-nfc-obligations";
 import {selectedFeeAmount} from "../services/fee-line-balances";
@@ -43,8 +48,8 @@ const actor=(user:number,role:string,school:number|null=1)=>({
   user:{id:user,clerkUserId:`nfc-native-${user}`,email:`nfc-native-${user}@example.com`,firstName:"NFC",lastName:"Fixture",phone:null,status:"ACTIVE"},
   roles:[{id:user,role,schoolId:school,status:"ACTIVE"}],
 });
-const call=async(path:string,body?:unknown,headers:Record<string,string>={})=>{
-  const response=await fetch(`${base}/api${path}`,{method:body===undefined?"GET":"POST",headers:{"Content-Type":"application/json",...headers},
+const call=async(path:string,body?:unknown,headers:Record<string,string>={},method=body===undefined?"GET":"POST")=>{
+  const response=await fetch(`${base}/api${path}`,{method,headers:{"Content-Type":"application/json",...headers},
     body:body===undefined?undefined:JSON.stringify(body)});
   return{status:response.status,body:await response.json() as any};
 };
@@ -110,7 +115,7 @@ beforeAll(async()=>{
       VALUES(1,100,1,'Tuition','Tuition',800000),(1,100,2,'NfC ID Card subscription','NfC ID Card subscription',500000);
     SELECT setval('fee_invoices_id_seq',100);
   `);
-  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations,paymentLinks);
+  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations,paymentLinks,academicResults,platformWorkspace,communicationInbox);
   app.use((error:any,_req:any,res:any,_next:any)=>res.status(error instanceof AuthError?error.statusCode:500).json({error:error.message}));
   server=app.listen(0,"127.0.0.1");await new Promise<void>(r=>server.once("listening",()=>r()));
   base=`http://127.0.0.1:${(server.address() as any).port}`;
@@ -122,6 +127,161 @@ afterAll(async()=>{
   if(directory)rmSync(directory,{recursive:true,force:true});
   vi.unstubAllEnvs();
 },15000);
+
+it.skipIf(!snapshot)("verifies requested correction workspace persistence, permissions, unlock and message replay in PostgreSQL",async()=>{
+  const legacyBefore=(await q("SELECT md5(row_to_json(i)::text) AS hash FROM fee_invoices i WHERE id=100")).rows[0].hash;
+  await q(`INSERT INTO school_classes(id,school_id,name,section) VALUES(3,1,'SS3','C');
+    INSERT INTO school_memberships(user_id,school_id,role) VALUES(8,1,'STUDENT');
+    INSERT INTO students(id,school_id,admission_no,first_name,last_name,gender,class_name,section,user_id,status)
+      VALUES(9,1,'CORRECTION9','Correction','Fixture','Male','SS3','C',8,'active');
+    INSERT INTO parent_student_relationships(parent_id,student_id,relationship_type,status) VALUES(1,9,'Guardian','ACTIVE');
+    INSERT INTO subjects(id,school_id,name,code) VALUES(1,1,'Correction Mathematics','COR_MATH');
+    INSERT INTO academic_assessment_types(id,school_id,name,code) VALUES(1,1,'Exam','EXAM');
+    INSERT INTO academic_grading_rules(school_id,min_score,max_score,grade,grade_point,remark) VALUES(1,0,100,'A',5,'Excellent');
+    INSERT INTO student_class_assignments(id,school_id,student_id,academic_session_id,academic_term_id,school_class_id,section,is_current,start_date)
+      VALUES(1,1,9,1,1,3,'C',true,CURRENT_DATE-10);
+    INSERT INTO class_subjects(school_id,academic_session_id,academic_term_id,school_class_id,subject_id,employee_id,section)
+      VALUES(1,1,1,3,1,1,'C');
+    INSERT INTO teacher_class_assignments(school_id,employee_id,academic_session_id,school_class_id,section,start_date,status,assignment_type)
+      VALUES(1,1,1,3,'C',CURRENT_DATE-20,'ACTIVE','CLASS_TEACHER');
+    INSERT INTO academic_assessments(id,school_id,academic_session_id,academic_term_id,school_class_id,section,subject_id,
+      assessment_type_id,teacher_employee_id,created_by,title,description,assessment_date,max_score,status)
+      VALUES(1,1,1,1,3,'C',1,1,1,2,'Correction exam','Disposable fixture',CURRENT_DATE,100,'PUBLISHED');
+    INSERT INTO academic_results(id,school_id,assessment_id,student_id,student_class_assignment_id,teacher_employee_id,academic_session_id,
+      academic_term_id,school_class_id,section_snapshot,subject_id,score,max_score,grade,grade_point,remark,status,review_status,reviewed_by,reviewed_at,created_by,published_by,published_at)
+      VALUES(1,1,1,9,1,1,1,1,3,'C',1,80,100,'A',5,'Excellent','PUBLISHED','APPROVED',2,NOW(),5,2,NOW());
+  `);
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  const original=await call("/school/finance/structures?schoolId=1",{sessionId:1,termId:1,classId:3,section:"C",lines:[{categoryId:1,amountMinor:3400000}]});
+  expect(original.status,JSON.stringify(original.body)).toBe(201);
+  expect((await call(`/school/finance/structures/${original.body.id}/publish?schoolId=1`,{})).status).toBe(200);
+  const originalInvoice=(await q("SELECT id,total_minor FROM fee_invoices WHERE student_id=9")).rows[0];
+  expect(originalInvoice.total_minor).toBe(3400000);
+  const correctionBody={confirmed:true,expectedVersion:original.body.version,reason:"Correct published tuition amount",requestKey:"d71b5f43-7595-4a19-8185-66aeead03409",lines:[{categoryId:1,amountMinor:3500000}]};
+  const correctionPath=`/school/finance/structures/${original.body.id}/corrections?schoolId=1`;
+  const correction=await call(correctionPath,correctionBody);
+  expect(correction.status,JSON.stringify(correction.body)).toBe(201);
+  const replay=await call(correctionPath,correctionBody);
+  expect(replay.status).toBe(200);expect(replay.body.id).toBe(correction.body.id);
+  expect((await call(correctionPath,{...correctionBody,reason:"Different request payload"})).status).toBe(409);
+  const correctionPublished=await call(`/school/finance/structures/${correction.body.id}/publish?schoolId=1`,{});
+  expect(correctionPublished.status,JSON.stringify(correctionPublished.body)).toBe(200);
+  expect((await call(`/school/finance/structures/${correction.body.id}/publish?schoolId=1`,{})).status).toBe(200);
+  const updatedInvoices=(await q("SELECT id,total_minor,outstanding_minor,structure_id FROM fee_invoices WHERE student_id=9")).rows;
+  expect(updatedInvoices).toEqual([{id:originalInvoice.id,total_minor:3500000,outstanding_minor:3500000,structure_id:correction.body.id}]);
+  expect((await call(`/school/finance/structures/${original.body.id}/publish?schoolId=1`,{})).status).toBe(409);
+  expect((await call("/school/finance/assignments?schoolId=1",{structureId:original.body.id,studentId:9,issueDate:new Date().toISOString().slice(0,10),dueDate:new Date().toISOString().slice(0,10)})).status).toBe(409);
+  expect(Number((await q("SELECT count(*) FROM subscriptions WHERE student_id=9")).rows[0].count)).toBe(1);
+  expect((await call("/student-nfc/obligations?schoolId=1")).body.rows.find((r:any)=>r.studentId===9))
+    .toMatchObject({amountMinor:500000,ordinaryFeesMinor:3500000,totalMinor:4000000});
+  expect((await q("SELECT amount_minor FROM fee_structure_lines WHERE structure_id=$1",[original.body.id])).rows[0].amount_minor).toBe(3400000);
+  expect((await call("/school/finance/structures/100/corrections?schoolId=1",{...correctionBody,expectedVersion:1,requestKey:"abd97e69-2404-42c3-86f1-236c3aef4434"})).status).toBe(409);
+
+  const reportInput={schoolId:1,studentId:9,sessionId:1,termId:1,classId:3,section:"C"};
+  const report=await call("/academic/report-cards",reportInput);
+  expect(report.status,JSON.stringify(report.body)).toBe(201);
+  const publishPath=`/academic/report-cards/${report.body.id}/publish`;
+  expect((await call(publishPath,{schoolId:1,decision:"APPROVE"})).status).toBe(200);
+  expect((await call(publishPath,{schoolId:1,decision:"PUBLISH"})).status).toBe(200);
+  state.actor=actor(5,"TEACHER");
+  expect((await call("/academic/results/1",{schoolId:1,score:65,confirmedPublishedCorrection:true},{},"PATCH")).status).toBe(409);
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  expect((await call("/academic/results/1",{schoolId:1,score:65},{},"PATCH")).status).toBe(409);
+  const updatedResult=await call("/academic/results/1",{schoolId:1,score:65,confirmedPublishedCorrection:true},{},"PATCH");
+  expect(updatedResult.status,JSON.stringify(updatedResult.body)).toBe(200);expect(updatedResult.body.status).toBe("SUBMITTED");
+  expect(Number((await q("SELECT score FROM academic_results WHERE id=1")).rows[0].score)).toBe(65);
+  expect((await call("/academic/report-cards",reportInput)).status).toBe(409);
+  const regenerated=await call("/academic/report-cards",{...reportInput,confirmedPublishedCorrection:true});
+  expect(regenerated.status,JSON.stringify(regenerated.body)).toBe(201);expect(regenerated.body.id).toBe(report.body.id);
+  expect(regenerated.body.status).toBe("DRAFT");
+  expect((await call(publishPath,{schoolId:1,decision:"PUBLISH"})).status).toBe(409);
+  state.actor=actor(3,"PARENT");
+  expect((await call("/academic/parents/children/9/report-cards?schoolId=1")).body).toEqual([]);
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  expect((await call("/academic/results/1/review",{schoolId:1,decision:"APPROVE"})).status).toBe(200);
+  expect((await call(publishPath,{schoolId:1,decision:"APPROVE"})).status).toBe(200);
+  expect((await call(publishPath,{schoolId:1,decision:"PUBLISH"})).status).toBe(200);
+  for(const identity of [actor(3,"PARENT"),actor(8,"STUDENT")]) {
+    state.actor=identity;
+    const path=identity.user.id===3?"/academic/parents/children/9/report-cards?schoolId=1":"/academic/students/me/report-cards?schoolId=1";
+    const cards=await call(path);expect(cards.status,JSON.stringify(cards.body)).toBe(200);
+    expect(Number(cards.body[0].lines[0].score)).toBe(65);
+  }
+  const savedHistory=(await q("SELECT metadata FROM audit_logs WHERE action='Regenerated published academic report card for correction'")).rows[0];
+  expect(Number(savedHistory.metadata.beforeLines[0].score)).toBe(80);
+  expect(Number((await q("SELECT count(*) FROM academic_report_cards WHERE student_id=9")).rows[0].count)).toBe(1);
+
+  await q(`INSERT INTO platform_devices(id,school_id,name,serial_number,device_type,status,configuration_status)
+    VALUES(12,1,'Correction reader','CORRECTION-READER','NFC','ACTIVE','CONFIGURED');
+    INSERT INTO device_school_bindings(device_id,school_id) VALUES(12,1);
+    INSERT INTO nfc_cards(id,school_id,uid,student_id,status,issued_at,activated_at,deactivated_at,expires_at)
+      VALUES(12,1,'CORRECTION-NFC12',9,'locked',NOW(),NOW(),NOW(),NOW()+interval '70 days');`);
+  state.actor=actor(1,"PLATFORM_OWNER",null);
+  const unlocked=await call("/cards/12/status?schoolId=1",{status:"active"},{},"PATCH");
+  expect(unlocked.status,JSON.stringify(unlocked.body)).toBe(200);
+  expect((await q("SELECT status,deactivated_at FROM nfc_cards WHERE id=12")).rows[0]).toEqual({status:"active",deactivated_at:null});
+  expect((await q(studentNfcCardLookupSql,["CORRECTION-NFC12",1])).rows).toHaveLength(1);
+  const auditCount=Number((await q("SELECT count(*) FROM audit_logs WHERE record_id=12")).rows[0].count);
+  expect(auditCount).toBeGreaterThan(0);
+  expect((await call("/cards/12/status?schoolId=1",{status:"active"},{},"PATCH")).status).toBe(200);
+  expect(Number((await q("SELECT count(*) FROM audit_logs WHERE record_id=12")).rows[0].count)).toBe(auditCount);
+  expect((await call("/cards/12/status?schoolId=2",{status:"locked"},{},"PATCH")).status).toBe(404);
+  for(const invalid of ["lost","revoked","replaced","expired"]) {
+    await q("UPDATE nfc_cards SET status=$1 WHERE id=12",[invalid]);
+    expect((await call("/cards/12/status?schoolId=1",{status:"locked"},{},"PATCH")).status).toBe(409);
+    expect((await call("/cards/12/status?schoolId=1",{status:"active"},{},"PATCH")).status).toBe(409);
+  }
+  await q("UPDATE nfc_cards SET status='locked',expires_at=NOW()-interval '1 day' WHERE id=12");
+  expect((await call("/cards/12/status?schoolId=1",{status:"active"},{},"PATCH")).status).toBe(409);
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  expect((await call("/cards/12/status?schoolId=1",{status:"active"},{},"PATCH")).status).toBe(403);
+  state.actor=actor(1,"PLATFORM_OWNER",null);
+  const preference=await call("/communication/preferences",{schoolId:null,category:"ANNOUNCEMENT",channel:"IN_APP",enabled:false},{},"PUT");
+  expect(preference.status,JSON.stringify(preference.body)).toBe(200);
+  expect((await call("/communication/preferences")).body.preferences.find((p:any)=>p.category==="ANNOUNCEMENT"&&p.channel==="IN_APP").enabled).toBe(false);
+  expect(await queueCommunicationNotification(state.db,{schoolId:null,recipientUserId:1,category:"ANNOUNCEMENT",
+    eventKey:"NATIVE_OWNER_PREFERENCE_CHECK",subject:"Suppressed preference check",body:"Must not create a notification",link:"/settings",channels:["IN_APP"],useSchoolDefaults:false})).toBeNull();
+  expect((await call("/communication/preferences",{schoolId:null,category:"SECURITY",channel:"IN_APP",enabled:false},{},"PUT")).status).toBe(400);
+  const preview=await call("/platform/communications/preview",{schoolIds:[1,2]});
+  expect(preview.status,JSON.stringify(preview.body)).toBe(200);expect(preview.body.recipientCount).toBe(2);
+  expect((await call("/platform/communications/preview",{schoolIds:[1,1]})).status).toBe(400);
+  const message={schoolIds:[1,2],subject:"Development correction notice",body:"Disposable test message; no external delivery.",idempotencyKey:"owner-native-message-0001",confirmedRecipientCount:2};
+  expect((await call("/platform/communications",{...message,confirmedRecipientCount:3})).status).toBe(409);
+  const sends=await Promise.all([call("/platform/communications",message),call("/platform/communications",message)]);
+  expect(sends.map(s=>s.status)).toEqual([200,200]);
+  expect(sends[0].body.campaigns.map((c:any)=>c.id)).toEqual(sends[1].body.campaigns.map((c:any)=>c.id));
+  expect(Number((await q("SELECT count(*) FROM communication_campaigns")).rows[0].count)).toBe(2);
+  expect((await call("/platform/communications",{...message,body:"Different message under the same key"})).status).toBe(409);
+  const history=await call("/platform/communications");
+  expect(history.status).toBe(200);expect(history.body.campaigns).toHaveLength(2);
+  expect(history.body.campaigns.every((c:any)=>c.deliveryStates.some((d:any)=>d.status==="SENT"))).toBe(true);
+  const csv=await fetch(`${base}/api/platform/exports/schools`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({schoolIds:[1]})});
+  expect(csv.status).toBe(200);expect(csv.headers.get("content-type")).toContain("text/csv");
+  const csvText=await csv.text();expect(csvText).toContain("NFC Native A");expect(csvText).not.toContain("NFC Native B");expect(csvText).not.toContain("@example.com");
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  expect((await call("/platform/communications/preview",{schoolIds:[1]})).status).toBe(403);
+  expect((await call("/platform/exports/schools",{schoolIds:[1]})).status).toBe(403);
+  const inbox=await call("/communication/notifications?schoolId=1");
+  expect(inbox.status,JSON.stringify(inbox.body)).toBe(200);
+  expect(JSON.stringify(inbox.body)).toContain(message.subject);
+  state.actor=actor(6,"SCHOOL_ADMIN",2);
+  expect([403,404]).toContain((await call("/communication/notifications?schoolId=1")).status);
+  state.actor=actor(1,"PLATFORM_OWNER",null);
+  expect((await call("/platform/exports/schools",{schoolIds:[999]})).status).toBe(404);
+  const simultaneousMessage={...message,idempotencyKey:message.idempotencyKey+"-concurrent"};
+  const concurrentMessages=await Promise.all([call("/platform/communications",simultaneousMessage),call("/platform/communications",simultaneousMessage)]);
+  expect(concurrentMessages.map(r=>r.status)).toEqual([200,200]);
+  expect(concurrentMessages[0].body.campaigns.map((c:any)=>c.id).sort()).toEqual(concurrentMessages[1].body.campaigns.map((c:any)=>c.id).sort());
+  expect(Number((await q("SELECT count(*) FROM communication_campaigns WHERE idempotency_key=$1",[simultaneousMessage.idempotencyKey])).rows[0].count)).toBe(2);
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  const nextCorrection={...correctionBody,expectedVersion:2,requestKey:"4b33700d-778d-4eca-9a0d-714cbfcf94bf"};
+  const nextPath=`/school/finance/structures/${correction.body.id}/corrections?schoolId=1`;
+  const concurrentCorrections=await Promise.all([call(nextPath,nextCorrection),call(nextPath,nextCorrection)]);
+  expect(concurrentCorrections.map(r=>r.status).sort()).toEqual([200,201]);
+  expect(concurrentCorrections[0].body.id).toBe(concurrentCorrections[1].body.id);
+  expect((await q("SELECT md5(row_to_json(i)::text) AS hash FROM fee_invoices i WHERE id=100")).rows[0].hash).toBe(legacyBefore);
+  expect(state.providerCalls).toHaveLength(0);
+},40000);
 
 it.skipIf(!snapshot)("executes automatic attachment, scoped views, canonical uniqueness, verified payment/allocation/replay and history preservation",async()=>{
   const history=await q("SELECT md5(row_to_json(i)::text) AS hash FROM fee_invoices i WHERE id=100");

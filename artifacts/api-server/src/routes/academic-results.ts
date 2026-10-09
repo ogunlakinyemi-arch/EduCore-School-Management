@@ -83,10 +83,16 @@ function auditSql(actor: ReturnType<typeof getUserContext>, schoolId: number, ac
     ],
   };
 }
-async function audit(req: Request, schoolId: number, action: string, recordId: number, client: any = pool) {
+async function audit(req: Request, schoolId: number, action: string, recordId: number, client: any = pool, metadata?: unknown) {
   const query = auditSql(getUserContext(req), schoolId, action, recordId);
-  await client.query(query.sql, query.values);
+  if(metadata !== undefined) {
+    await client.query(query.sql.replace("event_type,result)","event_type,result,metadata)")
+      .replace("'SUCCESS')","'SUCCESS',$8::jsonb)"),[...query.values,JSON.stringify(metadata)]);
+  }else await client.query(query.sql, query.values);
 }
+const freshReportApproval = `AND al.id>COALESCE((SELECT MAX(c.id) FROM audit_logs c
+  WHERE c.school_id=al.school_id AND c.record_id=al.record_id
+    AND c.action IN ('Regenerated published academic report card for correction','Invalidated report-card approval after result correction')),0)`;
 async function auditResultReview(
   req: Request,
   schoolId: number,
@@ -207,7 +213,7 @@ const cardSelect = `rc.id,rc.school_id AS "schoolId",rc.student_id AS "studentId
   rc.student_class_assignment_id AS "studentClassAssignmentId",rc.school_class_id AS "classId",
   rc.class_name_snapshot AS "className",rc.section_snapshot AS section,rc.status,
   rc.teacher_remark AS "teacherRemark",rc.school_remark AS "schoolRemark",rc.published_by AS "publishedBy",
-  EXISTS(SELECT 1 FROM audit_logs al WHERE al.school_id=rc.school_id AND al.record_id=rc.id AND al.action='Approved academic report card') AS "isApproved",
+  EXISTS(SELECT 1 FROM audit_logs al WHERE al.school_id=rc.school_id AND al.record_id=rc.id AND al.action='Approved academic report card' ${freshReportApproval}) AS "isApproved",
   CASE WHEN rc.status='PUBLISHED' THEN rc.published_at ELSE NULL END AS "publishedAt"`;
 const cardReturning = `id,school_id AS "schoolId",student_id AS "studentId",
   academic_session_id AS "sessionId",academic_term_id AS "termId",
@@ -465,8 +471,8 @@ router.post("/academic/results", run(async (req, res) => {
 }));
 router.patch("/academic/results/:resultId", run(async (req, res) => {
   const body = bodyObject(req.body);
-  const schoolId = authorizeSchool(req, body.schoolId, ["TEACHER"]);
-  assertSchoolOperationalAccess(req, schoolId, ["TEACHER"] as any);
+  const schoolId = authorizeSchool(req, body.schoolId, ["TEACHER",...managerRoles]);
+  assertSchoolOperationalAccess(req, schoolId, ["TEACHER",...managerRoles] as any);
   const resultId = id(req.params.resultId, "resultId");
   const actor = getUserContext(req);
   const client = await pool.connect();
@@ -478,9 +484,11 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
     const existing = await client.query(`SELECT * FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`, [resultId, schoolId]);
     const current = existing.rows[0];
     if (!current) throw new AuthError(404, "Result not found");
+    if(current.status==="ARCHIVED")throw new AuthError(409,"Archived results cannot be edited; use the existing replacement-assessment workflow");
     const admin = hasRole(req, managerRoles, schoolId);
     if (current.status === "PUBLISHED" || current.review_status === "APPROVED") {
-      throw new AuthError(409, "Approved or published results are immutable");
+      if(!admin || body.confirmedPublishedCorrection!==true)
+        throw new AuthError(409, "Only the School Admin may confirm a published/approved result correction. Review and republish the corrected report card.");
     }
     if (!admin && !["DRAFT"].includes(current.status)) {
       throw new AuthError(409, "Submitted results cannot be edited until the School Admin returns them for correction");
@@ -521,15 +529,21 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
     }
     updated = await client.query(
       `UPDATE academic_results SET score=$1,remark=$2,grade=$3,grade_point=$4,
-          status=CASE WHEN status='PUBLISHED' THEN status ELSE 'DRAFT' END,
-          review_status=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN review_status ELSE 'NOT_REVIEWED' END,
-          review_comment=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN review_comment ELSE NULL END,
-          reviewed_by=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN reviewed_by ELSE NULL END,
-          reviewed_at=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN reviewed_at ELSE NULL END,updated_at=NOW()
+          status=CASE WHEN status IN ('SUBMITTED','PUBLISHED') OR review_status='APPROVED' THEN 'SUBMITTED' ELSE 'DRAFT' END,
+          review_status=CASE WHEN status<>'PUBLISHED' AND review_status='RETURNED' THEN review_status ELSE 'NOT_REVIEWED' END,
+          review_comment=CASE WHEN status<>'PUBLISHED' AND review_status='RETURNED' THEN review_comment ELSE NULL END,
+          reviewed_by=CASE WHEN status<>'PUBLISHED' AND review_status='RETURNED' THEN reviewed_by ELSE NULL END,
+          reviewed_at=CASE WHEN status<>'PUBLISHED' AND review_status='RETURNED' THEN reviewed_at ELSE NULL END,updated_at=NOW()
         WHERE id=$5 AND school_id=$6 RETURNING ${resultReturning}`,
       [score,remark ?? grade.remark,grade.grade,grade.gradePoint,resultId,schoolId],
     );
-    await audit(req, schoolId, current.status === "PUBLISHED" ? "Corrected published academic result" : "Updated academic result", resultId, client);
+    await audit(req, schoolId, current.status === "PUBLISHED" ? "Corrected published academic result" : "Updated academic result", resultId, client,
+      {before:current,after:updated.rows[0],requiresReviewAndRepublication:current.status==="PUBLISHED"});
+    const affectedCards=await client.query(`SELECT id FROM academic_report_cards WHERE school_id=$1 AND student_id=$2
+      AND academic_session_id=$3 AND academic_term_id=$4 AND status<>'ARCHIVED'`,
+      [schoolId,current.student_id,current.academic_session_id,current.academic_term_id]);
+    for(const affected of affectedCards.rows)await audit(req,schoolId,"Invalidated report-card approval after result correction",affected.id,client,
+      {resultId,before:current,after:updated.rows[0]});
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
@@ -817,11 +831,23 @@ router.post("/academic/report-cards", run(async (req, res) => {
     const existing = await client.query(`SELECT ${cardReturning} FROM academic_report_cards
       WHERE school_id=$1 AND student_id=$2 AND academic_session_id=$3 AND academic_term_id=$4 FOR UPDATE`,
       [schoolId,studentId,sessionId,termId]);
-    if (existing.rows[0]?.status === "PUBLISHED" || existing.rows[0]?.status === "ARCHIVED") {
-      throw new AuthError(409, "Published or archived report cards cannot be regenerated");
+    if (existing.rows[0]?.status === "ARCHIVED") {
+      throw new AuthError(409, "Archived report cards cannot be regenerated");
     }
-    const approved = existing.rows[0] && await client.query(`SELECT 1 FROM audit_logs WHERE school_id=$1 AND record_id=$2 AND action='Approved academic report card'`, [schoolId,existing.rows[0].id]);
-    if (approved?.rows.length) throw new AuthError(409, "Approved report cards cannot be regenerated");
+    const publishedCorrection=existing.rows[0]?.status==="PUBLISHED" && body.confirmedPublishedCorrection===true;
+    if(existing.rows[0]?.status==="PUBLISHED" && !publishedCorrection)
+      throw new AuthError(409,"Confirm the published report-card correction before regenerating");
+    const approved = existing.rows[0] && await client.query(`SELECT 1 FROM audit_logs al WHERE al.school_id=$1 AND al.record_id=$2 AND al.action='Approved academic report card' ${freshReportApproval}`, [schoolId,existing.rows[0].id]);
+    if (approved?.rows.length && !publishedCorrection) throw new AuthError(409, "Approved report cards cannot be regenerated");
+    if(publishedCorrection) {
+      await guardManagedLegacyResource(client,schoolId,"card",existing.rows[0].id);
+      const oldLines=(await client.query("SELECT * FROM academic_report_card_lines WHERE school_id=$1 AND report_card_id=$2 ORDER BY id",[schoolId,existing.rows[0].id])).rows;
+      await audit(req,schoolId,"Regenerated published academic report card for correction",existing.rows[0].id,client,
+        {before:existing.rows[0],beforeLines:oldLines,requiresReviewAndRepublication:true});
+      const reset=await client.query(`UPDATE academic_report_cards SET status='DRAFT',published_by=NULL,published_at=NULL,updated_at=NOW()
+        WHERE id=$1 AND school_id=$2 RETURNING ${cardReturning}`,[existing.rows[0].id,schoolId]);
+      existing.rows[0]=reset.rows[0];
+    }
     const available = await client.query(`SELECT count(*)::int AS count FROM academic_results WHERE school_id=$1 AND student_id=$2
       AND academic_session_id=$3 AND academic_term_id=$4 AND student_class_assignment_id=$5 AND status<>'ARCHIVED'
       AND grade IS NOT NULL AND grade_point IS NOT NULL AND remark IS NOT NULL`,
@@ -915,7 +941,7 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
       res.json({ ...card.rows[0], isApproved:true, lines:lines.rows, resultState:"COMPLETE" });
       return;
     }
-    const approval = await client.query(`SELECT 1 FROM audit_logs WHERE school_id=$1 AND record_id=$2 AND action='Approved academic report card'`, [schoolId,cardId]);
+    const approval = await client.query(`SELECT 1 FROM audit_logs al WHERE al.school_id=$1 AND al.record_id=$2 AND al.action='Approved academic report card' ${freshReportApproval}`, [schoolId,cardId]);
     if (!approval.rows.length) throw new AuthError(409, "Approve the compiled report card before publishing");
     await assertCompilationReady(client,{schoolId,studentId:Number(current.student_id),
       sessionId:Number(current.academic_session_id),termId:Number(current.academic_term_id)});

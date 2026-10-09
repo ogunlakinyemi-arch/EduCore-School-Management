@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions, isSystemNfcCategory } from "../lib/student-nfc-obligations";
 import { assignPublishedClassFees } from "../services/fee-publication";
+import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
 import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
 import { Router, type IRouter, type Request } from "express";
 import {
@@ -422,6 +423,7 @@ async function createInvoiceForStudent(
   createdBy: number,
   bulk = false,
 ) {
+  await assertFeeStructureNotSuperseded(client,schoolId,Number(structure.id));
   await ensureStudentNfcSubscription(client,schoolId,student.id,structure.academic_session_id,structure.academic_term_id);
   if(lines.some(l=>isSystemNfcCategory(l.category_name_snapshot??"") || isSystemNfcCategory(l.description_snapshot??""))) {
     throw new AuthError(403,"Legacy school-configured NFC fees cannot be assigned again; use an ordinary-fees-only schedule. NFC is attached automatically.");
@@ -615,6 +617,35 @@ router.post("/school/finance/structures", async (req, res): Promise<void> => {
   } finally { client.release(); }
 });
 
+router.post("/school/finance/structures/:structureId/corrections", async(req,res):Promise<void> => {
+  const client=await pool.connect();
+  try {
+    const schoolId=schoolIdForMutation(req,PublishFeeStructureQueryParams,["SCHOOL_ADMIN"]);
+    const structureId=Number(req.params.structureId);
+    if(!Number.isSafeInteger(structureId)||structureId<1)throw new AuthError(400,"Invalid structure");
+    const parsedInput=feeCorrectionInput.safeParse(req.body);
+    if(!parsedInput.success)throw new AuthError(400,parsedInput.error.issues[0]?.message??"Invalid correction");
+    const input=parsedInput.data;
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-correction-request:${schoolId}:${input.requestKey}`]);
+    const prior=(await client.query(`SELECT record_id AS id,metadata FROM audit_logs WHERE school_id=$1 AND module='Finance'
+      AND action='fee structure: Created published fee correction draft' AND metadata->>'correctionRequestKey'=$2 ORDER BY id LIMIT 1`,[schoolId,input.requestKey])).rows[0];
+    const requestShape=JSON.stringify({structureId,...input});
+    if(prior) {
+      if(prior.metadata?.requestShape!==requestShape)throw new AuthError(409,"This correction request key belongs to different changes");
+      await client.query("COMMIT");res.json({id:Number(prior.id)});return;
+    }
+    const result=await createPublishedFeeCorrection(client,schoolId,structureId,getUserContext(req).user.id,input);
+    await audit(req,client,schoolId,"Created published fee correction draft","fee structure",result.draftId,{
+      correctionOfStructureId:structureId,correctionRequestKey:input.requestKey,requestShape,reason:input.reason,
+      before:result.source,beforeLines:result.oldLines,afterLines:input.lines,
+    });
+    await ensureClassNfcSubscriptions(client,schoolId,result.source.academic_session_id,result.source.academic_term_id,result.source.school_class_id,result.source.section);
+    await client.query("COMMIT");
+    res.status(201).json({id:result.draftId});
+  }catch(error){await client.query("ROLLBACK").catch(()=>undefined);fail(res,error);}finally{client.release();}
+});
+
 router.post("/school/finance/structures/:structureId/publish", async (req, res): Promise<void> => {
   const client = await pool.connect();
   try {
@@ -622,6 +653,7 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     const schoolId = schoolIdForMutation(req, PublishFeeStructureQueryParams, ["SCHOOL_ADMIN"]);
     const context = getUserContext(req);
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-structure:${schoolId}:${structureId}`]);
     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended('fee-publication:'||school_id||':'||academic_session_id||':'||academic_term_id||':'||school_class_id,0))
       FROM fee_structures WHERE id=$1 AND school_id=$2`,[structureId,schoolId]);
     const current = await client.query(
@@ -638,11 +670,19 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
       return;
     }
     if (current.rows[0].status !== "DRAFT") throw new AuthError(409, "Only a draft fee structure can be published");
-    const conflict = await client.query(`SELECT 1 FROM fee_structures candidate
+    const conflict = await client.query(`WITH RECURSIVE corrected_predecessors(id) AS (
+      SELECT (a.metadata->>'correctionOfStructureId')::int FROM audit_logs a
+        WHERE a.school_id=$2 AND a.record_id=$1 AND a.module='Finance' AND a.action='fee structure: Created published fee correction draft'
+      UNION
+      SELECT (a.metadata->>'correctionOfStructureId')::int FROM audit_logs a
+        JOIN corrected_predecessors p ON p.id=a.record_id
+        WHERE a.school_id=$2 AND a.module='Finance' AND a.action='fee structure: Created published fee correction draft'
+    ) SELECT 1 FROM fee_structures candidate
       JOIN fee_structure_lines cl ON cl.structure_id=candidate.id AND cl.school_id=candidate.school_id
       JOIN fee_structures prior ON prior.school_id=candidate.school_id AND prior.academic_session_id=candidate.academic_session_id
         AND prior.academic_term_id=candidate.academic_term_id AND prior.school_class_id=candidate.school_class_id
         AND prior.status='PUBLISHED' AND prior.id<>candidate.id
+        AND NOT EXISTS(SELECT 1 FROM corrected_predecessors p WHERE p.id=prior.id)
         AND (prior.section IS NULL OR candidate.section IS NULL OR prior.section=candidate.section)
       JOIN fee_structure_lines pl ON pl.structure_id=prior.id AND pl.school_id=prior.school_id
         AND pl.category_id=cl.category_id AND lower(btrim(pl.description_snapshot))=lower(btrim(cl.description_snapshot))
@@ -673,6 +713,7 @@ router.post("/school/finance/assignments", async (req, res): Promise<void> => {
     const body = parsed(AssignFeeStructureBody, req.body);
     const context = getUserContext(req);
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-structure:${schoolId}:${body.structureId}`]);
     const found = await client.query(
       `SELECT id FROM fee_invoices WHERE school_id=$1 AND student_id=$2 AND structure_id=$3`,
       [schoolId, body.studentId, body.structureId],
@@ -726,6 +767,7 @@ router.post("/school/finance/bulk-assignments", async (req, res): Promise<void> 
     const body = parsed(BulkAssignFeeStructureBody, req.body);
     const context = getUserContext(req);
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-structure:${schoolId}:${body.structureId}`]);
     const structureResult = await client.query(
       `SELECT fs.*,t.start_date::text AS term_start_date,t.end_date::text AS term_end_date
        FROM fee_structures fs

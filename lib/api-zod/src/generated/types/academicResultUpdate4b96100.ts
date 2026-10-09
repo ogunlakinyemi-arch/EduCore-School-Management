@@ -11,6 +11,8 @@ export interface AcademicResultUpdate4b96100 {
   schoolId: number;
   /** @minimum 0 */
   score?: number;
+  /** School Admin acknowledgement before correcting an approved or published result */
+  confirmedPublishedCorrection?: boolean;
   /**
      * @maxLength 500
      * @nullable
