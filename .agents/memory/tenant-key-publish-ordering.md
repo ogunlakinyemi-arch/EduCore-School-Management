@@ -3,6 +3,12 @@ name: Tenant-key publish ordering
 description: Why composite tenant foreign keys may require a staged Replit Publish.
 ---
 
+The user reports that Replit Support confirmed a known Publish planner issue and advised waiting for an engineering fix, not approving a failing plan and not manually creating missing indexes in Production.
+
+**Why:** Support's project-specific instruction overrides the historical workaround suggestions below; those suggestions are not authorization to perform repairs.
+
+**How to apply:** Keep diagnostics read-only. Inspect a fresh generated preview and the relevant catalogs, distinguish public fix confirmation from observed preview behavior, and do not apply prerequisite DDL, disable foreign keys, publish, or change configuration to bypass the issue.
+
 For existing production tables, publish explicit `UNIQUE (id, school_id)` tenant keys before adding composite foreign keys that reference them.
 
 **Why:** Replit Publish can order separately created unique indexes after foreign keys in a single schema diff. PostgreSQL rejects those foreign keys because referenced uniqueness must already exist. A preparatory publish made the named tenant keys available first; the following publish can then add only the dependent foreign keys.
