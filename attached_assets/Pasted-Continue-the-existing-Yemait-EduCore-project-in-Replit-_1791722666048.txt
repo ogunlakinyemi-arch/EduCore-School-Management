@@ -1,0 +1,20 @@
+Continue the existing Yemait EduCore project in Replit.
+
+Flutterwave has approved the business application, and the account setup has progressed. I want to connect the existing NFC subscription payment workflow to Flutterwave in TEST MODE first.
+
+Important: Do not assume that the account number I received is an API key or a subaccount ID.
+
+1. Inspect the existing Flutterwave payment adapter, environment-variable names, checkout flow, payment verification service, webhook handler and NFC payment-link workflow.
+2. Identify the exact environment variables the current implementation requires. Do not display secret values.
+3. Configure the existing integration to use Flutterwave TEST MODE only. Keep all credentials in Replit Secrets.
+4. Connect the existing public NFC payment page's “Pay NFC Card Fees Through Flutterwave” action to the existing server-side checkout flow.
+5. Verify each transaction server-side with Flutterwave before marking an NFC subscription paid. Never trust a browser redirect alone.
+6. Verify webhook authenticity using the existing supported verification mechanism and the configured webhook secret/hash. Reject invalid callbacks and prevent duplicate processing.
+7. Preserve the existing ₦5,000 per student per term charge, school/student/term binding, link expiry, duplicate protection and expected allocation records.
+8. Do not activate a subscription, issue a genuine receipt or record a payment as successful until the test transaction has been verified by Flutterwave.
+9. Keep real-money settlement and automatic split payments disabled until the required school and partner subaccounts, processing-fee arrangements and settlement configuration are confirmed.
+10. Do not use live credentials, initiate real payments, modify Production or change unrelated modules.
+11. Run only focused Development tests for checkout creation, server-side verification, invalid webhooks, duplicate callbacks and NFC subscription status.
+12. Report the exact missing configuration, the test steps I must perform manually and whether any provider limitation prevents completion.
+
+Do not invent credentials, subaccount IDs or settlement capabilities. Stop safely if required configuration is missing.
