@@ -15,6 +15,8 @@ export interface InitializePaymentInput extends ExpectedPayment {
   email: string;
   returnUrl: string;
   customerName?: string;
+  /** Server-frozen, Development-only fixed split instructions; never browser input. */
+  subaccounts?: import("../flutterwave-split-policy").FixedSplitInstruction[];
 }
 
 export interface InitializePaymentResult {
@@ -31,6 +33,9 @@ export interface VerifiedPayment extends ExpectedPayment {
   providerFeeMinor?: number;
   /** Optional, provider-reported settlement amount; it is not bank-settlement evidence. */
   providerSettlementAmountMinor?: number;
+  /** Separate reported components, available only to new Development split accounting. */
+  providerCostComponents?: { appFeeMinor: number | null; additionalFeeMinor: number | null };
+  providerChargedAmountMinor?: number;
 }
 
 export interface FlutterwaveRefundResult {
@@ -395,6 +400,15 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
 
   async initializePayment(input: InitializePaymentInput): Promise<InitializePaymentResult> {
     this.assertExpected(input);
+    if (input.subaccounts && (process.env.NODE_ENV !== "development" || process.env.REPLIT_DEPLOYMENT
+        || input.currency !== "NGN" || input.amountMinor !== 500000
+        || input.subaccounts.length < 1 || input.subaccounts.length > 2
+        || new Set(input.subaccounts.map(s => s.id)).size !== input.subaccounts.length
+        || input.subaccounts.some((s, i) => !/^RS_[A-Za-z0-9]{12,80}$/.test(s.id)
+          || s.transaction_charge_type !== "flat_subaccount"
+          || s.transaction_charge !== (i === 0 ? 2000 : 100)))) {
+      throw new PaymentProviderError("Invalid Development split instructions");
+    }
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {
       throw new PaymentProviderError("Payment customer email or return URL is invalid");
     }
@@ -408,6 +422,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
         currency: normalizeCurrency(input.currency),
         redirect_url: input.returnUrl,
         customer: { email: input.email, ...(input.customerName ? { name: input.customerName } : {}) },
+        ...(input.subaccounts ? { subaccounts: input.subaccounts } : {}),
       }),
     });
     const data = asObject(result.data);
@@ -430,7 +445,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     }, true);
     const data = asObject(result.data);
     if (result.status !== "success" || !data) throw new PaymentProviderError("Flutterwave could not verify the payment");
-    return verifyFields({
+    const verified = verifyFields({
       expected: input,
       providerStatus: stringField(data.status),
       providerReference: stringField(data.tx_ref),
@@ -445,6 +460,14 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
       successfulStatus: "successful",
       providerName: "Flutterwave",
     });
+    return process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
+      ? { ...verified,
+        ...(data.charged_amount == null ? {} : { providerChargedAmountMinor: majorToMinorNonnegative(data.charged_amount,input.currency) }),
+        providerCostComponents: {
+        appFeeMinor: data.app_fee == null ? null : majorToMinorNonnegative(data.app_fee, input.currency),
+        additionalFeeMinor: data.merchant_fee == null ? null : majorToMinorNonnegative(data.merchant_fee, input.currency),
+      } }
+      : verified;
   }
 
   async verifyCheckoutStatus(input: ExpectedPayment): Promise<VerifiedPayment> {
@@ -560,7 +583,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     return parseFlutterwaveRefund(data);
   }
 
-  private authHeaders(): Record<string, string> {
+  protected authHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${this.secretKey}`, "Content-Type": "application/json" };
   }
 }

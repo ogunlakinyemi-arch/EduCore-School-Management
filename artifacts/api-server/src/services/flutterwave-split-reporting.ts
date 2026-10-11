@@ -1,0 +1,127 @@
+import { pool } from "@workspace/db";
+import { AuthError } from "../middlewares/auth";
+import { requireSplitDevelopment, ngnMinor } from "../lib/flutterwave-split-policy";
+import { decryptSplitBank } from "./flutterwave-split-crypto";
+import { splitProvider } from "./flutterwave-split-provider";
+import { adjustmentView } from "./flutterwave-split-refunds";
+
+export async function splitPaymentView(paymentId: number) {
+  const r = (await pool.query(
+    `SELECT s.*,p.status collection_status FROM flutterwave_split_payments s
+     JOIN student_subscription_payments p ON p.id=s.payment_id WHERE s.payment_id=$1`, [paymentId],
+  )).rows[0];
+  if (!r) throw new AuthError(404, "Split payment not found");
+  const adjustments = (await pool.query("SELECT * FROM flutterwave_split_adjustments WHERE payment_id=$1 ORDER BY id", [paymentId])).rows;
+  const reversal = adjustments.filter(a => a.status === "CONFIRMED").reduce((sum,a) => sum + Number(a.platform_reversal_minor ?? 0),0);
+  return {
+    paymentId:r.payment_id,schoolId:r.school_id,studentId:r.student_id,termId:r.term_id,reference:r.reference,
+    status:r.status,collectionStatus:r.collection_status,grossAmountMinor:500000,
+    schoolAmountMinor:r.school_amount_minor,partnerAmountMinor:r.partner_amount_minor,platformAmountMinor:r.platform_amount_minor,
+    providerFeeMinor:r.provider_fee_minor,providerAdditionalFeeMinor:r.provider_additional_fee_minor,
+    platformNetMinor:r.provider_fee_minor === null || r.provider_additional_fee_minor === null ? null
+      : r.platform_amount_minor-r.provider_fee_minor-r.provider_additional_fee_minor-reversal,
+    currency:r.currency,reconciliationNote:r.reconciliation_note,
+    recipients:(await pool.query(
+      `SELECT recipient_id AS "recipientId",expected_amount_minor AS "expectedAmountMinor",
+       observed_amount_minor AS "observedAmountMinor",provider_settlement_id AS "providerSettlementId",status,exception
+       FROM flutterwave_split_settlements WHERE payment_id=$1 ORDER BY id`, [paymentId],
+    )).rows,
+    adjustments:adjustments.map(adjustmentView),
+  };
+}
+/** Strict report matching, not a transfer operation and not actual-bank evidence in TEST. */
+export function inspectRecipientSettlement(report: any, transaction: any, bank: { bankCode: string; accountNumber: string },
+  expected: { transactionId: string; reference: string; amountMinor: number },
+) {
+  if (String(transaction.id) !== expected.transactionId || transaction.tx_ref !== expected.reference
+      || transaction.currency !== "NGN" || report.currency !== "NGN"
+      || String(report.bank_code) !== bank.bankCode || report.settlement_account !== bank.accountNumber) {
+    return { status:"MISMATCH",amount:null,exception:"TRANSACTION_CURRENCY_OR_RECIPIENT_MISMATCH" };
+  }
+  if (Number(report.refund ?? 0) > 0 || Number(report.chargeback ?? 0) > 0) {
+    return { status:"MISMATCH",amount:null,exception:"REFUND_OR_CHARGEBACK_DEDUCTION_REQUIRES_TRANSACTION_LEVEL_REVIEW" };
+  }
+  let amount;
+  try { amount = ngnMinor(transaction.settlement_amount); }
+  catch { return { status:"MISMATCH",amount:null,exception:"MISSING_EXACT_RECIPIENT_AMOUNT" }; }
+  if (amount !== expected.amountMinor) return { status:"MISMATCH",amount,exception:"RECIPIENT_AMOUNT_MISMATCH" };
+  if (["failed","flagged"].includes(String(report.status).toLowerCase())) {
+    return { status:"FAILED",amount,exception:"PROVIDER_SETTLEMENT_FAILED_OR_FLAGGED" };
+  }
+  if (report.status !== "completed" || transaction.status !== "successful"
+      || !report.disburse_ref || !report.processed_date || !Number.isFinite(Date.parse(report.processed_date))) {
+    return { status:"PENDING",amount,exception:"DISBURSEMENT_EVIDENCE_NOT_COMPLETE" };
+  }
+  return { status:"TEST_PROVIDER_REPORTED_COMPLETE",amount,exception:null };
+}
+export async function reconcileSplitPayment(paymentId: number) {
+  requireSplitDevelopment();
+  const p = (await pool.query(
+    `SELECT s.*,p.status collection_status,p.provider_transaction_id FROM flutterwave_split_payments s
+     JOIN student_subscription_payments p ON p.id=s.payment_id WHERE s.payment_id=$1`, [paymentId],
+  )).rows[0];
+  if (!p) throw new AuthError(404, "Split payment not found");
+  if (p.collection_status !== "PAID" || !p.provider_transaction_id) throw new AuthError(409, "Settlement reports require verified collection");
+  if (["REFUNDED","REFUND_REVIEW","COLLECTION_EXCEPTION"].includes(p.status)) {
+    throw new AuthError(409, "Resolve the refund or collection exception before claiming settlement");
+  }
+  const recipients = (await pool.query(
+    `SELECT r.*,s.expected_amount_minor FROM flutterwave_split_settlements s
+     JOIN flutterwave_split_recipients r ON r.id=s.recipient_id WHERE s.payment_id=$1 ORDER BY s.id`, [paymentId],
+  )).rows;
+  let hasException = false, complete = true;
+  const provider = splitProvider();
+  for (const r of recipients) {
+    try {
+      const bank = decryptSplitBank(r.bank_ciphertext);
+      const candidates = await provider.settlementCandidates(r.provider_subaccount_id,new Date(p.created_at).toISOString().slice(0,10));
+      const matches: { report:any; transaction:any }[] = [];
+      for (const candidate of candidates) {
+        const id = Number(candidate.id);
+        if (!Number.isSafeInteger(id) || id < 1) throw new Error("Invalid settlement ID");
+        const report = await provider.settlement(id);
+        if (!Array.isArray(report.transactions) || report.meta?.page_info?.total_pages > 1) throw new Error("Incomplete report");
+        for (const transaction of report.transactions) {
+          if (String(transaction.id) === p.provider_transaction_id || transaction.tx_ref === p.reference) {
+            matches.push({report,transaction});
+          }
+        }
+      }
+      if (matches.length > 1) throw new Error("Ambiguous transaction reports");
+      if (!matches.length) {
+        complete = false;
+        await pool.query(
+          `UPDATE flutterwave_split_settlements SET exception='No matching recipient disbursement report yet',updated_at=NOW()
+           WHERE payment_id=$1 AND recipient_id=$2 AND status<>'TEST_PROVIDER_REPORTED_COMPLETE'`, [paymentId,r.id],
+        );
+        continue;
+      }
+      const {report,transaction} = matches[0];
+      const result = inspectRecipientSettlement(report,transaction,bank,{
+        transactionId:p.provider_transaction_id,reference:p.reference,amountMinor:r.expected_amount_minor,
+      });
+      complete &&= result.status === "TEST_PROVIDER_REPORTED_COMPLETE";
+      hasException ||= ["FAILED","MISMATCH"].includes(result.status);
+      await pool.query(
+        `UPDATE flutterwave_split_settlements SET status=$1,observed_amount_minor=$2,exception=$3,
+         provider_settlement_id=$4,updated_at=NOW() WHERE payment_id=$5 AND recipient_id=$6`,
+        [result.status,result.amount,result.exception,String(report.id),paymentId,r.id],
+      );
+    } catch {
+      complete = false; hasException = true;
+      await pool.query(
+        `UPDATE flutterwave_split_settlements SET exception='Reporting unavailable, incomplete or ambiguous; inspect TEST dashboard permissions and recipient statement',
+         updated_at=NOW() WHERE payment_id=$1 AND recipient_id=$2`, [paymentId,r.id],
+      );
+    }
+  }
+  await pool.query(
+    `UPDATE flutterwave_split_payments SET status=$1,reconciliation_note=$2 WHERE payment_id=$3
+     AND status NOT IN ('REFUND_REVIEW','REFUNDED','COLLECTION_EXCEPTION')`,
+    [hasException ? "REPORT_EXCEPTION" : complete ? "TEST_PROVIDER_REPORTED_COMPLETE" : "COLLECTION_PAID",
+      hasException ? "Recipient settlement evidence requires review; no transfer or new allocation was initiated"
+      : complete ? "Provider-reported TEST disbursement matched all recipients; no real bank deposit is verified"
+      : "Collection verified; recipient bank settlement remains unverified",paymentId],
+  );
+  return splitPaymentView(paymentId);
+}

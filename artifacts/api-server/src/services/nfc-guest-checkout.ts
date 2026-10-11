@@ -9,6 +9,7 @@ import {
   findStudentSubscriptionTermPaymentConflict, finalizeVerifiedStudentSubscriptionPayment, type StudentSubscriptionSqlClient,
 } from "../lib/student-subscription-billing";
 import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
+import { prepareSplitCheckout } from "./flutterwave-split-checkout";
 import {
   nfcLinkStatus, nfcLinkTokenHash, publicLinkSql, publicNfcLink, requireNfcLinkDevelopment,
 } from "./nfc-payment-links";
@@ -101,18 +102,30 @@ export async function reserveGuestNfcPayment(
 /**
  * Shared with the authenticated NFC checkout: one persisted reservation,
  * one provider POST, and fail-closed reconciliation on an uncertain response.
- * No subaccounts, transfers or automatic split parameters are supplied.
+ * Split-enabled schools require a server-frozen verified recipient plan.
+ * No transfer endpoint is called.
  */
 export async function initializeStudentNfcHostedCheckout(
   payment: any, email: string, returnUrl: string, persistCheckout = true,
 ) {
   const adapter = configuredStudentNfcTestAdapter();
   if (!adapter) throw new PaymentProviderError("Flutterwave TEST configuration is unavailable");
+  let subaccounts;
+  try { subaccounts = await prepareSplitCheckout(Number(payment.paymentId)); }
+  catch (error) {
+    // No provider POST has occurred: guest setup can be retried after configuration is corrected.
+    await pool.query(
+      `UPDATE student_subscription_payments SET failure_code='GUEST_CHECKOUT_RESERVED',updated_at=NOW()
+       WHERE id=$1 AND status='PENDING' AND failure_code='GUEST_CHECKOUT_INITIALIZING'`, [payment.paymentId],
+    );
+    throw error;
+  }
   try {
     const checkout = await adapter.initializePayment({
       reference: payment.reference,
       amountMinor: Number(payment.grossAmountMinor),
       currency: String(payment.currency), email, returnUrl,
+      ...(subaccounts ? { subaccounts } : {}),
     });
     if (checkout.reference !== payment.reference) throw new PaymentProviderError("Checkout reference mismatch");
     const saved = persistCheckout ? await pool.query(

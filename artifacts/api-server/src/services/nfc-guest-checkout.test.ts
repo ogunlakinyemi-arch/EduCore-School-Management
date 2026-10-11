@@ -28,6 +28,10 @@ vi.mock("../lib/student-subscription-billing", async original => ({
   finalizeVerifiedStudentSubscriptionPayment: (...args: any[]) => fake.finalize(...args),
 }));
 vi.mock("../lib/schoolLogoStorage", () => ({ canonicalSchoolLogoVersionUrl: vi.fn() }));
+// This suite covers the existing unsplit flow; split policy/database cases have their own suite.
+vi.mock("./flutterwave-split-checkout", async original => ({
+  ...await original<any>(),prepareSplitCheckout:vi.fn(async() => undefined),
+}));
 import { createGuestNfcCheckout, verifyGuestNfcCheckout, initializeStudentNfcHostedCheckout, reserveGuestNfcPayment } from "./nfc-guest-checkout";
 
 const token = "g".repeat(43);

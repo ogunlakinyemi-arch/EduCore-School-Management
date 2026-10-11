@@ -11,6 +11,259 @@ import * as zod from 'zod';
 
 
 
+export const GetFlutterwaveSplitDashboardQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetFlutterwaveSplitDashboardResponse = zod.object({
+  "developmentOnly": zod.boolean(),
+  "mode": zod.enum(['TEST']),
+  "currency": zod.enum(['NGN']),
+  "feeBearer": zod.enum(['PLATFORM']),
+  "isOwner": zod.boolean(),
+  "testCredentialConfigured": zod.boolean(),
+  "scopes": zod.array(zod.object({
+  "kind": zod.enum(['SCHOOL', 'PARTNER']),
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "recipients": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['SCHOOL', 'PARTNER']),
+  "entityId": zod.number().int(),
+  "entityName": zod.string(),
+  "status": zod.string(),
+  "maskedAccount": zod.string(),
+  "accountName": zod.string(),
+  "bankName": zod.string(),
+  "mode": zod.enum(['TEST']),
+  "providerSubaccountId": zod.string().nullish(),
+  "reviewNote": zod.string().nullish(),
+  "lastError": zod.string().nullish()
+})),
+  "schools": zod.array(zod.object({
+  "schoolId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "automaticSettlementConfirmed": zod.boolean()
+})),
+  "payments": zod.array(zod.object({
+  "paymentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "termId": zod.number().int(),
+  "reference": zod.string(),
+  "status": zod.string(),
+  "collectionStatus": zod.string(),
+  "grossAmountMinor": zod.number().int(),
+  "schoolAmountMinor": zod.number().int(),
+  "partnerAmountMinor": zod.number().int(),
+  "platformAmountMinor": zod.number().int(),
+  "providerFeeMinor": zod.number().int().nullish(),
+  "providerAdditionalFeeMinor": zod.number().int().nullish(),
+  "platformNetMinor": zod.number().int().nullish(),
+  "currency": zod.string(),
+  "reconciliationNote": zod.string().nullable(),
+  "recipients": zod.array(zod.object({
+  "recipientId": zod.number().int(),
+  "expectedAmountMinor": zod.number().int(),
+  "observedAmountMinor": zod.number().int().nullish(),
+  "providerSettlementId": zod.string().nullish(),
+  "status": zod.string(),
+  "exception": zod.string().nullish()
+})),
+  "adjustments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "status": zod.string(),
+  "providerRefundId": zod.string().nullish(),
+  "recoveryStatus": zod.string(),
+  "schoolRecoveryMinor": zod.number().int().nullish(),
+  "partnerRecoveryMinor": zod.number().int().nullish(),
+  "platformReversalMinor": zod.number().int().nullish()
+}))
+}))
+})
+
+
+
+export const submitFlutterwaveSplitRecipientBodyBankCodeRegExp = new RegExp('^[0-9]{3,6}$');
+export const submitFlutterwaveSplitRecipientBodyAccountNumberRegExp = new RegExp('^[0-9]{10}$');
+export const submitFlutterwaveSplitRecipientBodyContactPhoneMin = 10;
+export const submitFlutterwaveSplitRecipientBodyContactPhoneMax = 16;
+
+
+
+export const SubmitFlutterwaveSplitRecipientBody = zod.object({
+  "kind": zod.enum(['SCHOOL', 'PARTNER']),
+  "entityId": zod.number().int().min(1),
+  "bankCode": zod.string().regex(submitFlutterwaveSplitRecipientBodyBankCodeRegExp),
+  "accountNumber": zod.string().regex(submitFlutterwaveSplitRecipientBodyAccountNumberRegExp),
+  "contactPhone": zod.string().min(submitFlutterwaveSplitRecipientBodyContactPhoneMin).max(submitFlutterwaveSplitRecipientBodyContactPhoneMax),
+  "ownershipAttestation": zod.boolean()
+})
+
+export const SubmitFlutterwaveSplitRecipientResponse = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['SCHOOL', 'PARTNER']),
+  "entityId": zod.number().int(),
+  "entityName": zod.string(),
+  "status": zod.string(),
+  "maskedAccount": zod.string(),
+  "accountName": zod.string(),
+  "bankName": zod.string(),
+  "mode": zod.enum(['TEST']),
+  "providerSubaccountId": zod.string().nullish(),
+  "reviewNote": zod.string().nullish(),
+  "lastError": zod.string().nullish()
+})
+
+
+export const ReviewFlutterwaveSplitRecipientParams = zod.object({
+  "recipientId": zod.coerce.number().int()
+})
+
+export const reviewFlutterwaveSplitRecipientBodyNoteMin = 10;
+export const reviewFlutterwaveSplitRecipientBodyNoteMax = 1000;
+
+
+
+export const ReviewFlutterwaveSplitRecipientBody = zod.object({
+  "action": zod.enum(['APPROVE_AND_CREATE_TEST', 'RECOVER', 'SUSPEND', 'RETIRE']),
+  "note": zod.string().min(reviewFlutterwaveSplitRecipientBodyNoteMin).max(reviewFlutterwaveSplitRecipientBodyNoteMax),
+  "ownershipConfirmed": zod.boolean().optional(),
+  "distinctFromPlatformAccountConfirmed": zod.boolean().optional()
+})
+
+export const ReviewFlutterwaveSplitRecipientResponse = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['SCHOOL', 'PARTNER']),
+  "entityId": zod.number().int(),
+  "entityName": zod.string(),
+  "status": zod.string(),
+  "maskedAccount": zod.string(),
+  "accountName": zod.string(),
+  "bankName": zod.string(),
+  "mode": zod.enum(['TEST']),
+  "providerSubaccountId": zod.string().nullish(),
+  "reviewNote": zod.string().nullish(),
+  "lastError": zod.string().nullish()
+})
+
+
+export const ConfigureFlutterwaveSchoolSplitsParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+export const ConfigureFlutterwaveSchoolSplitsBody = zod.object({
+  "enabled": zod.boolean(),
+  "automaticSettlementConfirmed": zod.boolean()
+})
+
+export const ConfigureFlutterwaveSchoolSplitsResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "automaticSettlementConfirmed": zod.boolean()
+})
+
+
+export const ReconcileFlutterwaveSplitPaymentParams = zod.object({
+  "paymentId": zod.coerce.number().int()
+})
+
+export const ReconcileFlutterwaveSplitPaymentResponse = zod.object({
+  "paymentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "termId": zod.number().int(),
+  "reference": zod.string(),
+  "status": zod.string(),
+  "collectionStatus": zod.string(),
+  "grossAmountMinor": zod.number().int(),
+  "schoolAmountMinor": zod.number().int(),
+  "partnerAmountMinor": zod.number().int(),
+  "platformAmountMinor": zod.number().int(),
+  "providerFeeMinor": zod.number().int().nullish(),
+  "providerAdditionalFeeMinor": zod.number().int().nullish(),
+  "platformNetMinor": zod.number().int().nullish(),
+  "currency": zod.string(),
+  "reconciliationNote": zod.string().nullable(),
+  "recipients": zod.array(zod.object({
+  "recipientId": zod.number().int(),
+  "expectedAmountMinor": zod.number().int(),
+  "observedAmountMinor": zod.number().int().nullish(),
+  "providerSettlementId": zod.string().nullish(),
+  "status": zod.string(),
+  "exception": zod.string().nullish()
+})),
+  "adjustments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "status": zod.string(),
+  "providerRefundId": zod.string().nullish(),
+  "recoveryStatus": zod.string(),
+  "schoolRecoveryMinor": zod.number().int().nullish(),
+  "partnerRecoveryMinor": zod.number().int().nullish(),
+  "platformReversalMinor": zod.number().int().nullish()
+}))
+})
+
+
+export const RequestFlutterwaveSplitRefundParams = zod.object({
+  "paymentId": zod.coerce.number().int()
+})
+
+export const requestFlutterwaveSplitRefundBodyAmountMinorMin = 10000;
+export const requestFlutterwaveSplitRefundBodyAmountMinorMax = 500000;
+
+export const requestFlutterwaveSplitRefundBodyReasonMin = 10;
+export const requestFlutterwaveSplitRefundBodyReasonMax = 300;
+
+export const requestFlutterwaveSplitRefundBodyIdempotencyKeyMin = 8;
+export const requestFlutterwaveSplitRefundBodyIdempotencyKeyMax = 80;
+
+
+
+export const RequestFlutterwaveSplitRefundBody = zod.object({
+  "amountMinor": zod.number().int().min(requestFlutterwaveSplitRefundBodyAmountMinorMin).max(requestFlutterwaveSplitRefundBodyAmountMinorMax),
+  "reason": zod.string().min(requestFlutterwaveSplitRefundBodyReasonMin).max(requestFlutterwaveSplitRefundBodyReasonMax),
+  "idempotencyKey": zod.string().min(requestFlutterwaveSplitRefundBodyIdempotencyKeyMin).max(requestFlutterwaveSplitRefundBodyIdempotencyKeyMax)
+})
+
+export const RequestFlutterwaveSplitRefundResponse = zod.object({
+  "id": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "status": zod.string(),
+  "providerRefundId": zod.string().nullish(),
+  "recoveryStatus": zod.string(),
+  "schoolRecoveryMinor": zod.number().int().nullish(),
+  "partnerRecoveryMinor": zod.number().int().nullish(),
+  "platformReversalMinor": zod.number().int().nullish()
+})
+
+
+export const VerifyFlutterwaveSplitRefundParams = zod.object({
+  "adjustmentId": zod.coerce.number().int()
+})
+
+export const VerifyFlutterwaveSplitRefundResponse = zod.object({
+  "id": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "status": zod.string(),
+  "providerRefundId": zod.string().nullish(),
+  "recoveryStatus": zod.string(),
+  "schoolRecoveryMinor": zod.number().int().nullish(),
+  "partnerRecoveryMinor": zod.number().int().nullish(),
+  "platformReversalMinor": zod.number().int().nullish()
+})
+
+
+
+
+
 export const GetStudentNfcAssistedOptionsQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1)
 })
@@ -17345,7 +17598,7 @@ export const GetPlatformPaymentSettlementResponse = zod.object({
   "checkoutVerified": zod.literal(false),
   "automaticSplitSettlementEnabled": zod.literal(false),
   "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
 }),
@@ -17425,7 +17678,7 @@ export const UpdatePlatformPaymentSettlementResponse = zod.object({
   "checkoutVerified": zod.literal(false),
   "automaticSplitSettlementEnabled": zod.literal(false),
   "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
 }),
@@ -17490,7 +17743,7 @@ export const ListPlatformSchoolSettlementsResponseItem = zod.object({
   "checkoutVerified": zod.literal(false),
   "automaticSplitSettlementEnabled": zod.literal(false),
   "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
 }),
@@ -17547,7 +17800,7 @@ export const GetPlatformSchoolSettlementResponse = zod.object({
   "checkoutVerified": zod.literal(false),
   "automaticSplitSettlementEnabled": zod.literal(false),
   "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
 }),
@@ -17615,7 +17868,7 @@ export const VerifyPlatformSchoolSettlementResponse = zod.object({
   "checkoutVerified": zod.literal(false),
   "automaticSplitSettlementEnabled": zod.literal(false),
   "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
 }),
@@ -17672,7 +17925,7 @@ export const GetSchoolPaymentSettlementResponse = zod.object({
   "checkoutVerified": zod.literal(false),
   "automaticSplitSettlementEnabled": zod.literal(false),
   "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
 }),
@@ -17762,7 +18015,7 @@ export const UpdateSchoolPaymentSettlementResponse = zod.object({
   "checkoutVerified": zod.literal(false),
   "automaticSplitSettlementEnabled": zod.literal(false),
   "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
 }),

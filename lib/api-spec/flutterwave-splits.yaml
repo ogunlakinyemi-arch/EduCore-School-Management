@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info: { title: FlutterwaveSplits, version: 1.0.0 }
+paths:
+  /flutterwave/split-dashboard:
+    get:
+      operationId: getFlutterwaveSplitDashboard
+      tags: [flutterwave-splits]
+      parameters:
+        - { name: schoolId, in: query, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Scoped Development-only recipient and settlement information
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveSplitDashboard" }
+  /flutterwave/split-recipients:
+    post:
+      operationId: submitFlutterwaveSplitRecipient
+      tags: [flutterwave-splits]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FlutterwaveRecipientInput" }
+      responses:
+        "201":
+          description: Bank resolved, awaiting ownership review; not yet split ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveRecipient" }
+  /flutterwave/split-recipients/{recipientId}/review:
+    post:
+      operationId: reviewFlutterwaveSplitRecipient
+      tags: [flutterwave-splits]
+      parameters:
+        - { name: recipientId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FlutterwaveRecipientReview" }
+      responses:
+        "200":
+          description: Owner review or safe read-back recovery, never implicit bank settlement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveRecipient" }
+  /flutterwave/split-schools/{schoolId}/configuration:
+    patch:
+      operationId: configureFlutterwaveSchoolSplits
+      tags: [flutterwave-splits]
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FlutterwaveSchoolSplitInput" }
+      responses:
+        "200":
+          description: Future checkout configuration; existing payments are never backfilled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveSchoolSplitConfiguration" }
+  /flutterwave/split-payments/{paymentId}/reconcile:
+    post:
+      operationId: reconcileFlutterwaveSplitPayment
+      tags: [flutterwave-splits]
+      parameters:
+        - { name: paymentId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Provider report inspection without initiating transfers or new credits
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveSplitPayment" }
+  /flutterwave/split-payments/{paymentId}/refunds:
+    post:
+      operationId: requestFlutterwaveSplitRefund
+      tags: [flutterwave-splits]
+      parameters:
+        - { name: paymentId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FlutterwaveSplitRefundInput" }
+      responses:
+        "200":
+          description: Refund request recorded; initiation is not completed customer disbursement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveSplitAdjustment" }
+  /flutterwave/split-adjustments/{adjustmentId}/verify:
+    post:
+      operationId: verifyFlutterwaveSplitRefund
+      tags: [flutterwave-splits]
+      parameters:
+        - { name: adjustmentId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Independently verify refund; repeated verification has no repeated accounting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveSplitAdjustment" }
+components:
+  schemas:
+    FlutterwaveRecipientInput:
+      type: object
+      additionalProperties: false
+      required: [kind, entityId, bankCode, accountNumber, contactPhone, ownershipAttestation]
+      properties:
+        kind: { type: string, enum: [SCHOOL, PARTNER] }
+        entityId: { type: integer, minimum: 1 }
+        bankCode: { type: string, pattern: "^[0-9]{3,6}$" }
+        accountNumber: { type: string, pattern: "^[0-9]{10}$" }
+        contactPhone: { type: string, minLength: 10, maxLength: 16 }
+        ownershipAttestation: { type: boolean }
+    FlutterwaveRecipientReview:
+      type: object
+      additionalProperties: false
+      required: [action, note]
+      properties:
+        action: { type: string, enum: [APPROVE_AND_CREATE_TEST, RECOVER, SUSPEND, RETIRE] }
+        note: { type: string, minLength: 10, maxLength: 1000 }
+        ownershipConfirmed: { type: boolean }
+        distinctFromPlatformAccountConfirmed: { type: boolean }
+    FlutterwaveSchoolSplitInput:
+      type: object
+      additionalProperties: false
+      required: [enabled, automaticSettlementConfirmed]
+      properties:
+        enabled: { type: boolean }
+        automaticSettlementConfirmed: { type: boolean }
+    FlutterwaveSchoolSplitConfiguration:
+      type: object
+      required: [schoolId, enabled, automaticSettlementConfirmed]
+      properties:
+        schoolId: { type: integer }
+        enabled: { type: boolean }
+        automaticSettlementConfirmed: { type: boolean }
+    FlutterwaveRecipient:
+      type: object
+      required: [id, kind, entityId, entityName, status, maskedAccount, accountName, bankName, mode]
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [SCHOOL, PARTNER] }
+        entityId: { type: integer }
+        entityName: { type: string }
+        status: { type: string }
+        maskedAccount: { type: string }
+        accountName: { type: string }
+        bankName: { type: string }
+        mode: { type: string, enum: [TEST] }
+        providerSubaccountId: { type: ["string", "null"] }
+        reviewNote: { type: ["string", "null"] }
+        lastError: { type: ["string", "null"] }
+    FlutterwaveSplitPayment:
+      type: object
+      required: [paymentId, schoolId, studentId, termId, reference, status, collectionStatus, grossAmountMinor, schoolAmountMinor, partnerAmountMinor, platformAmountMinor, currency, reconciliationNote, recipients, adjustments]
+      properties:
+        paymentId: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        termId: { type: integer }
+        reference: { type: string }
+        status: { type: string }
+        collectionStatus: { type: string }
+        grossAmountMinor: { type: integer }
+        schoolAmountMinor: { type: integer }
+        partnerAmountMinor: { type: integer }
+        platformAmountMinor: { type: integer }
+        providerFeeMinor: { type: ["integer", "null"] }
+        providerAdditionalFeeMinor: { type: ["integer", "null"] }
+        platformNetMinor: { type: ["integer", "null"] }
+        currency: { type: string }
+        reconciliationNote: { type: ["string", "null"] }
+        recipients:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveRecipientSettlement" }
+        adjustments:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveSplitAdjustment" }
+    FlutterwaveRecipientSettlement:
+      type: object
+      required: [recipientId, expectedAmountMinor, status]
+      properties:
+        recipientId: { type: integer }
+        expectedAmountMinor: { type: integer }
+        observedAmountMinor: { type: ["integer", "null"] }
+        providerSettlementId: { type: ["string", "null"] }
+        status: { type: string }
+        exception: { type: ["string", "null"] }
+    FlutterwaveSplitRefundInput:
+      type: object
+      additionalProperties: false
+      required: [amountMinor, reason, idempotencyKey]
+      properties:
+        amountMinor: { type: integer, minimum: 10000, maximum: 500000 }
+        reason: { type: string, minLength: 10, maxLength: 300 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 80 }
+    FlutterwaveSplitAdjustment:
+      type: object
+      required: [id, paymentId, amountMinor, status, recoveryStatus]
+      properties:
+        id: { type: integer }
+        paymentId: { type: integer }
+        amountMinor: { type: integer }
+        status: { type: string }
+        providerRefundId: { type: ["string", "null"] }
+        recoveryStatus: { type: string }
+        schoolRecoveryMinor: { type: ["integer", "null"] }
+        partnerRecoveryMinor: { type: ["integer", "null"] }
+        platformReversalMinor: { type: ["integer", "null"] }
+    FlutterwaveSplitScope:
+      type: object
+      required: [kind, id, name]
+      properties:
+        kind: { type: string, enum: [SCHOOL, PARTNER] }
+        id: { type: integer }
+        name: { type: string }
+    FlutterwaveSplitDashboard:
+      type: object
+      required: [developmentOnly, mode, currency, feeBearer, isOwner, testCredentialConfigured, scopes, recipients, schools, payments]
+      properties:
+        developmentOnly: { type: boolean }
+        mode: { type: string, enum: [TEST] }
+        currency: { type: string, enum: [NGN] }
+        feeBearer: { type: string, enum: [PLATFORM] }
+        isOwner: { type: boolean }
+        testCredentialConfigured: { type: boolean }
+        scopes:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveSplitScope" }
+        recipients:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveRecipient" }
+        schools:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveSchoolSplitConfiguration" }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveSplitPayment" }

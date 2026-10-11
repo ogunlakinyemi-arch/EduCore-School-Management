@@ -601,7 +601,7 @@ export function SubscriptionsPage() {
         eyebrow="Financials / Subscriptions"
         title="Revenue & Access."
         description="Monitor student payment statuses and term enrollment. Only independently verified server payments are marked paid."
-        action={<div className="flex items-center gap-3"><Link href="/subscription-enforcement" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-term-enforcement">Term enforcement</Link><TenantPicker /></div>}
+        action={<div className="flex items-center gap-3"><Link href="/flutterwave-settlements" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-flutterwave-settlements">Split settlements</Link><Link href="/subscription-enforcement" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-term-enforcement">Term enforcement</Link><TenantPicker /></div>}
       />
 
       {message && (

@@ -11,4 +11,5 @@ export type SettlementProviderCapabilityCollectionSubaccountIntegration = typeof
 
 export const SettlementProviderCapabilityCollectionSubaccountIntegration = {
   NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
+  DEVELOPMENT_TEST_ONBOARDING: 'DEVELOPMENT_TEST_ONBOARDING',
 } as const;

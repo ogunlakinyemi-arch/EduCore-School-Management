@@ -1,0 +1,97 @@
+{
+  "scope": "DEVELOPMENT ONLY",
+  "createdTables": [
+    "flutterwave_split_adjustments",
+    "flutterwave_split_payments",
+    "flutterwave_split_recipients",
+    "flutterwave_split_settings",
+    "flutterwave_split_settlements"
+  ],
+  "oldFinancialDataUnchanged": true,
+  "excludedFinancialFields": [],
+  "preservation": {
+    "commission_ledger": {
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "commission_rules": {
+      "count": 1,
+      "fingerprint": "c62eef09df318d52b208fdee12a37431"
+    },
+    "fee_payment_line_allocations": {
+      "count": 6,
+      "fingerprint": "24234a239e0017caea6ba5b0e1b1b3ab"
+    },
+    "fee_payment_notification_outbox": {
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "fee_payment_notifications": {
+      "count": 24,
+      "fingerprint": "83a0fc3de358cad2830718233bf8a62a"
+    },
+    "fee_payments": {
+      "count": 7,
+      "fingerprint": "bd630a55ff168a4e47ea51611c402eef"
+    },
+    "nfc_payment_links": {
+      "count": 5,
+      "fingerprint": "f16478698471b770ec30bacb308da49e"
+    },
+    "partner_payout_information": {
+      "count": 1,
+      "fingerprint": "6f183b05075dd15ee794f173030d6836"
+    },
+    "partner_payouts": {
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "school_partner_attributions": {
+      "count": 7,
+      "fingerprint": "876b509731ef9eecfcc331b60e5b7460"
+    },
+    "school_subscription_enforcement": {
+      "count": 8,
+      "fingerprint": "6548d2f16beddaeca023cfb2df4e43eb"
+    },
+    "school_subscription_manual_locks": {
+      "count": 3,
+      "fingerprint": "ffd8c1cc6e1609a90d60d5c48fe8486c"
+    },
+    "staff_nfc_allocations": {
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "staff_nfc_partner_commissions": {
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "staff_nfc_payments": {
+      "count": 0,
+      "fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "staff_nfc_subscriptions": {
+      "count": 6,
+      "fingerprint": "dfb9ef1bba62694f3420aff3167a9c17"
+    },
+    "student_subscription_allocations": {
+      "count": 3,
+      "fingerprint": "9483390c52ce214a9b4bc71b4c8e4596"
+    },
+    "student_subscription_payments": {
+      "count": 3,
+      "fingerprint": "a7783556308b02b0e8d758ef55a91e79"
+    },
+    "student_subscription_terms": {
+      "count": 6,
+      "fingerprint": "55d1f1dd961404e3b5b802b111280848"
+    },
+    "subscriptions": {
+      "count": 10,
+      "fingerprint": "aff75d3002c5d3ea11220afda694b5e0"
+    }
+  },
+  "historicalBackfills": 0,
+  "recipientsCreated": 0,
+  "providerMutations": 0
+}

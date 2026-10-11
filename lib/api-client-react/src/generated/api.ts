@@ -307,6 +307,15 @@ import type {
   FinanceSettings,
   FinanceSettingsUpdate,
   FinanceSummary,
+  FlutterwaveRecipient,
+  FlutterwaveRecipientInput,
+  FlutterwaveRecipientReview,
+  FlutterwaveSchoolSplitConfiguration,
+  FlutterwaveSchoolSplitInput,
+  FlutterwaveSplitAdjustment,
+  FlutterwaveSplitDashboard,
+  FlutterwaveSplitPayment,
+  FlutterwaveSplitRefundInput,
   ForbiddenResponse,
   GenerateCurrentTermTransportInvoicesParams,
   GenerateSchoolCalendarBody,
@@ -326,6 +335,7 @@ import type {
   GetEmployeeParams,
   GetFeePaymentReceiptParams,
   GetFinanceSettingsParams,
+  GetFlutterwaveSplitDashboardParams,
   GetLessonNoteMonitoringParams,
   GetLibraryPermissions200,
   GetLibraryPermissionsParams,
@@ -852,6 +862,551 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetFlutterwaveSplitDashboardUrl = (params?: GetFlutterwaveSplitDashboardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/flutterwave/split-dashboard?${stringifiedParams}` : `/api/flutterwave/split-dashboard`
+}
+
+export const getFlutterwaveSplitDashboard = async (params?: GetFlutterwaveSplitDashboardParams, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveSplitDashboard> => {
+
+  return customFetch<FlutterwaveSplitDashboard>(getGetFlutterwaveSplitDashboardUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFlutterwaveSplitDashboardQueryKey = (params?: GetFlutterwaveSplitDashboardParams,) => {
+    return [
+    `/api/flutterwave/split-dashboard`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFlutterwaveSplitDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getFlutterwaveSplitDashboard>>, TError = ErrorType<unknown>>(params?: GetFlutterwaveSplitDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFlutterwaveSplitDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFlutterwaveSplitDashboardQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFlutterwaveSplitDashboard>>> = ({ signal }) => getFlutterwaveSplitDashboard(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFlutterwaveSplitDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFlutterwaveSplitDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getFlutterwaveSplitDashboard>>>
+export type GetFlutterwaveSplitDashboardQueryError = ErrorType<unknown>
+
+
+
+export function useGetFlutterwaveSplitDashboard<TData = Awaited<ReturnType<typeof getFlutterwaveSplitDashboard>>, TError = ErrorType<unknown>>(
+ params?: GetFlutterwaveSplitDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFlutterwaveSplitDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFlutterwaveSplitDashboardQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitFlutterwaveSplitRecipientUrl = () => {
+
+
+
+
+  return `/api/flutterwave/split-recipients`
+}
+
+export const submitFlutterwaveSplitRecipient = async (flutterwaveRecipientInput: FlutterwaveRecipientInput, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveRecipient> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FlutterwaveRecipient>(getSubmitFlutterwaveSplitRecipientUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(flutterwaveRecipientInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitFlutterwaveSplitRecipientMutationKey = () => ['submitFlutterwaveSplitRecipient'] as const;
+
+export const getSubmitFlutterwaveSplitRecipientMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitFlutterwaveSplitRecipient>>, TError,SubmitFlutterwaveSplitRecipientMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitFlutterwaveSplitRecipient>>, TError,SubmitFlutterwaveSplitRecipientMutationVariables, TContext> => {
+
+const mutationKey = getSubmitFlutterwaveSplitRecipientMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitFlutterwaveSplitRecipient>>, SubmitFlutterwaveSplitRecipientMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitFlutterwaveSplitRecipient(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitFlutterwaveSplitRecipientMutationResult = NonNullable<Awaited<ReturnType<typeof submitFlutterwaveSplitRecipient>>>
+    export type SubmitFlutterwaveSplitRecipientMutationBody = BodyType<FlutterwaveRecipientInput>
+    export type SubmitFlutterwaveSplitRecipientMutationError = ErrorType<unknown>
+    export type SubmitFlutterwaveSplitRecipientMutationVariables = {data: BodyType<FlutterwaveRecipientInput>}
+
+    export const useSubmitFlutterwaveSplitRecipient = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitFlutterwaveSplitRecipient>>, TError,SubmitFlutterwaveSplitRecipientMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitFlutterwaveSplitRecipient>>,
+        TError,
+        SubmitFlutterwaveSplitRecipientMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitFlutterwaveSplitRecipientMutationOptions(options));
+    }
+
+export const getReviewFlutterwaveSplitRecipientUrl = (recipientId: number,) => {
+
+
+
+
+  return `/api/flutterwave/split-recipients/${recipientId}/review`
+}
+
+export const reviewFlutterwaveSplitRecipient = async (recipientId: number,
+    flutterwaveRecipientReview: FlutterwaveRecipientReview, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveRecipient> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FlutterwaveRecipient>(getReviewFlutterwaveSplitRecipientUrl(recipientId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(flutterwaveRecipientReview)
+  }
+);}
+
+
+
+
+
+export const getReviewFlutterwaveSplitRecipientMutationKey = () => ['reviewFlutterwaveSplitRecipient'] as const;
+
+export const getReviewFlutterwaveSplitRecipientMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFlutterwaveSplitRecipient>>, TError,ReviewFlutterwaveSplitRecipientMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewFlutterwaveSplitRecipient>>, TError,ReviewFlutterwaveSplitRecipientMutationVariables, TContext> => {
+
+const mutationKey = getReviewFlutterwaveSplitRecipientMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewFlutterwaveSplitRecipient>>, ReviewFlutterwaveSplitRecipientMutationVariables> = (props) => {
+          const {recipientId,data} = props ?? {};
+
+          return  reviewFlutterwaveSplitRecipient(recipientId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewFlutterwaveSplitRecipientMutationResult = NonNullable<Awaited<ReturnType<typeof reviewFlutterwaveSplitRecipient>>>
+    export type ReviewFlutterwaveSplitRecipientMutationBody = BodyType<FlutterwaveRecipientReview>
+    export type ReviewFlutterwaveSplitRecipientMutationError = ErrorType<unknown>
+    export type ReviewFlutterwaveSplitRecipientMutationVariables = {recipientId: number;data: BodyType<FlutterwaveRecipientReview>}
+
+    export const useReviewFlutterwaveSplitRecipient = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFlutterwaveSplitRecipient>>, TError,ReviewFlutterwaveSplitRecipientMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewFlutterwaveSplitRecipient>>,
+        TError,
+        ReviewFlutterwaveSplitRecipientMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewFlutterwaveSplitRecipientMutationOptions(options));
+    }
+
+export const getConfigureFlutterwaveSchoolSplitsUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/flutterwave/split-schools/${schoolId}/configuration`
+}
+
+export const configureFlutterwaveSchoolSplits = async (schoolId: number,
+    flutterwaveSchoolSplitInput: FlutterwaveSchoolSplitInput, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveSchoolSplitConfiguration> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FlutterwaveSchoolSplitConfiguration>(getConfigureFlutterwaveSchoolSplitsUrl(schoolId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(flutterwaveSchoolSplitInput)
+  }
+);}
+
+
+
+
+
+export const getConfigureFlutterwaveSchoolSplitsMutationKey = () => ['configureFlutterwaveSchoolSplits'] as const;
+
+export const getConfigureFlutterwaveSchoolSplitsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof configureFlutterwaveSchoolSplits>>, TError,ConfigureFlutterwaveSchoolSplitsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof configureFlutterwaveSchoolSplits>>, TError,ConfigureFlutterwaveSchoolSplitsMutationVariables, TContext> => {
+
+const mutationKey = getConfigureFlutterwaveSchoolSplitsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof configureFlutterwaveSchoolSplits>>, ConfigureFlutterwaveSchoolSplitsMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  configureFlutterwaveSchoolSplits(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfigureFlutterwaveSchoolSplitsMutationResult = NonNullable<Awaited<ReturnType<typeof configureFlutterwaveSchoolSplits>>>
+    export type ConfigureFlutterwaveSchoolSplitsMutationBody = BodyType<FlutterwaveSchoolSplitInput>
+    export type ConfigureFlutterwaveSchoolSplitsMutationError = ErrorType<unknown>
+    export type ConfigureFlutterwaveSchoolSplitsMutationVariables = {schoolId: number;data: BodyType<FlutterwaveSchoolSplitInput>}
+
+    export const useConfigureFlutterwaveSchoolSplits = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof configureFlutterwaveSchoolSplits>>, TError,ConfigureFlutterwaveSchoolSplitsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof configureFlutterwaveSchoolSplits>>,
+        TError,
+        ConfigureFlutterwaveSchoolSplitsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfigureFlutterwaveSchoolSplitsMutationOptions(options));
+    }
+
+export const getReconcileFlutterwaveSplitPaymentUrl = (paymentId: number,) => {
+
+
+
+
+  return `/api/flutterwave/split-payments/${paymentId}/reconcile`
+}
+
+export const reconcileFlutterwaveSplitPayment = async (paymentId: number, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveSplitPayment> => {
+
+  return customFetch<FlutterwaveSplitPayment>(getReconcileFlutterwaveSplitPaymentUrl(paymentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileFlutterwaveSplitPaymentMutationKey = () => ['reconcileFlutterwaveSplitPayment'] as const;
+
+export const getReconcileFlutterwaveSplitPaymentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileFlutterwaveSplitPayment>>, TError,ReconcileFlutterwaveSplitPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileFlutterwaveSplitPayment>>, TError,ReconcileFlutterwaveSplitPaymentMutationVariables, TContext> => {
+
+const mutationKey = getReconcileFlutterwaveSplitPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileFlutterwaveSplitPayment>>, ReconcileFlutterwaveSplitPaymentMutationVariables> = (props) => {
+          const {paymentId} = props ?? {};
+
+          return  reconcileFlutterwaveSplitPayment(paymentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileFlutterwaveSplitPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileFlutterwaveSplitPayment>>>
+
+    export type ReconcileFlutterwaveSplitPaymentMutationError = ErrorType<unknown>
+    export type ReconcileFlutterwaveSplitPaymentMutationVariables = {paymentId: number}
+
+    export const useReconcileFlutterwaveSplitPayment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileFlutterwaveSplitPayment>>, TError,ReconcileFlutterwaveSplitPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileFlutterwaveSplitPayment>>,
+        TError,
+        ReconcileFlutterwaveSplitPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileFlutterwaveSplitPaymentMutationOptions(options));
+    }
+
+export const getRequestFlutterwaveSplitRefundUrl = (paymentId: number,) => {
+
+
+
+
+  return `/api/flutterwave/split-payments/${paymentId}/refunds`
+}
+
+export const requestFlutterwaveSplitRefund = async (paymentId: number,
+    flutterwaveSplitRefundInput: FlutterwaveSplitRefundInput, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveSplitAdjustment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FlutterwaveSplitAdjustment>(getRequestFlutterwaveSplitRefundUrl(paymentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(flutterwaveSplitRefundInput)
+  }
+);}
+
+
+
+
+
+export const getRequestFlutterwaveSplitRefundMutationKey = () => ['requestFlutterwaveSplitRefund'] as const;
+
+export const getRequestFlutterwaveSplitRefundMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestFlutterwaveSplitRefund>>, TError,RequestFlutterwaveSplitRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestFlutterwaveSplitRefund>>, TError,RequestFlutterwaveSplitRefundMutationVariables, TContext> => {
+
+const mutationKey = getRequestFlutterwaveSplitRefundMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestFlutterwaveSplitRefund>>, RequestFlutterwaveSplitRefundMutationVariables> = (props) => {
+          const {paymentId,data} = props ?? {};
+
+          return  requestFlutterwaveSplitRefund(paymentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestFlutterwaveSplitRefundMutationResult = NonNullable<Awaited<ReturnType<typeof requestFlutterwaveSplitRefund>>>
+    export type RequestFlutterwaveSplitRefundMutationBody = BodyType<FlutterwaveSplitRefundInput>
+    export type RequestFlutterwaveSplitRefundMutationError = ErrorType<unknown>
+    export type RequestFlutterwaveSplitRefundMutationVariables = {paymentId: number;data: BodyType<FlutterwaveSplitRefundInput>}
+
+    export const useRequestFlutterwaveSplitRefund = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestFlutterwaveSplitRefund>>, TError,RequestFlutterwaveSplitRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestFlutterwaveSplitRefund>>,
+        TError,
+        RequestFlutterwaveSplitRefundMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestFlutterwaveSplitRefundMutationOptions(options));
+    }
+
+export const getVerifyFlutterwaveSplitRefundUrl = (adjustmentId: number,) => {
+
+
+
+
+  return `/api/flutterwave/split-adjustments/${adjustmentId}/verify`
+}
+
+export const verifyFlutterwaveSplitRefund = async (adjustmentId: number, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveSplitAdjustment> => {
+
+  return customFetch<FlutterwaveSplitAdjustment>(getVerifyFlutterwaveSplitRefundUrl(adjustmentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyFlutterwaveSplitRefundMutationKey = () => ['verifyFlutterwaveSplitRefund'] as const;
+
+export const getVerifyFlutterwaveSplitRefundMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyFlutterwaveSplitRefund>>, TError,VerifyFlutterwaveSplitRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyFlutterwaveSplitRefund>>, TError,VerifyFlutterwaveSplitRefundMutationVariables, TContext> => {
+
+const mutationKey = getVerifyFlutterwaveSplitRefundMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyFlutterwaveSplitRefund>>, VerifyFlutterwaveSplitRefundMutationVariables> = (props) => {
+          const {adjustmentId} = props ?? {};
+
+          return  verifyFlutterwaveSplitRefund(adjustmentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyFlutterwaveSplitRefundMutationResult = NonNullable<Awaited<ReturnType<typeof verifyFlutterwaveSplitRefund>>>
+
+    export type VerifyFlutterwaveSplitRefundMutationError = ErrorType<unknown>
+    export type VerifyFlutterwaveSplitRefundMutationVariables = {adjustmentId: number}
+
+    export const useVerifyFlutterwaveSplitRefund = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyFlutterwaveSplitRefund>>, TError,VerifyFlutterwaveSplitRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyFlutterwaveSplitRefund>>,
+        TError,
+        VerifyFlutterwaveSplitRefundMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyFlutterwaveSplitRefundMutationOptions(options));
+    }
 
 export const getGetStudentNfcAssistedOptionsUrl = (params: GetStudentNfcAssistedOptionsParams,) => {
   const normalizedParams = new URLSearchParams();

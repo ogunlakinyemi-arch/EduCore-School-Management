@@ -1,5 +1,7 @@
 import { nfcPayableTermPredicate } from "./nfc-payable-term";
 import type { VerifiedPayment, ExpectedPayment } from "./fee-providers";
+import { validateSplitCollection, recordSplitCollection } from "../services/flutterwave-split-checkout";
+import { isSplitDevelopment } from "./flutterwave-split-policy";
 
 export type StudentSubscriptionAllocation = {
   recipientType: "SCHOOL" | "PLATFORM" | "PARTNER" | "PLATFORM_PROVIDER_FEE";
@@ -232,6 +234,24 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     );
     const payment = locked.rows[0];
     if (!payment) throw new StudentSubscriptionBillingError(404, "Student subscription payment not found");
+    let split: any = null;
+    try { split = await validateSplitCollection(client, payment, verified); }
+    catch {
+      // Preserve an earlier paid receipt. New mismatches cannot activate or credit recipients.
+      await client.query(
+        `UPDATE student_subscription_payments SET
+         status=CASE WHEN status='PAID' THEN status ELSE 'RECONCILIATION_REQUIRED' END,
+         reconciliation_status='RECONCILIATION_REQUIRED',failure_code='SPLIT_COLLECTION_EXCEPTION',updated_at=NOW()
+         WHERE id=$1`, [paymentId],
+      );
+      if (isSplitDevelopment()) await client.query(
+        `UPDATE flutterwave_split_payments SET status='COLLECTION_EXCEPTION',
+         reconciliation_note='Provider binding, partner eligibility or complete fee evidence requires review'
+         WHERE payment_id=$1`, [paymentId],
+      );
+      await client.query("COMMIT");
+      return { status: "RECONCILIATION_REQUIRED", activated: false, reconciliationRequired: true, allocations: [] };
+    }
     if (payment.status === "PAID") {
       await client.query("COMMIT");
       return { status: "PAID", activated: true, reconciliationRequired: false, allocations: [] };
@@ -313,6 +333,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
           paymentId,
         ],
       );
+      await recordSplitCollection(client, paymentId, status);
       await client.query("COMMIT");
       return { status, activated: false, reconciliationRequired: false, allocations: [] };
     }
@@ -391,7 +412,9 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
       };
     }
 
-    const attributionResult = await client.query(
+    const attributionResult = split ? { rows: split.partner_profile_id ? [{
+      attributionId: split.attribution_id, partnerProfileId: split.partner_profile_id,
+    }] : [] } : await client.query(
       `SELECT a.id AS "attributionId",a.partner_profile_id AS "partnerProfileId"
          FROM school_partner_attributions a
          JOIN partner_profiles pp ON pp.id=a.partner_profile_id
@@ -404,7 +427,11 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     const attribution = attributionResult.rows[0] ?? null;
     let commissionRule: StudentSubscriptionAllocationInput["commissionRule"] = null;
     if (attribution) {
-      const ruleResult = await client.query(
+      const ruleResult = split ? await client.query(
+        `SELECT id,allocation_total AS "allocationTotal",school_amount AS "schoolAmount",
+         partner_amount AS "partnerAmount",edupulse_amount AS "edupulseAmount",currency
+         FROM commission_rules WHERE id=$1 FOR SHARE`, [split.commission_rule_id],
+      ) : await client.query(
         `SELECT id,allocation_total AS "allocationTotal",school_amount AS "schoolAmount",
                 partner_amount AS "partnerAmount",edupulse_amount AS "edupulseAmount",currency
            FROM commission_rules
@@ -454,7 +481,9 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
         allocations: [],
       };
     }
-    const providerFeeMinor = verified.providerFeeMinor ?? 0;
+    const providerFeeMinor = split && verified.providerCostComponents
+      ? verified.providerCostComponents.appFeeMinor! + verified.providerCostComponents.additionalFeeMinor!
+      : verified.providerFeeMinor ?? 0;
     const allocations: StudentSubscriptionFinalizeResult["allocations"] = revenueAllocations.map((item) => ({
       ...item,
       entryType: "CREDIT" as const,
@@ -573,7 +602,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
       [
         verified.providerTransactionId,
         verified.paidAt ? new Date(verified.paidAt) : null,
-        verified.providerFeeMinor ?? null,
+        split ? providerFeeMinor : verified.providerFeeMinor ?? null,
         verified.providerSettlementAmountMinor ?? null,
         paymentId,
       ],
@@ -625,6 +654,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
         WHERE id=$2 AND status='PAID'`,
       [JSON.stringify(receiptSnapshot), paymentId],
     );
+    await recordSplitCollection(client, paymentId, "PAID", Number(payment.subscriptionId));
     await client.query("COMMIT");
     return { status: "PAID", activated: true, reconciliationRequired: false, allocations };
   } catch (error) {

@@ -640,7 +640,7 @@ components:
             checkoutVerified: { type: boolean, enum: [false] }
             automaticSplitSettlementEnabled: { type: boolean, enum: [false] }
             automaticSplitSettlementVerified: { type: boolean, enum: [false] }
-            subaccountIntegration: { type: string, enum: [NOT_IMPLEMENTED] }
+            subaccountIntegration: { type: string, enum: [NOT_IMPLEMENTED, DEVELOPMENT_TEST_ONBOARDING] }
             bankAccountVerificationConfigured: { type: boolean }
     CompanySettlementInput:
       type: object

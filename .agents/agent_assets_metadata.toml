@@ -616,3 +616,17 @@ mtime_ms = 1791383864118
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/233fa6f9-a84a-42e3-8822-5a1152395d6f/687aaaab-30ea-421f-8174-9cb8622d6c24"
 storage_version_token = "1791384071622671"
 content_type = "text/html"
+
+[[outputs]]
+id = "qssvaZUEePmTb-2sixwjC"
+uri = "file://docs/flutterwave-development-split-settlements.md"
+type = "text"
+title = "Development split-settlement report"
+description = "Exact TEST model, onboarding safeguards, verification evidence, preservation results, and remaining provider/live-operation gates."
+logical_id = "0dce722f-c5aa-4f49-9aa2-fd2d39e516a2"
+content_hash = "sha256:04b0c4e69fedbc8a467e7628bc5b8dd01470bae89e2cede948b222f00725b3dd"
+size = 11110
+mtime_ms = 1791749578996
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0dce722f-c5aa-4f49-9aa2-fd2d39e516a2/2c1b1fe5-61a1-45b4-b831-fd2c662ddd99"
+storage_version_token = "1791749685938741"
+content_type = "text/markdown"

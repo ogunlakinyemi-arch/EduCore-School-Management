@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import flutterwaveSplitsRouter from "./flutterwave-splits";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import peopleRouter from "./people";
@@ -54,6 +55,7 @@ import partnerNfcRouter from "./partner-nfc";
 import nfcPaymentLinksRouter from "./nfc-payment-links";
 
 const router: IRouter = Router();
+router.use(flutterwaveSplitsRouter);
 
 router.use(healthRouter);
 router.use(nfcPaymentLinksRouter);

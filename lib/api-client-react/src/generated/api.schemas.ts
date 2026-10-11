@@ -7707,6 +7707,7 @@ export type SettlementProviderCapabilityCollectionSubaccountIntegration = typeof
 
 export const SettlementProviderCapabilityCollectionSubaccountIntegration = {
   NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
+  DEVELOPMENT_TEST_ONBOARDING: 'DEVELOPMENT_TEST_ONBOARDING',
 } as const;
 
 export type SettlementProviderCapabilityCollection = {
@@ -13023,6 +13024,214 @@ export interface LostCardInput {
      * @maxLength 500
      */
   reason: string;
+}
+
+export type FlutterwaveRecipientInputKind = typeof FlutterwaveRecipientInputKind[keyof typeof FlutterwaveRecipientInputKind];
+
+
+export const FlutterwaveRecipientInputKind = {
+  SCHOOL: 'SCHOOL',
+  PARTNER: 'PARTNER',
+} as const;
+
+export interface FlutterwaveRecipientInput {
+  kind: FlutterwaveRecipientInputKind;
+  /** @minimum 1 */
+  entityId: number;
+  /** @pattern ^[0-9]{3,6}$ */
+  bankCode: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+  /**
+     * @minLength 10
+     * @maxLength 16
+     */
+  contactPhone: string;
+  ownershipAttestation: boolean;
+}
+
+export type FlutterwaveRecipientReviewAction = typeof FlutterwaveRecipientReviewAction[keyof typeof FlutterwaveRecipientReviewAction];
+
+
+export const FlutterwaveRecipientReviewAction = {
+  APPROVE_AND_CREATE_TEST: 'APPROVE_AND_CREATE_TEST',
+  RECOVER: 'RECOVER',
+  SUSPEND: 'SUSPEND',
+  RETIRE: 'RETIRE',
+} as const;
+
+export interface FlutterwaveRecipientReview {
+  action: FlutterwaveRecipientReviewAction;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  note: string;
+  ownershipConfirmed?: boolean;
+  distinctFromPlatformAccountConfirmed?: boolean;
+}
+
+export interface FlutterwaveSchoolSplitInput {
+  enabled: boolean;
+  automaticSettlementConfirmed: boolean;
+}
+
+export interface FlutterwaveSchoolSplitConfiguration {
+  schoolId: number;
+  enabled: boolean;
+  automaticSettlementConfirmed: boolean;
+}
+
+export type FlutterwaveRecipientKind = typeof FlutterwaveRecipientKind[keyof typeof FlutterwaveRecipientKind];
+
+
+export const FlutterwaveRecipientKind = {
+  SCHOOL: 'SCHOOL',
+  PARTNER: 'PARTNER',
+} as const;
+
+export type FlutterwaveRecipientMode = typeof FlutterwaveRecipientMode[keyof typeof FlutterwaveRecipientMode];
+
+
+export const FlutterwaveRecipientMode = {
+  TEST: 'TEST',
+} as const;
+
+export interface FlutterwaveRecipient {
+  id: number;
+  kind: FlutterwaveRecipientKind;
+  entityId: number;
+  entityName: string;
+  status: string;
+  maskedAccount: string;
+  accountName: string;
+  bankName: string;
+  mode: FlutterwaveRecipientMode;
+  /** @nullable */
+  providerSubaccountId?: string | null;
+  /** @nullable */
+  reviewNote?: string | null;
+  /** @nullable */
+  lastError?: string | null;
+}
+
+export interface FlutterwaveRecipientSettlement {
+  recipientId: number;
+  expectedAmountMinor: number;
+  /** @nullable */
+  observedAmountMinor?: number | null;
+  /** @nullable */
+  providerSettlementId?: string | null;
+  status: string;
+  /** @nullable */
+  exception?: string | null;
+}
+
+export interface FlutterwaveSplitAdjustment {
+  id: number;
+  paymentId: number;
+  amountMinor: number;
+  status: string;
+  /** @nullable */
+  providerRefundId?: string | null;
+  recoveryStatus: string;
+  /** @nullable */
+  schoolRecoveryMinor?: number | null;
+  /** @nullable */
+  partnerRecoveryMinor?: number | null;
+  /** @nullable */
+  platformReversalMinor?: number | null;
+}
+
+export interface FlutterwaveSplitPayment {
+  paymentId: number;
+  schoolId: number;
+  studentId: number;
+  termId: number;
+  reference: string;
+  status: string;
+  collectionStatus: string;
+  grossAmountMinor: number;
+  schoolAmountMinor: number;
+  partnerAmountMinor: number;
+  platformAmountMinor: number;
+  /** @nullable */
+  providerFeeMinor?: number | null;
+  /** @nullable */
+  providerAdditionalFeeMinor?: number | null;
+  /** @nullable */
+  platformNetMinor?: number | null;
+  currency: string;
+  /** @nullable */
+  reconciliationNote: string | null;
+  recipients: FlutterwaveRecipientSettlement[];
+  adjustments: FlutterwaveSplitAdjustment[];
+}
+
+export interface FlutterwaveSplitRefundInput {
+  /**
+     * @minimum 10000
+     * @maximum 500000
+     */
+  amountMinor: number;
+  /**
+     * @minLength 10
+     * @maxLength 300
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 80
+     */
+  idempotencyKey: string;
+}
+
+export type FlutterwaveSplitScopeKind = typeof FlutterwaveSplitScopeKind[keyof typeof FlutterwaveSplitScopeKind];
+
+
+export const FlutterwaveSplitScopeKind = {
+  SCHOOL: 'SCHOOL',
+  PARTNER: 'PARTNER',
+} as const;
+
+export interface FlutterwaveSplitScope {
+  kind: FlutterwaveSplitScopeKind;
+  id: number;
+  name: string;
+}
+
+export type FlutterwaveSplitDashboardMode = typeof FlutterwaveSplitDashboardMode[keyof typeof FlutterwaveSplitDashboardMode];
+
+
+export const FlutterwaveSplitDashboardMode = {
+  TEST: 'TEST',
+} as const;
+
+export type FlutterwaveSplitDashboardCurrency = typeof FlutterwaveSplitDashboardCurrency[keyof typeof FlutterwaveSplitDashboardCurrency];
+
+
+export const FlutterwaveSplitDashboardCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type FlutterwaveSplitDashboardFeeBearer = typeof FlutterwaveSplitDashboardFeeBearer[keyof typeof FlutterwaveSplitDashboardFeeBearer];
+
+
+export const FlutterwaveSplitDashboardFeeBearer = {
+  PLATFORM: 'PLATFORM',
+} as const;
+
+export interface FlutterwaveSplitDashboard {
+  developmentOnly: boolean;
+  mode: FlutterwaveSplitDashboardMode;
+  currency: FlutterwaveSplitDashboardCurrency;
+  feeBearer: FlutterwaveSplitDashboardFeeBearer;
+  isOwner: boolean;
+  testCredentialConfigured: boolean;
+  scopes: FlutterwaveSplitScope[];
+  recipients: FlutterwaveRecipient[];
+  schools: FlutterwaveSchoolSplitConfiguration[];
+  payments: FlutterwaveSplitPayment[];
 }
 
 export interface NfcGuestCheckoutInput {
@@ -20908,6 +21117,13 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetFlutterwaveSplitDashboardParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
 
 export type GetStudentNfcAssistedOptionsParams = {
 /**

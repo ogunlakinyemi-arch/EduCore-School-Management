@@ -34,6 +34,20 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /flutterwave/split-dashboard:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-dashboard"
+  /flutterwave/split-recipients:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-recipients"
+  /flutterwave/split-recipients/{recipientId}/review:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-recipients~1{recipientId}~1review"
+  /flutterwave/split-schools/{schoolId}/configuration:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-schools~1{schoolId}~1configuration"
+  /flutterwave/split-payments/{paymentId}/reconcile:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-payments~1{paymentId}~1reconcile"
+  /flutterwave/split-payments/{paymentId}/refunds:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-payments~1{paymentId}~1refunds"
+  /flutterwave/split-adjustments/{adjustmentId}/verify:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-adjustments~1{adjustmentId}~1verify"
   /student-nfc/assisted-options:
     $ref: "./assisted-nfc.yaml#/paths/~1student-nfc~1assisted-options"
   /student-nfc/assisted-requests:

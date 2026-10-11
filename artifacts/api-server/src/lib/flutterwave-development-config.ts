@@ -25,7 +25,8 @@ export function developmentFlutterwaveCollectionStatus(env: NodeJS.ProcessEnv = 
     checkoutVerified: false as const,
     automaticSplitSettlementEnabled: false as const,
     automaticSplitSettlementVerified: false as const,
-    subaccountIntegration: "NOT_IMPLEMENTED" as const,
+    subaccountIntegration: env.NODE_ENV === "development" && !env.REPLIT_DEPLOYMENT
+      ? "DEVELOPMENT_TEST_ONBOARDING" as const : "NOT_IMPLEMENTED" as const,
     bankAccountVerificationConfigured: configured,
   };
 }

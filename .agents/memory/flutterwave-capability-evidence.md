@@ -32,3 +32,9 @@ On 2026-10-11 the user stated that no real schools had onboarded for commercial 
 **Why:** Building onboarding does not authorize inventing commercial recipients, substituting the platform's bank account for a school's account, or enabling real settlements.
 
 **How to apply:** Require each school's own verified settlement details and separately verified provider subaccount. Preserve the agreed gross school/partner/platform allocations, disclose provider fees separately, and obtain explicit approval before live operations, Production migrations or publication.
+
+The user selected **“Yetenia covers fees”** on 2026-10-11: the payer total remains ₦5,000; the school receives a fixed gross ₦2,000, an eligible Partner ₦100, and platform gross is ₦2,900 (₦3,000 without an eligible Partner).
+
+**Why:** Provider fees must not silently reduce the agreed school/Partner shares or increase the payer total.
+
+**How to apply:** Treat provider fees and applicable VAT as separate platform expenses. Distinguish platform gross from net, and require provider evidence of the actual charged amount. Never infer VAT treatment or a bank deposit from internal allocations alone.

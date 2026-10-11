@@ -57,6 +57,7 @@ import DriverTransportPage from '@/pages/driver-transport';
 import FamilyTransportPage from '@/pages/family-transport';
 import { EmployeeNfcPage, MyEmployeeNfcPage } from '@/pages/employee-nfc';
 import { MyStaffNfcSubscriptionPage, StaffNfcFinancePage, StaffNfcBillingRulesPage, PartnerStaffNfcCommissionsPage } from '@/pages/staff-nfc-billing';
+import { FlutterwaveSettlementsPage } from '@/pages/flutterwave-settlements';
 import { PaymentSettlementPage } from '@/pages/payment-settlement';
 import { PayrollPage } from '@/pages/payroll';
 import { MyPayslipsPage } from '@/pages/my-payslips';
@@ -274,6 +275,7 @@ export function ProtectedRoutes() {
           <Route path="/staff-nfc-finance"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><StaffNfcFinancePage /></RoleGuard></Route>
           <Route path="/billing-rules"><RoleGuard isPlatformOwnerOnly><StaffNfcBillingRulesPage /></RoleGuard></Route>
           <Route path="/payment-settlement"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PaymentSettlementPage /></RoleGuard></Route>
+          <Route path="/flutterwave-settlements"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><FlutterwaveSettlementsPage /></RoleGuard></Route>
           <Route path="/payroll"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PayrollPage /></RoleGuard></Route>
           <Route path="/my-payslips"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyPayslipsPage /></RoleGuard></Route>
           <Route path="/finance-workspace"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><FinanceWorkspacePage /></RoleGuard></Route>
