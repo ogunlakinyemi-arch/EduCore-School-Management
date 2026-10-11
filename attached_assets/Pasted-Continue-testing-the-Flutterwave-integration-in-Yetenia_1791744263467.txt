@@ -1,0 +1,26 @@
+Continue testing the Flutterwave integration in Yetenia EduCore from the latest audit.
+
+Confirmed so far:
+
+- A genuine Flutterwave TEST payment succeeded for ₦5,000 NGN.
+- A separate genuine TEST payment failed due to insufficient funds.
+- Both were independently verified using Flutterwave's reference and transaction-ID verification APIs.
+- Development verification logic and duplicate-settlement protections have passed the reported tests.
+- The standalone test payments are not linked to EduCore student records.
+- No genuine provider-to-EduCore receipt/subscription journey has yet been confirmed.
+
+TASK: Complete an end-to-end TEST payment through EduCore itself.
+
+1. Inspect the existing Development test data and identify a designated test school and student. Do not use a real student's personal or payment data.
+2. Confirm the authorized School Admin workflow for initiating a ₦5,000 NGN TEST checkout for that student. If an authorized sign-in or manual browser action is required, tell me exactly what to do rather than bypassing authentication.
+3. Initiate checkout from EduCore, ensuring the payment reference is bound to the correct school, student, term, amount, and currency.
+4. Complete the payment through Flutterwave's genuine TEST hosted checkout using its published test payment details.
+5. Verify the result server-side through Flutterwave. Do not trust the redirect or browser message alone.
+6. Confirm that EduCore creates exactly one payment record, activates only the appropriate subscription or entitlement, and creates the expected receipt and payment history.
+7. Repeat verification or safely replay the callback to confirm no duplicate receipt, subscription activation, or allocation occurs.
+8. If feasible, test a failed in-app payment and confirm that it does not activate the subscription or create successful-payment allocations.
+9. Preserve existing internal allocation rules: school ₦2,000, eligible partner ₦100, and platform ₦2,900; without an eligible partner, school ₦2,000 and platform ₦3,000.
+10. Do not retrospectively attach the two standalone audit transactions to a student. Do not create fake receipts or manually mark payments successful.
+11. Keep all work in Development. Do not create subaccounts, implement split settlements, use live credentials, initiate real transfers, change Production, run Production migrations, or publish.
+
+Report the exact student and term used (using non-sensitive test identifiers), the actual provider verification result, payment/receipt/subscription records, duplicate handling, and any remaining manual steps. Clearly distinguish genuine provider evidence from mocked tests. Do not expose credentials.

@@ -38,3 +38,9 @@ Derive family-test ownership from the actual active relationship graph, not numb
 **Why:** A reusable fixture's guardian assignments differed from the initial test description. Successful reads under two different parents did not establish paid-sibling access under one parent.
 
 **How to apply:** Inspect owned fixtures after provisioning, verify each caller-child relationship, and distinguish same-parent browser evidence from separate-account evidence. Add only explicitly scoped QA relationships when needed.
+
+Reused QA actors may retain their original fixture namespace, while a school's display name differs from its fixture code. Neither difference alone establishes an authentication or tenant mismatch.
+
+**Why:** A genuine Clerk session for a shared QA School Admin was initially rejected by a tester comparing fixture labels and display names, despite the correct live identity and active school membership.
+
+**How to apply:** Validate provider fixture ownership, app identity, live authorized-context membership and the selected numeric school ID against the verified fixture code. Do not create replacement identities or change roles to make display labels match.
