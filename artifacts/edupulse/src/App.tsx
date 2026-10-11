@@ -453,13 +453,13 @@ export default function App() {
         localization={{
           signIn: {
             start: {
-              title: 'Sign in to Yemait EduCore',
+              title: 'Sign in to Yetenia EduCore',
               subtitle: 'Welcome back. Sign in to continue.',
             },
           },
           signUp: {
             start: {
-              title: 'Create your Yemait EduCore account',
+              title: 'Create your Yetenia EduCore account',
               subtitle: 'Join your school community.',
             },
           },

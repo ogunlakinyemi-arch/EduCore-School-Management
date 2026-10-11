@@ -1,6 +1,6 @@
-# Yemait EduCore School Management
+# Yetenia EduCore School Management
 
-Yemait EduCore is a multi-tenant school operations platform from YETENIA TECHNOLOGIES LIMITED (yetenia.com) for Nigerian private schools, covering platform administration, school master data, subscriptions, NFC cards, and audit activity.
+Yetenia EduCore is a multi-tenant school operations platform from YETENIA TECHNOLOGIES LIMITED (yetenia.com) for Nigerian private schools, covering platform administration, school master data, subscriptions, NFC cards, and audit activity.
 
 ## Run & Operate
 
@@ -31,7 +31,7 @@ Yemait EduCore is a multi-tenant school operations platform from YETENIA TECHNOL
 ## Architecture decisions
 
 - The app keeps platform-owner views and school operations in the same product shell, with `schoolId` required on tenant-scoped API operations.
-- Yemait EduCore subscription pricing is server-owned: ₦5,000 total, split into ₦2,000 school share and ₦3,000 Yemait EduCore share.
+- Yetenia EduCore subscription pricing is server-owned: ₦5,000 total, split into ₦2,000 school share and ₦3,000 Yetenia EduCore share.
 - Subscription verification activates the subscription and eligible NFC cards; unpaid history remains stored.
 - The API contract is OpenAPI-first; generated React Query hooks are the frontend integration boundary.
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool } from "@workspace/db";
 import { AuthError, assertSchoolOperationalAccess, getUserContext, requireAuthentication } from "../middlewares/auth";
 import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
-import { createGuestNfcCheckout, verifyGuestNfcCheckout } from "../services/nfc-guest-checkout";
+import { createGuestNfcCheckout, verifyGuestNfcCheckout, reserveGuestNfcPayment } from "../services/nfc-guest-checkout";
 import { configuredStudentSubscriptionCheckoutBaseUrl } from "../lib/student-subscription-return-url";
 import { assertStudentNfcPaymentAccess } from "../lib/student-nfc-obligations";
 import {
@@ -105,24 +105,17 @@ router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication
        ORDER BY id DESC LIMIT 1 FOR UPDATE`, [subscriptionId, input.mode],
     )).rows[0];
     if (!row) {
+      const reference = newNfcLinkReference();
       let paymentId: number | null = null;
       if (input.mode === "FLUTTERWAVE_SANDBOX") {
-        // New links can reserve checkout on the public page. Reuse a matching existing checkout.
+        // Reserve a payment before the link; only the guest action initializes provider checkout.
         let configured = false;
         try { configured = !!configuredStudentNfcTestAdapter(); } catch { /* Configuration fails closed. */ }
         if (!process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || !configured) {
           throw new AuthError(503, "Configure sandbox webhook verification before sharing a provider checkout");
         }
-        const payment = (await db.query(
-          `SELECT id FROM student_subscription_payments WHERE subscription_id=$1 AND school_id=$2 AND student_id=$3
-             AND academic_session_id=$4 AND academic_term_id=$5 AND provider='FLUTTERWAVE'
-             AND provider_mode='SANDBOX' AND status='PENDING' AND checkout_url IS NOT NULL
-           ORDER BY id DESC LIMIT 1`,
-          [subscriptionId, scope.schoolId, scope.studentId, scope.sessionId, scope.termId],
-        )).rows[0];
-        paymentId = payment?.id ?? null;
+        paymentId = await reserveGuestNfcPayment(db, scope, reference, getUserContext(req).user.id);
       }
-      const reference = newNfcLinkReference();
       const allocations = await expectedNfcAllocations(db, scope);
       row = (await db.query(
         `INSERT INTO nfc_payment_links(school_id,student_id,subscription_id,academic_session_id,academic_term_id,
@@ -139,8 +132,9 @@ router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication
     // A fragment keeps the bearer token out of HTTP access logs and Referer headers.
     const url = new URL(`${base.replace(/\/$/, "")}/nfc/pay`);
     url.hash = token;
+    const response = { ...publicNfcLink(full), paymentUrl: url.toString() };
     await db.query("COMMIT");
-    res.set("Cache-Control", "no-store").json({ ...publicNfcLink(full), paymentUrl: url.toString() });
+    res.set("Cache-Control", "no-store").json(response);
   } catch (error) { await db.query("ROLLBACK"); throw error; }
   finally { db.release(); }
 }));

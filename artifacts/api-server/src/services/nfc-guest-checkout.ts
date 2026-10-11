@@ -5,7 +5,7 @@ import { PaymentProviderError } from "../lib/fee-providers";
 import { configuredStudentSubscriptionCheckoutBaseUrl } from "../lib/student-subscription-return-url";
 import { ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
 import {
-  findStudentSubscriptionTermPaymentConflict, finalizeVerifiedStudentSubscriptionPayment,
+  findStudentSubscriptionTermPaymentConflict, finalizeVerifiedStudentSubscriptionPayment, type StudentSubscriptionSqlClient,
 } from "../lib/student-subscription-billing";
 import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import {
@@ -37,6 +37,67 @@ function payableLink(row: any) {
   }
 }
 
+/** The existing isolation CHECK requires the payment reservation BEFORE the link. */
+export async function reserveGuestNfcPayment(
+  db: StudentSubscriptionSqlClient, scope: any, reference: string, issuingUserId: number,
+) {
+  const adapter = adapterForGuest();
+  const sub = (await db.query(
+    `SELECT sub.amount,sub.status,sub.verification_status,sub.provider_reference
+       FROM subscriptions sub JOIN students st ON st.id=sub.student_id AND st.school_id=sub.school_id
+      WHERE sub.id=$1 AND sub.school_id=$2 AND sub.student_id=$3 AND upper(st.status)='ACTIVE'
+      FOR NO KEY UPDATE OF sub,st`,
+    [scope.subscriptionId, scope.schoolId, scope.studentId],
+  )).rows[0];
+  if (!sub || Number(sub.amount) !== 5000 || sub.provider_reference
+      || ["active", "waived"].includes(String(sub.status).toLowerCase())
+      || String(sub.verification_status).toLowerCase() === "verified") {
+    throw new AuthError(409, "The bound NFC subscription is not eligible for checkout");
+  }
+  const existing = await findStudentSubscriptionTermPaymentConflict(db, scope);
+  if (existing) {
+    if (Number(existing.subscriptionId) !== Number(scope.subscriptionId) || existing.status !== "PENDING") {
+      throw new AuthError(409, "An existing term payment must be completed or reconciled");
+    }
+    const matching = (await db.query(
+      `SELECT id FROM student_subscription_payments
+        WHERE id=$1 AND subscription_id=$2 AND school_id=$3 AND student_id=$4
+          AND academic_session_id=$5 AND academic_term_id=$6
+          AND provider='FLUTTERWAVE' AND provider_mode='SANDBOX'
+          AND gross_amount_minor=500000 AND currency='NGN'
+          AND status='PENDING' AND reconciliation_status<>'RECONCILIATION_REQUIRED' FOR UPDATE`,
+      [existing.id, scope.subscriptionId, scope.schoolId, scope.studentId, scope.sessionId, scope.termId],
+    )).rows[0];
+    if (!matching) throw new AuthError(409, "The existing term payment is not a matching TEST checkout");
+    return Number(existing.id);
+  }
+  const current = (await db.query(
+    `SELECT t.id FROM academic_terms t JOIN academic_sessions ses
+       ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
+      WHERE t.id=$1 AND ses.id=$2 AND t.school_id=$3 AND t.is_current AND ses.is_current
+        AND upper(t.status)='ACTIVE' AND upper(ses.status)='ACTIVE'
+        AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE FOR SHARE OF t,ses`,
+    [scope.termId, scope.sessionId, scope.schoolId],
+  )).rows[0];
+  if (!current) throw new AuthError(409, "Checkout requires the bound active current term");
+  const canonical = await ensureStudentNfcSubscription(
+    db, Number(scope.schoolId), Number(scope.studentId), Number(scope.sessionId), Number(scope.termId),
+  );
+  if (!canonical || Number(canonical.subscriptionId) !== Number(scope.subscriptionId)) {
+    throw new AuthError(409, "The authoritative NFC obligation requires review");
+  }
+  const payment = (await db.query(
+    `INSERT INTO student_subscription_payments
+      (subscription_id,school_id,student_id,academic_session_id,academic_term_id,payer_user_id,
+       provider,provider_mode,reference,idempotency_key,gross_amount_minor,currency,failure_code)
+     VALUES($1,$2,$3,$4,$5,$6,'FLUTTERWAVE','SANDBOX',$7,$8,500000,'NGN','GUEST_CHECKOUT_RESERVED')
+     RETURNING id`,
+    [scope.subscriptionId, scope.schoolId, scope.studentId, scope.sessionId, scope.termId,
+      issuingUserId, adapter.generateReference(), `guest:${reference}`],
+  )).rows[0];
+  return Number(payment.id);
+}
+
 /**
  * Shared with the authenticated NFC checkout: one persisted reservation,
  * one provider POST, and fail-closed reconciliation on an uncertain response.
@@ -55,7 +116,7 @@ export async function initializeStudentNfcHostedCheckout(
     });
     if (checkout.reference !== payment.reference) throw new PaymentProviderError("Checkout reference mismatch");
     const saved = persistCheckout ? await pool.query(
-      `UPDATE student_subscription_payments SET checkout_url=$1,updated_at=NOW()
+      `UPDATE student_subscription_payments SET checkout_url=$1,failure_code=NULL,updated_at=NOW()
         WHERE id=$2 AND status='PENDING' RETURNING id`,
       [checkout.checkoutUrl, payment.paymentId],
     ) : { rows: [{ id: payment.paymentId }] };
@@ -74,7 +135,7 @@ export async function initializeStudentNfcHostedCheckout(
 }
 
 export async function createGuestNfcCheckout(token: string, email: string) {
-  const adapter = adapterForGuest();
+  adapterForGuest();
   const first = await readGuestNfcLink(token);
   payableLink(first);
   const db = await pool.connect();
@@ -102,10 +163,20 @@ export async function createGuestNfcCheckout(token: string, email: string) {
         || row.academic_session_id !== first.academic_session_id) {
       throw new AuthError(409, "The bound NFC subscription is not eligible for checkout");
     }
-    if (row.payment_id) {
-      // The joined public row already proves the exact school/student/session/term binding.
-      if (!row.paymentReference) throw new AuthError(409, "The existing payment requires review");
-    } else {
+    if (!row.payment_id || !row.paymentReference) throw new AuthError(409, "The existing payment requires review");
+    payment = (await db.query(
+      `SELECT id AS "paymentId",reference,gross_amount_minor AS "grossAmountMinor",currency,status,
+              checkout_url AS "checkoutUrl",failure_code AS "failureCode"
+         FROM student_subscription_payments WHERE id=$1 AND subscription_id=$2 AND school_id=$3
+           AND student_id=$4 AND academic_session_id=$5 AND academic_term_id=$6
+           AND provider='FLUTTERWAVE' AND provider_mode='SANDBOX' FOR UPDATE`,
+      [row.payment_id, row.subscription_id, row.school_id, row.student_id,
+        row.academic_session_id, row.academic_term_id],
+    )).rows[0];
+    if (!payment || payment.status !== "PENDING" || Number(payment.grossAmountMinor) !== 500000 || payment.currency !== "NGN") {
+      throw new AuthError(409, "The existing payment requires review");
+    }
+    if (!payment.checkoutUrl && payment.failureCode === "GUEST_CHECKOUT_RESERVED") {
       const current = (await db.query(
         `SELECT t.id FROM academic_terms t JOIN academic_sessions ses
            ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
@@ -115,30 +186,10 @@ export async function createGuestNfcCheckout(token: string, email: string) {
         [row.academic_term_id, row.academic_session_id, row.school_id],
       )).rows[0];
       if (!current) throw new AuthError(409, "Checkout requires the bound active current term");
-      const conflict = await findStudentSubscriptionTermPaymentConflict(db, {
-        schoolId: Number(row.school_id), studentId: Number(row.student_id),
-        sessionId: Number(row.academic_session_id), termId: Number(row.academic_term_id),
-      });
-      if (conflict) throw new AuthError(409, "An existing term payment must be completed or reconciled");
-      const canonical = await ensureStudentNfcSubscription(
-        db, Number(row.school_id), Number(row.student_id),
-        Number(row.academic_session_id), Number(row.academic_term_id),
+      await db.query(
+        "UPDATE student_subscription_payments SET failure_code='GUEST_CHECKOUT_INITIALIZING',updated_at=NOW() WHERE id=$1",
+        [payment.paymentId],
       );
-      if (!canonical || Number(canonical.subscriptionId) !== Number(row.subscription_id)) {
-        throw new AuthError(409, "The authoritative NFC obligation requires review");
-      }
-      payment = (await db.query(
-        `INSERT INTO student_subscription_payments
-          (subscription_id,school_id,student_id,academic_session_id,academic_term_id,payer_user_id,
-           provider,provider_mode,reference,idempotency_key,gross_amount_minor,currency)
-         VALUES($1,$2,$3,$4,$5,$6,'FLUTTERWAVE','SANDBOX',$7,$8,500000,'NGN')
-         RETURNING id AS "paymentId",reference,gross_amount_minor AS "grossAmountMinor",currency`,
-        [row.subscription_id, row.school_id, row.student_id, row.academic_session_id, row.academic_term_id,
-          row.created_by, adapter.generateReference(), `guest:${row.reference}`],
-      )).rows[0];
-      // The issuing account is the internal audit actor; the guest is not impersonated as that account.
-      await db.query("UPDATE nfc_payment_links SET payment_id=$1,updated_at=NOW() WHERE id=$2",
-        [payment.paymentId, row.id]);
       initialize = true;
     }
     await db.query("COMMIT");

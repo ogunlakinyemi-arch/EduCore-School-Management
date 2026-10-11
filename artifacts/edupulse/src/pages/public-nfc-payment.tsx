@@ -12,6 +12,13 @@ const statusText: Record<string, string> = {
   PENDING: 'Awaiting payment', SIMULATED_SUCCESS: 'Test completed (simulation only)', SIMULATED_FAILED: 'Test failed (simulation only)',
   EXPIRED: 'Link expired', CANCELLED: 'Link cancelled', PAID: 'Payment recorded', FAILED: 'Payment failed', RECONCILIATION_REQUIRED: 'Under review',
 };
+export function nfcPaymentError(error: unknown) {
+  const api = error as { status?: number; data?: { error?: string } };
+  if (api?.status === 400 || api?.status === 404) return 'This payment link is invalid or incomplete. Ask the school for a new link.';
+  if (api?.status === 503) return 'Flutterwave TEST payment is temporarily unavailable. Ask school staff to check the Development configuration.';
+  if (api?.status === 409 && typeof api.data?.error === 'string') return api.data.error;
+  return 'The payment service could not respond. Refresh or contact school staff. No payment has been confirmed.';
+}
 
 export default function PublicNfcPaymentPage() {
   const [token] = useState(readToken);
@@ -22,9 +29,9 @@ export default function PublicNfcPaymentPage() {
 
   const load = useCallback(async () => {
     if (!token) { setError('This link is incomplete. Ask the school for a new payment link.'); return; }
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setLink(null);
     try { setLink(await viewPublicNfcPaymentLink({ token })); }
-    catch { setError('This payment link is invalid or no longer available.'); }
+    catch (e) { setError(nfcPaymentError(e)); }
     finally { setBusy(false); }
   }, [token]);
   useEffect(() => { void load(); }, [load]);
@@ -39,7 +46,7 @@ export default function PublicNfcPaymentPage() {
   const verify = async () => {
     setBusy(true); setError('');
     try { setLink(await verifyPublicNfcPaymentLink({ token })); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Payment is not yet verified. Check again later.'); }
+    catch (e) { setError(nfcPaymentError(e)); }
     finally { setBusy(false); }
   };
   const checkoutPayment = async (event: React.FormEvent) => {
@@ -50,7 +57,7 @@ export default function PublicNfcPaymentPage() {
       const url = result.status === 'PENDING' ? safeFlutterwaveUrl(result.checkoutUrl) : null;
       if (url) window.location.assign(url);
       else if (result.status !== 'PAID') setError('Checkout is initializing or needs review. Do not start another payment; refresh or check payment status.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'The TEST checkout could not be started.'); }
+    } catch (e) { setError(nfcPaymentError(e)); }
     finally { setBusy(false); }
   };
 

@@ -102,7 +102,7 @@ export class CommunicationProviderConfigurationError extends Error {
 }
 
 const DEFAULT_TIMEOUT_MS = 8_000;
-const DEFAULT_FROM_NAME = "Yemait EduCore";
+const DEFAULT_FROM_NAME = "Yetenia EduCore";
 const SAFE_PROVIDER_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
 const NIGERIAN_MOBILE_PREFIX = "(?:70|80|81|90|91)";
 const NIGERIAN_MOBILE_NUMBER = /^(?:70|80|81|90|91)\d{8}$/;
@@ -482,7 +482,7 @@ export function createEmailProvider(
     if (!env.RESEND_API_KEY || !env.EMAIL_FROM) throw new CommunicationProviderConfigurationError("email", selected);
     return new ResendEmailProvider({
       apiKey: env.RESEND_API_KEY,
-      from: env.EMAIL_FROM,
+      from: env.EMAIL_FROM.replace(/^Yemait EduCore(?=\s*<)/, DEFAULT_FROM_NAME),
       // Development never contacts real parents merely because a key exists.
       allowedRecipients: env.NODE_ENV === "production" ? undefined :
         (env.RESEND_DEVELOPMENT_RECIPIENTS ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean),

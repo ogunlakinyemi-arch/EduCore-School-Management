@@ -70,7 +70,7 @@ export async function provisionCurrentUser(clerkUserId: string) {
     clerkUser.primaryEmailAddress?.emailAddress ??
     clerkUser.emailAddresses[0]?.emailAddress;
   if (!email) {
-    throw new AuthError(403, "An email address is required to access Yemait EduCore");
+    throw new AuthError(403, "An email address is required to access Yetenia EduCore");
   }
 
   const result = await pool.query(
@@ -190,7 +190,7 @@ export async function assertDeviceActivationOfficer(req: Request): Promise<UserC
 
 export function assertUserActive(status: string) {
   if (status !== "ACTIVE") {
-    throw new AuthError(403, "This Yemait EduCore account is inactive");
+    throw new AuthError(403, "This Yetenia EduCore account is inactive");
   }
 }
 

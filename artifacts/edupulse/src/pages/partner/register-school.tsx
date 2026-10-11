@@ -138,7 +138,7 @@ export default function RegisterSchool() {
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
                 <Zap size={20} />
               </span>
-              <span className="display-font text-xl font-bold">Yemait EduCore</span>
+              <span className="display-font text-xl font-bold">Yetenia EduCore</span>
             </div>
             
             <h1 className="display-font text-4xl font-bold leading-tight mb-4">

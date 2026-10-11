@@ -39,7 +39,7 @@ export class WebPushProvider implements PushProvider {
     if (!parsed.success || (parsed.data.expirationTime && parsed.data.expirationTime <= Date.now())) return failed("INVALID_REQUEST");
     try {
       // Generic lock-screen content only. No child name, school, medical details or URL credentials.
-      await this.transport(parsed.data, JSON.stringify({ title: "Yemait EduCore", body: "You have a new notification. Open EduCore for details.", tag: message.idempotencyKey }), {
+      await this.transport(parsed.data, JSON.stringify({ title: "Yetenia EduCore", body: "You have a new notification. Open EduCore for details.", tag: message.idempotencyKey }), {
         vapidDetails: { subject: this.config.subject, publicKey: this.config.publicKey, privateKey: this.config.privateKey },
         TTL: 300, timeout: 8000,
       });

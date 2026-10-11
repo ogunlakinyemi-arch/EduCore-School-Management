@@ -25,11 +25,11 @@ describe('Company branding and unchanged public NFC notices', () => {
   beforeEach(() => { renderState.calls = 0; renderState.link = { ...fixture }; });
   it('identifies the unchanged product, renamed company, service and company domain', () => {
     const html = renderToStaticMarkup(<NfcServiceBranding />);
-    expect(html).toContain('Yemait EduCore');
+    expect(html).toContain('Yetenia EduCore');
     expect(html).toContain('YETENIA TECHNOLOGIES LIMITED');
     expect(html).toContain('NFC Student Attendance and School Entry Notifications');
     expect(html).toContain('https://yetenia.com');
-    expect(html).toContain('This NFC subscription is provided through Yemait EduCore, operated by YETENIA TECHNOLOGIES LIMITED. Your payment is processed according to the configured payment arrangements for your school and the platform.');
+    expect(html).toContain('This NFC subscription is provided through Yetenia EduCore, operated by YETENIA TECHNOLOGIES LIMITED. Your payment is processed according to the configured payment arrangements for your school and the platform.');
     expect(html).not.toMatch(/yemait\s+technolog/i);
   });
   it('keeps identifiers, term, fixed fee, reference, status and expiry visible', () => {

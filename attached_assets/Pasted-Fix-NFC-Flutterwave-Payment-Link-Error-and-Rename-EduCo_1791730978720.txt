@@ -1,0 +1,107 @@
+Fix NFC Flutterwave Payment Link Error and Rename EduCore
+
+Work on my existing Yemait EduCore application in Replit Development.
+
+I need two tasks completed safely: fix the NFC card payment link returning HTTP 500, and rename the product to Yetenia EduCore.
+
+TASK 1 — INVESTIGATE AND FIX THE HTTP 500 PAYMENT ERROR
+
+Problem:
+A School Admin generates an NFC card payment link for a student. When the payment link is opened, it displays:
+
+"HTTP 500 Internal Server Error: Internal server error"
+
+Flutterwave TEST MODE has already been integrated into Development. The payment flow was previously tested with 132 focused tests, but no genuine Flutterwave sandbox transaction has been completed yet.
+
+The existing implementation is intended to preserve:
+
+- ₦5,000 per student per term.
+- Payment-link expiry.
+- School, student and academic-term binding.
+- Expected payment allocations.
+- Server-side Flutterwave transaction verification.
+- Authenticated webhook verification.
+- Verified TEST receipts and subscription updates.
+- Duplicate-request protection and reconciliation of uncertain transactions.
+
+Your instructions
+
+1. Reproduce or trace the failing payment-link request in Development.
+2. Inspect the server logs, stack trace, route handler, payment-link generation code and public payment page.
+3. Identify the exact cause of the HTTP 500 before changing code.
+4. Check whether the payment link contains a valid reference and whether the public route correctly retrieves and validates the associated payment record.
+5. Check for missing environment variables, incorrect secret names, database query errors, invalid payment states, expired links, or frontend/backend response mismatches.
+6. Confirm that the public payment page does not require a School Admin login when it is intended to be publicly accessible.
+7. Fix the actual cause with the smallest safe change.
+8. Preserve the existing ₦5,000 amount, expiry rules, school/student/term binding, payment verification, webhook security, allocation logic and idempotency.
+9. Never mark a payment successful merely because the customer opened the link or returned from Flutterwave.
+10. Do not weaken authentication, authorization, payment verification or other security controls to make the error disappear.
+11. Add regression tests for the failure and successful retrieval of a valid payment link.
+12. Test invalid, expired and already-used links, and ensure they return appropriate user-friendly messages instead of an unexplained HTTP 500.
+
+If Flutterwave's actual sandbox checkout is unavailable or cannot be verified, report that limitation clearly. Do not claim a real payment has been tested when it has not.
+
+TASK 2 — RENAME THE PRODUCT
+
+Change the user-visible product name from Yemait EduCore to Yetenia EduCore throughout the application.
+
+Check:
+
+- Login and registration pages.
+- School Admin dashboards.
+- Platform Owner dashboards.
+- Parent dashboards.
+- Student dashboards.
+- Navigation menus.
+- Page titles and headings.
+- Browser tab titles and application metadata.
+- Payment pages and payment instructions.
+- Emails and notification templates.
+- Receipts and printable documents.
+- Empty states, help text and user-facing messages.
+- Any other visible product branding.
+
+Use the exact spelling and capitalization: Yetenia EduCore.
+
+The legal company name must remain YETENIA TECHNOLOGIES LIMITED.
+
+Do not unnecessarily change:
+
+- Database table names or columns.
+- API routes and endpoint paths.
+- Internal package names or identifiers.
+- Authentication configuration.
+- Environment-variable names.
+- Payment references or existing student/school records.
+- Historical financial records.
+- Existing integrations.
+
+Only change technical identifiers if there is a demonstrated requirement, and explain that requirement before proceeding.
+
+SAFETY REQUIREMENTS
+
+- Development environment only.
+- Do not publish the application.
+- Do not change Production or attempt to fix the separate Replit Publish migration issue.
+- Do not reset, recreate, truncate, or seed any database.
+- Do not execute database migrations without explaining them and obtaining my approval.
+- Do not remove or weaken existing database constraints.
+- Do not replace the current payment integration with a new implementation.
+- Do not expose secret values in logs, source code, screenshots or reports.
+- Do not switch to live Flutterwave credentials or make real charges.
+- Preserve all existing schools, students, subscriptions, NFC records and payment records.
+
+REQUIRED FINAL REPORT
+
+Report these items in simple language:
+
+1. The exact cause of the HTTP 500 error.
+2. What you changed to fix it.
+3. Whether the payment page now opens correctly.
+4. Which payment tests passed and failed.
+5. Whether a genuine Flutterwave sandbox transaction was completed or remains untested.
+6. Where the product name was changed.
+7. Any remaining instances of the old product name in user-visible screens.
+8. Confirmation that Production was not changed and the application was not published.
+
+Begin by investigating the HTTP 500 error. Do not perform destructive operations or unrelated refactoring.

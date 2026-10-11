@@ -401,7 +401,7 @@ export function PeopleImportsPage() {
                   {kind === "students" && preview.classValues.length > 0 && (
                     <ImportSection
                       title="Map uploaded classes"
-                      description="Choose the existing Yemait EduCore class/section that each uploaded class value represents."
+                      description="Choose the existing Yetenia EduCore class/section that each uploaded class value represents."
                     >
                       <div className="grid gap-3 sm:grid-cols-2">
                         {preview.classValues.map((value) => (

@@ -11,7 +11,7 @@ function Slip({ id, fallback }: { id: number; fallback: OwnPayrollPayslip }) {
   return <div className="print-area" data-testid="payslip">
     <PrintStyles />
     {q.isError && <p role="alert" className="mb-3 text-sm text-[hsl(var(--destructive))]">Latest copy could not load; showing the list copy.</p>}
-    <div className="mb-4"><div className="eyebrow">{p.schoolName ?? 'Yemait company'}</div><div className="display-font text-xl font-bold">{p.employeeName}</div><div className={note}>Payslip for {monthLabel(p.periodMonth)}</div></div>
+    <div className="mb-4"><div className="eyebrow">{p.schoolName ?? 'Company'}</div><div className="display-font text-xl font-bold">{p.employeeName}</div><div className={note}>Payslip for {monthLabel(p.periodMonth)}</div></div>
     <dl className="divide-y divide-[hsl(var(--border))] text-sm">
       {([['Base salary', p.baseSalaryMinor], ['Allowance', p.allowanceMinor], ['Bonus', p.bonusMinor], ['Deductions', -p.deductionMinor], ['Adjustment', p.adjustmentMinor]] as const).map(([l, v]) => <div key={l} className="flex justify-between py-2"><dt>{l}</dt><dd className="tabular-nums">{ngn(v)}</dd></div>)}
       {p.adjustmentReason && <div className="py-2 text-xs">Adjustment reason: {p.adjustmentReason}</div>}

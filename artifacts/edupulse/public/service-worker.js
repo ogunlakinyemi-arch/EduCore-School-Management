@@ -1,6 +1,6 @@
 /* EduCore only stores checked public static assets and its generic offline shell. */
 const CACHE_PREFIX = 'educore-safe-static-';
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const MAX_STATIC_ENTRIES = 80;
 const OFFLINE_FILE = 'offline.html';
@@ -166,7 +166,7 @@ self.addEventListener('fetch', (event) => {
 
 // Do not persist payloads or accept payload-supplied navigation URLs.
 self.addEventListener('push', (event) => {
-  event.waitUntil(self.registration.showNotification('Yemait EduCore', {
+  event.waitUntil(self.registration.showNotification('Yetenia EduCore', {
     body: 'You have a new notification. Open EduCore for details.',
     icon: scopedUrl('icons/educore-192.png'),
     tag: 'educore-notification',

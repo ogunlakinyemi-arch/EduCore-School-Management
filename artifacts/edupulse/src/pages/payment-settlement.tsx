@@ -71,7 +71,7 @@ function SchoolAdminSettlement({ schoolId }: { schoolId: number }) {
     <div className="mb-4 flex justify-between"><Tabs tabs={[['profile', 'Settlement profile'], ['history', 'Settlement history']] as const} value={tab} onChange={setTab} />
       <Freshness updatedAt={q.dataUpdatedAt} fetching={q.isFetching} onRefresh={() => { q.refetch(); h.refetch(); }} /></div>
     {tab === 'profile' && <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">School settlement account</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-settlement">{p.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
-      {p.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="No settlement account yet" description="Add the school's own bank recipient. It is never shared with Yemait company payroll money." /> : <ProfileView p={p} />}</section>}
+      {p.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="No settlement account yet" description="Add the school's own bank recipient. It is never shared with company payroll money." /> : <ProfileView p={p} />}</section>}
     {tab === 'history' && <section className="panel overflow-hidden">{h.isLoading ? <SkeletonPage /> : h.isError ? <ErrorState retry={() => h.refetch()} /> : <SettlementHistoryTable rows={h.data ?? []} />}</section>}
     {editing && <Modal title="Settlement details" eyebrow="School account" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={p} scope="SCHOOL" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
   </div>;
@@ -120,7 +120,7 @@ function OwnerSettlement() {
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><Tabs tabs={[['company', 'Company profile'], ['schools', 'School oversight'], ['history', 'All settlement history']] as const} value={tab} onChange={setTab} />
       <Freshness updatedAt={company.dataUpdatedAt} fetching={company.isFetching} onRefresh={() => { company.refetch(); schools.refetch(); hist.refetch(); }} /></div>
     {tab === 'company' && (company.isLoading ? <SkeletonPage /> : company.isError || !company.data ? <ErrorState retry={() => company.refetch()} /> :
-      <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">Yemait company account</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-company-settlement">{company.data.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
+      <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">Company account</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-company-settlement">{company.data.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
         {company.data.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="Company account not configured" description="Add the company bank recipient used for company payroll. School money is never mixed with it." /> : <ProfileView p={company.data} />}</section>)}
     {tab === 'schools' && <section className="panel overflow-hidden"><div className="flex flex-wrap gap-3 border-b border-[hsl(var(--border))] p-4">
       <input className={`${entry} max-w-xs`} placeholder="Search schools" value={search} onChange={e => setSearch(e.target.value)} aria-label="Search schools" />
@@ -133,7 +133,7 @@ function OwnerSettlement() {
           <Button variant="quiet" disabled={verify.isPending || s.status === 'NOT_CONFIGURED' || !s.capability.bankSubaccountsSupported} title={!s.capability.bankSubaccountsSupported ? 'Provider API does not support bank subaccounts' : undefined} onClick={() => runVerify(s)} testId={`button-verify-${s.schoolId}`}>{s.capability.bankSubaccountsSupported ? 'Verify recipient' : 'Verification unsupported'}</Button>
         </div>)}</div>}</section>}
     {tab === 'history' && <section className="panel overflow-hidden">{hist.isLoading ? <SkeletonPage /> : hist.isError ? <ErrorState retry={() => hist.refetch()} /> : <SettlementHistoryTable rows={hist.data ?? []} showSchool />}</section>}
-    {editing && <Modal title="Company settlement details" eyebrow="Yemait company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} scope="COMPANY" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
+    {editing && <Modal title="Company settlement details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} scope="COMPANY" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
     {detail && <SchoolDetail s={detail} onClose={() => setDetail(null)} />}
   </div>;
 }

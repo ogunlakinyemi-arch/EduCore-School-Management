@@ -68,8 +68,8 @@ export function ProviderBanner({ capability, mode }: { capability?: SettlementPr
 export function IdentityBoundary({ scope }: { scope: 'COMPANY' | 'SCHOOL' }) {
   return <div className="mb-5 flex items-center gap-3 rounded-2xl bg-[hsl(var(--secondary))] px-4 py-3 text-sm" data-testid={`boundary-${scope.toLowerCase()}`}>
     <ShieldCheck size={18} className="shrink-0 text-[hsl(var(--primary))]" />
-    <span className="font-bold">{scope === 'COMPANY' ? 'Yemait company funds' : 'School funds'}</span>
-    <span className={note}>{scope === 'COMPANY' ? 'Company payroll and settlement are kept separate from every school account.' : 'This school account is separate from Yemait company money and other schools.'}</span>
+    <span className="font-bold">{scope === 'COMPANY' ? 'Company funds' : 'School funds'}</span>
+    <span className={note}>{scope === 'COMPANY' ? 'Company payroll and settlement are kept separate from every school account.' : 'This school account is separate from company money and other schools.'}</span>
   </div>;
 }
 
@@ -133,7 +133,7 @@ export function SettlementHistoryTable({ rows, showSchool }: { rows: SettlementH
   return <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm">
     <thead className="eyebrow"><tr><th className="p-3">Date</th>{showSchool && <th className="p-3">School</th>}<th className="p-3">Reference</th><th className="p-3 text-right">Gross</th><th className="p-3 text-right">Fee</th><th className="p-3 text-right">Settled</th><th className="p-3">Outcome</th></tr></thead>
     <tbody className="divide-y divide-[hsl(var(--border))]">{rows.map(r => <tr key={r.id} data-testid={`row-settlement-${r.id}`}>
-      <td className="p-3">{date(r.occurredAt)} {time(r.occurredAt)}</td>{showSchool && <td className="p-3">{r.schoolName ?? (r.scope === 'YEMAIT_COMPANY' ? 'Yemait company' : '-')}</td>}
+      <td className="p-3">{date(r.occurredAt)} {time(r.occurredAt)}</td>{showSchool && <td className="p-3">{r.schoolName ?? (r.scope === 'YEMAIT_COMPANY' ? 'Company' : '-')}</td>}
       <td className="p-3 font-mono text-xs">{r.providerReference ?? r.sourceTransactionReference ?? '-'}</td>
       <td className="p-3 text-right tabular-nums">{ngn(r.grossAmountMinor)}</td><td className="p-3 text-right tabular-nums">{ngn(r.providerFeeMinor ?? 0)}</td>
       <td className="p-3 text-right font-bold tabular-nums">{r.status === 'SUCCESS' && r.externalSettlementVerified ? ngn(r.amountSettledMinor) : 'Not verified'}</td>

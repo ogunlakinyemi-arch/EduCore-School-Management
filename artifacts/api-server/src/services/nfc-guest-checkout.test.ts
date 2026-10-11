@@ -28,7 +28,7 @@ vi.mock("../lib/student-subscription-billing", async original => ({
   finalizeVerifiedStudentSubscriptionPayment: (...args: any[]) => fake.finalize(...args),
 }));
 vi.mock("../lib/schoolLogoStorage", () => ({ canonicalSchoolLogoVersionUrl: vi.fn() }));
-import { createGuestNfcCheckout, verifyGuestNfcCheckout, initializeStudentNfcHostedCheckout } from "./nfc-guest-checkout";
+import { createGuestNfcCheckout, verifyGuestNfcCheckout, initializeStudentNfcHostedCheckout, reserveGuestNfcPayment } from "./nfc-guest-checkout";
 
 const token = "g".repeat(43);
 beforeEach(() => {
@@ -40,7 +40,8 @@ beforeEach(() => {
     academic_session_id: 2, created_by: 10, reference: "NFC_guest_test_reference",
     mode: "FLUTTERWAVE_SANDBOX", status: "PENDING", expires_at: new Date(Date.now() + 86_400_000),
     schoolName: "TEST School", studentIdentifier: "TEST-7", termName: "First Term", sessionName: "TEST Session",
-    subscriptionStatus: "pending", verificationStatus: "pending", payment_id: null,
+    subscriptionStatus: "pending", verificationStatus: "pending", payment_id: 17,
+    paymentReference: "student_guest_123456", failureCode: "GUEST_CHECKOUT_RESERVED",
     expected_allocations: [{ recipientType: "SCHOOL", amountMinor: 200000 },
       { recipientType: "PLATFORM", amountMinor: 300000 }] };
   fake.query.mockReset(); fake.initialize.mockReset(); fake.verify.mockReset(); fake.finalize.mockReset();
@@ -53,14 +54,19 @@ beforeEach(() => {
     if (sql.includes("SELECT sub.amount")) return { rows: [{ amount: 5000, status: "pending", verification_status: "pending" }] };
     if (sql.includes("FROM academic_terms t")) return { rows: fake.current ? [{ id: 3 }] : [] };
     if (sql.includes("INSERT INTO student_subscription_payments")) return { rows: [{
-      paymentId: 17, reference: params[6], grossAmountMinor: 500000, currency: "NGN",
+      id: 17, paymentId: 17, reference: params[6], grossAmountMinor: 500000, currency: "NGN",
     }] };
     if (sql.includes("UPDATE nfc_payment_links")) {
       fake.row.payment_id = params[0]; fake.row.paymentReference = "student_guest_123456"; fake.row.paymentStatus = "PENDING";
     }
     if (sql.includes("SET checkout_url")) {
-      fake.row.checkoutUrl = params[0]; return { rows: [{ id: 17 }] };
+      fake.row.checkoutUrl = params[0]; fake.row.failureCode = null; return { rows: [{ id: 17 }] };
     }
+    if (sql.includes("SELECT id AS \"paymentId\"")) return { rows: [{
+      paymentId: 17, reference: fake.row.paymentReference, grossAmountMinor: 500000, currency: "NGN",
+      status: fake.row.paymentStatus ?? "PENDING", failureCode: fake.row.failureCode, checkoutUrl: fake.row.checkoutUrl,
+    }] };
+    if (sql.includes("SET failure_code='GUEST_CHECKOUT_INITIALIZING'")) fake.row.failureCode = "GUEST_CHECKOUT_INITIALIZING";
     if (sql.includes("SET status='RECONCILIATION_REQUIRED'")) fake.row.paymentStatus = "RECONCILIATION_REQUIRED";
     if (sql.includes("SELECT id,reference,gross_amount_minor")) return { rows: [{
       id: 17, reference: "student_guest_123456", gross_amount_minor: 500000, currency: "NGN",
@@ -70,6 +76,29 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe("Guest NFC TEST checkout and server verification", () => {
+  it("does not repeat the provider POST while another guest initialization is in progress", async () => {
+    let resolve!: (result: any) => void;
+    let started!: () => void;
+    const initializing = new Promise<void>(r => { started = r; });
+    fake.initialize.mockImplementation(() => {
+      started();
+      return new Promise(r => { resolve = r; });
+    });
+    const first = createGuestNfcCheckout(token, "guest@example.test");
+    await initializing;
+    await createGuestNfcCheckout(token, "guest@example.test");
+    expect(fake.initialize).toHaveBeenCalledOnce();
+    resolve({ reference: "student_guest_123456", checkoutUrl: "https://checkout.flutterwave.com/v3/test" });
+    await first;
+  });
+  it("refuses to attach a pending live, mismatched or unresolved payment to a TEST link", async () => {
+    fake.conflict.mockResolvedValue({ id: 99, subscriptionId: 9, status: "PENDING" });
+    await expect(reserveGuestNfcPayment({ query: fake.query }, {
+      subscriptionId: 9, schoolId: 44, studentId: 7, sessionId: 2, termId: 3,
+    }, fake.row.reference, 10)).rejects.toThrow("not a matching TEST checkout");
+    expect(fake.initialize).not.toHaveBeenCalled();
+    expect(fake.query.mock.calls.some(([sql]) => sql.includes("INSERT"))).toBe(false);
+  });
   it("leaves authenticated checkout persistence to the existing route on an uncertain response", async () => {
     fake.initialize.mockRejectedValue(new Error("Uncertain response"));
     expect(await initializeStudentNfcHostedCheckout(
@@ -79,6 +108,10 @@ describe("Guest NFC TEST checkout and server verification", () => {
     expect(fake.query).not.toHaveBeenCalled();
   });
   it("reserves the fixed bound charge before one provider POST and uses a guest callback", async () => {
+    expect(await reserveGuestNfcPayment({ query: fake.query }, {
+      subscriptionId: 9, schoolId: 44, studentId: 7, sessionId: 2, termId: 3,
+    }, fake.row.reference, 10)).toBe(17);
+    expect(fake.initialize).not.toHaveBeenCalled();
     const result = await createGuestNfcCheckout(token, "guest@example.test");
     expect(result.status).toBe("PENDING"); expect(result.subscriptionActivated).toBe(false);
     expect(result.receiptReference).toBeNull(); expect(result.amountMinor).toBe(500000);
@@ -133,7 +166,9 @@ describe("Guest NFC TEST checkout and server verification", () => {
   });
   it("blocks an existing term payment rather than creating a second charge", async () => {
     fake.conflict.mockResolvedValue({ id: 99 });
-    await expect(createGuestNfcCheckout(token, "guest@example.test")).rejects.toThrow("existing term payment");
+    await expect(reserveGuestNfcPayment({ query: fake.query }, {
+      subscriptionId: 9, schoolId: 44, studentId: 7, sessionId: 2, termId: 3,
+    }, fake.row.reference, 10)).rejects.toThrow("existing term payment");
     expect(fake.initialize).not.toHaveBeenCalled();
   });
   it.each(["configuration", "hash", "deployment"])("fails closed for missing/unsafe %s", async cause => {

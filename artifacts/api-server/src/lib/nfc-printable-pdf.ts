@@ -222,7 +222,7 @@ function frontContent(
     text(value, x, y, size, color, font, used);
   const commands = [
     `${TEAL} rg 0 ${PAGE_HEIGHT - 27} ${PAGE_WIDTH} 27 re f`,
-    label("Yemait EduCore", 12, PAGE_HEIGHT - 17, 9, WHITE),
+    label("Yetenia EduCore", 12, PAGE_HEIGHT - 17, 9, WHITE),
     label("NFC IDENTIFICATION", PAGE_WIDTH - 92, PAGE_HEIGHT - 17, 7, WHITE),
     `${INK} RG 0.7 w 8.5 8.5 ${PAGE_WIDTH - 17} ${PAGE_HEIGHT - 17} re S`,
   ];
@@ -265,7 +265,7 @@ function backContent(
     `${TEAL} rg 0 ${PAGE_HEIGHT - 23} ${PAGE_WIDTH} 23 re f`,
     label("PROPERTY OF YETENIA TECHNOLOGIES LIMITED", 12, PAGE_HEIGHT - 15, 8, WHITE),
     `${INK} RG 0.7 w 8.5 8.5 ${PAGE_WIDTH - 17} ${PAGE_HEIGHT - 17} re S`,
-    label("Yemait EduCore NFC Identification Card", 12, PAGE_HEIGHT - 38, 8),
+    label("Yetenia EduCore NFC Identification Card", 12, PAGE_HEIGHT - 38, 8),
     label("This card remains the property of YETENIA TECHNOLOGIES LIMITED and is", 12, PAGE_HEIGHT - 52, 6.2),
     label("issued for authorized identification and access purposes.", 12, PAGE_HEIGHT - 62, 6.2),
     label("If found, please return this card to the issuing school", 12, PAGE_HEIGHT - 77, 6.2),
@@ -274,7 +274,7 @@ function backContent(
     ...(address ? [fittedText(address, 12, PAGE_HEIGHT - 114, 5.8, INK, font, used)] : []),
     ...(contact ? [fittedText(contact, 12, PAGE_HEIGHT - 123, 5.8, INK, font, used)] : []),
     label("Please do not tamper with or damage the NFC card.", 12, 16, 5.8),
-    label("Copyright YETENIA TECHNOLOGIES LIMITED | Yemait EduCore", 12, 9.5, 5.2),
+    label("Copyright YETENIA TECHNOLOGIES LIMITED | Yetenia EduCore", 12, 9.5, 5.2),
   ];
   return commands.join("\n");
 }

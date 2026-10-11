@@ -47,7 +47,7 @@ async function queueInvoiceCommunication(
     category: "FINANCE",
     eventKey: `finance:invoice:${invoiceId}:INVOICE_GENERATED`,
     subject: `New school fee invoice: ${recipient.invoiceNumber}`,
-    body: `A school fee invoice (${recipient.invoiceNumber}) has been generated. Sign in to Yemait EduCore to view its details.`,
+    body: `A school fee invoice (${recipient.invoiceNumber}) has been generated. Sign in to Yetenia EduCore to view its details.`,
     link: null,
     channels: ["SMS", "EMAIL"],
   });

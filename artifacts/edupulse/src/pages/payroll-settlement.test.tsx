@@ -5,10 +5,10 @@ import { IdentityBoundary, OutcomeBadge, ProviderBanner, SettlementHistoryTable,
 
 describe('payroll and settlement safety', () => {
   it('keeps company and school identity separate', () => {
-    expect(renderToStaticMarkup(<IdentityBoundary scope="COMPANY" />)).toContain('Yemait company funds');
+    expect(renderToStaticMarkup(<IdentityBoundary scope="COMPANY" />)).toContain('Company funds');
     const school = renderToStaticMarkup(<IdentityBoundary scope="SCHOOL" />);
     expect(school).toContain('School funds');
-    expect(school).toContain('separate from Yemait company money');
+    expect(school).toContain('separate from company money');
   });
   it('never presents pending, mock, unknown or unverified transfers as paid', () => {
     for (const s of ['PENDING', 'MOCK_PENDING', 'PROCESSING', 'CLAIMED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED', 'UNPAID']) {

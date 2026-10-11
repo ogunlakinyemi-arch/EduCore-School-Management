@@ -49,7 +49,7 @@ describe("Development guest NFC link isolation", () => {
     expect(result.expectedAllocations).toEqual([{ recipientType: "SCHOOL", amountMinor: 200000 }, { recipientType: "PLATFORM", amountMinor: 300000 }]);
   });
   it.each(["https://evil.test", "https://user:secret@checkout.flutterwave.com/pay", "http://checkout.flutterwave.com/pay"])("does not expose unsafe checkout %s", checkoutUrl => {
-    expect(publicNfcLink(row({ mode: "FLUTTERWAVE_SANDBOX", checkoutUrl })).checkoutUrl).toBeNull();
+    expect(publicNfcLink(row({ mode: "FLUTTERWAVE_SANDBOX", payment_id: 17, paymentReference: "student_fixture", checkoutUrl })).checkoutUrl).toBeNull();
   });
   it.each(["SUCCESS", "FAILED"] as const)("simulates %s by modifying only the link", async outcome => {
     const r = row();

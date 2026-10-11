@@ -40,7 +40,7 @@ describe("Resend transactional email integration (no live network)", () => {
       "Idempotency-Key": message.idempotencyKey,
     });
     expect(JSON.parse(String(request.body))).toEqual({
-      from: env.EMAIL_FROM, to: [message.to], subject: message.subject, text: message.body,
+      from: "Yetenia EduCore <notifications@yetenia.com>", to: [message.to], subject: message.subject, text: message.body,
     });
     expect(JSON.stringify(result)).not.toContain(env.RESEND_API_KEY);
   });

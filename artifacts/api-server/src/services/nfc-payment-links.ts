@@ -46,6 +46,7 @@ export const publicLinkSql = `
  LEFT JOIN student_subscription_payments p ON p.id=l.payment_id
    AND p.subscription_id=l.subscription_id AND p.school_id=l.school_id AND p.student_id=l.student_id
    AND p.academic_session_id=l.academic_session_id AND p.academic_term_id=l.academic_term_id
+    AND p.provider='FLUTTERWAVE' AND p.provider_mode='SANDBOX'
  WHERE l.token_hash=$1`;
 
 export function nfcLinkStatus(row: any, now = Date.now()) {
@@ -61,6 +62,15 @@ export function nfcLinkStatus(row: any, now = Date.now()) {
 }
 
 export function publicNfcLink(row: any) {
+  if (typeof row.reference !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(row.reference)
+      || !Number.isFinite(new Date(row.expires_at).getTime())
+      || !Array.isArray(row.expected_allocations)
+      || row.expected_allocations.some((a: any) => !a || typeof a.recipientType !== "string" || !Number.isSafeInteger(a.amountMinor))) {
+    throw new AuthError(409, "These payment instructions require school review. Ask for a new link.");
+  }
+  if (row.mode === "FLUTTERWAVE_SANDBOX" && (!row.payment_id || !row.paymentReference)) {
+    throw new AuthError(409, "The linked TEST payment could not be resolved. Ask school staff to review the link.");
+  }
   const status = nfcLinkStatus(row);
   const sandboxUrl = typeof row.checkoutUrl === "string" ? row.checkoutUrl : null;
   let checkoutUrl: string | null = null;

@@ -156,7 +156,7 @@ export function PlatformOwnerSetup() {
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] shadow-lg">
               <Zap size={21} />
             </span>
-            <span className="display-font text-xl font-bold">Yemait EduCore</span>
+            <span className="display-font text-xl font-bold">Yetenia EduCore</span>
           </div>
           
           <div className="relative z-10 mt-16 mb-12">
@@ -174,7 +174,7 @@ export function PlatformOwnerSetup() {
           <div className="relative z-10 mt-auto pt-8 border-t border-[hsl(var(--sidebar-border))]">
             <div className="flex items-center gap-3 text-xs text-[hsl(var(--sidebar-foreground)/.6)]">
               <Lock size={16} />
-               <span>Your password is sent directly to the managed identity service and is never stored by Yemait EduCore.</span>
+               <span>Your password is sent directly to the managed identity service and is never stored by Yetenia EduCore.</span>
             </div>
           </div>
         </section>
@@ -185,7 +185,7 @@ export function PlatformOwnerSetup() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
               <Zap size={17} />
             </span>
-            <span className="display-font text-lg font-bold">Yemait EduCore</span>
+            <span className="display-font text-lg font-bold">Yetenia EduCore</span>
           </div>
 
           <div className="mb-8">

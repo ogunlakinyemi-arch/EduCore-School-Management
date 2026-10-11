@@ -36,7 +36,7 @@ export function IconLogo({ compact = false }: { compact?: boolean }) {
         <Zap size={18} strokeWidth={2.6} />
         <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--sidebar))] bg-[hsl(var(--primary))]" />
       </span>
-      {!compact && <span className="display-font text-xl font-bold tracking-tight text-[hsl(var(--sidebar-foreground))]">Yemait EduCore</span>}
+      {!compact && <span className="display-font text-xl font-bold tracking-tight text-[hsl(var(--sidebar-foreground))]">Yetenia EduCore</span>}
     </div>
   );
 }
@@ -138,7 +138,7 @@ export function Shell({ children }: { children: ReactNode }) {
     return !item.roles || item.roles.some(role => roles.includes(role));
   });
   const sections = buildNavSections(visibleNav.map(i => i.href), navMode(roles, isActivationOfficer || isCompanyAccountant || isPlatformOwner));
-  const name = context?.user?.name ?? 'Yemait EduCore user';
+  const name = context?.user?.name ?? 'Yetenia EduCore user';
   const roleDisplay = isActivationOfficer ? 'Device Activation Officer' : isCompanyAccountant ? 'Company Accountant' : isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
   
@@ -226,7 +226,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <button className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={22} /></button>
             <div className="min-w-0">
               <div className="eyebrow flex min-w-0 items-center gap-1.5">
-                <span className="truncate">Yemait EduCore · {schoolName}</span><ChevronDown size={12} className="shrink-0 opacity-50" />
+                <span className="truncate">Yetenia EduCore · {schoolName}</span><ChevronDown size={12} className="shrink-0 opacity-50" />
               </div>
               <div className="mt-0.5 truncate text-sm font-bold text-[hsl(var(--foreground))] capitalize">
                 {location === '/' ? `Welcome back, ${name.split(' ')[0]}` : nav.find(item => item.href !== '/' && location.startsWith(item.href))?.label || 'Overview'}

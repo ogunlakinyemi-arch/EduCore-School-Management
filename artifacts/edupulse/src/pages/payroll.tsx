@@ -240,7 +240,7 @@ export function PayrollPage() {
   const isOwner = ctx.data?.isPlatformOwner === true; // Owner scope always wins, even with a secondary School Admin role.
   const isAdmin = !!schoolId && ctx.data?.roles?.some(r => r.schoolId === schoolId && r.role === 'SCHOOL_ADMIN' && r.status === 'ACTIVE') === true;
   return <div className="fade-up">
-    <PageHeading eyebrow="Finance / Payroll" title="Payroll" description={isOwner ? 'Yemait company payroll. School payroll is outside Owner operations.' : 'Monthly salaries for this school. Paid appears only after the provider verifies the transfer.'} action={!isOwner && isAdmin ? <TenantPicker /> : undefined} />
+    <PageHeading eyebrow="Finance / Payroll" title="Payroll" description={isOwner ? 'Company payroll. School payroll is outside Owner operations.' : 'Monthly salaries for this school. Paid appears only after the provider verifies the transfer.'} action={!isOwner && isAdmin ? <TenantPicker /> : undefined} />
     {ctx.isLoading ? <SkeletonPage /> : ctx.isError ? <ErrorState retry={() => ctx.refetch()} /> :
       isOwner ? <Workspace key="company" scope="COMPANY" schoolId={0} /> : isAdmin ? <Workspace key={`school-${schoolId}`} scope="SCHOOL" schoolId={schoolId} /> :
       <EmptyState icon={Banknote} title="Payroll is not available for your role" description="Payroll management is limited to School Admins for their school and the Owner for company payroll." />}

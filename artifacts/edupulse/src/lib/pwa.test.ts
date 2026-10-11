@@ -15,7 +15,7 @@ describe('EduCore PWA metadata and install eligibility', () => {
   it('keeps manifest, icon, and service-worker URLs inside the configured app base path', () => {
     expect(normalizePwaBasePath('/school/app')).toBe('/school/app/');
     expect(getPwaMetadata('/school/app')).toMatchObject({
-      name: 'Yemait EduCore',
+      name: 'Yetenia EduCore',
       shortName: 'EduCore',
       manifestHref: '/school/app/manifest.webmanifest',
       iconHref: '/school/app/icons/educore-192.png',
@@ -115,7 +115,7 @@ describe('service-worker security invariants', () => {
   it('keeps the manifest installable and points at real Zap brand icons', () => {
     const manifest = JSON.parse(readFileSync(new URL('../../public/manifest.webmanifest', import.meta.url), 'utf8'));
     expect(manifest).toMatchObject({
-      name: 'Yemait EduCore',
+      name: 'Yetenia EduCore',
       short_name: 'EduCore',
       start_url: './',
       scope: './',

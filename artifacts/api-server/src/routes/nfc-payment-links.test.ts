@@ -20,6 +20,9 @@ vi.mock("../middlewares/auth", () => {
   };
 });
 vi.mock("../lib/fee-providers/factory", () => ({ configuredStudentNfcTestAdapter: vi.fn() }));
+vi.mock("../lib/student-nfc-obligations", async original => ({
+  ...await original<any>(), ensureStudentNfcSubscription: async () => ({ subscriptionId: 9 }),
+}));
 vi.mock("../lib/student-subscription-return-url", () => ({
   configuredStudentSubscriptionCheckoutBaseUrl: () => "https://development.example.test",
 }));
@@ -28,6 +31,7 @@ vi.mock("../services/nfc-payment-links", async () => {
   return { ...real, expectedNfcAllocations: vi.fn(async () => [{ recipientType: "SCHOOL", amountMinor: 200000 }, { recipientType: "PLATFORM", amountMinor: 300000 }]) };
 });
 import router from "./nfc-payment-links";
+import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
 
 describe("NFC link routed input and operational authorization", () => {
   let server: ReturnType<express.Express["listen"]>;
@@ -35,6 +39,8 @@ describe("NFC link routed input and operational authorization", () => {
   beforeEach(async () => {
     vi.stubEnv("NODE_ENV", "development"); vi.stubEnv("REPLIT_DEPLOYMENT", "");
     vi.stubEnv("SESSION_SECRET", "private-development-test-signing-only");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "private-mock-webhook-hash");
+    vi.mocked(configuredStudentNfcTestAdapter).mockReset();
     state.query.mockReset(); state.release.mockReset(); state.authorize.mockReset();
     state.query.mockImplementation(async (sql: string) => {
       if (sql.includes("FROM student_subscription_terms b")) return { rows: [state.scope] };
@@ -115,5 +121,70 @@ describe("NFC link routed input and operational authorization", () => {
       token: "x".repeat(43), ...(action === "checkout" ? { email: "guest@example.test" } : {}),
     })).status).toBe(503);
     expect(state.query).not.toHaveBeenCalled();
+  });
+  const validRow = () => ({
+    id: 6, reference: "NFC_valid_test_reference", schoolName: "TEST School", studentIdentifier: "TEST-7",
+    termName: "First Term", sessionName: "TEST Session", status: "PENDING", mode: "FLUTTERWAVE_SANDBOX",
+    expires_at: new Date(Date.now() + 86400000), payment_id: 17, paymentReference: "student_valid_test_payment",
+    subscriptionStatus: "pending", verificationStatus: "pending",
+    expected_allocations: [{ recipientType: "SCHOOL", amountMinor: 200000 }, { recipientType: "PLATFORM", amountMinor: 300000 }],
+  });
+  it("reports missing TEST/webhook configuration without inserting a link or payment", async () => {
+    const response = await post("/subscriptions/9/payment-link", { termId: 3, mode: "FLUTTERWAVE_SANDBOX" }, true);
+    expect(response.status).toBe(503);
+    expect(state.query.mock.calls.some(([sql]) => sql.includes("INSERT"))).toBe(false);
+  });
+  it("reserves payment before inserting the sandbox link and respects the existing isolation CHECK", async () => {
+    vi.mocked(configuredStudentNfcTestAdapter).mockReturnValue({
+      provider: "flutterwave", generateReference: () => "student_valid_test_payment",
+    } as any);
+    let saved: any;
+    const order: string[] = [];
+    state.query.mockImplementation(async (sql: string, params: any[] = []) => {
+      if (sql.includes("FROM student_subscription_terms b")) return { rows: [state.scope] };
+      if (sql.includes("SELECT sub.amount")) return { rows: [{ amount: 5000, status: "pending", verification_status: "pending" }] };
+      if (sql.includes("SELECT t.id FROM academic_terms")) return { rows: [{ id: 3 }] };
+      if (sql.includes("INSERT INTO student_subscription_payments")) { order.push("payment"); return { rows: [{ id: 17 }] }; }
+      if (sql.includes("INSERT INTO nfc_payment_links")) {
+        // Reproduce PostgreSQL's nfc_payment_links_isolation rejection, not a permissive DB mock.
+        if (params[8] === "FLUTTERWAVE_SANDBOX" && params[9] == null) {
+          throw Object.assign(new Error("nfc_payment_links_isolation"), { code: "23514" });
+        }
+        expect(params[9]).toBe(17);
+        order.push("link"); saved = { ...validRow(), reference: params[6] };
+        return { rows: [saved] };
+      }
+      if (sql.includes("FROM nfc_payment_links l")) return { rows: saved ? [saved] : [] };
+      return { rows: [] };
+    });
+    const response = await post("/subscriptions/9/payment-link", { termId: 3, mode: "FLUTTERWAVE_SANDBOX" }, true);
+    expect(response.status).toBe(200); expect(order).toEqual(["payment", "link"]);
+    const body = await response.json() as any;
+    expect(body.amountMinor).toBe(500000); expect(body.status).toBe("PENDING");
+    expect(body.subscriptionActivated).toBe(false); expect(body.receiptReference).toBeNull();
+    expect(new URL(body.paymentUrl).hash.length).toBe(44);
+    expect(state.query.mock.calls.some(([sql]) => sql.includes("COMMIT"))).toBe(true);
+  });
+  it.each(["PENDING", "EXPIRED", "PAID"] as const)("retrieves an anonymous valid %s link without requiring Admin login", async status => {
+    const row = validRow();
+    if (status === "EXPIRED") row.expires_at = new Date(0);
+    if (status === "PAID") { row.subscriptionStatus = "active"; row.verificationStatus = "verified"; }
+    state.query.mockResolvedValue({ rows: [row] });
+    const response = await post("/public/nfc-payment-links/view", { token: "x".repeat(43) });
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.status).toBe(status); expect(body.subscriptionActivated).toBe(status === "PAID");
+    expect(body.amountDueMinor).toBe(status === "PAID" ? 0 : 500000);
+    expect(state.authorize).not.toHaveBeenCalled();
+    expect(state.query.mock.calls.some(([sql]) => /UPDATE|INSERT/.test(sql))).toBe(false);
+  });
+  it.each(["binding", "reference", "allocations", "expiry"])("reports damaged %s instructions as review-required instead of HTTP 500", async cause => {
+    const row: any = validRow();
+    if (cause === "binding") row.paymentReference = null;
+    if (cause === "reference") row.reference = "";
+    if (cause === "allocations") row.expected_allocations = null;
+    if (cause === "expiry") row.expires_at = "invalid";
+    state.query.mockResolvedValue({ rows: [row] });
+    expect((await post("/public/nfc-payment-links/view", { token: "x".repeat(43) })).status).toBe(409);
   });
 });

@@ -77,7 +77,7 @@ function PortalHeader() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
             <Zap size={18} />
           </span>
-          <span className="display-font font-bold">Yemait EduCore Partner</span>
+          <span className="display-font font-bold">Yetenia EduCore Partner</span>
         </Link>
         <div className="flex items-center gap-6">
           {isSetup && (
@@ -211,7 +211,7 @@ function Dashboard() {
         <div className="panel p-5 md:p-6 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))]">
           <div className="flex items-center gap-2 mb-4">
             <Zap size={16} className="text-[hsl(var(--accent))]" />
-            <span className="font-bold">Yemait EduCore Partner Program</span>
+            <span className="font-bold">Yetenia EduCore Partner Program</span>
           </div>
           <p className="text-sm leading-relaxed text-[hsl(var(--sidebar-foreground)/.7)] mb-6">
             You earn commission on all eligible subscription payments from your referred schools. Payouts are processed at the start of each academic term.

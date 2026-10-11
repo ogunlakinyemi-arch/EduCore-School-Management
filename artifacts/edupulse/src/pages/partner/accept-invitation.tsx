@@ -60,7 +60,7 @@ export default function AcceptInvitation() {
             </div>
             <h1 className="display-font text-3xl font-bold mb-3">
               {activatedRole === 'SCHOOL_ADMIN' ? 'School Administrator Activated' :
-                activatedRole === 'PARTNER_STAFF' ? 'Partner Staff Account Activated' : 'Welcome to Yemait EduCore'}
+                activatedRole === 'PARTNER_STAFF' ? 'Partner Staff Account Activated' : 'Welcome to Yetenia EduCore'}
             </h1>
             <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
               {activatedRole === 'SCHOOL_ADMIN'

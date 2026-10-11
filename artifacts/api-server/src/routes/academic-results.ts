@@ -691,7 +691,7 @@ router.post("/academic/assessments/:assessmentId/publish-results", run(async (re
       category: "ACADEMIC",
       eventKey: `assessment-results-published:${assessmentId}:${studentId}`,
       subject: "Academic results available",
-      body: "New academic results are available in your Yemait EduCore account.",
+      body: "New academic results are available in your Yetenia EduCore account.",
     });
   }
   res.json({ assessmentId, publishedCount: result!.rows.length, results: result!.rows }); */
@@ -977,7 +977,7 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
     category: "ACADEMIC",
     eventKey: `report-card-published:${cardId}`,
     subject: "Report card available",
-    body: "A report card is now available in your Yemait EduCore account.",
+    body: "A report card is now available in your Yetenia EduCore account.",
     },
   );
   const lines = await pool.query(`SELECT id,subject_id AS "subjectId",subject_name_snapshot AS "subjectName",

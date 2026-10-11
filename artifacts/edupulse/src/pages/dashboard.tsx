@@ -196,7 +196,7 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
       <PageHeading 
         eyebrow={`Platform overview · ${today}`} 
         title="The whole network, at a glance." 
-        description="A calm operational read on the schools, people and payments moving through Yemait EduCore."
+        description="A calm operational read on the schools, people and payments moving through Yetenia EduCore."
         action={
           <Link href="/schools" className="inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]" data-testid="link-manage-schools">
             <Building2 size={16} />Manage schools
@@ -257,7 +257,7 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
               <div className="mt-3 text-xs font-medium text-[hsl(var(--muted-foreground))]">Share returning to operators</div>
             </div>
             <div className="rounded-2xl border border-[hsl(var(--border))] p-5 bg-[hsl(var(--card))]">
-              <div className="eyebrow">Yemait EduCore allocation</div>
+              <div className="eyebrow">Yetenia EduCore allocation</div>
               <div className="display-font mt-8 text-3xl font-bold">{money(data?.edupulseAllocation)}</div>
               <div className="mt-3 text-xs font-medium text-[hsl(var(--muted-foreground))]">Platform operations share</div>
             </div>
