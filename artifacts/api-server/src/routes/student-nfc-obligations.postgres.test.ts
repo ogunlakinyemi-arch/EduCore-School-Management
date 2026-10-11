@@ -20,12 +20,13 @@ vi.mock("../middlewares/auth",async original=>{
 });
 vi.mock("../lib/fee-providers/factory",async original=>{
   const actual=await original<typeof import("../lib/fee-providers/factory")>();
-  return {...actual,configuredTestAdapter:()=>({
+  const testAdapter=()=>({
     provider:"flutterwave",generateReference:()=>`FLW-NFC-FIXTURE-${++state.refs}`,
     initializePayment:async(input:any)=>{state.providerCalls.push(input);return{reference:input.reference,checkoutUrl:"https://checkout.flutterwave.com/pay/nfc-fixture"};},
     verifyPayment:async(input:any)=>({...input,status:state.mode,providerTransactionId:input.providerTransactionId??String(90000+state.refs),paidAt:new Date().toISOString(),
       ...(state.fee==null?{}:{providerFeeMinor:state.fee,providerSettlementAmountMinor:500000-state.fee}),raw:{fixture:true}}),
-  })};
+  });
+  return {...actual,configuredTestAdapter:testAdapter,configuredStudentNfcTestAdapter:testAdapter};
 });
 import finance from "./finance";
 import obligations from "./student-nfc-obligations";

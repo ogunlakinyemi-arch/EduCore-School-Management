@@ -44,9 +44,9 @@ export function NfcPaymentLinkControls({ row, familyView = false }: { row: Stude
   const subscriptionId = row.subscriptionId as number;
   const url = link?.paymentUrl;
 
-  const generate = async () => {
+  const generate = async (mode: 'DEVELOPMENT_SIMULATION' | 'FLUTTERWAVE_SANDBOX' = 'DEVELOPMENT_SIMULATION') => {
     setBusy(true); setError(''); setCopyMsg('');
-    try { setLink(await createNfcPaymentLink(subscriptionId, { termId: row.termId, mode: 'DEVELOPMENT_SIMULATION' })); }
+    try { setLink(await createNfcPaymentLink(subscriptionId, { termId: row.termId, mode })); }
     catch (e) { setError(e instanceof Error ? e.message : 'The payment link could not be generated.'); }
     finally { setBusy(false); }
   };
@@ -65,15 +65,15 @@ export function NfcPaymentLinkControls({ row, familyView = false }: { row: Stude
 
   return <div className="mt-3 rounded-xl border border-[hsl(var(--border))] p-3 text-xs" data-testid={`nfc-link-${tid}`}>
     <NfcServiceBranding />
-    {familyView && <div className="mb-3 space-y-2">
-      <Button disabled testId={`button-live-nfc-${tid}`}>Pay NFC Card Fees Through Flutterwave</Button>
-      <p>Genuine Flutterwave payment is not currently available. Account approval and verified live settlement configuration are required.</p>
+    <div className="mb-3 space-y-2">
+      <Button disabled={busy || !import.meta.env.DEV} onClick={() => void generate('FLUTTERWAVE_SANDBOX')} testId={`button-live-nfc-${tid}`}>Pay NFC Card Fees Through Flutterwave</Button>
+      <p>Flutterwave TEST MODE only in Development. No real funds or automatic bank splits. Live payments remain unavailable.</p>
       <p>Use the Development preview below to inspect the public payment page. A simulation does not collect money, issue a genuine receipt or activate a subscription. Ordinary school fees use the school's separate configured payment methods.</p>
-    </div>}
+    </div>
     <div className="flex flex-wrap items-center gap-2">
       <Button onClick={() => void generate()} disabled={busy} testId={`button-generate-nfc-link-${tid}`}><Link2 size={14} />{link ? 'Retrieve / refresh link' : familyView ? 'Preview Development payment link' : 'Generate payment link'}</Button>
       {link && staff && <Button onClick={() => void cancel()} disabled={busy} testId={`button-cancel-nfc-link-${tid}`}><XCircle size={14} />Cancel link</Button>}
-      <span className="text-[hsl(var(--muted-foreground))]">Development simulation link</span>
+      <span className="text-[hsl(var(--muted-foreground))]">{link?.mode === 'FLUTTERWAVE_SANDBOX' ? 'Flutterwave TEST payment link' : 'Development simulation link'}</span>
     </div>
     {error && <p role="alert" className="mt-2 font-semibold text-[hsl(var(--destructive))]">{error}</p>}
     {link && <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
@@ -99,7 +99,9 @@ export function NfcPaymentLinkControls({ row, familyView = false }: { row: Stude
                 <p>School staff can assist if you do not have a suitable device. Cash given to the school does not count as a verified NFC subscription payment.</p>
                 <QRCodeSVG value={url} size={180} />
                 <p style={{ wordBreak: 'break-all', fontSize: 12 }}>{url}</p>
-                <p style={{ fontSize: 12 }}>Development simulation only. This does not collect money or activate a subscription.</p>
+                <p style={{ fontSize: 12 }}>{link.mode === 'FLUTTERWAVE_SANDBOX'
+                  ? 'Flutterwave TEST MODE. No real funds move. Subscription status changes only after server-side verification.'
+                  : 'Development simulation only. This does not collect money or activate a subscription.'}</p>
               </div>
             </SchoolDocumentPrintButton>
           </div>

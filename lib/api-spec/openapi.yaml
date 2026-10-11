@@ -50,6 +50,10 @@ paths:
     $ref: "./nfc-payment-links.yaml#/paths/~1public~1nfc-payment-links~1view"
   /public/nfc-payment-links/simulate:
     $ref: "./nfc-payment-links.yaml#/paths/~1public~1nfc-payment-links~1simulate"
+  /public/nfc-payment-links/checkout:
+    $ref: "./nfc-payment-links.yaml#/paths/~1public~1nfc-payment-links~1checkout"
+  /public/nfc-payment-links/verify:
+    $ref: "./nfc-payment-links.yaml#/paths/~1public~1nfc-payment-links~1verify"
   /partners/{partnerId}/nfc-permission:
     $ref: "./partner-nfc.yaml#/paths/~1partners~1{partnerId}~1nfc-permission"
   /partner/nfc/access:

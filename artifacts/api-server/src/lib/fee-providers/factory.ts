@@ -39,3 +39,21 @@ export function configuredCheckoutReturnUrl(): string | null {
     return null;
   }
 }
+
+/**
+ * NFC's newly supplied TEST credential is isolated to Development.
+ * Never compare it with, or select, the generic potentially live credential.
+ * Existing invoice/staff adapters and deployed configuration stay unchanged.
+ */
+export function configuredStudentNfcTestAdapter(): PaymentProviderAdapter | null {
+  if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
+    const secrets = [process.env.FLUTTERWAVE_SECRET_Test_Key, process.env.FLUTTERWAVE_TEST_SECRET_KEY]
+      .filter((value): value is string => Boolean(value));
+    if (new Set(secrets).size > 1) return null;
+    if (secrets[0]) return new FlutterwaveTestAdapter({
+      secretKey: secrets[0],
+      webhookSecret: process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || undefined,
+    });
+  }
+  return configuredTestAdapter("FLUTTERWAVE");
+}

@@ -68,6 +68,7 @@ function signedWebhook() {
 }
 
 beforeEach(() => {
+  vi.stubEnv("FLUTTERWAVE_SECRET_Test_Key", "");
   vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
   vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
   vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", webhookSecret);

@@ -33,7 +33,8 @@ import {
 } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import { PaymentProviderError } from "../lib/fee-providers";
-import { configuredTestAdapter } from "../lib/fee-providers/factory";
+import { configuredStudentNfcTestAdapter as configuredTestAdapter } from "../lib/fee-providers/factory";
+import { initializeStudentNfcHostedCheckout } from "../services/nfc-guest-checkout";
 import {
   finalizeVerifiedStudentSubscriptionPayment,
   findStudentSubscriptionTermPaymentConflict,
@@ -1095,7 +1096,7 @@ router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
     }
     let adapter: ReturnType<typeof configuredTestAdapter> | null;
     try {
-      adapter = configuredTestAdapter("FLUTTERWAVE");
+      adapter = configuredTestAdapter();
     } catch (error) {
       if (error instanceof PaymentProviderError) {
         throw new AuthError(503, "Flutterwave test checkout is unavailable", "PROVIDER_UNAVAILABLE");
@@ -1239,13 +1240,9 @@ router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
         String(payment.reference),
       );
       if (!returnUrl) throw new PaymentProviderError("Student subscription return URL is not configured");
-      checkout = await adapter.initializePayment({
-        reference: payment.reference,
-        amountMinor: Number(payment.grossAmountMinor),
-        currency: String(payment.currency),
-        email: context.user.email,
-        returnUrl,
-      });
+      const initialized = await initializeStudentNfcHostedCheckout(payment, context.user.email, returnUrl, false);
+      if (!initialized) throw new PaymentProviderError("Checkout requires reconciliation");
+      checkout = initialized;
       if (checkout.reference !== payment.reference) {
         throw new PaymentProviderError("Flutterwave checkout returned a mismatched payment reference");
       }
@@ -1254,7 +1251,7 @@ router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
         `UPDATE student_subscription_payments
             SET status='RECONCILIATION_REQUIRED',reconciliation_status='RECONCILIATION_REQUIRED',
                 failure_code='CHECKOUT_INITIALIZATION_OUTCOME_UNKNOWN',updated_at=NOW()
-          WHERE id=$1
+           WHERE id=$1 AND status='PENDING'
           RETURNING id AS "paymentId",subscription_id AS "subscriptionId",school_id AS "schoolId",
             student_id AS "studentId",academic_session_id AS "sessionId",academic_term_id AS "termId",
             payer_user_id AS "payerUserId",provider,provider_mode AS "providerMode",reference,status,
@@ -1320,7 +1317,7 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
     }
     let adapter: ReturnType<typeof configuredTestAdapter> | null;
     try {
-      adapter = configuredTestAdapter("FLUTTERWAVE");
+      adapter = configuredTestAdapter();
     } catch (error) {
       if (error instanceof PaymentProviderError) {
         throw new AuthError(503, "Flutterwave payment verification is unavailable", "PROVIDER_UNAVAILABLE");

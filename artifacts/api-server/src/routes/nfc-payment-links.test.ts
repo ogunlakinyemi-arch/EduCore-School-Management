@@ -19,7 +19,7 @@ vi.mock("../middlewares/auth", () => {
       req.headers["x-test-signed-in"] ? next() : res.status(401).json({ error: "Authentication required" }),
   };
 });
-vi.mock("../lib/fee-providers/factory", () => ({ configuredTestAdapter: vi.fn() }));
+vi.mock("../lib/fee-providers/factory", () => ({ configuredStudentNfcTestAdapter: vi.fn() }));
 vi.mock("../lib/student-subscription-return-url", () => ({
   configuredStudentSubscriptionCheckoutBaseUrl: () => "https://development.example.test",
 }));
@@ -85,8 +85,10 @@ describe("NFC link routed input and operational authorization", () => {
     expect((await post("/subscriptions/9/payment-link", { termId: 3, mode: "DEVELOPMENT_SIMULATION" }, true)).status).toBe(503);
     expect(state.query).not.toHaveBeenCalled();
   });
-  it.each(["view", "simulate"])("rejects malformed public %s tokens without logging/exposing them", async action => {
-    const response = await post(`/public/nfc-payment-links/${action}`, { token: "invalid", ...(action === "simulate" ? { outcome: "SUCCESS" } : {}) });
+  it.each(["view", "simulate", "checkout", "verify"])("rejects malformed public %s tokens without logging/exposing them", async action => {
+    const response = await post(`/public/nfc-payment-links/${action}`, { token: "invalid",
+      ...(action === "simulate" ? { outcome: "SUCCESS" } : {}),
+      ...(action === "checkout" ? { email: "guest@example.test" } : {}) });
     expect(response.status).toBe(400); expect(await response.json()).toEqual({ error: "Invalid payment-link request" });
     expect(state.query).not.toHaveBeenCalled();
   });
@@ -98,6 +100,20 @@ describe("NFC link routed input and operational authorization", () => {
   });
   it("does not accept amount/status parameters on a public simulation", async () => {
     expect((await post("/public/nfc-payment-links/simulate", { token: "x".repeat(43), outcome: "SUCCESS", amountMinor: 1, status: "PAID" })).status).toBe(400);
+    expect(state.query).not.toHaveBeenCalled();
+  });
+  it.each(["checkout", "verify"])("rejects forged payment fields on public %s", async action => {
+    const response = await post(`/public/nfc-payment-links/${action}`, {
+      token: "x".repeat(43), amountMinor: 1, status: "PAID", subscriptionId: 999, providerTransactionId: "1",
+      ...(action === "checkout" ? { email: "guest@example.test" } : {}),
+    });
+    expect(response.status).toBe(400); expect(state.query).not.toHaveBeenCalled();
+  });
+  it.each(["checkout", "verify"])("disables public %s in a published deployment before database access", async action => {
+    vi.stubEnv("REPLIT_DEPLOYMENT", "1");
+    expect((await post(`/public/nfc-payment-links/${action}`, {
+      token: "x".repeat(43), ...(action === "checkout" ? { email: "guest@example.test" } : {}),
+    })).status).toBe(503);
     expect(state.query).not.toHaveBeenCalled();
   });
 });

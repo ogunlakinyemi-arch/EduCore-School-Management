@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
 import { PaymentProviderError, type ExpectedPayment } from "../lib/fee-providers";
-import { configuredTestAdapter } from "../lib/fee-providers/factory";
+import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
 import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import { finalizeVerifiedStudentSubscriptionPayment } from "../lib/student-subscription-billing";
 
@@ -60,9 +60,9 @@ studentSubscriptionFlutterwaveWebhookRouter.post(
       return;
     }
 
-    let adapter: ReturnType<typeof configuredTestAdapter>;
+    let adapter: ReturnType<typeof configuredStudentNfcTestAdapter>;
     try {
-      adapter = configuredTestAdapter("FLUTTERWAVE");
+      adapter = configuredStudentNfcTestAdapter();
     } catch {
       res.status(503).json({ error: "Flutterwave sandbox verification is unavailable" });
       return;

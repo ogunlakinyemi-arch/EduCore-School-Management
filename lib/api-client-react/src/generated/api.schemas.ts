@@ -12986,6 +12986,16 @@ export interface PlatformSchoolSelection {
   schoolIds: number[];
 }
 
+export interface NfcGuestCheckoutInput {
+  /**
+     * @minLength 43
+     * @maxLength 43
+     */
+  token: string;
+  /** @maxLength 254 */
+  email: string;
+}
+
 export interface NfcPaymentToken {
   /**
      * @minLength 43

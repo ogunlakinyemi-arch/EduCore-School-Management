@@ -215,6 +215,75 @@ export const SimulateNfcPaymentLinkResponse = zod.object({
 })
 
 
+export const checkoutPublicNfcPaymentLinkBodyTokenMin = 43;
+export const checkoutPublicNfcPaymentLinkBodyTokenMax = 43;
+
+export const checkoutPublicNfcPaymentLinkBodyEmailMax = 254;
+
+
+
+export const CheckoutPublicNfcPaymentLinkBody = zod.object({
+  "token": zod.string().min(checkoutPublicNfcPaymentLinkBodyTokenMin).max(checkoutPublicNfcPaymentLinkBodyTokenMax),
+  "email": zod.string().email().max(checkoutPublicNfcPaymentLinkBodyEmailMax)
+})
+
+export const CheckoutPublicNfcPaymentLinkResponse = zod.object({
+  "reference": zod.string(),
+  "schoolName": zod.string(),
+  "studentIdentifier": zod.string(),
+  "termName": zod.string(),
+  "sessionName": zod.string(),
+  "amountMinor": zod.number().int(),
+  "amountDueMinor": zod.number().int(),
+  "currency": zod.string(),
+  "mode": zod.enum(['DEVELOPMENT_SIMULATION', 'FLUTTERWAVE_SANDBOX']),
+  "status": zod.enum(['PENDING', 'SIMULATED_SUCCESS', 'SIMULATED_FAILED', 'EXPIRED', 'CANCELLED', 'PAID', 'FAILED', 'RECONCILIATION_REQUIRED']),
+  "expiresAt": zod.string(),
+  "settlementStatus": zod.enum(['UNVERIFIED']),
+  "subscriptionActivated": zod.boolean(),
+  "paymentUrl": zod.string().optional(),
+  "checkoutUrl": zod.string().nullish(),
+  "receiptReference": zod.string().nullish(),
+  "expectedAllocations": zod.array(zod.object({
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER']),
+  "amountMinor": zod.number().int()
+}))
+})
+
+
+export const verifyPublicNfcPaymentLinkBodyTokenMin = 43;
+export const verifyPublicNfcPaymentLinkBodyTokenMax = 43;
+
+
+
+export const VerifyPublicNfcPaymentLinkBody = zod.object({
+  "token": zod.string().min(verifyPublicNfcPaymentLinkBodyTokenMin).max(verifyPublicNfcPaymentLinkBodyTokenMax)
+})
+
+export const VerifyPublicNfcPaymentLinkResponse = zod.object({
+  "reference": zod.string(),
+  "schoolName": zod.string(),
+  "studentIdentifier": zod.string(),
+  "termName": zod.string(),
+  "sessionName": zod.string(),
+  "amountMinor": zod.number().int(),
+  "amountDueMinor": zod.number().int(),
+  "currency": zod.string(),
+  "mode": zod.enum(['DEVELOPMENT_SIMULATION', 'FLUTTERWAVE_SANDBOX']),
+  "status": zod.enum(['PENDING', 'SIMULATED_SUCCESS', 'SIMULATED_FAILED', 'EXPIRED', 'CANCELLED', 'PAID', 'FAILED', 'RECONCILIATION_REQUIRED']),
+  "expiresAt": zod.string(),
+  "settlementStatus": zod.enum(['UNVERIFIED']),
+  "subscriptionActivated": zod.boolean(),
+  "paymentUrl": zod.string().optional(),
+  "checkoutUrl": zod.string().nullish(),
+  "receiptReference": zod.string().nullish(),
+  "expectedAllocations": zod.array(zod.object({
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER']),
+  "amountMinor": zod.number().int()
+}))
+})
+
+
 
 
 

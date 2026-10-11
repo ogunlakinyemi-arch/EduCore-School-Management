@@ -60,8 +60,47 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/NfcPaymentLink"}
+  /public/nfc-payment-links/checkout:
+    post:
+      operationId: checkoutPublicNfcPaymentLink
+      security: []
+      tags: [subscriptions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NfcGuestCheckoutInput"}
+      responses:
+        "200":
+          description: Persisted TEST checkout or reconciliation status; never browser-confirmed payment
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NfcPaymentLink"}
+  /public/nfc-payment-links/verify:
+    post:
+      operationId: verifyPublicNfcPaymentLink
+      security: []
+      tags: [subscriptions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NfcPaymentToken"}
+      responses:
+        "200":
+          description: Status after independent server-side Flutterwave verification
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NfcPaymentLink"}
 components:
   schemas:
+    NfcGuestCheckoutInput:
+      type: object
+      additionalProperties: false
+      required: [token, email]
+      properties:
+        token: {type: string, minLength: 43, maxLength: 43}
+        email: {type: string, format: email, maxLength: 254}
     NfcPaymentToken:
       type: object
       additionalProperties: false

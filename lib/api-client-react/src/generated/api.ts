@@ -492,6 +492,7 @@ import type {
   MedicalVisitInput,
   MedicalVisitPatch,
   NfcCard,
+  NfcGuestCheckoutInput,
   NfcPaymentLink,
   NfcPaymentLinkInput,
   NfcPaymentSimulationInput,
@@ -1570,6 +1571,170 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSimulateNfcPaymentLinkMutationOptions(options));
+    }
+
+export const getCheckoutPublicNfcPaymentLinkUrl = () => {
+
+
+
+
+  return `/api/public/nfc-payment-links/checkout`
+}
+
+export const checkoutPublicNfcPaymentLink = async (nfcGuestCheckoutInput: NfcGuestCheckoutInput, options?: Parameters<typeof customFetch>[1]): Promise<NfcPaymentLink> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NfcPaymentLink>(getCheckoutPublicNfcPaymentLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nfcGuestCheckoutInput)
+  }
+);}
+
+
+
+
+
+export const getCheckoutPublicNfcPaymentLinkMutationKey = () => ['checkoutPublicNfcPaymentLink'] as const;
+
+export const getCheckoutPublicNfcPaymentLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkoutPublicNfcPaymentLink>>, TError,CheckoutPublicNfcPaymentLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkoutPublicNfcPaymentLink>>, TError,CheckoutPublicNfcPaymentLinkMutationVariables, TContext> => {
+
+const mutationKey = getCheckoutPublicNfcPaymentLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkoutPublicNfcPaymentLink>>, CheckoutPublicNfcPaymentLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkoutPublicNfcPaymentLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckoutPublicNfcPaymentLinkMutationResult = NonNullable<Awaited<ReturnType<typeof checkoutPublicNfcPaymentLink>>>
+    export type CheckoutPublicNfcPaymentLinkMutationBody = BodyType<NfcGuestCheckoutInput>
+    export type CheckoutPublicNfcPaymentLinkMutationError = ErrorType<unknown>
+    export type CheckoutPublicNfcPaymentLinkMutationVariables = {data: BodyType<NfcGuestCheckoutInput>}
+
+    export const useCheckoutPublicNfcPaymentLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkoutPublicNfcPaymentLink>>, TError,CheckoutPublicNfcPaymentLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkoutPublicNfcPaymentLink>>,
+        TError,
+        CheckoutPublicNfcPaymentLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCheckoutPublicNfcPaymentLinkMutationOptions(options));
+    }
+
+export const getVerifyPublicNfcPaymentLinkUrl = () => {
+
+
+
+
+  return `/api/public/nfc-payment-links/verify`
+}
+
+export const verifyPublicNfcPaymentLink = async (nfcPaymentToken: NfcPaymentToken, options?: Parameters<typeof customFetch>[1]): Promise<NfcPaymentLink> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NfcPaymentLink>(getVerifyPublicNfcPaymentLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nfcPaymentToken)
+  }
+);}
+
+
+
+
+
+export const getVerifyPublicNfcPaymentLinkMutationKey = () => ['verifyPublicNfcPaymentLink'] as const;
+
+export const getVerifyPublicNfcPaymentLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPublicNfcPaymentLink>>, TError,VerifyPublicNfcPaymentLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyPublicNfcPaymentLink>>, TError,VerifyPublicNfcPaymentLinkMutationVariables, TContext> => {
+
+const mutationKey = getVerifyPublicNfcPaymentLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyPublicNfcPaymentLink>>, VerifyPublicNfcPaymentLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyPublicNfcPaymentLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyPublicNfcPaymentLinkMutationResult = NonNullable<Awaited<ReturnType<typeof verifyPublicNfcPaymentLink>>>
+    export type VerifyPublicNfcPaymentLinkMutationBody = BodyType<NfcPaymentToken>
+    export type VerifyPublicNfcPaymentLinkMutationError = ErrorType<unknown>
+    export type VerifyPublicNfcPaymentLinkMutationVariables = {data: BodyType<NfcPaymentToken>}
+
+    export const useVerifyPublicNfcPaymentLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPublicNfcPaymentLink>>, TError,VerifyPublicNfcPaymentLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyPublicNfcPaymentLink>>,
+        TError,
+        VerifyPublicNfcPaymentLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyPublicNfcPaymentLinkMutationOptions(options));
     }
 
 export const getGetPartnerNfcPermissionUrl = (partnerId: number,) => {

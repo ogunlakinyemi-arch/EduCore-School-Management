@@ -1141,6 +1141,7 @@ export * from './nfcCard4b96100PersonType';
 export * from './nfcCard4b96100Status';
 export * from './nfcCardPersonType';
 export * from './nfcCardStatus';
+export * from './nfcGuestCheckoutInput';
 export * from './nfcPaymentLink';
 export * from './nfcPaymentLinkExpectedAllocationsItem';
 export * from './nfcPaymentLinkExpectedAllocationsItemRecipientType';

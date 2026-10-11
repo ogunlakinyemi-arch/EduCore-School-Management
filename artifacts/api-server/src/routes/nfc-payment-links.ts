@@ -2,7 +2,8 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 import { pool } from "@workspace/db";
 import { AuthError, assertSchoolOperationalAccess, getUserContext, requireAuthentication } from "../middlewares/auth";
-import { configuredTestAdapter } from "../lib/fee-providers/factory";
+import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
+import { createGuestNfcCheckout, verifyGuestNfcCheckout } from "../services/nfc-guest-checkout";
 import { configuredStudentSubscriptionCheckoutBaseUrl } from "../lib/student-subscription-return-url";
 import { assertStudentNfcPaymentAccess } from "../lib/student-nfc-obligations";
 import {
@@ -49,6 +50,20 @@ router.post("/public/nfc-payment-links/simulate", run(async (req, res) => {
   finally { db.release(); }
 }));
 
+router.post("/public/nfc-payment-links/checkout", run(async (req, res) => {
+  requireNfcLinkDevelopment();
+  const input = tokenInput.extend({ email: z.string().email().max(254) }).strict().parse(req.body);
+  res.set("Cache-Control", "no-store").set("Referrer-Policy", "no-referrer")
+    .json(await createGuestNfcCheckout(input.token, input.email));
+}));
+
+router.post("/public/nfc-payment-links/verify", run(async (req, res) => {
+  requireNfcLinkDevelopment();
+  const { token } = tokenInput.parse(req.body);
+  res.set("Cache-Control", "no-store").set("Referrer-Policy", "no-referrer")
+    .json(await verifyGuestNfcCheckout(token));
+}));
+
 router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication(), run(async (req, res) => {
   requireNfcLinkDevelopment();
   const subscriptionId = idFor(req);
@@ -92,8 +107,10 @@ router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication
     if (!row) {
       let paymentId: number | null = null;
       if (input.mode === "FLUTTERWAVE_SANDBOX") {
-        // Attach ONLY an existing checkout. Its unchanged adapter/webhook/finalizer owns verification.
-        if (!process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || !configuredTestAdapter("FLUTTERWAVE")) {
+        // New links can reserve checkout on the public page. Reuse a matching existing checkout.
+        let configured = false;
+        try { configured = !!configuredStudentNfcTestAdapter(); } catch { /* Configuration fails closed. */ }
+        if (!process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || !configured) {
           throw new AuthError(503, "Configure sandbox webhook verification before sharing a provider checkout");
         }
         const payment = (await db.query(
@@ -103,8 +120,7 @@ router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication
            ORDER BY id DESC LIMIT 1`,
           [subscriptionId, scope.schoolId, scope.studentId, scope.sessionId, scope.termId],
         )).rows[0];
-        if (!payment) throw new AuthError(409, "Initialize the existing Flutterwave sandbox checkout before sharing it");
-        paymentId = payment.id;
+        paymentId = payment?.id ?? null;
       }
       const reference = newNfcLinkReference();
       const allocations = await expectedNfcAllocations(db, scope);
