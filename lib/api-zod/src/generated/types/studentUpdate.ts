@@ -9,6 +9,8 @@ import type { StudentUpdateAdmissionStatus } from './studentUpdateAdmissionStatu
 import type { StudentUpdateStatus } from './studentUpdateStatus';
 
 export interface StudentUpdate {
+  /** @minimum 1 */
+  classId?: number;
   /** @minLength 2 */
   firstName?: string;
   /** @minLength 2 */

@@ -1,3 +1,4 @@
+import { nfcPayableTermPredicate } from "./nfc-payable-term";
 import type { VerifiedPayment, ExpectedPayment } from "./fee-providers";
 
 export type StudentSubscriptionAllocation = {
@@ -218,9 +219,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
               sub.term AS "subscriptionTerm",sub.status AS "subscriptionStatus",
               sub.verification_status AS "verificationStatus",st.status AS "studentStatus",
               t.name AS "academicTermName",t.end_date AS "termEndDate",
-              (t.is_current=true AND UPPER(t.status)='ACTIVE'
-                AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE
-                AND ses.is_current=true AND UPPER(ses.status)='ACTIVE') AS "currentTerm"
+              (${nfcPayableTermPredicate}) AS "currentTerm"
          FROM student_subscription_payments p
          JOIN subscriptions sub
            ON sub.id=p.subscription_id AND sub.school_id=p.school_id AND sub.student_id=p.student_id

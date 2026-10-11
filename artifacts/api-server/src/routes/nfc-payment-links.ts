@@ -64,10 +64,8 @@ router.post("/public/nfc-payment-links/verify", run(async (req, res) => {
     .json(await verifyGuestNfcCheckout(token));
 }));
 
-router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication(), run(async (req, res) => {
+export async function createBoundNfcPaymentLink(req: Request, subscriptionId: number, input: z.infer<typeof generationInput>) {
   requireNfcLinkDevelopment();
-  const subscriptionId = idFor(req);
-  const input = generationInput.parse(req.body);
   const base = configuredStudentSubscriptionCheckoutBaseUrl();
   if (!base) throw new AuthError(503, "Development payment-page URL is unavailable");
   const db = await pool.connect();
@@ -134,9 +132,14 @@ router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication
     url.hash = token;
     const response = { ...publicNfcLink(full), paymentUrl: url.toString() };
     await db.query("COMMIT");
-    res.set("Cache-Control", "no-store").json(response);
+    return response;
   } catch (error) { await db.query("ROLLBACK"); throw error; }
   finally { db.release(); }
+}
+
+router.post("/subscriptions/:subscriptionId/payment-link", requireAuthentication(), run(async (req, res) => {
+  const response = await createBoundNfcPaymentLink(req, idFor(req), generationInput.parse(req.body));
+  res.set("Cache-Control", "no-store").json(response);
 }));
 
 router.post("/subscriptions/:subscriptionId/payment-link/cancel", requireAuthentication(), run(async (req, res) => {

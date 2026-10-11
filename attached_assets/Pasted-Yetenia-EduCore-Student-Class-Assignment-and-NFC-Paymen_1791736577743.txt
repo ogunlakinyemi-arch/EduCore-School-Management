@@ -1,0 +1,156 @@
+Yetenia EduCore — Student Class Assignment and NFC Payment Creation
+
+Implement the following improvements in the Development environment only. Preserve all existing student records, school data, payment verification, and security controls.
+
+Part 1: Automatic Class Assignment During Student Registration
+
+1. Student registration form
+
+In the School Admin's Student Directory → Add Student form:
+
+- Add a Class dropdown populated dynamically with all classes belonging to the current school.
+- Display each class's name and appropriate level.
+- Require the School Admin to select a class, unless the existing system explicitly supports students without a class.
+- When the student record is saved, automatically link the student to the selected class using the application's existing student-to-class assignment structure.
+- Validate on the server that the selected class belongs to the same school as the student.
+- Prevent duplicate student records and duplicate class assignments.
+
+2. Parent and class relationships
+
+- Preserve the existing parent–student relationship.
+- Where a parent is selected or registered during student creation, save the relationship correctly.
+- Ensure the student's selected class and linked parent are available to the NFC Finance feature.
+
+3. Student information consistency
+
+Ensure the assigned class appears correctly in:
+
+- Student Directory and student profile.
+- Class rosters.
+- Teacher dashboards and class-related academic pages.
+- Attendance and other relevant class-based features.
+
+When editing a student, show the current class and allow an authorized School Admin to change it.
+
+If no classes exist, display a clear message directing the School Admin to create a class first.
+
+Part 2: Create NFC Payment for Parents Without Internet Access
+
+1. Add a payment creation button
+
+Under Finance → NFC, add a clearly visible button labelled:
+
+Create NFC Payment
+
+This feature allows School Admins to record and initiate an NFC payment for a parent who cannot access the internet or open a payment link independently.
+
+2. Create NFC Payment form
+
+When the School Admin clicks the button, open a form with these fields:
+
+A. Student Name
+
+- Provide a dropdown populated with students belonging to the current school.
+- Display enough information, such as student name, admission number, and class, to distinguish students with similar names.
+- Once a student is selected, automatically populate the student's admission number, class, linked parent or guardian details, and other relevant student information.
+- Retrieve these details from the database. Do not rely on manually entered or client-supplied relationships.
+
+B. NFC Fee Amount
+
+- Automatically display ₦5,000.
+- Make the amount read-only for the standard NFC subscription fee.
+- Enforce the expected amount on the server.
+- Do not introduce a separate fee or change the existing NFC pricing rules.
+
+C. Term
+
+- Provide a dropdown of the current school's eligible academic terms.
+- Include the current term and eligible future terms so a parent can pay for the current term or pay in advance for the following term.
+- Display the academic session and term name clearly, for example, FIRST — 2026/2027.
+- Only allow terms that belong to the selected school and have valid dates/status for the intended payment.
+- Do not automatically restrict payments to the current term if the existing payment policy supports advance payments.
+- Validate term eligibility on the server.
+- Prevent duplicate charges for the same student and term when a valid payment or payment reservation already exists, according to the existing payment rules.
+
+D. Parent/Guardian Details
+
+- Automatically populate the linked parent's name and available contact information after the student is selected.
+- Allow an authorized School Admin to verify the details before proceeding.
+- Do not require the parent to log in or have internet access to use this assisted process.
+
+E. Payment Method and Status
+
+- Use the existing approved NFC payment methods and payment records.
+- Clearly distinguish an unpaid payment request, a pending payment, a verified successful payment, and a failed or expired payment.
+- Do not mark a payment as successful simply because the School Admin created the payment record or gave cash to the school.
+
+3. Assisted payment workflow
+
+Design the workflow for parents who cannot access the internet:
+
+1. The School Admin opens Finance → NFC → Create NFC Payment.
+2. Selects the student from the dropdown.
+3. The system automatically fills the linked student, class, and parent information.
+4. The system displays the fixed ₦5,000 NFC fee.
+5. The School Admin selects the intended term, including an eligible future term when advance payment is permitted.
+6. The School Admin confirms the details and creates the payment request.
+7. The system creates a properly bound payment record using the existing payment architecture.
+8. If the parent needs to pay electronically but cannot access the internet, the School Admin can assist through an approved payment process. Do not claim a payment has succeeded until the provider or authorized payment-verification process confirms it.
+9. After successful server-side verification, update the appropriate subscription/payment allocation and issue the receipt through the existing process.
+
+If a parent pays by cash or bank transfer outside the online checkout, use the existing authorized manual-payment verification and reconciliation process, if available. If no such process exists, report that limitation rather than automatically marking the payment as paid.
+
+4. Payment link and receipt handling
+
+- If the existing system supports generating a payment link, allow the School Admin to generate it for the selected student and term.
+- Clearly identify whether the link is a real Flutterwave TEST checkout, a live checkout, or a development simulation.
+- Do not label a simulation as a real payment.
+- Preserve payment-link expiry, student/school/term binding, allocation rules, server-side provider verification, webhook security, and duplicate-payment protection.
+- Ensure the receipt identifies the correct student, school, academic session, term, amount, payment reference, and verified payment status.
+
+5. NFC Finance interface
+
+The Finance → NFC area should clearly show:
+
+- The Create NFC Payment button.
+- Existing NFC payment records and their statuses.
+- The student, class, parent, amount, term/session, payment reference, and date where applicable.
+- Whether the payment is unpaid, pending, verified, failed, or expired.
+- A way to inspect the relevant payment record without exposing another school's information.
+
+Part 3: Security and Multi-School Isolation
+
+- A School Admin must only see and create payments for students and terms belonging to their own school.
+- Validate school, student, parent, class, term, amount, and payment relationships on the server.
+- Do not trust IDs or amounts supplied by the browser without server-side validation.
+- Preserve role-based access controls.
+- Prevent duplicate student records, duplicate class assignments, and duplicate payment processing.
+- Do not weaken authentication, payment verification, database constraints, or webhook security.
+
+Part 4: Testing and Acceptance Criteria
+
+Test in Development:
+
+1. Register a student, select a class, save, refresh, and confirm the student remains linked to the correct class.
+2. Confirm the student appears in the correct class roster.
+3. Select a student in Finance → NFC and verify that the correct class and parent details populate automatically.
+4. Confirm the NFC amount is fixed at ₦5,000.
+5. Confirm the term dropdown supports the current term and eligible future terms.
+6. Create a payment request for the current term and a separate test request for an eligible future term.
+7. Verify that each request is bound to the correct school, student, parent, amount, and term.
+8. Verify duplicate-payment protection.
+9. Test the approved payment-verification process and ensure no subscription or receipt is marked paid without verified payment.
+10. Confirm that a School Admin cannot access or create records for another school.
+
+Safety Requirements
+
+- Development environment only.
+- Do not publish to Production.
+- Do not alter existing users or permissions.
+- Do not reset or truncate data, weaken constraints, or run destructive migrations.
+- Inspect the existing schema and payment implementation before making changes.
+- If a database migration is necessary, explain the proposed change and its purpose before applying it.
+- Run relevant tests and report actual results.
+- Clearly distinguish genuine Flutterwave sandbox transactions from synthetic or simulated tests.
+
+Completion requirement: Do not report the feature as complete until student-to-class assignment persists correctly, NFC payment requests can be created through the School Admin interface, eligible future terms are handled correctly, and payment verification and duplicate protection have been tested.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useLocation, Link } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,9 @@ import {
 import { 
   useListStudents, useCreateStudent, useUpdateStudent, 
   getListStudentsQueryKey, useGetSchool, getGetSchoolQueryKey,
-  getStudent, getSchool, listCards, useGetAuthorizedContext
+  getStudent, getSchool, listCards, useGetAuthorizedContext,
+  useListClasses, getListClassesQueryKey, useListParents, getListParentsQueryKey,
+  useListStudentClassAssignments, getListStudentClassAssignmentsQueryKey
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
@@ -307,6 +309,26 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
   const queryClient = useQueryClient();
   const [contactPending, setContactPending] = useState(false);
   const [contactError, setContactError] = useState('');
+  const registrationKey = useRef<string>(crypto.randomUUID()).current;
+  const classesQuery = useListClasses({ schoolId }, { query: { queryKey: getListClassesQueryKey({ schoolId }) } });
+  const parentsQuery = useListParents({ schoolId }, { query: { queryKey: getListParentsQueryKey({ schoolId }) } });
+  const assignmentsQuery = useListStudentClassAssignments(initial?.id ?? 0, { schoolId }, { query: { enabled: !!initial, queryKey: getListStudentClassAssignmentsQueryKey(initial?.id ?? 0, { schoolId }) } });
+  const classes: any[] = classesQuery.data ?? [];
+  const parents: any[] = parentsQuery.data ?? [];
+  const [classId, setClassId] = useState('');
+  const [parentId, setParentId] = useState('');
+  const [classTouched, setClassTouched] = useState(false);
+  const initialClassId = useMemo(() => {
+    if (!initial || !classes.length || assignmentsQuery.isLoading) return '';
+    const active = ((assignmentsQuery.data as any[]) ?? []).filter(x => String(x.status).toUpperCase() === 'ACTIVE');
+    if (active.length === 1 && classes.some(c => c.id === active[0].classId)) return String(active[0].classId);
+    if (active.length) return '';
+    const m = classes.filter(c => c.name === initial.className && c.section === initial.section);
+    return m.length === 1 ? String(m[0].id) : '';
+  }, [initial, classes, assignmentsQuery.data, assignmentsQuery.isLoading]);
+  useEffect(() => { if (!classTouched) setClassId(initialClassId); }, [initialClassId, classTouched]);
+  const selectedClass = classes.find(c => String(c.id) === classId);
+  const levelOf = (c: any) => c.level ? `${c.level} · ` : '';
   
   const [form, setForm] = useState({ 
     admissionNo: initial?.admissionNo ?? '', 
@@ -314,15 +336,21 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
     firstName: initial?.firstName ?? '', 
     lastName: initial?.lastName ?? '', 
     gender: initial?.gender ?? 'female', 
-    className: initial?.className ?? '', 
-    section: initial?.section ?? '', 
     parentName: initial?.parentName ?? '', 
     parentPhone: initial?.parentPhone ?? '', 
     status: initial?.status ?? 'ACTIVE' 
   });
+  const invalidateAfterSave = () => {
+    for (const key of ['/api/students', '/api/classes', '/api/dashboard', '/api/student-nfc/obligations']) {
+      void queryClient.invalidateQueries({ predicate: q => String(q.queryKey[0]).startsWith(key) });
+    }
+    void queryClient.invalidateQueries({ predicate: q => /class-assignments|dashboard|roster/.test(String(q.queryKey[0])) });
+  };
+  const saved = () => { invalidateAfterSave(); onDone(); };
   
   const save = async (e: FormEvent) => {
     e.preventDefault(); 
+    if (!selectedClass) return;
     if (initial) {
       setContactError('');
       setContactPending(true);
@@ -333,7 +361,7 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result?.error || `Could not update student email (${response.status})`);
-        update.mutate({ studentId: initial.id, params: { schoolId }, data: { firstName: form.firstName, lastName: form.lastName, className: form.className, section: form.section, status: form.status as any } }, { onSuccess: onDone });
+        update.mutate({ studentId: initial.id, params: { schoolId }, data: { firstName: form.firstName, lastName: form.lastName, classId: selectedClass.id, className: selectedClass.name, section: selectedClass.section, status: form.status as any } }, { onSuccess: saved });
       } catch (error) {
         setContactError(error instanceof Error ? error.message : 'Could not update student email');
       } finally {
@@ -342,13 +370,19 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
     } else {
       create.mutate({ params: { schoolId }, data: {
         ...form,
+        classId: selectedClass.id,
+        className: selectedClass.name,
+        section: selectedClass.section,
+        ...(parentId ? { parentId: Number(parentId) } : {}),
+        registrationKey,
         admissionNo: form.admissionNo.trim() || undefined,
         email: form.email.trim() || null,
-      } as any }, { onSuccess: onDone });
+      } as any }, { onSuccess: saved });
     }
   };
   
   const pending = create.isPending || update.isPending || contactPending;
+  const blocked = classesQuery.isError || classesQuery.isLoading || !classes.length || (!!initial && assignmentsQuery.isLoading) || !selectedClass;
 
   return (
     <form onSubmit={save} className="space-y-5">
@@ -381,14 +415,16 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
         </Field>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Class">
-          <input required value={form.className} onChange={e => setForm({ ...form, className: e.target.value })} placeholder="e.g. Year 1" />
-        </Field>
-        <Field label="Section">
-          <input required value={form.section} onChange={e => setForm({ ...form, section: e.target.value })} placeholder="e.g. A" />
-        </Field>
-      </div>
+      <Field label="Class">
+        <select required value={classId} onChange={e => { setClassTouched(true); setClassId(e.target.value); }} disabled={classesQuery.isLoading || !classes.length} data-testid="select-student-class">
+          <option value="">{classesQuery.isLoading ? 'Loading classes…' : 'Select a class'}</option>
+          {classes.map(c => <option key={c.id} value={c.id}>{c.name} · {levelOf(c)}Section {c.section}</option>)}
+        </select>
+        {classesQuery.isError && <p role="alert" className="mt-1 text-xs text-[hsl(var(--destructive))]">Classes could not be loaded. <button type="button" className="font-bold underline" onClick={() => void classesQuery.refetch()}>Retry</button></p>}
+        {!classesQuery.isLoading && !classesQuery.isError && !classes.length && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">This school has no classes yet. <Link href="/classes" className="font-bold underline">Create a class</Link> before admitting students.</p>}
+        {initial && !classId && classes.length > 0 && !assignmentsQuery.isLoading && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">The current class could not be matched to a single class. Choose the correct class.</p>}
+        {selectedClass && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Class {selectedClass.name}, section {selectedClass.section}</p>}
+      </Field>
       {initial && (
         <StudentPhotoField
           schoolId={schoolId}
@@ -400,6 +436,14 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
         />
       )}
 
+      {!initial && (
+        <Field label="Existing parent/guardian (optional)">
+          <select value={parentId} onChange={e => setParentId(e.target.value)} disabled={parentsQuery.isLoading} data-testid="select-student-parent">
+            <option value="">None / enter new details below</option>
+            {parents.map(p => <option key={p.id} value={p.id}>{p.name}{p.phone ? ` · ${p.phone}` : ''}</option>)}
+          </select>
+        </Field>
+      )}
       {!initial && (
         <div className="grid gap-5 sm:grid-cols-2 pt-4 border-t border-[hsl(var(--border))]">
           <Field label="Parent/Guardian Name">
@@ -426,7 +470,7 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
       {contactError && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{contactError}</p>}
       <div className="flex justify-end gap-3 pt-5 border-t border-[hsl(var(--border))]">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={pending}>{pending ? 'Saving…' : initial ? 'Save changes' : 'Admit student'}</Button>
+        <Button type="submit" disabled={pending || blocked}>{pending ? 'Saving…' : initial ? 'Save changes' : 'Admit student'}</Button>
       </div>
       {(create.isError || update.isError) && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this record. Check the fields and try again.</p>}
     </form>

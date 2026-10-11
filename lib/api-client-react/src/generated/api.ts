@@ -93,6 +93,7 @@ import type {
   AssignStudentClassParams,
   AssignTeacherClassParams,
   AssignTransportRouteStaffParams,
+  AssistedNfcOptions,
   AttendanceCorrectionInput,
   AttendanceDiscrepancy,
   AttendanceEvent,
@@ -195,6 +196,8 @@ import type {
   CreateSchoolCalendarEventBody,
   CreateSchoolTeacherAssignmentBody,
   CreateStaffNfcCheckoutParams,
+  CreateStudentNfcAssistedRequestBody,
+  CreateStudentNfcAssistedRequestParams,
   CreateStudentParams,
   CreateSubjectParams,
   CreateSubscriptionParams,
@@ -354,6 +357,7 @@ import type {
   GetSchoolTransportPolicyParams,
   GetStaffNfcReceiptParams,
   GetStudentAttendanceParams,
+  GetStudentNfcAssistedOptionsParams,
   GetStudentNfcObligationsParams,
   GetStudentOwnAttendanceByIdParams,
   GetStudentParams,
@@ -848,6 +852,174 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetStudentNfcAssistedOptionsUrl = (params: GetStudentNfcAssistedOptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/student-nfc/assisted-options?${stringifiedParams}` : `/api/student-nfc/assisted-options`
+}
+
+export const getStudentNfcAssistedOptions = async (params: GetStudentNfcAssistedOptionsParams, options?: Parameters<typeof customFetch>[1]): Promise<AssistedNfcOptions> => {
+
+  return customFetch<AssistedNfcOptions>(getGetStudentNfcAssistedOptionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentNfcAssistedOptionsQueryKey = (params?: GetStudentNfcAssistedOptionsParams,) => {
+    return [
+    `/api/student-nfc/assisted-options`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStudentNfcAssistedOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getStudentNfcAssistedOptions>>, TError = ErrorType<unknown>>(params: GetStudentNfcAssistedOptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentNfcAssistedOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentNfcAssistedOptionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentNfcAssistedOptions>>> = ({ signal }) => getStudentNfcAssistedOptions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentNfcAssistedOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStudentNfcAssistedOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentNfcAssistedOptions>>>
+export type GetStudentNfcAssistedOptionsQueryError = ErrorType<unknown>
+
+
+
+export function useGetStudentNfcAssistedOptions<TData = Awaited<ReturnType<typeof getStudentNfcAssistedOptions>>, TError = ErrorType<unknown>>(
+ params: GetStudentNfcAssistedOptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentNfcAssistedOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStudentNfcAssistedOptionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateStudentNfcAssistedRequestUrl = (params: CreateStudentNfcAssistedRequestParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/student-nfc/assisted-requests?${stringifiedParams}` : `/api/student-nfc/assisted-requests`
+}
+
+export const createStudentNfcAssistedRequest = async (createStudentNfcAssistedRequestBody: CreateStudentNfcAssistedRequestBody,
+    params: CreateStudentNfcAssistedRequestParams, options?: Parameters<typeof customFetch>[1]): Promise<NfcPaymentLink> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NfcPaymentLink>(getCreateStudentNfcAssistedRequestUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createStudentNfcAssistedRequestBody)
+  }
+);}
+
+
+
+
+
+export const getCreateStudentNfcAssistedRequestMutationKey = () => ['createStudentNfcAssistedRequest'] as const;
+
+export const getCreateStudentNfcAssistedRequestMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStudentNfcAssistedRequest>>, TError,CreateStudentNfcAssistedRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStudentNfcAssistedRequest>>, TError,CreateStudentNfcAssistedRequestMutationVariables, TContext> => {
+
+const mutationKey = getCreateStudentNfcAssistedRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStudentNfcAssistedRequest>>, CreateStudentNfcAssistedRequestMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  createStudentNfcAssistedRequest(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStudentNfcAssistedRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createStudentNfcAssistedRequest>>>
+    export type CreateStudentNfcAssistedRequestMutationBody = BodyType<CreateStudentNfcAssistedRequestBody>
+    export type CreateStudentNfcAssistedRequestMutationError = ErrorType<unknown>
+    export type CreateStudentNfcAssistedRequestMutationVariables = {data: BodyType<CreateStudentNfcAssistedRequestBody>;params: CreateStudentNfcAssistedRequestParams}
+
+    export const useCreateStudentNfcAssistedRequest = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStudentNfcAssistedRequest>>, TError,CreateStudentNfcAssistedRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStudentNfcAssistedRequest>>,
+        TError,
+        CreateStudentNfcAssistedRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateStudentNfcAssistedRequestMutationOptions(options));
+    }
 
 export const getCreatePublishedFeeCorrectionUrl = (structureId: number,
     params: CreatePublishedFeeCorrectionParams,) => {

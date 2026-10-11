@@ -9,6 +9,8 @@ import type { StudentUpdate4b96100AdmissionStatus } from './studentUpdate4b96100
 import type { StudentUpdate4b96100Status } from './studentUpdate4b96100Status';
 
 export interface StudentUpdate4b96100 {
+  /** @minimum 1 */
+  classId?: number;
   /** @minLength 2 */
   firstName?: string;
   /** @minLength 2 */

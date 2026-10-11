@@ -25,12 +25,16 @@ vi.mock("../lib/fee-providers/factory",async original=>{
     initializePayment:async(input:any)=>{state.providerCalls.push(input);return{reference:input.reference,checkoutUrl:"https://checkout.flutterwave.com/pay/nfc-fixture"};},
     verifyPayment:async(input:any)=>({...input,status:state.mode,providerTransactionId:input.providerTransactionId??String(90000+state.refs),paidAt:new Date().toISOString(),
       ...(state.fee==null?{}:{providerFeeMinor:state.fee,providerSettlementAmountMinor:500000-state.fee}),raw:{fixture:true}}),
+    verifyCheckoutStatus:async(input:any)=>({...input,status:state.mode,
+      providerTransactionId:String(90000+Number(input.reference.split("-").at(-1))),paidAt:new Date().toISOString(),
+      providerFeeMinor:1000,providerSettlementAmountMinor:499000,raw:{fixture:true}}),
   });
   return {...actual,configuredTestAdapter:testAdapter,configuredStudentNfcTestAdapter:testAdapter};
 });
 import finance from "./finance";
 import obligations from "./student-nfc-obligations";
 import paymentLinks from "./nfc-payment-links";
+import assistedNfcPayments from "./assisted-nfc-payments";
 import subscriptions from "./edupulse";
 import academicResults from "./academic-results";
 import platformWorkspace from "./platform-workspace";
@@ -116,7 +120,7 @@ beforeAll(async()=>{
       VALUES(1,100,1,'Tuition','Tuition',800000),(1,100,2,'NfC ID Card subscription','NfC ID Card subscription',500000);
     SELECT setval('fee_invoices_id_seq',100);
   `);
-  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations,paymentLinks,academicResults,platformWorkspace,communicationInbox);
+  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations,paymentLinks,assistedNfcPayments,academicResults,platformWorkspace,communicationInbox);
   app.use((error:any,_req:any,res:any,_next:any)=>res.status(error instanceof AuthError?error.statusCode:500).json({error:error.message}));
   server=app.listen(0,"127.0.0.1");await new Promise<void>(r=>server.once("listening",()=>r()));
   base=`http://127.0.0.1:${(server.address() as any).port}`;
@@ -362,6 +366,87 @@ it.skipIf(!snapshot)("executes automatic attachment, scoped views, canonical uni
   await finalizeVerifiedStudentSubscriptionPayment(state.db,partnerRetry.body.payment.paymentId,{
     reference:partnerRetry.body.payment.reference,amountMinor:500000,currency:"NGN",status:"succeeded",providerTransactionId:"90003",
   });
+
+async function verifyRegistrationAndAssistedRequests() {
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","disposable-native-fixture-only");
+  await q("SELECT setval(pg_get_serial_sequence('students','id'),(SELECT max(id) FROM students))");
+  const input={admissionNo:"NATIVE-REGISTERED-ONE",firstName:"Registration",lastName:"Fixture",gender:"female",
+    className:"Ignored client class",section:"Ignored",classId:1,parentId:1,registrationKey:"33aaee44-1111-4111-8111-123456789abc"};
+  const attempts=await Promise.all([call("/students?schoolId=1",input),call("/students?schoolId=1",input)]);
+  expect(attempts.map(r=>r.status).sort(),JSON.stringify(attempts)).toEqual([200,201]);
+  const created=attempts.find(r=>r.status===201)!;
+  const id=created.body.id;
+  expect(created.body).toMatchObject({className:"SS2",section:"A"});
+  const retry=attempts.find(r=>r.status===200)!;
+  expect(retry.status,JSON.stringify(retry.body)).toBe(200);
+  expect(retry.body.id).toBe(id);
+  expect((await call("/students?schoolId=1",{...input,lastName:"Different"})).status).toBe(409);
+  expect((await call(`/students/${id}?schoolId=1`)).body).toMatchObject({id,className:"SS2",section:"A"});
+  expect((await q("SELECT * FROM student_class_assignments WHERE student_id=$1 AND is_current",[id])).rows).toHaveLength(1);
+  expect((await q("SELECT parent_id FROM parent_student_relationships WHERE student_id=$1 AND status='ACTIVE'",[id])).rows).toEqual([{parent_id:1}]);
+  expect((await call("/students?schoolId=1",{...input,registrationKey:"33aaee44-1111-4111-8111-123456789abd",admissionNo:"FOREIGN-CLASS",classId:2})).status).toBe(400);
+  expect((await call(`/students/${id}?schoolId=1`,{classId:2},{},"PATCH")).status).toBe(400);
+  await q("INSERT INTO school_classes(id,school_id,name,section) VALUES(77,1,'SS3','Z')");
+  expect((await call(`/students/${id}?schoolId=1`,{classId:77},{},"PATCH")).status).toBe(200);
+  expect((await call(`/students/${id}?schoolId=1`,{classId:77},{},"PATCH")).status).toBe(200);
+  const history=(await q("SELECT school_class_id,status,is_current FROM student_class_assignments WHERE student_id=$1 ORDER BY id",[id])).rows;
+  expect(history).toEqual([{school_class_id:1,status:"INACTIVE",is_current:false},{school_class_id:77,status:"ACTIVE",is_current:true}]);
+  expect((await call("/classes?schoolId=1")).body.find((c:any)=>c.id===77)).toMatchObject({name:"SS3",section:"Z",studentCount:1});
+  expect((await call(`/students/${id}?schoolId=1`)).body).toMatchObject({id,className:"SS3",section:"Z"});
+  const options=await call("/student-nfc/assisted-options?schoolId=1");
+  expect(options.status,JSON.stringify(options.body)).toBe(200);
+  expect(options.body.students.find((s:any)=>s.id===id)).toMatchObject({className:"SS3",section:"Z",parents:[{id:1}]});
+  await q(`INSERT INTO academic_terms(id,school_id,academic_session_id,name,start_date,end_date,status,is_current)
+    VALUES(77,1,1,'Second Term',CURRENT_DATE+71,CURRENT_DATE+160,'PLANNED',false),
+          (78,1,1,'Past Term',CURRENT_DATE-100,CURRENT_DATE-30,'COMPLETED',false)`);
+  expect((await call("/student-nfc/assisted-options?schoolId=1")).body.terms.map((t:any)=>t.id)).toEqual([1,77]);
+  expect((await call("/student-nfc/assisted-requests?schoolId=1",{studentId:id,termId:2})).status).toBe(409);
+  expect((await call("/student-nfc/assisted-requests?schoolId=1",{studentId:id,termId:78})).status).toBe(409);
+  expect((await call("/student-nfc/assisted-requests?schoolId=1",{studentId:id,termId:1,amountMinor:1})).status).toBe(400);
+  const requests=[];
+  for(const termId of [1,77]){
+    const response=await call("/student-nfc/assisted-requests?schoolId=1",{studentId:id,termId});
+    expect(response.status,JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toMatchObject({mode:"FLUTTERWAVE_SANDBOX",amountMinor:500000,status:"PENDING",subscriptionActivated:false,receiptReference:null});
+    const duplicate=await call("/student-nfc/assisted-requests?schoolId=1",{studentId:id,termId});
+    expect(duplicate.body.reference).toBe(response.body.reference);
+    requests.push(response.body);
+  }
+  const reserved=(await q(`SELECT p.*,s.status AS sub_status,s.verification_status FROM student_subscription_payments p
+    JOIN subscriptions s ON s.id=p.subscription_id WHERE p.student_id=$1 ORDER BY p.academic_term_id`,[id])).rows;
+  expect(reserved).toHaveLength(2);
+  expect(reserved.map((r:any)=>Number(r.gross_amount_minor))).toEqual([500000,500000]);
+  expect(reserved.every((r:any)=>r.school_id===1&&r.payer_user_id===2&&r.status==="PENDING"&&r.verification_status==="pending"&&!r.receipt_snapshot)).toBe(true);
+  state.actor=actor(4,"STUDENT");
+  expect((await call("/student-nfc/assisted-options?schoolId=1")).status).toBe(404);
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  expect((await call("/student-nfc/assisted-options?schoolId=2")).status).toBe(404);
+  for(const request of requests){
+    const token=new URL(request.paymentUrl).hash.slice(1);
+    const initialized=await call("/public/nfc-payment-links/checkout",{token,email:"native-guardian@example.com"});
+    expect(initialized.status,JSON.stringify(initialized.body)).toBe(200);
+    expect(initialized.body.checkoutUrl).toBe("https://checkout.flutterwave.com/pay/nfc-fixture");
+    const pending=await call("/public/nfc-payment-links/view",{token});
+    expect(pending.body).toMatchObject({status:"PENDING",subscriptionActivated:false,receiptReference:null});
+    state.mode="pending";
+    const unverified=await call("/public/nfc-payment-links/verify",{token});
+    expect(unverified.body).toMatchObject({status:"PENDING",subscriptionActivated:false,receiptReference:null});
+    state.mode="succeeded";
+    const paid=await call("/public/nfc-payment-links/verify",{token});
+    expect(paid.status,JSON.stringify(paid.body)).toBe(200);
+    expect(paid.body).toMatchObject({status:"PAID",subscriptionActivated:true});
+    const before=(await q("SELECT id,receipt_snapshot FROM student_subscription_payments WHERE student_id=$1 ORDER BY id",[id])).rows;
+    const allocationsBefore=(await q("SELECT a.* FROM student_subscription_allocations a JOIN student_subscription_payments p ON p.id=a.payment_id WHERE p.student_id=$1 ORDER BY a.id",[id])).rows;
+    expect((await call("/public/nfc-payment-links/verify",{token})).body.receiptReference).toBe(paid.body.receiptReference);
+    expect((await q("SELECT id,receipt_snapshot FROM student_subscription_payments WHERE student_id=$1 ORDER BY id",[id])).rows).toEqual(before);
+    expect((await q("SELECT a.* FROM student_subscription_allocations a JOIN student_subscription_payments p ON p.id=a.payment_id WHERE p.student_id=$1 ORDER BY a.id",[id])).rows).toEqual(allocationsBefore);
+  }
+  // School, Partner, net platform and separately recorded provider-fee bucket per payment.
+  expect((await q("SELECT count(*)::int AS n FROM student_subscription_allocations a JOIN student_subscription_payments p ON p.id=a.payment_id WHERE p.student_id=$1",[id])).rows[0].n).toBe(8);
+  expect((await call("/student-nfc/assisted-requests?schoolId=1",{studentId:id,termId:1})).status).toBe(409);
+  expect((await q("SELECT count(*)::int AS n FROM student_subscription_payments WHERE student_id=$1",[id])).rows[0].n).toBe(2);
+}
   const verifyFamilyPortalIntegration=async()=>{
   await q(`INSERT INTO app_users(id,clerk_user_id,email) VALUES(9,'nfc-native-9','nfc-native-9@example.com');
     INSERT INTO school_classes(id,school_id,name,section) VALUES(3,1,'SS3','C');
@@ -462,4 +547,5 @@ it.skipIf(!snapshot)("executes automatic attachment, scoped views, canonical uni
   const stub={query:async()=>({rows:[]})};
   expect(await selectedFeeAmount(stub,ordinary,undefined)).toBeNull();
   await verifyFamilyPortalIntegration();
+  await verifyRegistrationAndAssistedRequests();
 },60000);

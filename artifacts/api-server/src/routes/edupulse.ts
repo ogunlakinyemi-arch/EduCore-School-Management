@@ -1,4 +1,6 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
+import { createHash } from "node:crypto";
+import { resolveRegistrationClass, saveRegistrationAssignment, registrationParent } from "../lib/student-registration-assignment";
 import { generateSchoolCode } from "../lib/generated-person-codes";
 import {assignAvailableStudentCard} from "../services/student-card-assignment";
 import { assertStudentNfcPaymentAccess,ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
@@ -581,6 +583,32 @@ router.post("/students", async (req, res) => {
     try {
       await client.query("BEGIN");
       await client.query(`SELECT id FROM schools WHERE id=$1 FOR UPDATE`, [schoolId]);
+      const selected = await resolveRegistrationClass(client, schoolId, body);
+      const parent = await registrationParent(client, schoolId, body.parentId);
+      const fingerprint = createHash("sha256").update(JSON.stringify({ ...body,
+        admissionNo: suppliedAdmissionNo, className: selected.name, section: selected.section,
+      })).digest("hex");
+      if (body.registrationKey) {
+        const previous = (await client.query(
+          `SELECT record_id,metadata FROM audit_logs WHERE school_id=$1 AND actor_user_id=$2
+             AND event_type='STUDENT_CREATED' AND metadata->>'registrationKey'=$3`,
+          [schoolId, getUserContext(req).user.id, body.registrationKey],
+        )).rows[0];
+        if (previous) {
+          if (previous.metadata?.registrationFingerprint !== fingerprint)
+            throw new AuthError(409, "This registration key was already used for different student details.");
+          const existing = (await client.query(
+            `SELECT id,school_id AS "schoolId",admission_no AS "admissionNo",email,
+               first_name AS "firstName",last_name AS "lastName",gender,class_name AS "className",
+               section,parent_name AS "parentName",parent_phone AS "parentPhone",status,joined_at AS "joinedAt"
+             FROM students WHERE id=$1 AND school_id=$2`, [previous.record_id, schoolId],
+          )).rows[0];
+          if (!existing) throw new AuthError(409, "The previous registration requires review.");
+          await client.query("COMMIT");
+          res.status(200).json({ ...existing, subscriptionStatus: "unpaid", cardStatus: "unassigned", joinedAt: dateString(existing.joinedAt) });
+          return;
+        }
+      }
       if (!admissionNo) admissionNo = await generateAdmissionNumber(client, schoolId);
       result = await client.query(`
       INSERT INTO students (school_id, admission_no, email, first_name, last_name, middle_name, date_of_birth, photo,
@@ -594,7 +622,16 @@ router.post("/students", async (req, res) => {
         body.firstName, body.lastName, body.middleName ?? null, body.dateOfBirth ?? null,
         body.passportUrl ?? null, body.admissionDate ?? null, (body.admissionStatus ?? "admitted").toUpperCase(),
         body.address ?? null, body.previousSchool ?? null, body.medicalInformation ?? null, body.emergencyContactName ?? null,
-        body.emergencyContactPhone ?? null, body.gender, body.className, body.section, body.parentName ?? null, body.parentPhone ?? null]);
+        body.emergencyContactPhone ?? null, body.gender, selected.name, selected.section, parent?.name ?? body.parentName ?? null, parent?.phone ?? body.parentPhone ?? null]);
+      const studentId = result.rows[0].id;
+      await saveRegistrationAssignment(client, schoolId, studentId, selected);
+      if (parent) await client.query(
+        `INSERT INTO parent_student_relationships(parent_id,student_id,relationship_type,status)
+           VALUES($1,$2,$3,'ACTIVE') ON CONFLICT(parent_id,student_id) DO NOTHING`,
+        [parent.id, studentId, parent.default_relationship_type ?? "Guardian"],
+      );
+      await audit(req, schoolId, "Created student", "Students", studentId, "info", "STUDENT_CREATED",
+        "SUCCESS", { registrationKey: body.registrationKey ?? null, registrationFingerprint: fingerprint }, client);
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -604,7 +641,6 @@ router.post("/students", async (req, res) => {
     }
     const row = result!.rows[0];
     const student = { ...row, subscriptionStatus: "unpaid", cardStatus: "unassigned", joinedAt: dateString(row.joinedAt) };
-    await audit(req, schoolId, "Created student", "Students", row.id, "info", "STUDENT_CREATED");
     res.status(201).json(student);
   } catch (error) {
     fail(req, res, error);
@@ -643,17 +679,26 @@ router.patch("/students/:studentId", async (req, res) => {
     const query = UpdateStudentQueryParams.parse(req.query);
     assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
     const body = UpdateStudentBody.parse(req.body);
-    const current = await pool.query(`SELECT * FROM students WHERE id = $1 AND school_id = $2`, [params.studentId, query.schoolId]);
-    if (!current.rows[0]) return res.status(404).json({ error: "Student not found" });
+    const client = await pool.connect();
+    try {
+    await client.query("BEGIN");
+    await client.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [query.schoolId]);
+    const current = await client.query(`SELECT * FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE`, [params.studentId, query.schoolId]);
+    if (!current.rows[0]) throw new AuthError(404, "Student not found");
+    const changesClass = body.classId != null || body.className !== undefined || body.section !== undefined;
+    const selected = changesClass ? await resolveRegistrationClass(client, query.schoolId, {
+      classId: body.classId, className: body.className ?? current.rows[0].class_name,
+      section: body.section ?? current.rows[0].section,
+    }) : null;
     const next = {
       ...current.rows[0],
       first_name: body.firstName ?? current.rows[0].first_name,
       last_name: body.lastName ?? current.rows[0].last_name,
-      class_name: body.className ?? current.rows[0].class_name,
-      section: body.section ?? current.rows[0].section,
+      class_name: selected?.name ?? current.rows[0].class_name,
+      section: selected?.section ?? current.rows[0].section,
       status: body.status ?? current.rows[0].status,
     };
-    const result = await pool.query(`
+    const result = await client.query(`
       UPDATE students SET first_name = $1, last_name = $2, class_name = $3, section = $4, status = $5
       WHERE id = $6 AND school_id = $7
       RETURNING id, school_id AS "schoolId", admission_no AS "admissionNo", first_name AS "firstName",
@@ -661,8 +706,12 @@ router.patch("/students/:studentId", async (req, res) => {
         parent_phone AS "parentPhone", status, joined_at AS "joinedAt"
     `, [next.first_name, next.last_name, next.class_name, next.section, next.status, params.studentId, query.schoolId]);
     const row = result.rows[0];
-    await audit(req, query.schoolId, "Updated student", "Students", params.studentId, "info", "STUDENT_UPDATED");
+    if (selected) await saveRegistrationAssignment(client, query.schoolId, params.studentId, selected);
+    await audit(req, query.schoolId, "Updated student", "Students", params.studentId, "info", "STUDENT_UPDATED", "SUCCESS", null, client);
+    await client.query("COMMIT");
     res.json({ ...row, subscriptionStatus: "unpaid", cardStatus: "unassigned", joinedAt: dateString(row.joinedAt) });
+    } catch (error) { await client.query("ROLLBACK"); throw error; }
+    finally { client.release(); }
   } catch (error) {
     fail(req, res, error);
   }

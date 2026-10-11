@@ -1,0 +1,31 @@
+Implement automatic class assignment during student registration in Yetenia EduCore.
+
+Required changes
+
+1. Locate the School Admin's Add Student form in the Student Directory.
+2. Add or correct the Class field so it is a dropdown populated dynamically with all classes belonging to the currently selected school.
+3. Display each class's appropriate name and level so the School Admin can easily identify the intended class.
+4. Make class selection required when registering a student, unless the existing application explicitly supports students without a class.
+5. When the School Admin selects a class and saves the student, automatically create or update the appropriate student-to-class assignment in the database.
+6. Ensure the selected class belongs to the same school as the student. Enforce this validation on the server, not just in the interface.
+7. Ensure the student's class appears correctly in the Student Directory, student profile, class roster, teacher dashboards, and other relevant areas.
+8. When editing an existing student, show the student's current class and allow an authorized School Admin to change it.
+9. Prevent duplicate class assignments and do not create duplicate student records when the form is submitted more than once.
+10. If the school has no available classes, show a clear message and guide the School Admin to create a class before registering the student.
+
+Testing requirements
+
+- Test adding a student and assigning an existing class.
+- Verify that the assignment persists after refreshing the page.
+- Confirm the student appears in the selected class roster.
+- Test that a class belonging to another school cannot be assigned.
+- Test editing a student's class and ensure existing student records remain intact.
+
+Safety requirements
+
+- Work in Development only.
+- Preserve existing students, classes, attendance records, academic records, and other data.
+- Do not publish to Production or perform destructive database operations.
+- Run the relevant tests and report what was changed and verified.
+
+Do not mark the task complete until the selected class is saved and the student appears in the correct class roster.

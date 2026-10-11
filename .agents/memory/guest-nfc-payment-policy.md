@@ -14,3 +14,9 @@ Development simulation remains available. On 2026-10-11 the user reported Flutte
 **Why:** The earlier simulation authorization did not permit real transactions. Business approval now permits the requested sandbox integration, but does not establish reviewed school/partner subaccounts, provider-fee arrangements or settlement capabilities.
 
 **How to apply:** Simulated completion is not a verified payment, real receipt, subscription activation or bank settlement. Require independent server-side Flutterwave verification for genuine sandbox success. Preserve NGN 5,000 per student per term and existing allocations/bindings. Keep live credentials, real-money settlement, automatic provider splits and Production changes disabled. Never treat a supplied account number as an API key or subaccount ID.
+
+Assisted NFC requests may cover the current term or a valid future ACTIVE/PLANNED term within the school's current ACTIVE session. Future payment must not be treated as payment for the current term.
+
+**Why:** The user explicitly requested advance payment for the following term while preserving academic-period validation. Extending payment to historical terms or other sessions would exceed that request.
+
+**How to apply:** Apply the same eligibility policy at request creation, checkout initialization and successful-payment finalization. Keep the in-progress term's explicit current designation, valid session/term dates, original-school binding and independent provider verification. Do not infer that creating a future reservation activates a subscription or issues a paid receipt.

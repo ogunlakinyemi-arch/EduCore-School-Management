@@ -1,4 +1,5 @@
 import { pool } from "@workspace/db";
+import { nfcPayableTermPredicate } from "../lib/nfc-payable-term";
 import { AuthError } from "../middlewares/auth";
 import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
 import { PaymentProviderError } from "../lib/fee-providers";
@@ -74,9 +75,8 @@ export async function reserveGuestNfcPayment(
   const current = (await db.query(
     `SELECT t.id FROM academic_terms t JOIN academic_sessions ses
        ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
-      WHERE t.id=$1 AND ses.id=$2 AND t.school_id=$3 AND t.is_current AND ses.is_current
-        AND upper(t.status)='ACTIVE' AND upper(ses.status)='ACTIVE'
-        AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE FOR SHARE OF t,ses`,
+       WHERE t.id=$1 AND ses.id=$2 AND t.school_id=$3
+         AND ${nfcPayableTermPredicate} FOR SHARE OF t,ses`,
     [scope.termId, scope.sessionId, scope.schoolId],
   )).rows[0];
   if (!current) throw new AuthError(409, "Checkout requires the bound active current term");
@@ -180,9 +180,8 @@ export async function createGuestNfcCheckout(token: string, email: string) {
       const current = (await db.query(
         `SELECT t.id FROM academic_terms t JOIN academic_sessions ses
            ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
-          WHERE t.id=$1 AND ses.id=$2 AND t.school_id=$3 AND t.is_current AND ses.is_current
-            AND upper(t.status)='ACTIVE' AND upper(ses.status)='ACTIVE'
-            AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE FOR SHARE OF t,ses`,
+           WHERE t.id=$1 AND ses.id=$2 AND t.school_id=$3
+             AND ${nfcPayableTermPredicate} FOR SHARE OF t,ses`,
         [row.academic_term_id, row.academic_session_id, row.school_id],
       )).rows[0];
       if (!current) throw new AuthError(409, "Checkout requires the bound active current term");

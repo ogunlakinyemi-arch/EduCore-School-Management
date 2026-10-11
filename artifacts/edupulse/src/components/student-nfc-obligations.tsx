@@ -15,6 +15,7 @@ import {
   type StudentNfcObligation,
   type StudentNfcSummary,
 } from '@workspace/api-client-react';
+import { AssistedNfcPayment } from '@/components/assisted-nfc-payment';
 import { NfcPaymentLinkControls } from '@/components/nfc-payment-link-controls';
 import { Button, EmptyState, ErrorState, StatusPill, money, date } from '@/components/shared';
 import {
@@ -252,6 +253,7 @@ export function StudentNfcObligationsPanel({
         {teacherView && ' The school allocation is school revenue; it is not personal Teacher income and not an amount a Teacher pays.'}
         {' '}Terms already paid under the older school NFC charge are kept and flagged for Owner review; no second charge is made.
       </p>
+      {!familyView && !teacherView && <div className="mt-3"><AssistedNfcPayment schoolId={schoolId} onCreated={invalidateAll} /></div>}
     </div>
     {message && <div role={message.tone === 'error' ? 'alert' : 'status'} className="m-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] px-4 py-3 text-sm font-semibold">{message.text}</div>}
     {query.isLoading ? <div className="p-6"><div className="skeleton h-24 rounded-xl" /></div>
