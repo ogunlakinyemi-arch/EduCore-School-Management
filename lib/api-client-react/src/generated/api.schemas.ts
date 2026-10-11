@@ -7683,6 +7683,46 @@ export const SettlementProviderCapabilityTransferCapability = {
   BLOCKED_IN_DEVELOPMENT: 'BLOCKED_IN_DEVELOPMENT',
 } as const;
 
+export type SettlementProviderCapabilityCollectionMode = typeof SettlementProviderCapabilityCollectionMode[keyof typeof SettlementProviderCapabilityCollectionMode];
+
+
+export const SettlementProviderCapabilityCollectionMode = {
+  TEST: 'TEST',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+} as const;
+
+export type SettlementProviderCapabilityCollectionCredentialState = typeof SettlementProviderCapabilityCollectionCredentialState[keyof typeof SettlementProviderCapabilityCollectionCredentialState];
+
+
+export const SettlementProviderCapabilityCollectionCredentialState = {
+  CONFIGURED: 'CONFIGURED',
+  MISSING: 'MISSING',
+  INVALID: 'INVALID',
+  CONFLICT: 'CONFLICT',
+  BLOCKED: 'BLOCKED',
+} as const;
+
+export type SettlementProviderCapabilityCollectionSubaccountIntegration = typeof SettlementProviderCapabilityCollectionSubaccountIntegration[keyof typeof SettlementProviderCapabilityCollectionSubaccountIntegration];
+
+
+export const SettlementProviderCapabilityCollectionSubaccountIntegration = {
+  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
+} as const;
+
+export type SettlementProviderCapabilityCollection = {
+  mode: SettlementProviderCapabilityCollectionMode;
+  credentialState: SettlementProviderCapabilityCollectionCredentialState;
+  credentialsConfigured: boolean;
+  webhookConfigured: boolean;
+  checkoutConfigured: boolean;
+  assistedCheckoutConfigured: boolean;
+  checkoutVerified: false;
+  automaticSplitSettlementEnabled: false;
+  automaticSplitSettlementVerified: false;
+  subaccountIntegration: SettlementProviderCapabilityCollectionSubaccountIntegration;
+  bankAccountVerificationConfigured: boolean;
+};
+
 export interface SettlementProviderCapability {
   provider: SettlementProviderCapabilityProvider;
   mode: SettlementProviderCapabilityMode;
@@ -7690,6 +7730,7 @@ export interface SettlementProviderCapability {
   transferCapability: SettlementProviderCapabilityTransferCapability;
   bankSubaccountsSupported: boolean;
   liveSettlementVerified: false;
+  collection?: SettlementProviderCapabilityCollection;
 }
 
 export type CompanySettlementInputCurrency = typeof CompanySettlementInputCurrency[keyof typeof CompanySettlementInputCurrency];

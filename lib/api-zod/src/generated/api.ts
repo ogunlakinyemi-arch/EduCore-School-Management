@@ -17334,7 +17334,20 @@ export const GetPlatformPaymentSettlementResponse = zod.object({
   "credentialsConfigured": zod.boolean(),
   "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
   "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false)
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
 }),
   "updatedAt": zod.coerce.date().nullable()
 })
@@ -17401,7 +17414,20 @@ export const UpdatePlatformPaymentSettlementResponse = zod.object({
   "credentialsConfigured": zod.boolean(),
   "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
   "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false)
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
 }),
   "updatedAt": zod.coerce.date().nullable()
 })
@@ -17453,7 +17479,20 @@ export const ListPlatformSchoolSettlementsResponseItem = zod.object({
   "credentialsConfigured": zod.boolean(),
   "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
   "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false)
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
 }),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
@@ -17497,7 +17536,20 @@ export const GetPlatformSchoolSettlementResponse = zod.object({
   "credentialsConfigured": zod.boolean(),
   "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
   "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false)
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
 }),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
@@ -17552,7 +17604,20 @@ export const VerifyPlatformSchoolSettlementResponse = zod.object({
   "credentialsConfigured": zod.boolean(),
   "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
   "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false)
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
 }),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
@@ -17596,7 +17661,20 @@ export const GetSchoolPaymentSettlementResponse = zod.object({
   "credentialsConfigured": zod.boolean(),
   "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
   "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false)
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
 }),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
@@ -17673,7 +17751,20 @@ export const UpdateSchoolPaymentSettlementResponse = zod.object({
   "credentialsConfigured": zod.boolean(),
   "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
   "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false)
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
 }),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),

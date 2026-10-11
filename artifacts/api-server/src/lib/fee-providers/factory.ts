@@ -3,6 +3,7 @@ import {
   PaystackTestAdapter,
   type PaymentProviderAdapter,
 } from "./index";
+import { developmentFlutterwaveCredential } from "../flutterwave-development-config";
 
 export type ConfigurableFeeProvider = "PAYSTACK" | "FLUTTERWAVE";
 
@@ -47,11 +48,11 @@ export function configuredCheckoutReturnUrl(): string | null {
  */
 export function configuredStudentNfcTestAdapter(): PaymentProviderAdapter | null {
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
-    const secrets = [process.env.FLUTTERWAVE_SECRET_Test_Key, process.env.FLUTTERWAVE_TEST_SECRET_KEY]
-      .filter((value): value is string => Boolean(value));
-    if (new Set(secrets).size > 1) return null;
-    if (secrets[0]) return new FlutterwaveTestAdapter({
-      secretKey: secrets[0],
+    const credential = developmentFlutterwaveCredential();
+    if (credential.state === "CONFLICT") return null;
+    if (credential.state === "INVALID") throw new Error("Invalid dedicated Flutterwave TEST credential configuration");
+    if (credential.secret) return new FlutterwaveTestAdapter({
+      secretKey: credential.secret,
       webhookSecret: process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || undefined,
     });
   }

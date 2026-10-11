@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { SettlementProviderCapabilityCollection } from './settlementProviderCapabilityCollection';
 import type { SettlementProviderCapabilityMode } from './settlementProviderCapabilityMode';
 import type { SettlementProviderCapabilityProvider } from './settlementProviderCapabilityProvider';
 import type { SettlementProviderCapabilityTransferCapability } from './settlementProviderCapabilityTransferCapability';
@@ -16,4 +17,5 @@ export interface SettlementProviderCapability {
   transferCapability: SettlementProviderCapabilityTransferCapability;
   bankSubaccountsSupported: boolean;
   liveSettlementVerified: false;
+  collection?: SettlementProviderCapabilityCollection;
 }

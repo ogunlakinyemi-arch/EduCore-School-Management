@@ -1,4 +1,5 @@
 import { AuthError } from "../middlewares/auth";
+import { developmentFlutterwaveCredential } from "./flutterwave-development-config";
 
 export type PayrollProviderMode = "TEST" | "LIVE" | "MOCK" | "NOT_CONFIGURED";
 export type PayrollTransferCapability =
@@ -70,6 +71,9 @@ export function configuredPayrollProviderCapability(
     /^FLWSECK_TEST-[A-Za-z0-9_-]{8,}$/.test(existingSecret) &&
     (!testKey || existingSecret === testKey);
   const safeTestKey = explicitlyTestCredential ? testKey : sameExistingTestCredential ? existingSecret : null;
+  const developmentCredential = developmentFlutterwaveCredential(env);
+  const resolvedTestKey = env.NODE_ENV === "development" && developmentCredential.state !== "MISSING"
+    ? developmentCredential.secret : safeTestKey;
 
   if (configuredMode === "mock" && nodeEnvironment !== "production") {
     return {
@@ -84,7 +88,7 @@ export function configuredPayrollProviderCapability(
   if (
     configuredMode === "test" &&
     nodeEnvironment !== "production" &&
-    safeTestKey !== null
+    resolvedTestKey !== null
   ) {
     return {
       provider: "FLUTTERWAVE",
@@ -154,6 +158,9 @@ function providerKey(
     );
   }
   return mode === "TEST" ? (
+    (env.NODE_ENV === "development" && developmentFlutterwaveCredential(env).state !== "MISSING"
+      ? developmentFlutterwaveCredential(env).secret
+      : null) ??
     env.FLUTTERWAVE_TEST_SECRET_KEY?.trim() ??
     env.FLUTTERWAVE_SECRET_KEY?.trim() ??
     ""
@@ -231,12 +238,14 @@ export class FlutterwavePayrollV3Client {
     accountNumber: string;
   }): Promise<BankResolution> {
     const capability = this.capability();
-    if (!["TEST", "LIVE"].includes(capability.mode)) {
+    const developmentKey = developmentFlutterwaveCredential(this.env).secret;
+    if (!developmentKey && !["TEST", "LIVE"].includes(capability.mode)) {
       throw new FlutterwavePayrollUnavailableError(
         "Bank verification requires explicitly configured Flutterwave test credentials or an approved live service",
       );
     }
-    const key = providerKey(this.env, capability.mode as "TEST" | "LIVE");
+    // Read-only account resolution must not enable payroll transfers or create subaccounts.
+    const key = developmentKey ?? providerKey(this.env, capability.mode as "TEST" | "LIVE");
     const body = await v3Request("/accounts/resolve", key, {
       method: "POST",
       body: JSON.stringify({

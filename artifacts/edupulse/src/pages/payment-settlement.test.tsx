@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
     { schoolId: 8, schoolName: 'Unconfigured school', status: 'NOT_CONFIGURED', capability: { mode: 'MOCK', bankSubaccountsSupported: false } },
   ],
   list: vi.fn(),
+  verify: vi.fn(),
 }));
 vi.mock('@workspace/api-client-react', async importOriginal => {
   const actual = await importOriginal<typeof import('@workspace/api-client-react')>();
@@ -19,6 +20,7 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
   return {
     ...actual,
     useGetAuthorizedContext: () => query({ isPlatformOwner: true, roles: [] }),
+    verifyPlatformSchoolSettlement: state.verify,
     useGetPlatformPaymentSettlement: () => query({ status: 'NOT_CONFIGURED', capability: { mode: 'MOCK' } }),
     useListPlatformSchoolSettlements: (...args: unknown[]) => {
       state.list(...args);
@@ -54,9 +56,26 @@ afterEach(async () => {
   container?.remove();
   state.error = false;
   state.list.mockClear();
+  state.verify.mockReset();
+  state.rows[0].capability.mode = 'MOCK';
+  vi.restoreAllMocks();
 });
 
 describe('Owner school settlement oversight', () => {
+  it('sends an explicit per-action idempotency key for bank verification without claiming subaccount or settlement success', async () => {
+    state.rows[0].capability.mode = 'TEST';
+    state.verify.mockResolvedValue({ schoolId: 7, status: 'VERIFIED' });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await open();
+    const control = container.querySelector('[data-testid="button-verify-7"]') as HTMLButtonElement;
+    expect(control.disabled).toBe(false);
+    await act(async () => control.click());
+    expect(state.verify).toHaveBeenCalledWith(7, {
+      headers: { 'Idempotency-Key': expect.stringMatching(/^[a-f0-9-]{36}$/) },
+    });
+    expect(container.textContent).toContain('bank account verification status verified');
+    expect(container.textContent).toContain('Collection subaccount registration and settlement are not verified');
+  });
   it('renders configured and unconfigured schools with masked details and a genuine empty profile', async () => {
     await open();
     expect(state.list).toHaveBeenLastCalledWith(

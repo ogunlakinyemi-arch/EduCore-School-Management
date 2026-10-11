@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Landmark } from 'lucide-react';
 import {
   useGetAuthorizedContext, useGetPlatformPaymentSettlement, useUpdatePlatformPaymentSettlement, useListPlatformSchoolSettlements,
-  useVerifyPlatformSchoolSettlement, useGetSchoolPaymentSettlement, useUpdateSchoolPaymentSettlement, useListSchoolSettlementHistory,
+  verifyPlatformSchoolSettlement, useGetSchoolPaymentSettlement, useUpdateSchoolPaymentSettlement, useListSchoolSettlementHistory,
   useListPlatformSettlementHistory, useGetPlatformSchoolSettlement,
   getGetPlatformPaymentSettlementQueryKey, getListPlatformSchoolSettlementsQueryKey, getGetSchoolPaymentSettlementQueryKey,
   getListSchoolSettlementHistoryQueryKey, getListPlatformSettlementHistoryQueryKey, getGetPlatformSchoolSettlementQueryKey,
@@ -18,7 +18,7 @@ function ProfileView({ p }: { p: Profile }) {
   return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="settlement-profile">
     <Info label="Business" value={p.businessName} /><Info label="Bank" value={p.bankName} /><Info label="Account name" value={p.accountName} />
     <Info label="Account (last 4)" value={p.accountLast4 ? <span className="font-mono">{'****' + p.accountLast4}</span> : 'None on file'} />
-    <Info label="Recipient verification" value={<StatusPill value={p.status === 'VERIFIED' ? 'verified' : p.status === 'ACTION_REQUIRED' ? 'failed' : p.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />} />
+    <Info label="Bank account verification" value={<StatusPill value={p.status === 'VERIFIED' ? 'verified' : p.status === 'ACTION_REQUIRED' ? 'failed' : p.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />} />
     <Info label="Provider subaccount" value={p.providerSubaccountId ? 'Linked' : 'Not linked'} /><Info label="Contact" value={p.settlementContactEmail} /><Info label="Updated" value={date(p.updatedAt)} />
   </div>;
 }
@@ -102,7 +102,10 @@ function OwnerSettlement() {
   const hp = { limit: 50 };
   const hist = useListPlatformSettlementHistory(hp, { query: { enabled: tab === 'history', queryKey: getListPlatformSettlementHistoryQueryKey(hp), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
   const update = useUpdatePlatformPaymentSettlement();
-  const verify = useVerifyPlatformSchoolSettlement();
+  const verify = useMutation({
+    mutationFn: ({ schoolId, idempotencyKey }: { schoolId: number; idempotencyKey: string }) =>
+      verifyPlatformSchoolSettlement(schoolId, { headers: { 'Idempotency-Key': idempotencyKey } }),
+  });
   const save = async (d: FormState) => {
     try {
       await update.mutateAsync({ data: { businessName: d.businessName.trim(), businessRegistrationNumber: d.businessRegistrationNumber.trim() || null, settlementContactEmail: d.settlementContactEmail.trim() || undefined, settlementContactPhone: d.settlementContactPhone.trim() || null, bankName: d.bankName.trim(), bankCode: d.bankCode, accountName: d.accountName.trim(), accountNumber: d.accountNumber, currency: 'NGN' } });
@@ -110,8 +113,8 @@ function OwnerSettlement() {
     } catch (e) { setFail(errMsg(e)); }
   };
   const runVerify = async (s: SchoolSettlementSummary) => {
-    if (!window.confirm(`Ask the provider to verify the recipient for ${s.schoolName}? This does not settle any funds.`)) return;
-    try { const r = await verify.mutateAsync({ schoolId: s.schoolId }); setFail(''); setMsg(`${s.schoolName}: provider reports recipient status ${r.status.replaceAll('_', ' ').toLowerCase()}.`); invalidateAll(qc); }
+    if (!window.confirm(`Ask the provider to verify the bank account holder for ${s.schoolName}? This does not create a collection subaccount or settle any funds.`)) return;
+    try { const r = await verify.mutateAsync({ schoolId: s.schoolId, idempotencyKey: crypto.randomUUID() }); setFail(''); setMsg(`${s.schoolName}: bank account verification status ${r.status.replaceAll('_', ' ').toLowerCase()}. Collection subaccount registration and settlement are not verified.`); invalidateAll(qc); }
     catch (e) { setFail(errMsg(e)); }
   };
   return <div>
@@ -130,7 +133,7 @@ function OwnerSettlement() {
           <div className="min-w-0 flex-1"><div className="font-bold">{s.schoolName}</div><div className={note}>{s.bankName ?? 'No bank'} {s.accountLast4 ? `/ ****${s.accountLast4}` : ''} / {s.capability.mode.replace('_', ' ').toLowerCase()} mode</div></div>
           <StatusPill value={s.status === 'VERIFIED' ? 'verified' : s.status === 'ACTION_REQUIRED' ? 'failed' : s.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />
           <Button variant="outline" onClick={() => setDetail(s)}>Details</Button>
-          <Button variant="quiet" disabled={verify.isPending || s.status === 'NOT_CONFIGURED' || !s.capability.bankSubaccountsSupported} title={!s.capability.bankSubaccountsSupported ? 'Provider API does not support bank subaccounts' : undefined} onClick={() => runVerify(s)} testId={`button-verify-${s.schoolId}`}>{s.capability.bankSubaccountsSupported ? 'Verify recipient' : 'Verification unsupported'}</Button>
+          <Button variant="quiet" disabled={verify.isPending || s.status === 'NOT_CONFIGURED' || !(s.capability.collection?.bankAccountVerificationConfigured || ['TEST', 'LIVE'].includes(s.capability.mode))} title="Verify the saved bank account holder only; this does not create a collection subaccount or prove settlement." onClick={() => runVerify(s)} testId={`button-verify-${s.schoolId}`}>Verify bank details</Button>
         </div>)}</div>}</section>}
     {tab === 'history' && <section className="panel overflow-hidden">{hist.isLoading ? <SkeletonPage /> : hist.isError ? <ErrorState retry={() => hist.refetch()} /> : <SettlementHistoryTable rows={hist.data ?? []} showSchool />}</section>}
     {editing && <Modal title="Company settlement details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} scope="COMPANY" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}

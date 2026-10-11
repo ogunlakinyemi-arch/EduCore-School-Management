@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
 import * as PayrollContract from "@workspace/api-zod";
 import { pool } from "@workspace/db";
+import { developmentFlutterwaveCollectionStatus } from "../lib/flutterwave-development-config";
 import {
   assertResourceId,
   assertSchoolOperationalAccess,
@@ -396,7 +397,7 @@ async function audit(client: PoolClient, input: AuditInput) {
 }
 
 function settlementCapability() {
-  return flw.capability();
+  return { ...flw.capability(), collection: developmentFlutterwaveCollectionStatus() };
 }
 
 function settlementProfileProjection(row: AnyRow | undefined, scope: "SCHOOL" | "YEMAIT_COMPANY", schoolId?: number) {

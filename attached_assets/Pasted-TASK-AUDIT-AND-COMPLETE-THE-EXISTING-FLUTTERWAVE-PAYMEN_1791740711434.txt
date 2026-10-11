@@ -1,0 +1,78 @@
+TASK: AUDIT AND COMPLETE THE EXISTING FLUTTERWAVE PAYMENT CONFIGURATION IN YETENIA EDUCORE
+
+The Flutterwave payment integration has already been implemented in Yetenia EduCore. Do not rebuild it from scratch.
+
+My company is YETENIA TECHNOLOGIES LIMITED. I have applied for a business bank account, but the bank has not issued my account number yet. I want to continue development and testing while waiting for the account number.
+
+The Platform Owner's Payment Settlement section currently displays:
+
+- Provider: FLUTTERWAVE
+- Mode: NOT CONFIGURED
+- Credentials: not available
+- Bank subaccounts: unsupported by provider API
+- Live settlement verified: no
+
+PHASE 1: AUDIT THE EXISTING INTEGRATION
+
+1. Inspect the existing Flutterwave integration, checkout generation, webhook handling, server-side payment verification, settlement settings, and split-payment implementation.
+2. Identify exactly why the Payment Settlement section says NOT CONFIGURED.
+3. Check whether the required Flutterwave TEST credentials exist in Replit Secrets and whether the backend reads the correct environment variable names.
+4. Identify whether the problem is missing credentials, incorrect configuration, incomplete webhook setup, unsupported split-payment functionality, or another issue.
+5. Do not display, log, expose, or hard-code secret keys or webhook verification values.
+6. Do not claim a payment integration is working unless it has been tested.
+
+PHASE 2: FIX DEVELOPMENT CONFIGURATION
+
+1. Fix any confirmed configuration or code defects without rebuilding the existing payment system.
+2. Keep TEST and LIVE configurations separate.
+3. Allow the Platform Owner to see clear statuses for provider configuration, credential availability, webhook configuration, checkout readiness, and live settlement verification.
+4. If TEST credentials are missing, identify the exact existing secret names that need to be added. Do not invent credentials.
+5. Keep the application in TEST mode until real settlement details and LIVE credentials are properly configured.
+6. Do not require a business bank account number merely to run code-level checks that do not need settlement.
+
+PHASE 3: SCHOOL AND PARTNER SPLIT PAYMENTS
+
+Prepare the existing system to support the following intended pricing:
+
+- Total per student per term: ₦5,000.
+- School share: ₦2,000.
+- Platform share before partner commission: ₦3,000.
+- Eligible partner commission: ₦100 per attributed student per term, deducted from the platform share.
+- With an eligible partner: school ₦2,000, partner ₦100, Yetenia ₦2,900 before provider fees.
+- Without an eligible partner: school ₦2,000 and Yetenia ₦3,000 before provider fees.
+
+Inspect whether the current Flutterwave integration genuinely supports the required recipient/subaccount split arrangement. Do not assume the existing code implements automatic split settlement merely because it calculates commission amounts.
+
+Allow the Platform Owner to register and verify school and eligible partner settlement recipients when they join. Do not require me to create school recipients before any schools have registered. Use only recipient and split-payment features supported by Flutterwave's current API and my account permissions.
+
+If a required feature or account approval is unavailable, report the blocker rather than simulating transfers.
+
+PHASE 4: TEST SAFELY
+
+1. Run existing automated tests and add focused tests for checkout creation, correct amounts, school/partner attribution, webhook verification, duplicate payment protection, and subscription activation.
+2. Test Flutterwave sandbox checkout only when valid TEST credentials are available.
+3. Do not mark any payment as successful based solely on a redirect.
+4. Do not activate subscriptions or issue paid receipts without verified payment confirmation.
+5. If a genuine sandbox transaction cannot be completed, state exactly what remains untested.
+6. Do not use real customer money or real school bank details for testing.
+
+STRICT SAFETY REQUIREMENTS
+
+- Development environment only.
+- Do not publish to Production.
+- Do not modify Production data or apply Production migrations.
+- Do not create or impersonate user accounts.
+- Do not weaken authentication, tenant isolation, payment verification, or security controls.
+- Do not delete existing data or replace working integration code unnecessarily.
+
+FINAL REPORT REQUIRED
+
+Explain in plain English:
+
+1. What is already implemented and working.
+2. The exact reason the provider currently displays NOT CONFIGURED.
+3. What you corrected.
+4. What I need to do in Replit Secrets or the Flutterwave dashboard.
+5. What can be tested before my business bank account number arrives.
+6. What must wait until the account number and LIVE settlement setup are ready.
+7. Whether automatic school, partner, and Yetenia split settlement is actually implemented and verified.

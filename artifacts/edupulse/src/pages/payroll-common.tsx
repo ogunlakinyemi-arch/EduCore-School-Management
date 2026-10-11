@@ -56,12 +56,18 @@ export function ProviderBanner({ capability, mode }: { capability?: SettlementPr
   const text = m === 'MOCK' || cap === 'MOCK_ONLY'
     ? 'Mock mode. No actual funds are moved. Mock-pending transfers are simulations and never count as paid.'
     : m === 'TEST' ? 'Provider test mode. Test transfers do not move real funds and are not live settlement.'
-    : blocked ? (cap === 'BLOCKED_IN_DEVELOPMENT' ? 'Provider transfers are blocked in this environment. This capability is unsupported here, not simulated.' : 'Provider is not configured. Transfers and subaccount verification are unavailable.')
+    : blocked ? (cap === 'BLOCKED_IN_DEVELOPMENT' ? 'Live payout transfers are blocked in Development, not simulated.' : 'Payout transfers are not configured. Payment collections are configured separately.')
     : 'Live provider. Only server-verified provider outcomes are shown as paid.';
   return <div role="status" data-testid="banner-provider-mode" className={cx('mb-5 flex gap-3 rounded-2xl border p-4 text-sm', blocked ? 'border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.06)]' : 'border-[hsl(35_83%_53%/.4)] bg-[hsl(35_83%_53%/.1)]')}>
     {blocked ? <CircleAlert size={18} className="mt-0.5 shrink-0" /> : <FlaskConical size={18} className="mt-0.5 shrink-0" />}
-    <div><div className="font-bold">Provider {capability?.provider ?? 'FLUTTERWAVE'} / mode {m.replace('_', ' ')}</div><p className={note}>{text}</p>
-      {capability && <p className={note}>Credentials: {capability.credentialsConfigured ? 'available on server' : 'not available'} (values never shown). Bank subaccounts: {capability.bankSubaccountsSupported ? 'supported' : 'unsupported by provider API'}. Live settlement verified: no.</p>}</div>
+    <div><div className="font-bold">Provider {capability?.provider ?? 'FLUTTERWAVE'} / payment mode {(capability?.collection?.mode ?? m).replaceAll('_', ' ')}</div><p className={note}>Payout transfer mode: {m.replaceAll('_', ' ')}. {text}</p>
+      {capability && <p className={note}>Transfer credentials: {capability.credentialsConfigured ? 'available on server' : 'not configured for payouts'} (values never shown). Collection subaccounts: {capability.bankSubaccountsSupported ? 'integrated' : 'not integrated in EduCore; documented by Flutterwave'}. Live settlement verified: no.</p>}
+      {capability?.collection && <div className="mt-3 space-y-1 border-t pt-3" data-testid="collection-configuration">
+        <div className="font-bold">Payment collections / mode {capability.collection.mode.replaceAll('_', ' ')}</div>
+        <p className={note}>TEST credentials: {capability.collection.credentialsConfigured ? 'configured on server' : capability.collection.credentialState.toLowerCase()}. Webhook verification: {capability.collection.webhookConfigured ? 'configured; dashboard delivery not verified' : 'not configured; incoming events fail closed'}.</p>
+        <p className={note}>Checkout configuration: {capability.collection.checkoutConfigured ? 'ready for TEST initialization' : 'not ready'}. Assisted public checkout: {capability.collection.assistedCheckoutConfigured ? 'configured' : 'not ready'}. Genuine checkout/payment acceptance: not verified.</p>
+        <p className={note}>Automatic school/partner split settlement: not implemented or verified. Internal allocations do not establish bank settlement. A business bank account is not needed for code-level or hosted TEST checkout checks.</p>
+      </div>}</div>
   </div>;
 }
 

@@ -627,6 +627,21 @@ components:
         transferCapability: { type: string, enum: [SUPPORTED, MOCK_ONLY, NOT_CONFIGURED, BLOCKED_IN_DEVELOPMENT] }
         bankSubaccountsSupported: { type: boolean }
         liveSettlementVerified: { type: boolean, enum: [false] }
+        collection:
+          type: object
+          required: [mode, credentialState, credentialsConfigured, webhookConfigured, checkoutConfigured, assistedCheckoutConfigured, checkoutVerified, automaticSplitSettlementEnabled, automaticSplitSettlementVerified, subaccountIntegration, bankAccountVerificationConfigured]
+          properties:
+            mode: { type: string, enum: [TEST, NOT_CONFIGURED] }
+            credentialState: { type: string, enum: [CONFIGURED, MISSING, INVALID, CONFLICT, BLOCKED] }
+            credentialsConfigured: { type: boolean }
+            webhookConfigured: { type: boolean }
+            checkoutConfigured: { type: boolean }
+            assistedCheckoutConfigured: { type: boolean }
+            checkoutVerified: { type: boolean, enum: [false] }
+            automaticSplitSettlementEnabled: { type: boolean, enum: [false] }
+            automaticSplitSettlementVerified: { type: boolean, enum: [false] }
+            subaccountIntegration: { type: string, enum: [NOT_IMPLEMENTED] }
+            bankAccountVerificationConfigured: { type: boolean }
     CompanySettlementInput:
       type: object
       additionalProperties: false
