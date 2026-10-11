@@ -1,6 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { nfcPaymentError, safeFlutterwaveUrl } from './public-nfc-payment';
+afterEach(() => vi.unstubAllEnvs());
 describe('Public NFC link error messages', () => {
+  it('permits the exact observed hosted TEST URL only in a Development build', () => {
+    const url = 'https://checkout-v2.dev-flutterwave.com/v3/hosted/pay/fixture-link';
+    vi.stubEnv('DEV', true); vi.stubEnv('PROD', false);
+    expect(safeFlutterwaveUrl(url)).toBe(url);
+    vi.stubEnv('DEV', false); vi.stubEnv('PROD', true);
+    expect(safeFlutterwaveUrl(url)).toBeNull();
+  });
+  it.each([
+    'http://checkout-v2.dev-flutterwave.com/v3/hosted/pay/fixture',
+    'https://checkout-v2.dev-flutterwave.com.evil.test/v3/hosted/pay/fixture',
+    'https://evil.dev-flutterwave.com/v3/hosted/pay/fixture',
+    'https://key@checkout-v2.dev-flutterwave.com/v3/hosted/pay/fixture',
+    'https://checkout-v2.dev-flutterwave.com:8443/v3/hosted/pay/fixture',
+    'https://checkout-v2.dev-flutterwave.com/other',
+  ])('rejects unsafe or unrelated sandbox links: %s', url => {
+    vi.stubEnv('DEV', true); vi.stubEnv('PROD', false);
+    expect(safeFlutterwaveUrl(url)).toBeNull();
+  });
   it.each([400, 404])('explains invalid/unknown links for HTTP %s', status => {
     expect(nfcPaymentError({ status })).toContain('Ask the school for a new link');
   });

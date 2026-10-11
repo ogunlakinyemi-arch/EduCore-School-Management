@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
+import { isFlutterwaveTestCheckoutUrl } from "../lib/flutterwave-checkout-url";
 import { AuthError } from "../middlewares/auth";
 import { calculateStudentSubscriptionAllocations, type StudentSubscriptionSqlClient } from "../lib/student-subscription-billing";
 
@@ -75,11 +76,7 @@ export function publicNfcLink(row: any) {
   const sandboxUrl = typeof row.checkoutUrl === "string" ? row.checkoutUrl : null;
   let checkoutUrl: string | null = null;
   if (status === "PENDING" && row.mode === "FLUTTERWAVE_SANDBOX" && sandboxUrl) {
-    try {
-      const parsed = new URL(sandboxUrl);
-      if (parsed.protocol === "https:" && parsed.hostname === "checkout.flutterwave.com"
-          && !parsed.username && !parsed.password) checkoutUrl = sandboxUrl;
-    } catch { /* An invalid provider URL is never returned. */ }
+    if (isFlutterwaveTestCheckoutUrl(sandboxUrl)) checkoutUrl = sandboxUrl;
   }
   return {
     reference: row.reference, schoolName: row.schoolName,

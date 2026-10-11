@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { isFlutterwaveTestCheckoutUrl } from "../flutterwave-checkout-url";
 
 export type FeePaymentStatus = "pending" | "succeeded" | "failed";
 
@@ -411,7 +412,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     });
     const data = asObject(result.data);
     const link = data && stringField(data.link);
-    if (result.status !== "success" || !link || !isProviderCheckoutUrl(link, "checkout.flutterwave.com")) {
+    if (result.status !== "success" || !link || !isFlutterwaveTestCheckoutUrl(link)) {
       throw new PaymentProviderError("Flutterwave did not return a valid checkout session");
     }
     return { reference: input.reference, checkoutUrl: link };

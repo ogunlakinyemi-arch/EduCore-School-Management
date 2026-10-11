@@ -71,6 +71,13 @@ Outbound requests use fixed HTTPS API origins only:
 Requests reject redirects, use a bounded timeout (8 seconds by default; maximum
 30 seconds), and do not expose provider response bodies in errors. Checkout
 links are restricted to `checkout.paystack.com` and `checkout.flutterwave.com`.
+In Development only (never a deployment), the Flutterwave TEST adapter also
+accepts the exact `checkout-v2.dev-flutterwave.com` host and its
+`/v3/hosted/pay/<token>` path. A genuine v3 TEST initialization returned this
+host despite the official Standard documentation showing the canonical host.
+The public NFC link projection and Development web client enforce the same
+restriction. Arbitrary subdomains, HTTP, credentials in URLs and custom ports
+remain rejected. Receiving a hosted URL does not prove payment completion.
 The adapters only accept supported currency codes (`NGN`, `USD`, `GBP`, `EUR`,
 `ZAR`, `GHS`, `KES`, `UGX`, `XAF`, `XOF`). `amountMinor` is an integer in the
 currency's minor units; no floating point input is accepted for initialization.

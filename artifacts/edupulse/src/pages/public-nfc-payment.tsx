@@ -6,7 +6,15 @@ import { NfcServiceBranding } from '@/components/nfc-service-branding';
 const minor = (n: number) => `NGN ${(n / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 const readToken = () => (typeof window === 'undefined' ? '' : window.location.hash.slice(1).split(/[?&]/)[0]);
 export const safeFlutterwaveUrl = (u?: string | null) => {
-  try { const p = new URL(u ?? ''); return p.protocol === 'https:' && p.hostname === 'checkout.flutterwave.com' && !p.username && !p.password ? p.toString() : null; } catch { return null; }
+  try {
+    const p = new URL(u ?? '');
+    if (p.protocol !== 'https:' || p.username || p.password || p.port) return null;
+    const canonical = p.hostname === 'checkout.flutterwave.com';
+    const developmentSandbox = import.meta.env.DEV && !import.meta.env.PROD
+      && p.hostname === 'checkout-v2.dev-flutterwave.com'
+      && /^\/v3\/hosted\/pay\/[A-Za-z0-9_-]+$/.test(p.pathname);
+    return canonical || developmentSandbox ? p.toString() : null;
+  } catch { return null; }
 };
 const statusText: Record<string, string> = {
   PENDING: 'Awaiting payment', SIMULATED_SUCCESS: 'Test completed (simulation only)', SIMULATED_FAILED: 'Test failed (simulation only)',
