@@ -20,3 +20,9 @@ Every supported payment method and fallback must preserve the selected fee lines
 **Why:** A parent could select Books and submit a manual transfer for that amount, yet verification only reduced the invoice balance and left Books unallocated. Successful payment and receipt responses alone did not prove fee-selection correctness.
 
 **How to apply:** Test the manual bank-transfer path with online checkout disabled and ordinary partial payments disallowed. Confirm the chosen lines persist, retries cannot change them, verification allocates only those lines, and the refreshed parent view excludes paid lines. Never rewrite earlier verified payments to make an acceptance test pass; retain ambiguous historical allocations and use a pristine controlled invoice.
+
+Provider verification of a standalone TEST checkout is not evidence of an EduCore subscription activation or receipt. Never retroactively assign that payment to a student merely to complete a test.
+
+**Why:** Genuine successful and declined sandbox transactions were independently verified, but the checkout links had been initialized outside EduCore's payment reservation flow and had no bound application records. Native database settlement tests with mocked transport established different evidence.
+
+**How to apply:** Use a designated synthetic student and the normal authorized in-app checkout reservation for provider-to-application acceptance. Report standalone provider results, native database tests and in-app end-to-end evidence separately. Missing binding is not permission to fabricate financial history.

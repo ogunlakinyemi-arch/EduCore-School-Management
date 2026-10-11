@@ -78,6 +78,15 @@ host despite the official Standard documentation showing the canonical host.
 The public NFC link projection and Development web client enforce the same
 restriction. Arbitrary subdomains, HTTP, credentials in URLs and custom ports
 remain rejected. Receiving a hosted URL does not prove payment completion.
+
+Development TEST status checks use the documented
+`GET /transactions/verify_by_reference?tx_ref=...`, followed by
+`GET /transactions/<id>/verify`. The general listing endpoint requires date
+bounds and returned no match during a genuine completed sandbox payment.
+Both verification results must identify the same transaction; the authoritative
+ID response must match the expected reference, amount and currency. Failed,
+pending, missing or mismatched results never establish a successful payment.
+Deployed lookup behavior remains unchanged by this Development-only correction.
 The adapters only accept supported currency codes (`NGN`, `USD`, `GBP`, `EUR`,
 `ZAR`, `GHS`, `KES`, `UGX`, `XAF`, `XOF`). `amountMinor` is an integer in the
 currency's minor units; no floating point input is accepted for initialization.

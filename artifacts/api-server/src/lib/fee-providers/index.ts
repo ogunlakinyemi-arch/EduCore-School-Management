@@ -449,6 +449,25 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
 
   async verifyCheckoutStatus(input: ExpectedPayment): Promise<VerifiedPayment> {
     this.assertExpected(input);
+    if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
+      // The general listing API requires date bounds and can return no match
+      // for a completed sandbox payment. Use the documented direct reference
+      // lookup, then independently verify its ID and all payment invariants.
+      const result = await this.request(`transactions/verify_by_reference?tx_ref=${encodeURIComponent(input.reference)}`, {
+        method: "GET",
+        headers: this.authHeaders(),
+      }, true);
+      const transaction = asObject(result.data);
+      if (result.status !== "success" || !transaction || transaction.tx_ref !== input.reference) {
+        throw new PaymentProviderError("Flutterwave could not verify the expected checkout reference");
+      }
+      const transactionId = normalizeProviderTransactionId(transaction.id, "Flutterwave");
+      const verified = await this.verifyPayment({ ...input, providerTransactionId: transactionId });
+      if (verified.providerTransactionId !== transactionId) {
+        throw new PaymentProviderError("Flutterwave checkout verification returned a different transaction ID");
+      }
+      return verified;
+    }
     const result = await this.request(`transactions?tx_ref=${encodeURIComponent(input.reference)}`, {
       method: "GET",
       headers: this.authHeaders(),
