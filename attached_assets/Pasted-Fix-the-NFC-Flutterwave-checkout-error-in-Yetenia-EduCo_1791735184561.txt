@@ -1,0 +1,28 @@
+Fix the NFC Flutterwave checkout error in Yetenia EduCore.
+
+Observed issue
+
+1. When a School Admin clicks “Pay NFC Card Fees Through Flutterwave,” the application returns:
+   "HTTP 409 Conflict: Checkout requires the bound active current term"
+2. The separate “General Link” button generates a link successfully. The link displays Yetenia EduCore, the school, student identifier, FIRST term of 2026/2027, and ₦5,000, but it is explicitly marked as a Development simulation. No payment is made.
+
+Required investigation and fix
+
+1. Trace the Flutterwave checkout action from the School Admin interface through the server and database.
+2. Identify why checkout cannot resolve the active current term, even though the general payment link displays a term.
+3. Check that the school, student, subscription, and term are correctly bound to the same eligible NFC payment record.
+4. Correct the underlying term lookup or binding. Do not simply remove the validation, hard-code a term, or bypass the security checks.
+5. Preserve the ₦5,000 fee, payment-link expiry, school/student/term binding, server-side payment verification, webhook security, and duplicate-payment protection.
+6. Test in Development using Flutterwave TEST mode. Verify that clicking the actual “Pay NFC Card Fees Through Flutterwave” action initializes the provider's TEST checkout and returns a valid checkout link.
+7. Do not treat the existing General Link simulation as a real payment. Do not activate subscriptions or issue a paid receipt without a server-verified successful payment.
+8. Report the root cause, files changed, tests performed, and results. Clearly distinguish simulated tests from a genuine Flutterwave sandbox transaction.
+
+Safety restrictions
+
+- Development database and Flutterwave TEST mode only.
+- Do not access or publish Production.
+- Do not create accounts or change existing users or permissions.
+- Do not perform destructive migrations, reset data, weaken constraints, or use live credentials.
+- If the fix requires a database change, explain the proposed change before applying it.
+
+Do not claim the problem is fixed until the actual School Admin checkout action has been retested.
