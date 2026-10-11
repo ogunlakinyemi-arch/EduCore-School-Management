@@ -26,3 +26,9 @@ Bank-account verification, a stored subaccount identifier and internal commissio
 **Why:** Flutterwave documents collection subaccounts, but the current merchant's permissions and per-transaction school/partner settlement must still be established; the user expressly rejects simulated transfers presented as settlement.
 
 **How to apply:** Describe missing application integration as not integrated, not unsupported by Flutterwave. Keep unverified automatic splits disabled. Require current provider contract/permissions, recipient ownership and explicit verified transaction/settlement evidence before claiming school or partner money moved. Do not require recipients for schools that have not joined.
+
+On 2026-10-11 the user stated that no real schools had onboarded for commercial use yet. The next split-settlement phase is authorized in Development with TEST credentials only.
+
+**Why:** Building onboarding does not authorize inventing commercial recipients, substituting the platform's bank account for a school's account, or enabling real settlements.
+
+**How to apply:** Require each school's own verified settlement details and separately verified provider subaccount. Preserve the agreed gross school/partner/platform allocations, disclose provider fees separately, and obtain explicit approval before live operations, Production migrations or publication.

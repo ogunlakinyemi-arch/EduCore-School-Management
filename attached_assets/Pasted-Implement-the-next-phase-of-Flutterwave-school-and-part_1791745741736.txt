@@ -1,0 +1,43 @@
+Implement the next phase of Flutterwave school and partner split settlements in Yetenia EduCore.
+
+CURRENT VERIFIED BASELINE
+
+- Genuine Flutterwave TEST payments initiated through EduCore have completed successfully and unsuccessfully.
+- Server-side reference and transaction-ID verification works.
+- Successful payment creates one paid payment record, activates the correct subscription, creates one receipt, and records internal allocations.
+- Failed payment does not activate the subscription or create successful-payment allocations.
+- Repeated verification does not duplicate records.
+- The existing internal allocation rules are correct, but recipients are not yet receiving funds automatically.
+- No real schools have onboarded for commercial use yet.
+
+BUSINESS RULES
+For each ₦5,000 per-student-per-term payment:
+A. Without an eligible partner:
+
+- School: ₦2,000
+- Yetenia platform: ₦3,000
+
+B. With an eligible partner:
+
+- School: ₦2,000
+- Eligible partner: ₦100
+- Yetenia platform: ₦2,900
+
+Provider fees must be handled transparently and must not silently change the agreed allocations. Confirm how Flutterwave applies fees to split transactions before finalizing the settlement design.
+
+IMPLEMENTATION REQUIREMENTS
+
+1. Inspect the current Flutterwave integration and the latest official Flutterwave documentation for subaccounts, split payments, transaction verification, refunds, and settlement reporting.
+2. Document the exact supported split-payment model and any account requirements, supported currencies, fees, and settlement limitations.
+3. Design school-recipient onboarding. A school must have its own verified settlement details and a successfully created and verified Flutterwave recipient/subaccount before it can receive split settlements. Do not create fake recipients or use Yetenia's account as a school's account.
+4. Design partner onboarding and eligibility checks. Partners must not receive commission unless the existing EduCore attribution records establish that they are eligible for the school/payment.
+5. Update checkout creation to send the correct verified split instructions to Flutterwave for the applicable payment. Never trust amounts or recipient details supplied by the browser.
+6. Ensure the school, student, term, subscription, payment reference, recipient IDs, amounts and currency are bound and validated server-side.
+7. Preserve idempotency and existing server-side verification. Failed, pending, mismatched, duplicated, refunded or reversed payments must not cause duplicate or unjustified recipient credits.
+8. Determine how refunds, partial refunds, chargebacks, failed settlements, and reconciliation will work before claiming the system is production-ready.
+9. Add clear admin visibility into payment status, recipient configuration, split amounts, provider settlement status and reconciliation exceptions. Do not describe an internal allocation as a completed bank transfer.
+10. Add automated tests for eligible and ineligible partners, missing or unverified recipients, provider errors, duplicate callbacks, failed payments, refunds and settlement mismatches.
+11. Start with Development and Flutterwave TEST credentials. Use mocks only for unit tests, and clearly label them. If genuine sandbox recipient onboarding or split settlement requires manual dashboard actions or account permissions, report the exact requirement rather than simulating success.
+12. Do not use live credentials, initiate real-money payments or transfers, create live subaccounts, alter Production data, run Production migrations, or publish the application without my explicit approval.
+
+Before coding, return a short implementation plan identifying the existing files and database tables involved, the Flutterwave requirements, and any unresolved business decisions. After that, implement and test the Development changes. Report what is genuinely verified and what still needs manual or provider-side confirmation.
