@@ -1,0 +1,60 @@
+{
+  "observedAt": "2026-10-11T20:39:17.178Z",
+  "mode": "GENUINE TEST READS ONLY",
+  "evidence": {
+    "subaccountListing": {
+      "request": {
+        "method": "GET",
+        "url": "https://api.flutterwave.com/v3/subaccounts",
+        "authorization": "Bearer [REDACTED TEST credential]",
+        "body": null
+      },
+      "httpStatus": 400,
+      "response": {
+        "status": "error",
+        "message": "Subaccounts not found",
+        "dataShape": "null",
+        "recordCount": null
+      },
+      "interpretation": "NO_RECORDS_REPORTED",
+      "creationPermission": "NOT_TESTED"
+    },
+    "subaccountListingPageOne": {
+      "request": {
+        "method": "GET",
+        "url": "https://api.flutterwave.com/v3/subaccounts?page=1",
+        "authorization": "Bearer [REDACTED TEST credential]",
+        "body": null
+      },
+      "httpStatus": 400,
+      "response": {
+        "status": "error",
+        "message": "Subaccounts not found",
+        "dataShape": "null",
+        "recordCount": null
+      },
+      "interpretation": "NO_RECORDS_REPORTED",
+      "creationPermission": "NOT_TESTED"
+    },
+    "settlementListing": {
+      "request": {
+        "method": "GET",
+        "url": "https://api.flutterwave.com/v3/settlements?page=1",
+        "authorization": "Bearer [REDACTED TEST credential]",
+        "body": null
+      },
+      "httpStatus": 200,
+      "response": {
+        "status": "success",
+        "message": "Settlements fetched",
+        "dataShape": "array",
+        "recordCount": 0
+      },
+      "interpretation": "EMPTY_LIST_REPORTED",
+      "creationPermission": "NOT_TESTED"
+    }
+  },
+  "recipientCreation": "NOT ATTEMPTED: authorized own-school/partner bank details and ownership review required",
+  "fixedSplitDisbursement": "NOT VERIFIED",
+  "actualBankSettlement": "NOT VERIFIED; TEST cannot prove real-money bank delivery"
+}

@@ -3,6 +3,32 @@ import { developmentFlutterwaveCredential } from "../lib/flutterwave-development
 import { requireSplitDevelopment, ngnMinor } from "../lib/flutterwave-split-policy";
 
 export type BankDetails = { bankCode: string; accountNumber: string; accountName: string; contactPhone: string; entityName: string };
+export type SplitReadEvidence = {
+  request:{method:"GET";url:string;authorization:"Bearer [REDACTED TEST credential]";body:null};
+  httpStatus:number|null;
+  response:{status:string|null;message:string;dataShape:string;recordCount:number|null};
+  interpretation:"NO_RECORDS_REPORTED"|"EMPTY_LIST_REPORTED"|"LIST_READ_CONFIRMED"|"UNVERIFIED_ERROR";
+  creationPermission:"NOT_TESTED";
+};
+const safeDiagnosticMessages = new Set([
+  "Subaccounts not found","Subaccounts fetched","Settlements fetched","No settlements found",
+  "Invalid authorization","Unauthorized","Forbidden","Invalid secret key","Permission denied","Access denied",
+]);
+function readEvidence(url:string,httpStatus:number,payload:any): SplitReadEvidence {
+  const status = ["success","error"].includes(payload?.status) ? payload.status : null;
+  const message = typeof payload?.message === "string" && safeDiagnosticMessages.has(payload.message)
+    ? payload.message : "[Non-allowlisted provider message omitted]";
+  const dataShape = payload?.data === null ? "null" : Array.isArray(payload?.data) ? "array" : "other";
+  const recordCount = Array.isArray(payload?.data) ? payload.data.length : null;
+  return {
+    request:{method:"GET",url,authorization:"Bearer [REDACTED TEST credential]",body:null},
+    httpStatus,response:{status,message,dataShape,recordCount},
+    interpretation:httpStatus === 400 && status === "error" && message === "Subaccounts not found" && dataShape === "null"
+      ? "NO_RECORDS_REPORTED" : httpStatus === 200 && status === "success" && recordCount !== null
+        ? recordCount === 0 ? "EMPTY_LIST_REPORTED" : "LIST_READ_CONFIRMED" : "UNVERIFIED_ERROR",
+    creationPermission:"NOT_TESTED",
+  };
+}
 /** Dedicated TEST credential only; no legacy/generic credential fallback and no transfer methods. */
 export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
   constructor(secret: string, options: AdapterHttpOptions = {}) {
@@ -50,8 +76,10 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
     // Bounded read only. Never repeat a possibly accepted creation POST.
     const r = await this.api("subaccounts");
     if (!Array.isArray(r.data)) throw new PaymentProviderError("Subaccount recovery list is unavailable");
+    const meta = r.meta as any;
+    if (meta?.page_info?.total_pages > 1) throw new PaymentProviderError("Subaccount recovery requires dashboard pagination review");
     const candidates = r.data.filter((d: any) => d.account_number === bank.accountNumber
-      && String(d.account_bank) === bank.bankCode && d.full_name === bank.entityName);
+      && String(d.account_bank) === bank.bankCode && (d.business_name ?? d.full_name) === bank.entityName);
     if (candidates.length !== 1) throw new PaymentProviderError("Review the Flutterwave TEST dashboard: no unique owned subaccount was found");
     return this.verifyRecipient(Number(candidates[0].id), bank);
   }
@@ -73,7 +101,7 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
     if (meta?.page_info?.total_pages > 1 || r.data.length >= 30) throw new PaymentProviderError("Settlement report requires dashboard pagination review");
     return r.data as Record<string, unknown>[];
   }
-  async settlement(id: number) {
+  async settlement(id: number): Promise<Record<string,any>> {
     const r = await this.api(`settlements/${id}?page=1`);
     const data = r.data as Record<string, any>;
     return { ...data,meta:r.meta ?? data.meta };
@@ -81,21 +109,31 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
   /** Safe capability read: no bank details, IDs or provider payloads are logged. */
   async inspectReadCapabilities() {
     const result: Record<string,string> = {};
-    for (const [name,path] of [["subaccountListing","subaccounts"],["settlementListing","settlements?page=1"]]) {
+    const evidence = await this.inspectReadEvidence();
+    for (const [name,row] of Object.entries(evidence)) {
+      result[name] = `${row.interpretation} (HTTP ${row.httpStatus ?? "unknown"}): ${row.response.message}`;
+    }
+    return result;
+  }
+  /** Fixed GET allowlist only; no bank filters, IDs, POSTs or permission claims. */
+  async inspectReadEvidence(): Promise<Record<string,SplitReadEvidence>> {
+    requireSplitDevelopment();
+    const result: Record<string,SplitReadEvidence> = {};
+    for (const [name,path] of [["subaccountListing","subaccounts"],["subaccountListingPageOne","subaccounts?page=1"],["settlementListing","settlements?page=1"]]) {
+      const url = new URL(path,this.baseUrl).href;
       try {
         requireSplitDevelopment();
-        const response = await this.fetchImpl(new URL(path,this.baseUrl),{
-          method:"GET",headers:this.authHeaders(),redirect:"error",signal:AbortSignal.timeout(this.timeoutMs),
+        const response = await this.fetchImpl(url,{
+          method:"GET",headers:{...this.authHeaders(),Accept:"application/json"},redirect:"error",signal:AbortSignal.timeout(this.timeoutMs),
         });
-        const payload = await response.json() as any;
-        const message = typeof payload.message === "string" ? payload.message
-          .replace(/FLW[A-Za-z0-9_-]+/g,"[REDACTED]")
-          .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,"[REDACTED]")
-          .replace(/\b\d{10,}\b/g,"[REDACTED]").slice(0,240) : "No diagnostic message";
-        result[name] = response.ok && payload.status === "success" && Array.isArray(payload.data)
-          ? `AVAILABLE (${payload.data.length} records on first page)`
-          : `UNAVAILABLE (HTTP ${response.status}): ${message}`;
-      } catch { result[name] = "UNAVAILABLE_OR_PERMISSION_DENIED"; }
+        result[name] = readEvidence(url,response.status,await response.json());
+      } catch {
+        result[name] = {
+          request:{method:"GET",url,authorization:"Bearer [REDACTED TEST credential]",body:null},
+          httpStatus:null,response:{status:null,message:"Transport or response parsing failed; details omitted",dataShape:"unknown",recordCount:null},
+          interpretation:"UNVERIFIED_ERROR",creationPermission:"NOT_TESTED",
+        };
+      }
     }
     return result;
   }

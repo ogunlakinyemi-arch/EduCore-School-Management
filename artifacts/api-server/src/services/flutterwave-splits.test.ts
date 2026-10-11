@@ -15,11 +15,54 @@ const bank = {bankCode:"044",accountNumber:"0123456789",accountName:"UNIT BANK O
 const charge = {reference:"fee_unit_split_checkout",amountMinor:500000,currency:"NGN",
   email:"unit@example.test",returnUrl:"https://example.test/nfc/pay"};
 const json = (data: unknown) => new Response(JSON.stringify({status:"success",data}),{status:200});
+describe("Read-only subaccount diagnosis (mocked provider, never permission proof)",() => {
+  it("distinguishes the precise no-records response and empty success lists without leaking payloads",async() => {
+    const fetch = vi.fn(async(url:any) => String(url).includes("subaccounts")
+      ? new Response(JSON.stringify({status:"error",message:"Subaccounts not found",data:null}),{status:400})
+      : json([]));
+    const evidence = await new FlutterwaveSplitProvider(key,{fetch}).inspectReadEvidence();
+    expect(evidence.subaccountListing.interpretation).toBe("NO_RECORDS_REPORTED");
+    expect(evidence.subaccountListingPageOne.request.url).toBe("https://api.flutterwave.com/v3/subaccounts?page=1");
+    expect(evidence.settlementListing.interpretation).toBe("EMPTY_LIST_REPORTED");
+    expect(Object.values(evidence).every(r => r.creationPermission === "NOT_TESTED")).toBe(true);
+    expect(fetch.mock.calls.every(c => (c as any)[1].method === "GET" && !(c as any)[1].body)).toBe(true);
+    expect(JSON.stringify(evidence)).not.toContain(key);
+  });
+  it("does not reinterpret authorization errors, malformed empty errors or private messages as empty accounts",async() => {
+    const responses = [
+      new Response(JSON.stringify({status:"error",message:"Forbidden",data:null}),{status:403}),
+      new Response(JSON.stringify({status:"error",message:"Subaccounts not found",data:[]}),{status:400}),
+      new Response(JSON.stringify({status:"error",message:`PRIVATE bank ${bank.accountNumber} ${key}`,data:{account:bank}}),{status:400}),
+    ];
+    const evidence = await new FlutterwaveSplitProvider(key,{fetch:vi.fn(async()=>responses.shift()!)}).inspectReadEvidence();
+    expect(Object.values(evidence).every(r => r.interpretation === "UNVERIFIED_ERROR")).toBe(true);
+    expect(JSON.stringify(evidence)).not.toContain(bank.accountNumber);
+    expect(JSON.stringify(evidence)).not.toContain(key);
+    expect(evidence.settlementListing.response.message).toContain("omitted");
+  });
+  it("recovers by documented business_name when full_name is the distinct bank holder",async() => {
+    const row={id:123,account_number:bank.accountNumber,account_bank:bank.bankCode,
+      business_name:bank.entityName,full_name:bank.accountName,subaccount_id:school,bank_name:"UNIT BANK"};
+    const fetch = vi.fn().mockResolvedValueOnce(json([row])).mockResolvedValueOnce(json(row));
+    expect((await new FlutterwaveSplitProvider(key,{fetch}).recoverRecipient(bank)).providerId).toBe(123);
+    expect(fetch.mock.calls.every(c => c[1].method === "GET")).toBe(true);
+  });
+  it("rejects a different business and incomplete paginated recovery lists",async() => {
+    const row={id:123,account_number:bank.accountNumber,account_bank:bank.bankCode,
+      business_name:"OTHER UNIT BUSINESS",full_name:bank.entityName};
+    const fetch=vi.fn().mockResolvedValue(json([row]));
+    await expect(new FlutterwaveSplitProvider(key,{fetch}).recoverRecipient(bank)).rejects.toThrow("no unique owned");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const paged = new Response(JSON.stringify({status:"success",data:[row],meta:{page_info:{total_pages:2}}}),{status:200});
+    await expect(new FlutterwaveSplitProvider(key,{fetch:vi.fn().mockResolvedValue(paged)}).recoverRecipient(bank)).rejects.toThrow("pagination");
+  });
+});
 beforeEach(() => {
+  vi.stubGlobal("fetch",vi.fn(async() => {throw new Error("Unexpected network request in mocked unit suite");}));
   vi.stubEnv("NODE_ENV","development"); vi.stubEnv("REPLIT_DEPLOYMENT","");
   vi.stubEnv("SESSION_SECRET","unit-test-session-secret-at-least-32-characters");
 });
-afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("Development-only fixed amounts and transparent fees",() => {
   it("keeps gross shares with and without an eligible partner",() => {

@@ -630,3 +630,17 @@ mtime_ms = 1791749578996
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0dce722f-c5aa-4f49-9aa2-fd2d39e516a2/2c1b1fe5-61a1-45b4-b831-fd2c662ddd99"
 storage_version_token = "1791749685938741"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "3PtiqWENl4UUytaAk97CK"
+uri = "file://docs/flutterwave-test-subaccount-investigation.md"
+type = "text"
+title = "Flutterwave TEST subaccount investigation"
+description = "Sanitized actual provider responses, version-specific official references, code fixes, test results and an exact provider-support/isolated TEST verification checklist."
+logical_id = "430e2896-4ec3-4dae-8e7a-f466542f234c"
+content_hash = "sha256:359a78af28d4629971b1e8331e6576318d2b96a70f49c0c43ef4d75c48d0f33a"
+size = 9607
+mtime_ms = 1791751408721
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/430e2896-4ec3-4dae-8e7a-f466542f234c/ccc01880-d042-42b0-aad8-6ebe99ac92bb"
+storage_version_token = "1791751480934037"
+content_type = "text/markdown"

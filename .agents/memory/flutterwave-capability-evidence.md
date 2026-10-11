@@ -38,3 +38,9 @@ The user selected **“Yetenia covers fees”** on 2026-10-11: the payer total r
 **Why:** Provider fees must not silently reduce the agreed school/Partner shares or increase the payer total.
 
 **How to apply:** Treat provider fees and applicable VAT as separate platform expenses. Distinguish platform gross from net, and require provider evidence of the actual charged amount. Never infer VAT treatment or a bank deposit from internal allocations alone.
+
+Collection-subaccount list results and creation permissions are separate evidence. A provider's HTTP 400 “Subaccounts not found” must not automatically be called permission denial or TEST-feature unavailability.
+
+**Why:** The version-specific official guide supports TEST collection subaccounts, while the no-record list message does not establish whether that merchant's creation POST will be accepted.
+
+**How to apply:** Preserve the exact sanitized domain response, compare optional list filters/pagination with the correct API-version contract, and require merchant-dashboard/provider confirmation or an explicitly authorized TEST creation/read-back before claiming entitlement. Provider-only test bank fixtures must not be represented as owned commercial-school recipients.
