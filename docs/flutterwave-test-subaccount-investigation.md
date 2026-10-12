@@ -34,6 +34,16 @@ describes payout-balance settlement followed by merchant-initiated transfers as
 the alternative to default automatic bank settlement. Inspect the selected choice
 in TEST mode without clicking another radio button or saving any change.
 
+A subsequent screenshot shows “Settle to my bank account” selected, but the user
+explicitly confirmed that screenshot was taken in **Live mode**. It establishes
+only the displayed Live preference, not the TEST configuration. The user reported
+the earnings section unavailable in TEST mode. No inheritance/shared-setting rule
+has been confirmed. Creation remains paused pending Flutterwave confirmation that
+automatic settlement applies to this TEST merchant and clarification of where to
+inspect it, or whether the setting is shared with Live. Do not change Live to
+resolve this ambiguity. No subaccount creation or independent recipient retrieval
+has been attempted.
+
 ## Conclusion and confidence
 
 The list request matches the official v3 collection-subaccount API. Neither a
