@@ -50,3 +50,9 @@ The user relayed Flutterwave Support confirmation: TEST collection subaccounts c
 **Why:** This resolves the earlier support/enablement uncertainty, but is not evidence that this project's TEST dashboard uses automatic settlement or that any recipient has actually been created.
 
 **How to apply:** Do not ask for special TEST subaccount enablement again absent a contradictory genuine response. Check the TEST settlement setting separately. The user authorizes one clearly labelled synthetic provider-only TEST subaccount and independent list read-back, not payments, transfers, Live changes, Production migrations, publication or EduCore split-mode enablement. Stop if real recipient details or an account action are required.
+
+Dashboard transfer/collection preferences do not establish the settlement choice. Flutterwave's current official manual-settlement guide presents the relevant choice as “How do you want to get your earnings?” with bank-account versus payout-balance options, rather than necessarily displaying literal automatic/manual labels.
+
+**Why:** Enabling API collections or disabling transfers can coexist with an unverified earnings destination; those switches are not proof that automatic split settlement is configured.
+
+**How to apply:** Inspect the actual earnings choice in TEST mode and interpret it using current official guidance. The guide describes payout-balance settlement followed by merchant-initiated transfers as the alternative to default automatic bank settlement. Do not change any preference merely to inspect it or infer completed settlement from the selection.

@@ -23,6 +23,17 @@ the setting. Creation is paused for TEST dashboard confirmation. No creation
 POST, new authenticated provider probe, recipient read-back, payment, transfer,
 EduCore split-mode change or Production action was performed in this follow-up.
 
+The user subsequently reported that TEST settlement mode is still unverified.
+Their screenshot shows transfer and collection preferences, not the earnings
+settlement selection. Current Flutterwave help guidance directs merchants to
+Settings → Business Preference → About → “How do you want to get your earnings?”
+The displayed choices are “Settle to my bank account” and “Settle to my payout
+balance,” not necessarily literal automatic/manual labels. The official
+[manual-settlement guide](https://www.flutterwave.com/ng/support/payments/manual-settlements)
+describes payout-balance settlement followed by merchant-initiated transfers as
+the alternative to default automatic bank settlement. Inspect the selected choice
+in TEST mode without clicking another radio button or saving any change.
+
 ## Conclusion and confidence
 
 The list request matches the official v3 collection-subaccount API. Neither a
