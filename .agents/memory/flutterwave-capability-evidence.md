@@ -44,3 +44,9 @@ Collection-subaccount list results and creation permissions are separate evidenc
 **Why:** The version-specific official guide supports TEST collection subaccounts, while the no-record list message does not establish whether that merchant's creation POST will be accepted.
 
 **How to apply:** Preserve the exact sanitized domain response, compare optional list filters/pagination with the correct API-version contract, and require merchant-dashboard/provider confirmation or an explicitly authorized TEST creation/read-back before claiming entitlement. Provider-only test bank fixtures must not be represented as owned commercial-school recipients.
+
+The user relayed Flutterwave Support confirmation: TEST collection subaccounts can be created through POST `/v3/subaccounts` without special enablement; NGN flat splits are supported, split payments require automatic settlement, successful split payments attract 7.5% VAT on the fee, and “Subaccounts not found” is consistent with no existing subaccounts.
+
+**Why:** This resolves the earlier support/enablement uncertainty, but is not evidence that this project's TEST dashboard uses automatic settlement or that any recipient has actually been created.
+
+**How to apply:** Do not ask for special TEST subaccount enablement again absent a contradictory genuine response. Check the TEST settlement setting separately. The user authorizes one clearly labelled synthetic provider-only TEST subaccount and independent list read-back, not payments, transfers, Live changes, Production migrations, publication or EduCore split-mode enablement. Stop if real recipient details or an account action are required.

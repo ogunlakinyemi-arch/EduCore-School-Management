@@ -1,5 +1,28 @@
 # Flutterwave TEST collection-subaccount investigation
 
+## Subsequent support confirmation and current gate
+
+The user subsequently relayed Flutterwave Support confirmation that TEST
+collection-subaccount creation needs no special enablement, NGN flat splits are
+supported, split payments require automatic settlement, VAT is 7.5% of the fee
+on successful split payments, and the earlier no-records HTTP 400 is consistent
+with no existing subaccounts. The earlier entitlement uncertainty below records
+the investigation before this confirmation, not the current support position.
+
+Current documentation explicitly permits published TEST bank accounts for
+collection subaccounts. Access Bank `044` / `0690000031` is explicitly labelled
+TEST-only on the official testing page; it is not an invented commercial
+recipient. The existing onboarding supplies the required create fields but its
+school/Partner ownership review must not be falsified for a provider-only fixture.
+
+Dashboard inspection in this session rendered Flutterwave's sign-in page, not
+the merchant's TEST settlement settings. No documented read-only v3 settings
+operation was identified in the reviewed references/index. Automatic settlement
+therefore remains unchecked; a successful settlement-list API call cannot prove
+the setting. Creation is paused for TEST dashboard confirmation. No creation
+POST, new authenticated provider probe, recipient read-back, payment, transfer,
+EduCore split-mode change or Production action was performed in this follow-up.
+
 ## Conclusion and confidence
 
 The list request matches the official v3 collection-subaccount API. Neither a
