@@ -2,7 +2,7 @@ import { FlutterwaveTestAdapter, PaymentProviderError, type AdapterHttpOptions }
 import { developmentFlutterwaveCredential } from "../lib/flutterwave-development-config";
 import { requireSplitDevelopment, ngnMinor } from "../lib/flutterwave-split-policy";
 
-export type BankDetails = { bankCode: string; accountNumber: string; accountName: string; contactPhone: string; entityName: string };
+export type BankDetails = { bankCode: string; accountNumber: string; accountName: string; contactPhone: string; entityName: string; businessEmail?: string };
 export type SplitReadEvidence = {
   request:{method:"GET";url:string;authorization:"Bearer [REDACTED TEST credential]";body:null};
   httpStatus:number|null;
@@ -57,6 +57,7 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
     const r = await this.api("subaccounts", {
       account_bank: bank.bankCode, account_number: bank.accountNumber, country: "NG",
       business_name: bank.entityName, business_mobile: bank.contactPhone,
+      ...(bank.businessEmail ? { business_email: bank.businessEmail } : {}),
       split_type: "flat", split_value: kind === "SCHOOL" ? 3000 : 4900,
     });
     const d = r.data as Record<string, unknown>;

@@ -1,5 +1,49 @@
 # Flutterwave TEST collection-subaccount investigation
 
+## Genuine TEST outcome — 2026-10-12
+
+Flutterwave Support subsequently confirmed TEST settlement is inactive: TEST
+transactions do not settle into balances, but returned transaction/webhook fields
+can still be examined. There is no documented additional TEST enablement step.
+This supersedes the historical paused-settlement gate below. The user authorized
+one provider-only sandbox recipient and one sandbox transaction attempt. This
+probe did not change EduCore school flags, real-school or Partner onboarding,
+application finance records, Live settings, Production, transfers or deployment.
+
+The isolated probe in `artifacts/api-server/src/tools/flutterwave-sandbox-probe.ts`
+used only the dedicated TEST secret, Flutterwave's published Access Bank
+`044`/`0690000031` fixture and an explicit TEST-only business label. Its
+durable intent/checkout link is private under `.local/flutterwave-split-probe/`;
+the sanitized genuine API evidence is in
+`reports/flutterwave-splits/sandbox-verification.json`. No actual bank-holder
+name, private checkout link, credential or card data is in that report.
+
+| Genuine call/result | Observed evidence |
+|---|---|
+| GET `/v3/subaccounts?page=1` | HTTP 400, `{"status":"error","message":"Subaccounts not found","data":null}` |
+| POST `/v3/accounts/resolve` | HTTP 200, `status:success`, fixture account number matched; bank-holder name omitted |
+| Initial POST `/v3/subaccounts` | HTTP 400, `status:error`, `message:"business_email is required"`, `data:null`. This contradicts the currently reviewed reference listing it optional. |
+| Repeat GET listing | Same HTTP 400/no-record result before correcting the rejected request. No ambiguous creation was retried. |
+| Corrected POST `/v3/subaccounts` | HTTP 200, `status:success`, `message:"Subaccount created"`, numeric ID **26972**, RS ID **RS_5F0DB5C736A2550E783A15B9EB9FBF09**, `split_type:"flat"`, `split_value:3000`. Sent a non-deliverable reserved-domain TEST business email; no school ownership assertion. |
+| GET `/v3/subaccounts/26972`, then GET listing | Both HTTP 200/success. Numeric ID, RS ID, official bank fixture and exact TEST business label matched. The list returned one fixture record. Neither returned an active/status field; **active status is not proven**. |
+| POST `/v3/payments` | HTTP 200/success, `"Hosted Link"`. Requested NGN **5,000**, RS ID above, `flat_subaccount` charge **2,000**. The hosted capability URL is private. This is a requested split, **not a provider-reported allocation**. |
+| Hosted TEST checkout | Browser showed TEST/mocked-transaction notice and NGN 5,000. The visible merchant identity could not be recognized as Yetenia/EduCore, and a non-editable identity row did not match the synthetic name. **Stopped before card entry; zero charge submissions**. |
+| GET `/v3/transactions/verify_by_reference` | HTTP 400, `status:error`, `"No transaction was found for this id"`, `data:null`. No transaction ID or charge was returned. |
+
+There was **no completed transaction, transaction split response, delivered
+webhook observed by this probe, fee result or recipient settlement**. Support
+says TEST cannot demonstrate actual settlement. Before resuming checkout, confirm
+the authorized TEST merchant/trading identity shown on Flutterwave's checkout;
+do not change a dashboard setting, retry the creation, or initialize another
+payment. The existing hosted link/reference may be reused only after confirming
+the merchant and checking the payable total remains exactly NGN 5,000.
+
+The successful provider response also establishes `business_email` is required
+for this merchant's create request. The provider adapter now forwards an
+explicitly supplied email, but ordinary school/Partner onboarding does **not**
+yet collect one: do not insert a synthetic email or misrepresent a TEST fixture
+as an owned school/Partner to make that path pass.
+
 ## Subsequent support confirmation and current gate
 
 The user subsequently relayed Flutterwave Support confirmation that TEST

@@ -133,11 +133,14 @@ describe("Mocked provider contracts — not genuine sandbox evidence",() => {
     const fetch = vi.fn().mockResolvedValueOnce(json({id:88})).mockResolvedValueOnce(json({
       id:88,subaccount_id:school,account_number:bank.accountNumber,account_bank:bank.bankCode,bank_name:"UNIT BANK",
     }));
-    expect(await new FlutterwaveSplitProvider(key,{fetch}).createRecipient(bank,"SCHOOL")).toMatchObject({providerId:88,subaccountId:school});
+    expect(await new FlutterwaveSplitProvider(key,{fetch}).createRecipient({
+      ...bank,businessEmail:"unit-recipient@example.test",
+    },"SCHOOL")).toMatchObject({providerId:88,subaccountId:school});
     expect(fetch.mock.calls).toHaveLength(2);
     expect(fetch.mock.calls[0][1].method).toBe("POST");
     expect(fetch.mock.calls[1][1].method).toBe("GET");
     expect(JSON.parse(fetch.mock.calls[0][1].body).split_value).toBe(3000);
+    expect(JSON.parse(fetch.mock.calls[0][1].body).business_email).toBe("unit-recipient@example.test");
   });
   it("rejects a provider recipient with mismatched bank details",async() => {
     const fetch = vi.fn(async() => json({id:88,subaccount_id:school,account_number:"9999999999",account_bank:"044"}));

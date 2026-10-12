@@ -49,10 +49,28 @@ The user relayed Flutterwave Support confirmation: TEST collection subaccounts c
 
 **Why:** This resolves the earlier support/enablement uncertainty, but is not evidence that this project's TEST dashboard uses automatic settlement or that any recipient has actually been created.
 
-**How to apply:** Do not ask for special TEST subaccount enablement again absent a contradictory genuine response. Check the TEST settlement setting separately. The user authorizes one clearly labelled synthetic provider-only TEST subaccount and independent list read-back, not payments, transfers, Live changes, Production migrations, publication or EduCore split-mode enablement. Stop if real recipient details or an account action are required.
+**How to apply:** Do not ask for special TEST subaccount enablement again absent a contradictory genuine response. Do not use a synthetic fixture as an owned school or Partner. The later user instruction also authorized one provider-only TEST split transaction attempt, but not transfers, Live changes, Production migrations, publication or EduCore split-mode enablement.
 
 Dashboard transfer/collection preferences do not establish the settlement choice. Flutterwave's current official manual-settlement guide presents the relevant choice as “How do you want to get your earnings?” with bank-account versus payout-balance options, rather than necessarily displaying literal automatic/manual labels.
 
 **Why:** Enabling API collections or disabling transfers can coexist with an unverified earnings destination; those switches are not proof that automatic split settlement is configured.
 
 **How to apply:** Inspect the actual earnings choice in TEST mode and interpret it using current official guidance. The guide describes payout-balance settlement followed by merchant-initiated transfers as the alternative to default automatic bank settlement. Do not change any preference merely to inspect it or infer completed settlement from the selection.
+
+Flutterwave Support later clarified that TEST settlements are inactive: TEST transactions do not settle into balances, though transaction/webhook fields may report split details. The Live bank-settlement choice does not prove the TEST setting.
+
+**Why:** The earlier plan made confirmation of a separate TEST earnings setting a creation prerequisite, even though Support found no additional TEST enablement step and said TEST cannot actually settle.
+
+**How to apply:** Permit authorized provider-only TEST diagnostics without presenting TEST funds as settled. Do not enable real school split flags from this evidence; Live requires separately reviewed automatic settlement and real recipient ownership.
+
+The actual merchant's TEST creation endpoint required `business_email` despite the reviewed public reference calling it optional. A rejected validation response is not an uncertain accepted create, but do not automatically retry it; first establish the exact rejection and no-record read-back before a bounded corrected request.
+
+**Why:** The first isolated TEST create returned a definitive missing-email validation error; only a second correctly populated request created a single recipient. Supplying a synthetic email for an actual school would be a false contact/ownership claim.
+
+**How to apply:** Require a genuine reviewed business contact for real school/Partner onboarding. Keep provider-only reserved-domain contacts outside EduCore's commercial entities. Record rejected and accepted attempts distinctly, never re-POST after an ambiguous response.
+
+Treat an unexpected or unidentifiable merchant identity on a hosted TEST checkout as a stop before card entry, even when the amount and sandbox host look right.
+
+**Why:** The genuine hosted link displayed the requested amount and TEST banner, but its displayed identity could not be recognized as the approved Yetenia merchant; completing a charge would have assumed the recipient merchant was correct.
+
+**How to apply:** Confirm the authorized merchant's registered TEST/trading identity through the user's authenticated Flutterwave dashboard before using the existing link. A returned hosted link only proves checkout initialization; it does not prove payment, split allocation, webhook receipt or settlement.

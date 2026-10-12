@@ -1,0 +1,275 @@
+{
+  "startedAt": "2026-10-12T13:38:42.041Z",
+  "mode": "GENUINE PROVIDER TEST ONLY",
+  "fixture": {
+    "bankCode": "044",
+    "accountNumber": "0690000031",
+    "contactPhone": "090890382",
+    "entityName": "Yetenia EduCore TEST ONLY Split Verification"
+  },
+  "expected": {
+    "amount": 5000,
+    "currency": "NGN",
+    "recipientGross": 2000,
+    "platformGrossBeforeCosts": 3000
+  },
+  "databaseWrites": "NONE BY THIS PROBE",
+  "eduCoreSplitMode": "NOT CHANGED",
+  "settlement": "INACTIVE IN TEST PER USER-RELAYED SUPPORT; NOT DEMONSTRATED",
+  "calls": [
+    {
+      "at": "2026-10-12T13:38:42.042Z",
+      "method": "GET",
+      "url": "https://api.flutterwave.com/v3/subaccounts?page=1",
+      "httpStatus": 400,
+      "response": {
+        "status": "error",
+        "message": "Subaccounts not found",
+        "data": null
+      }
+    },
+    {
+      "at": "2026-10-12T13:38:42.320Z",
+      "method": "POST",
+      "url": "https://api.flutterwave.com/v3/accounts/resolve",
+      "httpStatus": 200,
+      "response": {
+        "status": "success",
+        "message": "Account details fetched",
+        "data": {
+          "account_number": "0690000031",
+          "returnedKeys": [
+            "account_name",
+            "account_number"
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-10-12T13:38:43.355Z",
+      "method": "POST",
+      "url": "https://api.flutterwave.com/v3/subaccounts",
+      "httpStatus": 400,
+      "response": {
+        "status": "error",
+        "message": "business_email is required",
+        "data": null
+      }
+    },
+    {
+      "at": "2026-10-12T13:39:44.962Z",
+      "method": "GET",
+      "url": "https://api.flutterwave.com/v3/subaccounts?page=1",
+      "httpStatus": 400,
+      "response": {
+        "status": "error",
+        "message": "Subaccounts not found",
+        "data": null
+      }
+    },
+    {
+      "at": "2026-10-12T13:39:45.216Z",
+      "method": "POST",
+      "url": "https://api.flutterwave.com/v3/accounts/resolve",
+      "httpStatus": 200,
+      "response": {
+        "status": "success",
+        "message": "Account details fetched",
+        "data": {
+          "account_number": "0690000031",
+          "returnedKeys": [
+            "account_name",
+            "account_number"
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-10-12T13:39:46.186Z",
+      "method": "POST",
+      "url": "https://api.flutterwave.com/v3/subaccounts",
+      "httpStatus": 200,
+      "response": {
+        "status": "success",
+        "message": "Subaccount created",
+        "data": {
+          "id": 26972,
+          "split_value": 3000,
+          "split_type": "flat",
+          "bank_name": "ACCESS BANK NIGERIA",
+          "created_at": "2026-10-12T13:39:46.000Z",
+          "subaccount_id": "RS_5F0DB5C736A2550E783A15B9EB9FBF09",
+          "account_bank": "044",
+          "account_number": "0690000031",
+          "full_name": "[BANK-HOLDER NAME OMITTED]",
+          "returnedKeys": [
+            "id",
+            "account_number",
+            "account_bank",
+            "full_name",
+            "created_at",
+            "split_type",
+            "split_value",
+            "subaccount_id",
+            "bank_name"
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-10-12T13:39:46.489Z",
+      "method": "GET",
+      "url": "https://api.flutterwave.com/v3/subaccounts/26972",
+      "httpStatus": 200,
+      "response": {
+        "status": "success",
+        "message": "Subaccount fetched",
+        "data": {
+          "id": 26972,
+          "split_value": 3000,
+          "split_type": "flat",
+          "bank_name": "ACCESS BANK NIGERIA",
+          "created_at": "2026-10-12T13:39:46.000Z",
+          "subaccount_id": "RS_5F0DB5C736A2550E783A15B9EB9FBF09",
+          "account_bank": "044",
+          "account_number": "0690000031",
+          "business_name": "Yetenia EduCore TEST ONLY Split Verification",
+          "full_name": "[BANK-HOLDER NAME OMITTED]",
+          "split_ratio": null,
+          "returnedKeys": [
+            "id",
+            "account_number",
+            "account_bank",
+            "business_name",
+            "full_name",
+            "created_at",
+            "meta",
+            "account_id",
+            "split_ratio",
+            "split_type",
+            "split_value",
+            "subaccount_id",
+            "bank_name",
+            "country"
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-10-12T13:39:46.659Z",
+      "method": "GET",
+      "url": "https://api.flutterwave.com/v3/subaccounts?page=1",
+      "httpStatus": 200,
+      "response": {
+        "status": "success",
+        "message": "Subaccounts fetched",
+        "data": {
+          "shape": "array",
+          "count": 1,
+          "fixtureRecords": [
+            {
+              "id": 26972,
+              "split_value": 3000,
+              "split_type": "flat",
+              "bank_name": "ACCESS BANK NIGERIA",
+              "created_at": "2026-10-12T13:39:46.000Z",
+              "subaccount_id": "RS_5F0DB5C736A2550E783A15B9EB9FBF09",
+              "account_bank": "044",
+              "account_number": "0690000031",
+              "business_name": "Yetenia EduCore TEST ONLY Split Verification",
+              "full_name": "[BANK-HOLDER NAME OMITTED]",
+              "split_ratio": null,
+              "returnedKeys": [
+                "id",
+                "account_number",
+                "account_bank",
+                "business_name",
+                "full_name",
+                "created_at",
+                "meta",
+                "account_id",
+                "split_ratio",
+                "split_type",
+                "split_value",
+                "subaccount_id",
+                "bank_name",
+                "country"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-10-12T13:40:34.083Z",
+      "method": "POST",
+      "url": "https://api.flutterwave.com/v3/payments",
+      "httpStatus": 200,
+      "response": {
+        "status": "success",
+        "message": "Hosted Link",
+        "data": {
+          "returnedKeys": [
+            "link"
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-10-12T13:43:04.501Z",
+      "method": "GET",
+      "url": "https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=fw_split_probe_0c3f888822b04cec8c0538027cdc4908",
+      "httpStatus": 400,
+      "response": {
+        "status": "error",
+        "message": "No transaction was found for this id",
+        "data": null
+      }
+    }
+  ],
+  "bankResolution": "GENUINE MATCH OF OFFICIAL TEST FIXTURE",
+  "lastOutcome": "HOSTED CHECKOUT BLOCKED BEFORE PAYMENT",
+  "recipient": {
+    "providerId": 26972,
+    "subaccountId": "RS_5F0DB5C736A2550E783A15B9EB9FBF09",
+    "bankName": "ACCESS BANK NIGERIA",
+    "independentListMatched": true,
+    "defaultSplitMatched": true,
+    "providerEnvelopeStatus": "success",
+    "providerActiveStatus": null,
+    "activeStatusNote": "Provider returned no active/status field; no active claim"
+  },
+  "checkoutRequest": {
+    "tx_ref": "fw_split_probe_0c3f888822b04cec8c0538027cdc4908",
+    "amount": 5000,
+    "currency": "NGN",
+    "subaccounts": [
+      {
+        "id": "RS_5F0DB5C736A2550E783A15B9EB9FBF09",
+        "transaction_charge_type": "flat_subaccount",
+        "transaction_charge": 2000
+      }
+    ],
+    "feePolicy": "Merchant bears costs; browser must stop if total exceeds NGN 5000"
+  },
+  "checkout": {
+    "initialized": true,
+    "reference": "fw_split_probe_0c3f888822b04cec8c0538027cdc4908",
+    "host": "checkout-v2.dev-flutterwave.com",
+    "transactionStatus": "NOT SUBMITTED: browser stopped before card entry",
+    "browserObserved": {
+      "amount": 5000,
+      "currency": "NGN",
+      "testMode": true,
+      "chargeSubmissions": 0,
+      "merchantIdentity": "NOT CONFIRMED",
+      "returnedSplitFields": []
+    }
+  },
+  "blocker": "Merchant identity not verifiable on hosted TEST checkout; no card entered and no charge submitted",
+  "webhook": {
+    "status": "NO DELIVERED WEBHOOK OBSERVED",
+    "rawPayload": "NOT AVAILABLE",
+    "note": "The probe never configures or replays webhooks; a transaction was not submitted"
+  }
+}

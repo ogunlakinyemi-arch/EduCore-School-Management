@@ -1,0 +1,23 @@
+Continue the Flutterwave split-settlement verification for Yetenia EduCore.
+
+LATEST CONFIRMATION FROM FLUTTERWAVE SUPPORT
+
+- Settlement preferences are not documented as shared or separate between Live and TEST.
+- Settlements are inactive in TEST mode, so TEST transactions do not settle into balances.
+- Split details can still be validated in TEST through transaction responses and webhooks.
+- Live split payments require automatic settlement. The Live dashboard currently shows “Settle to my bank account.”
+- Support found no additional TEST-only action to enable.
+
+TASK — DEVELOPMENT/TEST ONLY
+
+1. Inspect the existing automated school-subaccount onboarding and split-payment implementation before changing code.
+2. Attempt to create one clearly labelled TEST subaccount only if valid sandbox-safe recipient details are available. Do not invent bank details or use a real school's information without authorisation.
+3. If creation succeeds, retrieve the subaccount independently and verify its returned ID and status.
+4. Keep EduCore split mode disabled.
+5. Prepare and execute one genuine Flutterwave TEST split transaction using the verified TEST subaccount, following the current official documentation.
+6. Use a ₦5,000 transaction with a fixed ₦2,000 school share and ₦3,000 platform share before costs. Yetenia covers provider fees under the existing design.
+7. Verify the transaction response and, if delivered, webhook data. Confirm the requested recipient IDs, amounts and currency. Clearly distinguish provider-reported split details from actual settlement, which TEST mode cannot demonstrate.
+8. Do not use Live credentials, make live payments or transfers, create live subaccounts, change Production, run Production migrations, or publish.
+9. Report any manual action required, including whether I must supply recipient details or complete a dashboard step.
+
+Return the actual provider evidence, exact outcome, files changed and remaining blockers. Do not claim that money was settled to a recipient.
