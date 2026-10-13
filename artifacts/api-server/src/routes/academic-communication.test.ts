@@ -40,6 +40,15 @@ const poolMock = vi.hoisted(() => {
       sql.includes("INSERT INTO academic_assignments") ? "INSERT_ASSIGNMENT" : "QUERY",
     );
     if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return result();
+    if (sql.includes("WITH days AS")) return result([{present:0,late:0,absent:0,total:0}]);
+    if (sql.includes("FROM employees WHERE id=$1 AND school_id=$2 AND user_id=$3")) return result([{id:8}]);
+    if (sql.includes("FROM academic_result_batches")) return result();
+    if (sql.includes("FROM academic_assessments WHERE school_id=$1 AND id=$2")) {
+      return result([{sessionId:3,termId:4,classId:5,section:"Blue",subjectId:7}]);
+    }
+    if (sql.includes("FROM academic_report_cards WHERE school_id=$1 AND id=$2")) {
+      return result([{sessionId:3,termId:4,classId:5,section:"Blue"}]);
+    }
     if(sql.includes("pg_advisory_xact_lock")) return result();
     if(sql.includes("FROM academic_terms t JOIN academic_sessions s")) return result([{id:4}]);
     if(sql.includes("WITH chosen AS")) return result([{id:13,firstName:"QA",lastName:"Student",classId:5,className:"JSS2",section:"Blue",studentClassAssignmentId:12}]);
@@ -231,10 +240,10 @@ beforeEach(() => {
   communicationMock.queue.mockClear();
 });
 
-async function post(path: string, body: Record<string, unknown>, method = "POST") {
+async function post(path: string, body: Record<string, unknown>, method = "POST", role = "SCHOOL_ADMIN") {
   return fetch(`${baseUrl}${path}`, {
     method,
-    headers: { "content-type": "application/json", "x-test-role": "SCHOOL_ADMIN" },
+    headers: { "content-type": "application/json", "x-test-role": role },
     body: JSON.stringify(body),
   });
 }
@@ -330,10 +339,16 @@ describe("academic publication notifications", () => {
   it("does not notify when a result is created as a draft", async () => {
     const response = await post("/academic/results", {
       schoolId: 1, assessmentId: 21, studentId: 13, score: 18,
-    });
+    }, "POST", "TEACHER");
 
     expect(response.status, await response.clone().text()).toBe(201);
     expect((await response.json() as { status: string }).status).toBe("DRAFT");
+    expect(communicationMock.queue).not.toHaveBeenCalled();
+  });
+  it("denies School Admin score creation rather than notifying or weakening teacher ownership", async () => {
+    const response=await post("/academic/results",{schoolId:1,assessmentId:21,studentId:13,score:18});
+    expect(response.status).toBe(403);
+    expect(state.queries.some(({sql})=>sql.includes("INSERT INTO academic_results"))).toBe(false);
     expect(communicationMock.queue).not.toHaveBeenCalled();
   });
 
@@ -343,7 +358,7 @@ describe("academic publication notifications", () => {
       teacherRemark: "Steady progress", schoolRemark: "Promoted",
     });
 
-    expect(response.status).toBe(201);
+    expect(response.status, await response.clone().text()).toBe(201);
     expect((await response.json() as { status: string }).status).toBe("DRAFT");
     expect(communicationMock.queue).not.toHaveBeenCalled();
   });

@@ -2,7 +2,150 @@
 
 Date: 2026-10-13. Development verification only; no publication initiated.
 
-## Current status recheck
+## Latest continuation: verified fixes and remaining gates
+
+This section supersedes the earlier status recheck below. This continuation
+repaired the 14 non-native API contract failures and the 22 outstanding UI
+regressions without weakening production authorization, enrollment, device,
+NFC billing, or publication safeguards.
+
+### Fresh verification
+
+| Check | Passed | Failed | Skipped | Scope |
+|---|---:|---:|---:|---|
+| Full API Vitest run | 1,796 | 9 | 189 | The nine failures are native PostgreSQL tests hitting the intentionally unreachable loopback target |
+| Full UI Vitest run | 684 | 0 | 0 | All current component and routing tests |
+| SQL/schema/private-file tooling | 38 | 0 | 0 | Existing 34 checks plus four identifier/query-boundary checks |
+| Root workspace TypeScript check | pass | 0 | — | Shared libraries and all configured leaf packages |
+| Strengthened NFC delegation assertions | 5 | 0 | 0 | Single/bulk invoice tests additionally checked after the full API run |
+| Final API TypeScript check | pass | 0 | — | Confirms the added delegation assertions type-check |
+
+Full run evidence was captured in `/tmp/educore-continue-api-full.json`,
+`/tmp/educore-continue-ui-full.json`, and their matching logs. These temporary
+files are execution evidence, not durable acceptance records. Tooling and
+delegation outputs are in `/tmp/educore-continue-tooling-complete.log` and
+`/tmp/educore-continue-nfc-delegation.log`.
+
+The API is **not fully green**. Two Owner recovery tests, three Phase 3 database
+history tests, and four Phase 4 Partner integrity tests require an independently
+approved native database target. They were not mocked into success, skipped
+into success, pointed at existing application records, or run against a newly
+created database. The database-backed finance integration file remains excluded
+by the existing test configuration.
+
+Most repairs align fixtures with current SQL guards and generated query hooks.
+The positive draft-result test now uses its authorized Teacher role; a new
+negative assertion verifies School Admin cannot insert scores or notify through
+that route. Invoice tests assert automatic NFC-obligation delegation receives
+the correct school, student, session and term, while an unauthorized bulk
+request never invokes it. Timetable tests now handle lazy state initializers
+and assert the current management label. The one runtime UI fix avoids reading
+`window` during server rendering of timetable URL filters.
+
+### SQL utility findings: reviewed, not suppressed
+
+A fresh SAST run still reports three CRITICAL SQL findings in
+`scripts/src/educore-extension-validation.mjs`. Their actual argument paths are:
+
+1. A constant catalog query listing `public`/`drizzle` tables.
+2. A constant column query with schema/table **values bound as `$1`/`$2`**.
+3. A fingerprint query whose identifiers are individually validated and quoted
+   before composition; identifiers cannot be replaced by value placeholders.
+
+The quoting boundary is now a small separately tested helper. It rejects
+non-strings, quote/comment/expression injection, qualified names, commas,
+wildcards and control characters, including the trailing-newline regex edge.
+Both fingerprint projections and generated disposable database names use that
+same boundary. Static catalog queries use ordinary string literals. Four
+no-network tests cover accepted identifiers, malicious input, bound catalog
+values and every identifier-composition path.
+
+For these inspected input paths, the findings are reviewed SQL-injection false
+positives, **not three demonstrated application vulnerabilities**. Scanner
+counts remain three; no suppression, exclusion, rule alteration or assertion
+of scan clearance was added. The utility itself was never executed against a
+database, and no native DDL/replay acceptance is inferred from its unit tests.
+
+### Dependency audit: compatible fixes unavailable
+
+The fresh audit remains **2 critical, 1 high and 3 moderate advisory records**:
+
+| Dependency | Current remediation constraint |
+|---|---|
+| Vitest and `@vitest/mocker` | Fixed range starts at 4.1.11; current compatible line is 3.x |
+| `tinypool` (two critical advisories) | Fixed ranges start at 2.1.1 and 2.1.2; the current Vitest dependency is 1.x |
+| `postcss-selector-parser` | Fixed range starts at 7.1.6; latest typography parent still pins 6.0.10 |
+| `braces` | Registry audit reports no patched version; latest release remains affected |
+
+No compatible release was found that resolves these advisories. No packages or
+lockfile were changed, and no major upgrade, forced override, security
+suppression or release-age bypass was used. These alerts remain unresolved.
+
+### Managed Development workflow recovery
+
+Both managed services initially reported failed while earlier untracked
+listeners still served their ports. Before process action, exact process
+identity, artifact directory, listener ownership and quiescence were checked.
+Both listeners had zero established TCP connections; a read-only Development
+query found zero other active queries and zero other open transactions. The API
+process was unpublished Development with worker pause enabled, and startup
+source showed the pause exits before scheduling delivery/subscription work.
+
+Only those two confirmed orphaned service processes received SIGTERM. They
+exited without force killing; no database or unrelated process was terminated.
+The existing API and web workflows were restarted sequentially, once each.
+Both now report **running** on their unchanged managed ports. Fresh API output
+confirms the Development worker pause. Proxied API health and web requests both
+return HTTP 200. A screenshot confirms the public Development sign-in renders;
+it does not establish signed-in timetable or payment acceptance.
+
+### Flutterwave reference lookup and genuine TEST charge gate
+
+The previous standalone lookup returned HTTP 400, `status: error`, and
+`No transaction was found for this id`. This establishes only that this lookup
+did not retrieve a transaction for that reference/key context. It does not
+establish a completed charge, delivered webhook, application settlement, or
+that the merchant/dashboard configuration is correct.
+
+Flutterwave's documented v3 lookup is
+`GET /v3/transactions/verify_by_reference?tx_ref=<exact-reference>`, authorized
+by the corresponding secret key. `tx_ref` is the merchant/application's unique
+transaction reference, not the numeric provider ID, `flw_ref`, checkout URL,
+invoice number or webhook event ID. The application stores the original
+reference, permits 8–100 ASCII letters/digits/underscores/hyphens, and URL-encodes
+it; do not generate or alter it to make an unknown lookup appear successful.
+Use the same independently confirmed TEST merchant/key context in which the
+checkout was initialized. A created checkout URL alone is not a successful
+transaction.
+
+After a successful exact-reference lookup, independently verify its returned
+numeric ID with `/v3/transactions/{id}/verify`. Provider success, exact reference,
+transaction ID, NGN currency, and the expected integer minor-unit amount must
+all agree with the persisted application payment. A successful API envelope
+without `data.status: successful`, or a missing/mismatched reference or ID,
+must remain unverified. The existing Development adapter implements this
+two-step lookup; no production provider behavior was changed.
+
+Reference documentation:
+https://developer.flutterwave.com/v3.0/reference/verify-transaction-with-tx_ref
+
+The genuine EduCore TEST charge remains **BLOCKED**:
+
+| Required gate | Evidence / gap |
+|---|---|
+| Actual TEST dashboard destination | No authenticated dashboard evidence; application endpoint/credential existence is insufficient |
+| Owner-approved merchant identity | Not independently confirmed for the selected TEST keys |
+| Approved isolated target and financial fixture | Not established; no new database or financial fixture created |
+| Notification suppression for the complete real fixture flow | Development workers are paused; isolated-flow delivery suppression still needs confirmation |
+| Genuine reference/ID/amount/currency verification | No successful charge initiated by this continuation |
+| Genuine delivery and application settlement | No newly observed provider webhook or native settlement/receipt acceptance |
+
+No checkout or charge was submitted in this continuation. No payout, refund,
+real notification, identity change, hardware integration, Production access,
+publish action, migration, application-record write or test-record deletion was
+performed. Existing test history was not repurposed as payment evidence.
+
+## Earlier status recheck (retained historical evidence)
 
 The source-change/test batch has ended, but the overall remediation and genuine
 TEST payment acceptance are incomplete. No new tests or payments were initiated

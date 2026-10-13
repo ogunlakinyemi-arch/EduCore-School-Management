@@ -6,6 +6,8 @@ import type { CommunicationStudent, CommunicationGuardian } from '@workspace/api
 const state=vi.hoisted(()=>({students:vi.fn(),guardians:[] as CommunicationGuardian[],create:vi.fn()}));
 const student={id:721,firstName:'Test',lastName:'Student',admissionNo:'TEST',className:'JSS 2',section:'A'} satisfies CommunicationStudent;
 vi.mock('@workspace/api-client-react',()=>({
+  getListCommunicationStudentsQueryKey:()=>['communication-students'],
+  getListCommunicationGuardiansQueryKey:()=>['communication-guardians'],
   useListCommunicationStudents:(p:any,o:any)=>{state.students(p,o);return{data:[student],isLoading:false};},
   useListCommunicationGuardians:()=>({data:state.guardians,isLoading:false}),
   useListSchoolParentMessageThreads:()=>({data:{items:[]},refetch:vi.fn()}),

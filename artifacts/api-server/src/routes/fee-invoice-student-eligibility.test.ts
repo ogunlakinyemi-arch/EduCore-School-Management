@@ -7,6 +7,7 @@ const invoice={id:2,schoolId:1496,studentId:773,invoiceNumber:"EXISTING-INVOICE"
 const db=vi.hoisted(()=>{
   const query=vi.fn(async(sql:string,values:unknown[]=[])=>{
     state.calls.push(sql);
+    if(sql.includes("pg_advisory_xact_lock"))return{rows:[]};
     if(["BEGIN","COMMIT","ROLLBACK"].includes(sql))return{rows:[]};
     if(sql.includes("SELECT id FROM fee_invoices"))return{rows:state.existing?[{id:2}]:[]};
     if(sql.includes("FROM fee_invoices i WHERE i.id="))return{rows:[{
@@ -25,6 +26,10 @@ const db=vi.hoisted(()=>{
   return{query,connect:vi.fn(async()=>({query,release:vi.fn()}))};
 });
 vi.mock("@workspace/db",()=>({pool:db}));
+vi.mock("../lib/student-nfc-obligations",async original=>{
+  const actual=await original<typeof import("../lib/student-nfc-obligations")>();
+  return{...actual,ensureStudentNfcSubscription:vi.fn(async()=>null)};
+});
 vi.mock("../middlewares/auth",async original=>{
   const actual=await original<typeof import("../middlewares/auth")>();
   return{...actual,requireAuthentication:()=> (req:express.Request,_res:express.Response,next:express.NextFunction)=>{

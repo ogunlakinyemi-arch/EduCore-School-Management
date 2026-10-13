@@ -1,5 +1,9 @@
 import express from "express";
 import { beforeAll, afterAll, beforeEach, describe, it, expect, vi } from "vitest";
+vi.mock("../lib/student-nfc-obligations",async original=>{
+  const actual=await original<typeof import("../lib/student-nfc-obligations")>();
+  return{...actual,ensureClassNfcSubscriptions:vi.fn(async()=>undefined)};
+});
 const state=vi.hoisted(()=>({calls:[] as {sql:string;values:unknown[]}[],period:true,category:true}));
 const db=vi.hoisted(()=>{
   const query=vi.fn(async(sql:string,values:unknown[]=[])=>{

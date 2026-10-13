@@ -17,6 +17,12 @@ const poolMock = vi.hoisted(() => ({
   connect: vi.fn(async () => ({
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
+      if (sql.includes("FROM school_classes WHERE school_id=$1")) return {
+        rows: [{id: 5,name:"Primary 1",section:"A"}],
+      };
+      if (sql.includes("FROM academic_sessions WHERE school_id=$1")) return {rows:[{id:2}]};
+      if (sql.includes("SELECT id FROM schools WHERE id=$1 FOR KEY SHARE")) return {rows:[{id:1}]};
+      if (sql.includes("FROM platform_devices d")) return {rows:[{id:7,school_id:1,status:"ACTIVE",device_type:"NFC"}]};
       if (sql.includes("SELECT p.id,p.user_id,p.status AS \"parentStatus\"")) return {
         rows: [{
           id: 44,
@@ -38,6 +44,9 @@ const poolMock = vi.hoisted(() => ({
         }],
       };
       if (sql.includes("SELECT id FROM students")) return { rows: [{ id: 11 }] };
+      if (sql.includes("FROM students WHERE id=$1 AND school_id=$2")) return {
+        rows: [{id:11,admissionNo:"SYNTHETIC-11",firstName:"Test",lastName:"Student",className:"Primary 1",section:"A"}],
+      };
       if (sql.includes("SELECT id FROM nfc_cards")) return { rows: [] };
       if (sql.includes("SELECT nc.school_id AS")) return {
         rows: [{ schoolId: 1, status: "locked", studentId: 11 }],
@@ -157,7 +166,7 @@ describe("Platform Owner school-operation boundaries", () => {
       className: "Primary 1",
       section: "A",
     });
-    expect(response.status).toBe(201);
+    expect(response.status, await response.clone().text()).toBe(201);
     const body = await response.json();
     expect(body).toMatchObject({ admissionNo: "ADM-1-000001", email: "amina@example.test" });
     const insert = state.queries.find(({ sql }) => sql.includes("INSERT INTO students (school_id, admission_no, email"));
@@ -167,7 +176,7 @@ describe("Platform Owner school-operation boundaries", () => {
 
   it("preserves the explicit Platform Owner NFC assignment exception with tenant-bound writes", async () => {
     const response = await call("/cards?schoolId=1", "POST", { uid: "CARD-OWNER", studentId: 11 });
-    expect(response.status).toBe(201);
+    expect(response.status, await response.clone().text()).toBe(201);
     const cardInsert = state.queries.find(({ sql }) => sql.includes("INSERT INTO nfc_cards"));
     expect(cardInsert?.values.slice(0, 3)).toEqual([1, "CARD-OWNER", 11]);
   });

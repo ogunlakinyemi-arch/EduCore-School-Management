@@ -80,7 +80,7 @@ describe('Platform Owner partner routes', () => {
 
   it('keeps Partner self-service payouts outside the Owner route', () => {
     expect(resolvedOwnerPage('/partner/payouts')).toBeNull();
-    expect(appSource).toContain('<Route path="/partner*"><PartnerPortal /></Route>');
+    expect(appSource).toContain('<Route path="/partner/*"><RoleGuard allowedRoles={[\'PARTNER\']}><PartnerPortal /></RoleGuard></Route>');
     expect(portalSource).toContain('<Route path="/partner/payouts" component={MyPayouts} />');
   });
 });

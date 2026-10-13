@@ -11,11 +11,11 @@ vi.mock('react', async importOriginal => {
   return {
     ...actual,
     useState: (initial: unknown) => {
-      const key = initial === null ? 'null' : `${typeof initial}:${String(initial)}`;
-      const values = state.stateOverrides[key];
       const defaultValue = typeof initial === 'function'
         ? (initial as () => unknown)()
         : initial;
+      const key = defaultValue === null ? 'null' : `${typeof defaultValue}:${String(defaultValue)}`;
+      const values = state.stateOverrides[key];
       return [values?.length ? values.shift() : defaultValue, vi.fn()];
     },
   };
@@ -94,6 +94,15 @@ vi.mock('@workspace/api-client-react', () => {
     useUpdateAcademicGradingRule: mutation,
     getListAcademicGradingRulesQueryKey: queryKey,
     useListAcademicSessions: () => query([{ id: 7, name: '2025 Session', isCurrent: true }]),
+    getListAcademicSessionsQueryKey: queryKey,
+    getListAcademicTermsQueryKey: queryKey,
+    getListClassesQueryKey: queryKey,
+    getListSubjectsQueryKey: queryKey,
+    getListEmployeesQueryKey: queryKey,
+    useListClassSubjectAssignments: () => query([]),
+    useListTeacherClassAssignments: () => query([]),
+    getListClassSubjectAssignmentsQueryKey: queryKey,
+    getListTeacherClassAssignmentsQueryKey: queryKey,
     useListAcademicTerms: () => query([{ id: 8, name: 'First', isCurrent: true }]),
     useListClasses: () => query([{ id: 5, name: 'Class Five', section: 'A' }]),
     useListSubjects: () => query([{ id: 4, name: 'Mathematics' }]),
@@ -233,7 +242,7 @@ describe('mixed-role Platform Owner school-operation pages', () => {
     expect(html).toContain('MONDAY');
     expect(html).toContain('Mathematics');
     expect(html).not.toContain('Manage Timetable');
-    expect(html).not.toContain('Add Entry');
+    expect(html).not.toContain('Add Timetable Entry');
     expect(html).not.toContain('Edit Timetable Entry');
     expect(html).not.toContain('>Save</button>');
     expect(html).not.toContain('<button');
@@ -249,7 +258,7 @@ describe('mixed-role Platform Owner school-operation pages', () => {
     const html = render(<TimetablePage />);
 
     expect(html).toContain('MONDAY');
-    expect(html).toContain('Add Entry');
+    expect(html).toContain('Add Timetable Entry');
     expect(html).toContain('Save');
     expect(html).toContain('Add Timetable Entry');
   });

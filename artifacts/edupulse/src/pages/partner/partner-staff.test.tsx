@@ -10,6 +10,8 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@workspace/api-client-react', () => ({
+  useGetMyPartnerNfcAccess: () => ({ data: { enabled: false }, isLoading: false, isError: false }),
+  getGetMyPartnerNfcAccessQueryKey: () => ['partner-nfc-access'],
   useGetPartnerProfile: () => ({
     data: state.profile,
     isLoading: false,
@@ -30,6 +32,9 @@ vi.mock('@/components/shared', () => ({
 }));
 
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock('@clerk/react', () => ({
+  useAuth: () => ({ userId: 'synthetic-partner-owner', isLoaded: true, isSignedIn: true }),
+}));
 
 import PartnerStaff from './partner-staff';
 

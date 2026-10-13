@@ -1,5 +1,6 @@
 import express from "express";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
 
 const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: any[] }>,
@@ -58,6 +59,8 @@ const dbMock = vi.hoisted(() => {
     },
   ];
   const query = vi.fn(async (sql: string, values: any[] = []) => {
+    if (sql.includes("correctionOfStructureId")) return result();
+    if (sql.includes("pg_advisory_xact_lock")) return result();
     state.calls.push({ sql, values });
     if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql) || sql.startsWith("SAVEPOINT")
         || sql.startsWith("ROLLBACK TO SAVEPOINT") || sql.startsWith("RELEASE SAVEPOINT")) return result();
@@ -159,12 +162,15 @@ const assign = (
 
 describe("bulk fee assignments", () => {
   it("rejects an unauthorized school role before database mutation", async () => {
+    vi.mocked(ensureStudentNfcSubscription).mockClear();
     const response = await assign({ "x-test-role": "ACCOUNTANT", "x-test-school": "2" });
     expect(response.status).toBe(404);
     expect(state.calls.filter(({ sql }) => !["BEGIN", "ROLLBACK"].includes(sql))).toHaveLength(0);
+    expect(ensureStudentNfcSubscription).not.toHaveBeenCalled();
   });
 
   it("uses historical session-term-class assignments and reports invalid or mismatched cohort students", async () => {
+    vi.mocked(ensureStudentNfcSubscription).mockClear();
     const response = await assign();
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -179,6 +185,9 @@ describe("bulk fee assignments", () => {
         { studentId: 36, invoiceId: 80, status: "SKIPPED", reason: "EXISTING_INVOICE" },
       ],
     });
+    expect(ensureStudentNfcSubscription).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({query:dbMock.query}), 1, 31, 2, 3,
+    );
     const eligibilityQuery = state.calls.find(({ sql }) =>
       sql.includes("FROM students st") && sql.includes("student_class_assignments"));
     expect(eligibilityQuery?.sql).toContain("a.school_id=st.school_id");

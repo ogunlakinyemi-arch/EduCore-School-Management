@@ -315,7 +315,7 @@ describe('Platform Owner school administrator invitation status', () => {
     )!;
     await act(async () => {
       [...recoveryRow.querySelectorAll('button')]
-        .find(button => button.textContent?.includes('Retry staged attempt'))?.click();
+        .find(button => button.textContent?.includes('Retry activation email'))!.click();
     });
 
     expect(fetchMock).toHaveBeenCalledWith('/api/schools/12/invitations/101/reconcile', expect.objectContaining({

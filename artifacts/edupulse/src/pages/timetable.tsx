@@ -89,6 +89,7 @@ export function TimetablePage() {
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
 function initialTimetableFilter(schoolId: number, name: 'sessionId' | 'termId' | 'classId') {
+  if (typeof window === 'undefined') return undefined;
   const search = new URLSearchParams(window.location.search);
   if (search.get('schoolId') !== String(schoolId)) return undefined;
   const raw = search.get(name);

@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import { readFile, writeFile, readdir, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { safeIdentifier } from "./validation-sql-identifiers.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const require = createRequire(join(root, "lib/db/package.json"));
@@ -15,10 +16,6 @@ const { Client } = require("pg");
 const mode = process.argv[2];
 const evidenceDir = process.argv[3];
 const migrationsDir = join(root, "lib/db/drizzle");
-const safeIdentifier = (value) => {
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) throw new Error("Unsafe database identifier");
-  return `"${value}"`;
-};
 const identitySql = `SELECT json_build_object(
   'database',current_database(),'databaseOid',(SELECT oid FROM pg_database WHERE datname=current_database()),
   'schoolsOid','public.schools'::regclass::oid,'studentsOid','public.students'::regclass::oid,
@@ -40,12 +37,13 @@ async function openDevelopment() {
 }
 
 async function fingerprints(client, originals) {
-  const tables = originals ?? (await client.query(`SELECT schemaname AS schema,tablename AS name
-    FROM pg_tables WHERE schemaname IN ('public','drizzle') ORDER BY schemaname,tablename`)).rows;
+  const tables = originals ?? (await client.query(
+    "SELECT schemaname AS schema,tablename AS name FROM pg_tables WHERE schemaname IN ('public','drizzle') ORDER BY schemaname,tablename",
+  )).rows;
   const output = [];
   for (const table of tables) {
-    const columns = table.columns ?? (await client.query(`SELECT column_name FROM information_schema.columns
-      WHERE table_schema=$1 AND table_name=$2 ORDER BY ordinal_position`, [table.schema, table.name]))
+    const columns = table.columns ?? (await client.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 ORDER BY ordinal_position", [table.schema, table.name]))
       .rows.map((row) => row.column_name);
     const projected = columns.map(safeIdentifier).join(",");
     const result = await client.query(`SELECT count(*)::int AS rows,

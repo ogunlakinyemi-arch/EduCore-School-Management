@@ -1,5 +1,6 @@
 import express from "express";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
 
 const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: any[] }>,
@@ -12,6 +13,8 @@ const dbMock = vi.hoisted(() => {
     waiverMinor: 0, totalMinor: 3000, paidMinor: 0, outstandingMinor: 3000, status: "UNPAID",
   };
   const query = vi.fn(async (sql: string, values: any[] = []) => {
+    if (sql.includes("correctionOfStructureId")) return result();
+    if (sql.includes("pg_advisory_xact_lock")) return result();
     state.calls.push({ sql, values });
     if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql) || sql.startsWith("SAVEPOINT")
         || sql.startsWith("RELEASE SAVEPOINT") || sql.startsWith("ROLLBACK TO SAVEPOINT")) return result();
@@ -81,6 +84,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   state.calls.length = 0;
   dbMock.query.mockClear();
+  vi.mocked(ensureStudentNfcSubscription).mockClear();
 });
 
 describe("single invoice assignment notification intent", () => {
@@ -90,8 +94,11 @@ describe("single invoice assignment notification intent", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ structureId: 7, studentId: 15, issueDate: "2026-09-01", dueDate: "2026-09-30" }),
     });
-    expect(response.status).toBe(201);
+    expect(response.status, await response.clone().text()).toBe(201);
     expect(await response.json()).toMatchObject({ id: 81, studentId: 15, status: "UNPAID" });
+    expect(ensureStudentNfcSubscription).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({query:dbMock.query}), 1, 15, 2, 3,
+    );
     const outboxIndex = state.calls.findIndex(({ sql }) => sql.includes("INSERT INTO fee_invoice_notification_outbox"));
     const deliveryIndex = state.calls.findIndex(({ sql }) => sql.includes("INSERT INTO fee_invoice_notifications"));
     const commitIndex = state.calls.findIndex(({ sql }) => sql === "COMMIT");
