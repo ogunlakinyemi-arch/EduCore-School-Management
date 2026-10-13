@@ -21,6 +21,12 @@ Canonical-object coverage alone does not prove schema equivalence. Review every 
 
 **How to apply:** Compare the combined accepted domain, not just whether each expected CHECK exists. Produce concrete counterexamples for conflicting extras; stop and report rather than silently dropping them or calling the result equivalent.
 
+Treat the original failed Publish payload, the standalone ORM export and a dependency-ordered audit export as separate evidence. A correctly ordered audit file does not establish what the original failing generator emitted.
+
+**Why:** Saved failure attachments paired runtime errors with their actual generated SQL, while a later audit export already placed indexes before foreign keys. Looking only at that audit file would hide the original omission or ordering defect.
+
+**How to apply:** Locate the saved error and SQL together, check equivalent keys as well as names, and separate a confirmed missing usable key from a potential later blocker. An absent CREATE statement is not itself a defect if the same attempt's target already had a suitable key; do not infer the target's current state from older saved evidence.
+
 PostgreSQL-deparsed CHECK DDL is not guaranteed to round-trip to identical expression text.
 
 **Why:** PostgreSQL 16 reparsing of its own constraint DDL flattened nested Boolean AND grouping in two checks without changing the literals or operations.
