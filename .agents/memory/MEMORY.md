@@ -63,3 +63,4 @@
 - [Published correction safety](published-correction-policy.md) — protect financial history during fee corrections and require academic review and republication after score changes.
 - [Vite private-file hardening](vite-private-file-hardening.md) — allow narrow optimizer caches and reject private URLs before SPA fallback; successful HEAD checks do not prove rendering.
 - [Vendor delivery gate](vendor-delivery-gate.md) — physical NFC/GPS/device integration and vendor-dependent communication/retry work await confirmed hardware/software delivery.
+- [Sandbox callback isolation](sandbox-callback-isolation.md) — TEST charges can trigger app writes; verify callback/webhook targets and use dedicated Development aliases consistently.

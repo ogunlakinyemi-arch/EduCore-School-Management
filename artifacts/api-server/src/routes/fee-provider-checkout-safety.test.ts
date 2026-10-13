@@ -198,6 +198,12 @@ beforeEach(() => {
           return { rows: [] };
         }
         if (/^(SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT)\b/i.test(sql.trim())) return { rows: [] };
+        if (sql.includes("SELECT 1 FROM fee_invoice_lines l")
+            && sql.includes("l.category_name_snapshot ~*")
+            && sql.includes("fee_payment_line_allocations")) {
+          // Ordinary-invoice fixture: no outstanding legacy school NFC charge.
+          return { rows: [] };
+        }
         if (sql.includes("FROM fee_invoices i") && sql.includes("JOIN parents p")) {
           return db.linked && Number(values[0]) === db.invoiceId && Number(values[1]) === db.userId
             ? { rows: [{

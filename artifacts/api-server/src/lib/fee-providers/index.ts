@@ -124,9 +124,11 @@ function validExpected(expected: ExpectedPayment): boolean {
 
 function headerValue(headers: WebhookInput["headers"], name: string): string | undefined {
   const normalizedName = name.toLowerCase();
-  const value = Object.entries(headers)
-    .find(([headerName]) => headerName.toLowerCase() === normalizedName)?.[1];
-  return Array.isArray(value) ? value[0] : value;
+  const matches = Object.entries(headers)
+    .filter(([headerName]) => headerName.toLowerCase() === normalizedName);
+  if (matches.length !== 1) return undefined;
+  const value = matches[0][1];
+  return Array.isArray(value) ? (value.length === 1 ? value[0] : undefined) : value;
 }
 
 function bodyBytes(rawBody: Uint8Array | string): Buffer {

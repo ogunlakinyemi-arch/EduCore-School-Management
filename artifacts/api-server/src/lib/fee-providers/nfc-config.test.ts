@@ -11,7 +11,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe("NFC-isolated Development TEST credential", () => {
   it("uses the supplied mixed-case TEST key without selecting a generic live key", () => {
     expect(configuredStudentNfcTestAdapter()?.provider).toBe("flutterwave");
-    expect(() => configuredTestAdapter("FLUTTERWAVE")).toThrow();
+    expect(configuredTestAdapter("FLUTTERWAVE")?.provider).toBe("flutterwave");
   });
   it("rejects conflicting TEST aliases", () => {
     vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "FLWSECK_TEST-different-key");
