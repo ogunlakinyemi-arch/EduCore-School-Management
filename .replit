@@ -31,6 +31,7 @@ COMMUNICATION_EMAIL_PROVIDER = "resend"
 EMAIL_FROM = "Yemait EduCore <notifications@yetenia.com>"
 RESEND_DEVELOPMENT_RECIPIENTS = "ogunlakinyemi@gmail.com"
 EDUCORE_DEVELOPMENT_WORKERS_PAUSED = "true"
+EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED = "true"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-2357c139-bab2-4688-9e2e-9a940e1cb1cc"

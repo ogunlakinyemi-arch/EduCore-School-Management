@@ -1,4 +1,5 @@
 import { logger } from "../lib/logger";
+import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 
 export type CommunicationChannel = "sms" | "email" | "push";
 export type ProviderDeliveryStatus = "SIMULATED" | "ACCEPTED" | "DELIVERED" | "FAILED";
@@ -296,6 +297,9 @@ export class TermiiSmsProvider implements SmsProvider {
   }
 
   async send(message: SmsMessage): Promise<ProviderSendResult> {
+    if (developmentPaymentNotificationsSuppressed()) {
+      return failedResult(this.provider, this.channel, "CONFIGURATION", false);
+    }
     const recipient = normalizeTermiiRecipient(message.to);
     if (!recipient || !isValidMessagePart(message.body)) {
       return failedResult(this.provider, this.channel, "INVALID_REQUEST", false, this.onFailure);
@@ -388,6 +392,9 @@ export class HttpEmailProvider implements EmailProvider {
   }
 
   async send(message: EmailMessage): Promise<ProviderSendResult> {
+    if (developmentPaymentNotificationsSuppressed()) {
+      return failedResult(this.provider, this.channel, "CONFIGURATION", false);
+    }
     if (
       !isValidMessagePart(message.to)
       || !isValidMessagePart(message.subject)
@@ -448,6 +455,7 @@ export function createSmsProvider(
   env: NodeJS.ProcessEnv = process.env,
   options: CommunicationProviderOptions = {},
 ): SmsProvider {
+  if (developmentPaymentNotificationsSuppressed(env)) return suppressedNotificationProvider("sms");
   const selected = configuredProviderName(env.COMMUNICATION_SMS_PROVIDER);
   if (selected === "development" || selected === "dev" || selected === "test") {
     return new DevelopmentCommunicationProvider("sms");
@@ -474,6 +482,7 @@ export function createEmailProvider(
   env: NodeJS.ProcessEnv = process.env,
   options: CommunicationProviderOptions = {},
 ): EmailProvider {
+  if (developmentPaymentNotificationsSuppressed(env)) return suppressedNotificationProvider("email");
   const selected = configuredProviderName(env.COMMUNICATION_EMAIL_PROVIDER);
   if (selected === "development" || selected === "dev" || selected === "test") {
     return new DevelopmentCommunicationProvider("email");
@@ -510,6 +519,9 @@ export class ResendEmailProvider implements EmailProvider {
     }
   }
   async send(message: EmailMessage): Promise<ProviderSendResult> {
+    if (developmentPaymentNotificationsSuppressed()) {
+      return failedResult(this.provider, this.channel, "CONFIGURATION", false);
+    }
     if (this.config.allowedRecipients !== undefined &&
         !this.config.allowedRecipients.includes(message.to.trim().toLowerCase())) {
       return failedResult(this.provider, this.channel, "CONFIGURATION", false, this.options.onFailure);
@@ -544,6 +556,16 @@ export function validEmail(value: string): boolean {
     /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value) && !/[\r\n]/.test(value);
 }
 
+function suppressedNotificationProvider<C extends "sms" | "email">(channel: C) {
+  return {
+    provider: "development-payment-suppressed",
+    channel,
+    async send(_message: unknown): Promise<ProviderSendResult> {
+      return failedResult(this.provider, channel, "CONFIGURATION", false);
+    },
+  };
+}
+
 /** Resolve only explicitly configured adapters; defaults are safe no-network simulations. */
 export function createCommunicationProviders(
   env: NodeJS.ProcessEnv = process.env,
@@ -576,6 +598,7 @@ export function createDevelopmentCommunicationProviders(
   env: NodeJS.ProcessEnv = process.env,
   options: CommunicationProviderOptions = {},
 ): CommunicationProviderAdapters {
+  if (developmentPaymentNotificationsSuppressed(env)) return createCommunicationProviders(env, options);
   const simulated = createCommunicationProviders({}, options);
   if (configuredProviderName(env.COMMUNICATION_EMAIL_PROVIDER) !== "resend" ||
       !(env.RESEND_DEVELOPMENT_RECIPIENTS ?? "").trim()) return simulated;

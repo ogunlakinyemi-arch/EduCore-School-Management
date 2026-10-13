@@ -32,3 +32,9 @@ The intended communication policy reserves SMS for critical or explicitly urgent
 **Why:** The user explicitly stated this channel policy and prohibited introducing daily SMS while integrating Resend.
 
 **How to apply:** Do not add automatic routine/daily SMS jobs when enabling email. Preserve recipient checks, preferences and stable event deduplication for absence alerts; review legacy channel behavior explicitly rather than replacing the communication architecture.
+
+During payment safety testing, an earlier controlled-recipient email approval does not authorize sending notifications. Keep payment-test suppression independent of recipient allowlists and scheduler pauses, and cover manual dispatch and direct real-provider transports too.
+
+**Why:** Development can have real Resend delivery configured for approved recipients even while its scheduled worker is paused. Connecting a financial webhook must not implicitly reuse that earlier send approval.
+
+**How to apply:** Keep the lock Development-only, fail without network access or a false delivery claim, and distinguish saved code/configuration from the running server. When restart is forbidden, report activation as blocked rather than claiming the new safeguard is active.
