@@ -17,6 +17,8 @@ export interface FlutterwaveRecipient {
   maskedAccount: string;
   accountName: string;
   bankName: string;
+  /** @nullable */
+  maskedBusinessEmail?: string | null;
   mode: FlutterwaveRecipientMode;
   /** @nullable */
   providerSubaccountId?: string | null;

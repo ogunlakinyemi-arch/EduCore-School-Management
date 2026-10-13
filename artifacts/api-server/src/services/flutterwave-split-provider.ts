@@ -1,6 +1,7 @@
 import { FlutterwaveTestAdapter, PaymentProviderError, type AdapterHttpOptions } from "../lib/fee-providers";
 import { developmentFlutterwaveCredential } from "../lib/flutterwave-development-config";
 import { requireSplitDevelopment, ngnMinor } from "../lib/flutterwave-split-policy";
+import { businessEmailSchema, existingDiagnosticTestReference } from "../lib/flutterwave-split-review";
 
 export type BankDetails = { bankCode: string; accountNumber: string; accountName: string; contactPhone: string; entityName: string; businessEmail?: string };
 export type SplitReadEvidence = {
@@ -53,23 +54,29 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
     return { accountName: d.account_name.trim() };
   }
   async createRecipient(bank: BankDetails, kind: string) {
+    const businessEmail = businessEmailSchema.parse(bank.businessEmail);
     // Default main-account commission is overridden by every bound checkout.
     const r = await this.api("subaccounts", {
       account_bank: bank.bankCode, account_number: bank.accountNumber, country: "NG",
       business_name: bank.entityName, business_mobile: bank.contactPhone,
-      ...(bank.businessEmail ? { business_email: bank.businessEmail } : {}),
+      business_email: businessEmail,
       split_type: "flat", split_value: kind === "SCHOOL" ? 3000 : 4900,
     });
     const d = r.data as Record<string, unknown>;
     if (!Number.isSafeInteger(d.id) || Number(d.id) < 1) throw new PaymentProviderError("Subaccount creation response is incomplete");
     return this.verifyRecipient(Number(d.id), bank);
   }
-  async verifyRecipient(id: number, bank: BankDetails) {
+  async verifyRecipient(id: number, bank: BankDetails, requireEntityMatch = false) {
+    if (!Number.isSafeInteger(id) || id < 1) throw new PaymentProviderError("Invalid TEST recipient identity");
     const r = await this.api(`subaccounts/${id}`);
     const d = r.data as Record<string, unknown>;
     if (Number(d.id) !== id || d.account_number !== bank.accountNumber || String(d.account_bank) !== bank.bankCode
         || typeof d.subaccount_id !== "string" || !/^RS_[A-Za-z0-9]{12,80}$/.test(d.subaccount_id)) {
       throw new PaymentProviderError("Subaccount read-back did not match the owned bank account");
+    }
+    if (requireEntityMatch && ((d.business_name ?? d.full_name) !== bank.entityName
+        || (typeof d.business_email === "string" && d.business_email.toLowerCase() !== bank.businessEmail?.toLowerCase()))) {
+      throw new PaymentProviderError("Existing TEST recipient entity/contact read-back requires ownership review");
     }
     return { providerId: id, subaccountId: d.subaccount_id, bankName: typeof d.bank_name === "string" ? d.bank_name : bank.bankCode };
   }
@@ -83,6 +90,30 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
       && String(d.account_bank) === bank.bankCode && (d.business_name ?? d.full_name) === bank.entityName);
     if (candidates.length !== 1) throw new PaymentProviderError("Review the Flutterwave TEST dashboard: no unique owned subaccount was found");
     return this.verifyRecipient(Number(candidates[0].id), bank);
+  }
+  /** Owner-reviewed investigation only. Never creates or renames a recipient. */
+  async verifyExistingTestReference(reference: string, bank: BankDetails) {
+    requireSplitDevelopment();
+    if (reference !== existingDiagnosticTestReference) throw new PaymentProviderError("Unapproved TEST reference");
+    businessEmailSchema.parse(bank.businessEmail);
+    const r = await this.api("subaccounts");
+    if (!Array.isArray(r.data) || (r.meta as any)?.page_info?.total_pages > 1) {
+      throw new PaymentProviderError("Complete TEST recipient read-back is required");
+    }
+    const matches = r.data.filter((d: any) => d.subaccount_id === reference);
+    if (matches.length !== 1) throw new PaymentProviderError("No unique existing TEST recipient was established");
+    const d = matches[0];
+    if ((d.business_name ?? d.full_name) !== bank.entityName) {
+      throw new PaymentProviderError("Diagnostic label does not establish this entity's ownership");
+    }
+    const verified = await this.verifyRecipient(Number(d.id), bank, true);
+    if (verified.subaccountId !== reference) throw new PaymentProviderError("Existing TEST reference changed");
+    return verified;
+  }
+  async transactionEvidence(transactionId: string) {
+    requireSplitDevelopment();
+    if (!/^[1-9][0-9]{0,15}$/.test(transactionId)) throw new PaymentProviderError("Invalid transaction ID");
+    return (await this.api(`transactions/${transactionId}/verify`)).data as Record<string, unknown>;
   }
   async transactionCosts(transactionId: string, reference: string) {
     const r = await this.api(`transactions/${encodeURIComponent(transactionId)}/verify`);

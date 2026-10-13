@@ -316,6 +316,7 @@ import type {
   FlutterwaveSplitDashboard,
   FlutterwaveSplitPayment,
   FlutterwaveSplitRefundInput,
+  FlutterwaveTransactionSplitEvidence,
   ForbiddenResponse,
   GenerateCurrentTermTransportInvoicesParams,
   GenerateSchoolCalendarBody,
@@ -865,6 +866,77 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetFlutterwaveTransactionSplitEvidenceUrl = (paymentId: number,) => {
+
+
+
+
+  return `/api/flutterwave/split-payments/${paymentId}/transaction-evidence`
+}
+
+export const getFlutterwaveTransactionSplitEvidence = async (paymentId: number, options?: Parameters<typeof customFetch>[1]): Promise<FlutterwaveTransactionSplitEvidence> => {
+
+  return customFetch<FlutterwaveTransactionSplitEvidence>(getGetFlutterwaveTransactionSplitEvidenceUrl(paymentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFlutterwaveTransactionSplitEvidenceQueryKey = (paymentId: number,) => {
+    return [
+    `/api/flutterwave/split-payments/${paymentId}/transaction-evidence`
+    ] as const;
+    }
+
+
+export const getGetFlutterwaveTransactionSplitEvidenceQueryOptions = <TData = Awaited<ReturnType<typeof getFlutterwaveTransactionSplitEvidence>>, TError = ErrorType<unknown>>(paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFlutterwaveTransactionSplitEvidence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFlutterwaveTransactionSplitEvidenceQueryKey(paymentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFlutterwaveTransactionSplitEvidence>>> = ({ signal }) => getFlutterwaveTransactionSplitEvidence(paymentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: paymentId !== null && paymentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFlutterwaveTransactionSplitEvidence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFlutterwaveTransactionSplitEvidenceQueryResult = NonNullable<Awaited<ReturnType<typeof getFlutterwaveTransactionSplitEvidence>>>
+export type GetFlutterwaveTransactionSplitEvidenceQueryError = ErrorType<unknown>
+
+
+
+export function useGetFlutterwaveTransactionSplitEvidence<TData = Awaited<ReturnType<typeof getFlutterwaveTransactionSplitEvidence>>, TError = ErrorType<unknown>>(
+ paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFlutterwaveTransactionSplitEvidence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFlutterwaveTransactionSplitEvidenceQueryOptions(paymentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetFlutterwaveSplitDashboardUrl = (params?: GetFlutterwaveSplitDashboardParams,) => {
   const normalizedParams = new URLSearchParams();

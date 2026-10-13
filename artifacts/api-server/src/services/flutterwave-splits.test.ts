@@ -11,7 +11,7 @@ import { decryptSplitBank, encryptSplitBank, splitBankFingerprint } from "./flut
 
 const school = "RS_UNITSchool000001", partner = "RS_UNITPartner00001";
 const key = "FLWSECK_TEST-unit-test-not-real-credential";
-const bank = {bankCode:"044",accountNumber:"0123456789",accountName:"UNIT BANK OWNER",contactPhone:"08000000000",entityName:"UNIT ONLY SCHOOL"};
+const bank = {bankCode:"044",accountNumber:"0123456789",accountName:"UNIT BANK OWNER",contactPhone:"08000000000",entityName:"UNIT ONLY SCHOOL",businessEmail:"finance@school.edu.ng"};
 const charge = {reference:"fee_unit_split_checkout",amountMinor:500000,currency:"NGN",
   email:"unit@example.test",returnUrl:"https://example.test/nfc/pay"};
 const json = (data: unknown) => new Response(JSON.stringify({status:"success",data}),{status:200});
@@ -134,13 +134,13 @@ describe("Mocked provider contracts — not genuine sandbox evidence",() => {
       id:88,subaccount_id:school,account_number:bank.accountNumber,account_bank:bank.bankCode,bank_name:"UNIT BANK",
     }));
     expect(await new FlutterwaveSplitProvider(key,{fetch}).createRecipient({
-      ...bank,businessEmail:"unit-recipient@example.test",
+      ...bank,businessEmail:"unit-recipient@school.edu.ng",
     },"SCHOOL")).toMatchObject({providerId:88,subaccountId:school});
     expect(fetch.mock.calls).toHaveLength(2);
     expect(fetch.mock.calls[0][1].method).toBe("POST");
     expect(fetch.mock.calls[1][1].method).toBe("GET");
     expect(JSON.parse(fetch.mock.calls[0][1].body).split_value).toBe(3000);
-    expect(JSON.parse(fetch.mock.calls[0][1].body).business_email).toBe("unit-recipient@example.test");
+    expect(JSON.parse(fetch.mock.calls[0][1].body).business_email).toBe("unit-recipient@school.edu.ng");
   });
   it("rejects a provider recipient with mismatched bank details",async() => {
     const fetch = vi.fn(async() => json({id:88,subaccount_id:school,account_number:"9999999999",account_bank:"044"}));

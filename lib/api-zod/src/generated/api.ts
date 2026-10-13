@@ -8,6 +8,31 @@
 import * as zod from 'zod';
 
 
+export const GetFlutterwaveTransactionSplitEvidenceParams = zod.object({
+  "paymentId": zod.coerce.number().int()
+})
+
+export const GetFlutterwaveTransactionSplitEvidenceResponse = zod.object({
+  "status": zod.enum(['UNCONFIRMED', 'MISMATCH', 'CONFIRMED']),
+  "reason": zod.string(),
+  "bankSettlementVerified": zod.literal(false),
+  "paymentId": zod.number().int(),
+  "transactionId": zod.string(),
+  "reference": zod.string(),
+  "checkedAt": zod.string(),
+  "source": zod.string(),
+  "platformGrossMinor": zod.number().int(),
+  "platformNetMinor": zod.number().int().nullable(),
+  "appFeeMinor": zod.number().int().nullable(),
+  "additionalFeeMinor": zod.number().int().nullable(),
+  "recipients": zod.array(zod.object({
+  "subaccountId": zod.string(),
+  "amountMinor": zod.number().int(),
+  "observedAmountMinor": zod.number().int().nullable()
+}))
+})
+
+
 
 
 
@@ -36,6 +61,7 @@ export const GetFlutterwaveSplitDashboardResponse = zod.object({
   "maskedAccount": zod.string(),
   "accountName": zod.string(),
   "bankName": zod.string(),
+  "maskedBusinessEmail": zod.string().nullish(),
   "mode": zod.enum(['TEST']),
   "providerSubaccountId": zod.string().nullish(),
   "reviewNote": zod.string().nullish(),
@@ -44,7 +70,7 @@ export const GetFlutterwaveSplitDashboardResponse = zod.object({
   "schools": zod.array(zod.object({
   "schoolId": zod.number().int(),
   "enabled": zod.boolean(),
-  "automaticSettlementConfirmed": zod.boolean()
+  "testSplitVerificationAuthorized": zod.boolean()
 })),
   "payments": zod.array(zod.object({
   "paymentId": zod.number().int(),
@@ -92,6 +118,8 @@ export const submitFlutterwaveSplitRecipientBodyAccountNumberRegExp = new RegExp
 export const submitFlutterwaveSplitRecipientBodyContactPhoneMin = 10;
 export const submitFlutterwaveSplitRecipientBodyContactPhoneMax = 16;
 
+export const submitFlutterwaveSplitRecipientBodyBusinessEmailMax = 254;
+
 
 
 export const SubmitFlutterwaveSplitRecipientBody = zod.object({
@@ -100,6 +128,7 @@ export const SubmitFlutterwaveSplitRecipientBody = zod.object({
   "bankCode": zod.string().regex(submitFlutterwaveSplitRecipientBodyBankCodeRegExp),
   "accountNumber": zod.string().regex(submitFlutterwaveSplitRecipientBodyAccountNumberRegExp),
   "contactPhone": zod.string().min(submitFlutterwaveSplitRecipientBodyContactPhoneMin).max(submitFlutterwaveSplitRecipientBodyContactPhoneMax),
+  "businessEmail": zod.string().email().max(submitFlutterwaveSplitRecipientBodyBusinessEmailMax),
   "ownershipAttestation": zod.boolean()
 })
 
@@ -112,6 +141,7 @@ export const SubmitFlutterwaveSplitRecipientResponse = zod.object({
   "maskedAccount": zod.string(),
   "accountName": zod.string(),
   "bankName": zod.string(),
+  "maskedBusinessEmail": zod.string().nullish(),
   "mode": zod.enum(['TEST']),
   "providerSubaccountId": zod.string().nullish(),
   "reviewNote": zod.string().nullish(),
@@ -129,10 +159,11 @@ export const reviewFlutterwaveSplitRecipientBodyNoteMax = 1000;
 
 
 export const ReviewFlutterwaveSplitRecipientBody = zod.object({
-  "action": zod.enum(['APPROVE_AND_CREATE_TEST', 'RECOVER', 'SUSPEND', 'RETIRE']),
+  "action": zod.enum(['APPROVE_AND_CREATE_TEST', 'VERIFY_EXISTING_TEST', 'RECOVER', 'SUSPEND', 'RETIRE']),
   "note": zod.string().min(reviewFlutterwaveSplitRecipientBodyNoteMin).max(reviewFlutterwaveSplitRecipientBodyNoteMax),
   "ownershipConfirmed": zod.boolean().optional(),
-  "distinctFromPlatformAccountConfirmed": zod.boolean().optional()
+  "distinctFromPlatformAccountConfirmed": zod.boolean().optional(),
+  "existingTestReference": zod.enum(['RS_5F0DB5C736A2550E783A15B9EB9FBF09']).optional()
 })
 
 export const ReviewFlutterwaveSplitRecipientResponse = zod.object({
@@ -144,6 +175,7 @@ export const ReviewFlutterwaveSplitRecipientResponse = zod.object({
   "maskedAccount": zod.string(),
   "accountName": zod.string(),
   "bankName": zod.string(),
+  "maskedBusinessEmail": zod.string().nullish(),
   "mode": zod.enum(['TEST']),
   "providerSubaccountId": zod.string().nullish(),
   "reviewNote": zod.string().nullish(),
@@ -157,13 +189,13 @@ export const ConfigureFlutterwaveSchoolSplitsParams = zod.object({
 
 export const ConfigureFlutterwaveSchoolSplitsBody = zod.object({
   "enabled": zod.boolean(),
-  "automaticSettlementConfirmed": zod.boolean()
+  "testSplitVerificationAuthorized": zod.boolean()
 })
 
 export const ConfigureFlutterwaveSchoolSplitsResponse = zod.object({
   "schoolId": zod.number().int(),
   "enabled": zod.boolean(),
-  "automaticSettlementConfirmed": zod.boolean()
+  "testSplitVerificationAuthorized": zod.boolean()
 })
 
 

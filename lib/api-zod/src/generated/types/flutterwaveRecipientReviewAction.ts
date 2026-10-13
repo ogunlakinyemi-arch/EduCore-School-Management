@@ -11,6 +11,7 @@ export type FlutterwaveRecipientReviewAction = typeof FlutterwaveRecipientReview
 
 export const FlutterwaveRecipientReviewAction = {
   APPROVE_AND_CREATE_TEST: 'APPROVE_AND_CREATE_TEST',
+  VERIFY_EXISTING_TEST: 'VERIFY_EXISTING_TEST',
   RECOVER: 'RECOVER',
   SUSPEND: 'SUSPEND',
   RETIRE: 'RETIRE',

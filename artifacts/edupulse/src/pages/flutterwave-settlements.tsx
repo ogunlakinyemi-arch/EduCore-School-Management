@@ -5,6 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Landmark, FlaskConical } from 'lucide-react';
 import {
   useGetFlutterwaveSplitDashboard, getGetFlutterwaveSplitDashboardQueryKey,
+  useGetFlutterwaveTransactionSplitEvidence,
+  getGetFlutterwaveTransactionSplitEvidenceQueryKey,
   useSubmitFlutterwaveSplitRecipient,
   useReviewFlutterwaveSplitRecipient,
   useConfigureFlutterwaveSchoolSplits,
@@ -43,15 +45,16 @@ function BankForm({ scopes, onDone }: { scopes: FlutterwaveSplitScope[]; onDone:
   const [bankCode, setBankCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [businessEmail, setBusinessEmail] = useState('');
   const [attest, setAttest] = useState(false);
   const scope = scopes[idx];
-  const valid = !!scope && /^\d{3,6}$/.test(bankCode.trim()) && /^\d{10}$/.test(accountNumber) && /^\+?\d{10,15}$/.test(contactPhone.trim()) && attest;
+  const valid = !!scope && /^\d{3,6}$/.test(bankCode.trim()) && /^\d{10}$/.test(accountNumber) && /^\+?\d{10,15}$/.test(contactPhone.trim()) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(businessEmail.trim()) && attest;
   const go = (e: FormEvent) => {
     e.preventDefault();
     if (!valid || !scope) return;
-    submit.mutate({ data: { kind: scope.kind, entityId: scope.id, bankCode: bankCode.trim(), accountNumber, contactPhone: contactPhone.trim(), ownershipAttestation: attest } }, {
+    submit.mutate({ data: { kind: scope.kind, entityId: scope.id, bankCode: bankCode.trim(), accountNumber, contactPhone: contactPhone.trim(), businessEmail: businessEmail.trim(), ownershipAttestation: attest } }, {
       onSuccess: () => {
-        setAccountNumber(''); setAttest(false);
+        setAccountNumber(''); setBusinessEmail(''); setAttest(false);
         onDone({ tone: 'ok', text: 'Submitted for Platform Owner review. No TEST recipient exists yet and nothing has been paid.' });
         void qc.invalidateQueries({ predicate: q => /flutterwave|subscription/i.test(String(q.queryKey[0])) });
       },
@@ -71,6 +74,7 @@ function BankForm({ scopes, onDone }: { scopes: FlutterwaveSplitScope[]; onDone:
         <label className="block text-xs font-bold">Bank code<input className={`${entry} mt-1`} inputMode="numeric" value={bankCode} onChange={e => setBankCode(e.target.value)} data-testid="input-bank-code" /></label>
         <label className="block text-xs font-bold">Account number (10 digits)<input className={`${entry} mt-1`} inputMode="numeric" maxLength={10} autoComplete="off" value={accountNumber} onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ''))} data-testid="input-account-number" /></label>
         <label className="block text-xs font-bold">Contact phone<input className={`${entry} mt-1`} inputMode="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} data-testid="input-contact-phone" /></label>
+        <label className="block text-xs font-bold">Business email<input className={`${entry} mt-1`} type="email" required maxLength={254} value={businessEmail} onChange={e => setBusinessEmail(e.target.value)} data-testid="input-business-email" /></label>
       </div>
       <label className="flex items-start gap-2 text-xs"><input className="mt-0.5 h-4 w-4 shrink-0 p-0" type="checkbox" checked={attest} onChange={e => setAttest(e.target.checked)} data-testid="check-ownership-attestation" />I attest this settlement account belongs to the entity named above and is not a personal or platform account.</label>
       <Button type="submit" disabled={!valid || submit.isPending} testId="button-submit-recipient">{submit.isPending ? 'Submitting...' : 'Submit for review'}</Button>
@@ -85,10 +89,11 @@ function RecipientRow({ r, isOwner, onMsg }: { r: FlutterwaveRecipient; isOwner:
   const [noteText, setNoteText] = useState('');
   const [own, setOwn] = useState(false);
   const [distinct, setDistinct] = useState(false);
-  const run = (action: 'APPROVE_AND_CREATE_TEST' | 'RECOVER' | 'SUSPEND' | 'RETIRE') => {
+  const run = (action: 'APPROVE_AND_CREATE_TEST' | 'VERIFY_EXISTING_TEST' | 'RECOVER' | 'SUSPEND' | 'RETIRE') => {
     review.mutate({ recipientId: r.id, data: {
       action, note: noteText.trim(),
-      ...(action === 'APPROVE_AND_CREATE_TEST' ? { ownershipConfirmed: own, distinctFromPlatformAccountConfirmed: distinct } : {}),
+      ...(['APPROVE_AND_CREATE_TEST','VERIFY_EXISTING_TEST'].includes(action) ? { ownershipConfirmed: own, distinctFromPlatformAccountConfirmed: distinct } : {}),
+      ...(action === 'VERIFY_EXISTING_TEST' ? { existingTestReference: 'RS_5F0DB5C736A2550E783A15B9EB9FBF09' as const } : {}),
     } }, {
       onSuccess: () => { onMsg({ tone: 'ok', text: `${label(action)} recorded. Check status below; ready means a TEST provider read-back only.` }); setOpen(false); setNoteText(''); void qc.invalidateQueries({ predicate: q => /flutterwave|subscription/i.test(String(q.queryKey[0])) }); },
       onError: e => onMsg({ tone: 'error', text: `${errText(e)} Do not retry creation blindly; use Recover to read the provider state.` }),
@@ -100,7 +105,8 @@ function RecipientRow({ r, isOwner, onMsg }: { r: FlutterwaveRecipient; isOwner:
     <div className="border-b border-[hsl(var(--border)/.6)] px-5 py-4 last:border-0" data-testid={`recipient-${r.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div><div className="text-sm font-bold">{r.entityName} <span className="text-xs font-normal text-[hsl(var(--muted-foreground))]">{r.kind.toLowerCase()}</span></div>
-          <div className="text-xs text-[hsl(var(--muted-foreground))]">{r.bankName} · {r.maskedAccount} · {r.accountName}</div></div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))]">{r.bankName} · {r.maskedAccount} · {r.accountName}</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))]">Business contact: {r.maskedBusinessEmail ?? 'Not supplied — submit a reviewed contact before creation'}</div></div>
         <StatusPill value={r.status} />
       </div>
       <p className={`mt-2 ${note}`}>
@@ -121,6 +127,7 @@ function RecipientRow({ r, isOwner, onMsg }: { r: FlutterwaveRecipient; isOwner:
               <label className="flex items-start gap-2 text-xs"><input className="mt-0.5 h-4 w-4 shrink-0 p-0" type="checkbox" checked={own} onChange={e => setOwn(e.target.checked)} />I confirm this is the entity's own settlement account.</label>
               <label className="flex items-start gap-2 text-xs"><input className="mt-0.5 h-4 w-4 shrink-0 p-0" type="checkbox" checked={distinct} onChange={e => setDistinct(e.target.checked)} />I confirm it is distinct from the platform account.</label>
               <div className="flex flex-wrap gap-2">
+                <Button variant="outline" disabled={review.isPending || needsNote || !own || !distinct || r.status !== 'BANK_RESOLVED'} onClick={() => run('VERIFY_EXISTING_TEST')} testId={`button-existing-test-${r.id}`}>Investigate existing TEST recipient (provider GETs)</Button>
                 <Button disabled={review.isPending || needsNote || !own || !distinct} onClick={() => run('APPROVE_AND_CREATE_TEST')} testId={`button-approve-${r.id}`}>Approve and create TEST recipient</Button>
                 <Button variant="outline" disabled={review.isPending || needsNote} onClick={() => run('RECOVER')} testId={`button-recover-${r.id}`}>Recover (read-only)</Button>
                 <Button variant="outline" disabled={review.isPending || needsNote} onClick={() => run('SUSPEND')} testId={`button-suspend-${r.id}`}>Suspend</Button>
@@ -138,14 +145,14 @@ function SchoolToggle({ schoolId, name, enabled, confirmed, onMsg }: { schoolId:
   const cfg = useConfigureFlutterwaveSchoolSplits();
   const qc = useQueryClient();
   const [attest, setAttest] = useState(confirmed);
-  const save = (next: boolean) => cfg.mutate({ schoolId, data: { enabled: next, automaticSettlementConfirmed: next ? attest : false } }, {
+  const save = (next: boolean) => cfg.mutate({ schoolId, data: { enabled: next, testSplitVerificationAuthorized: next ? attest : false } }, {
     onSuccess: () => { onMsg({ tone: 'ok', text: `Future splits ${next ? 'enabled' : 'disabled'} for ${name}. Issued checkouts and paid receipts are unchanged.` }); void qc.invalidateQueries({ predicate: q => /flutterwave|subscription/i.test(String(q.queryKey[0])) }); },
     onError: e => onMsg({ tone: 'error', text: errText(e) }),
   });
   return (
     <div className="border-b border-[hsl(var(--border)/.6)] px-5 py-4 last:border-0" data-testid={`school-split-${schoolId}`}>
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold">{name}</span><StatusPill value={enabled ? 'enabled' : 'disabled'} /></div>
-      <label className="mt-2 flex items-start gap-2 text-xs"><input className="mt-0.5 h-4 w-4 shrink-0 p-0" type="checkbox" checked={attest} onChange={e => setAttest(e.target.checked)} data-testid={`check-auto-settlement-${schoolId}`} />I confirmed automatic settlement and merchant-borne fees in the Flutterwave TEST dashboard. The payer must be charged exactly ₦5,000.</label>
+      <label className="mt-2 flex items-start gap-2 text-xs"><input className="mt-0.5 h-4 w-4 shrink-0 p-0" type="checkbox" checked={attest} onChange={e => setAttest(e.target.checked)} data-testid={`check-test-verification-${schoolId}`} />I authorize Development TEST split verification with reviewed recipients and merchant-borne fees. The payer must be charged exactly ₦5,000. This does not confirm automatic settlement or any bank deposit.</label>
       <div className="mt-2 flex gap-2">
         <Button disabled={cfg.isPending || !attest || enabled} onClick={() => save(true)} testId={`button-enable-splits-${schoolId}`}>Enable for future checkouts</Button>
         <Button variant="outline" disabled={cfg.isPending || !enabled} onClick={() => save(false)} testId={`button-disable-splits-${schoolId}`}>Disable</Button>
@@ -162,6 +169,11 @@ function refundKey(paymentId: number) {
 }
 
 function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment; d: FlutterwaveSplitDashboard; canReconcile: boolean; onMsg: (m: { tone: 'ok' | 'error'; text: string }) => void }) {
+  const { userId } = useAuth();
+  const evidence = useGetFlutterwaveTransactionSplitEvidence(p.paymentId, { query: {
+    queryKey: [...getGetFlutterwaveTransactionSplitEvidenceQueryKey(p.paymentId),userId],
+    enabled: false, retry: false,
+  } });
   const qc = useQueryClient();
   const reconcile = useReconcileFlutterwaveSplitPayment();
   const refund = useRequestFlutterwaveSplitRefund();
@@ -203,6 +215,17 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
         <div><span className={note}>Net platform allocation after costs/reversals</span><div>{naira(p.platformNetMinor)}</div></div>
       </div>
       <p className={`mt-1 ${note}`}>Net allocation is not a verified merchant cash balance; recipient refund recovery may still be outstanding.</p>
+      <div className="mt-3 rounded-lg border border-[hsl(var(--border))] p-3 text-xs" data-testid={`transaction-evidence-${p.paymentId}`}>
+        <strong>Provider transaction split verification: {evidence.isError || evidence.isFetching ? 'UNCONFIRMED' : evidence.data?.status ?? 'UNCONFIRMED — not checked'}</strong>
+        <p>{evidence.isFetching ? 'Reading provider evidence; a previous result is not current confirmation.' : evidence.isError ? 'Provider read-back unavailable; any previous reading is not current confirmation.' : evidence.data?.reason ?? 'Server-computed shares and a paid collection are not proof of provider split allocation.'}</p>
+        {evidence.data && !evidence.isError && <>
+          <p>Transaction {evidence.data.transactionId} · checked {evidence.data.checkedAt}</p>
+          <p>Provider fees: {naira(evidence.data.appFeeMinor)} + {naira(evidence.data.additionalFeeMinor)}. Expected platform gross: {naira(evidence.data.platformGrossMinor)}; computed net after reported costs: {naira(evidence.data.platformNetMinor)}.</p>
+          {evidence.data.recipients.map(r => <p key={r.subaccountId}>{r.subaccountId}: expected {naira(r.amountMinor)}, provider-observed {r.observedAmountMinor == null ? 'unavailable' : naira(r.observedAmountMinor)}</p>)}
+        </>}
+        <p>No real bank settlement is verified. This button performs provider reads only; it does not initiate payments or update payment history.</p>
+        {canReconcile && <Button variant="outline" disabled={evidence.isFetching || p.collectionStatus !== 'PAID'} onClick={() => void evidence.refetch()} testId={`button-transaction-evidence-${p.paymentId}`}>Read TEST transaction evidence (provider GETs)</Button>}
+      </div>
       {p.reconciliationNote && <p className={`mt-2 ${note}`}>{p.reconciliationNote}</p>}
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-left text-xs"><thead className="text-[hsl(var(--muted-foreground))]"><tr><th className="py-1 pr-3">Recipient</th><th className="pr-3">Expected</th><th className="pr-3">Observed</th><th className="pr-3">Status</th><th>Exception</th></tr></thead>
@@ -274,7 +297,7 @@ export function FlutterwaveSettlementsPage() {
       {d.isOwner && d.schools.length > 0 && (<>
         <h2 className="display-font mb-3 text-lg font-bold">School split switches</h2>
         <p className={`${note} mb-3`}>Controls appear for the selected school or schools that submitted their own recipient details. Split mode stays off until ownership review and TEST provider read-back succeed.</p>
-        <div className="panel mb-6 overflow-hidden">{d.schools.filter(s => s.schoolId === schoolId || d.recipients.some(r => r.kind === 'SCHOOL' && r.entityId === s.schoolId)).map(s => <SchoolToggle key={s.schoolId} schoolId={s.schoolId} name={d.scopes.find(x => x.kind === 'SCHOOL' && x.id === s.schoolId)?.name ?? d.recipients.find(r => r.kind === 'SCHOOL' && r.entityId === s.schoolId)?.entityName ?? `School #${s.schoolId}`} enabled={s.enabled} confirmed={s.automaticSettlementConfirmed} onMsg={setMsg} />)}</div>
+        <div className="panel mb-6 overflow-hidden">{d.schools.filter(s => s.schoolId === schoolId || d.recipients.some(r => r.kind === 'SCHOOL' && r.entityId === s.schoolId)).map(s => <SchoolToggle key={s.schoolId} schoolId={s.schoolId} name={d.scopes.find(x => x.kind === 'SCHOOL' && x.id === s.schoolId)?.name ?? d.recipients.find(r => r.kind === 'SCHOOL' && r.entityId === s.schoolId)?.entityName ?? `School #${s.schoolId}`} enabled={s.enabled} confirmed={s.testSplitVerificationAuthorized} onMsg={setMsg} />)}</div>
       </>)}
       <h2 className="display-font mb-3 text-lg font-bold">Split payments</h2>
       <div className="space-y-4">

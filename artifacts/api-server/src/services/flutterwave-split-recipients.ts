@@ -3,21 +3,24 @@ import { AuthError } from "../middlewares/auth";
 import { requireSplitDevelopment } from "../lib/flutterwave-split-policy";
 import { decryptSplitBank, encryptSplitBank, splitBankFingerprint } from "./flutterwave-split-crypto";
 import { splitProvider, type BankDetails } from "./flutterwave-split-provider";
+import { businessEmailSchema, maskedBusinessEmail, existingDiagnosticTestReference } from "../lib/flutterwave-split-review";
 
 export function recipientView(row: any) {
   return {
     id: row.id, kind: row.kind, entityId: row.school_id ?? row.partner_profile_id,
     entityName: row.entity_name, status: row.status, maskedAccount: `••••${row.account_last4}`,
     accountName: decryptSplitBank(row.bank_ciphertext).accountName, bankName: row.bank_name,
+    maskedBusinessEmail: maskedBusinessEmail(decryptSplitBank(row.bank_ciphertext).businessEmail),
     mode: "TEST" as const, providerSubaccountId: row.provider_subaccount_id ?? null,
     reviewNote: row.review_note ?? null, lastError: row.last_error ?? null,
   };
 }
 export async function submitSplitRecipient(
   actorId: number, scope: { kind: string; id: number; name: string },
-  input: { bankCode: string; accountNumber: string; contactPhone: string },
+  input: { bankCode: string; accountNumber: string; contactPhone: string; businessEmail: string },
 ) {
   requireSplitDevelopment();
+  input = { ...input, businessEmail: businessEmailSchema.parse(input.businessEmail) };
   const resolved = await splitProvider().resolveBank(input.bankCode, input.accountNumber);
   const bank: BankDetails = { ...input, accountName: resolved.accountName, entityName: scope.name };
   try {
@@ -37,7 +40,7 @@ export async function submitSplitRecipient(
 }
 export async function reviewSplitRecipient(
   id: number, actorId: number,
-  input: { action: string; note: string; ownershipConfirmed?: boolean; distinctFromPlatformAccountConfirmed?: boolean },
+  input: { action: string; note: string; ownershipConfirmed?: boolean; distinctFromPlatformAccountConfirmed?: boolean; existingTestReference?: string },
 ) {
   requireSplitDevelopment();
   const db = await pool.connect();
@@ -64,8 +67,12 @@ export async function reviewSplitRecipient(
       await db.query("COMMIT");
       return recipientView(row);
     }
-    if (input.action === "APPROVE_AND_CREATE_TEST") {
+    if (input.action === "APPROVE_AND_CREATE_TEST" || input.action === "VERIFY_EXISTING_TEST") {
       if (row.status !== "BANK_RESOLVED") throw new AuthError(409, "Creation is permitted once, from a resolved and reviewed bank account");
+      businessEmailSchema.parse(decryptSplitBank(row.bank_ciphertext).businessEmail);
+      if (input.action === "VERIFY_EXISTING_TEST" && input.existingTestReference !== existingDiagnosticTestReference) {
+        throw new AuthError(400, "Only the explicitly reviewed diagnostic TEST reference may be investigated");
+      }
       if (!input.ownershipConfirmed || !input.distinctFromPlatformAccountConfirmed) {
         throw new AuthError(400, "Owner must confirm recipient ownership and that this is not Yetenia's bank account");
       }
@@ -88,6 +95,7 @@ export async function reviewSplitRecipient(
   try {
     const provider = splitProvider(), bank = decryptSplitBank(row.bank_ciphertext);
     const result = input.action === "APPROVE_AND_CREATE_TEST" ? await provider.createRecipient(bank, row.kind)
+      : input.action === "VERIFY_EXISTING_TEST" ? await provider.verifyExistingTestReference(input.existingTestReference!, bank)
       : row.provider_id ? await provider.verifyRecipient(row.provider_id, bank) : await provider.recoverRecipient(bank);
     const saved = (await pool.query(
       `UPDATE flutterwave_split_recipients SET status=CASE WHEN status='SUSPENDED' THEN status ELSE 'TEST_READY' END,provider_id=$1,provider_subaccount_id=$2,
@@ -100,7 +108,7 @@ export async function reviewSplitRecipient(
     const failed = (await pool.query(
       `UPDATE flutterwave_split_recipients SET
        status=CASE WHEN status='CREATING' THEN 'CREATION_UNKNOWN' ELSE status END,
-       last_error='Provider creation/read-back not confirmed. Inspect TEST dashboard permissions and use read-only recovery; do not repeat creation.',
+       last_error='Provider linkage/read-back not confirmed. Inspect TEST dashboard ownership and permissions; do not repeat creation or assume the diagnostic recipient belongs to this entity.',
        updated_at=NOW() WHERE id=$1 RETURNING *`, [id],
     )).rows[0];
     return recipientView(failed);

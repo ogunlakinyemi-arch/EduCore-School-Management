@@ -44,7 +44,7 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
     )).rows[0];
     const existing = await frozenSplit(db, paymentId);
     if (!setting?.enabled && !existing) { await db.query("COMMIT"); return undefined; }
-    if (!setting?.enabled || !setting.automatic_settlement_confirmed) throw new AuthError(409, "School split configuration is not ready");
+    if (!setting?.enabled || !setting.automatic_settlement_confirmed) throw new AuthError(409, "School TEST split verification is not authorized");
     const school = (await db.query(
       "SELECT * FROM flutterwave_split_recipients WHERE school_id=$1 AND status='TEST_READY' FOR SHARE", [p.school_id],
     )).rows[0];

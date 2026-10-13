@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FlutterwaveRecipientReviewAction } from './flutterwaveRecipientReviewAction';
+import type { FlutterwaveRecipientReviewExistingTestReference } from './flutterwaveRecipientReviewExistingTestReference';
 
 export interface FlutterwaveRecipientReview {
   action: FlutterwaveRecipientReviewAction;
@@ -16,4 +17,5 @@ export interface FlutterwaveRecipientReview {
   note: string;
   ownershipConfirmed?: boolean;
   distinctFromPlatformAccountConfirmed?: boolean;
+  existingTestReference?: FlutterwaveRecipientReviewExistingTestReference;
 }

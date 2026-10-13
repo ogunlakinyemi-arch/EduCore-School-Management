@@ -9,5 +9,5 @@
 export interface FlutterwaveSchoolSplitConfiguration {
   schoolId: number;
   enabled: boolean;
-  automaticSettlementConfirmed: boolean;
+  testSplitVerificationAuthorized: boolean;
 }

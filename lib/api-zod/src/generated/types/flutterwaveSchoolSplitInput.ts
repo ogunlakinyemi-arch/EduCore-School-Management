@@ -8,5 +8,5 @@
 
 export interface FlutterwaveSchoolSplitInput {
   enabled: boolean;
-  automaticSettlementConfirmed: boolean;
+  testSplitVerificationAuthorized: boolean;
 }

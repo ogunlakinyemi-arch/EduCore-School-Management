@@ -1,6 +1,18 @@
 openapi: 3.1.0
 info: { title: FlutterwaveSplits, version: 1.0.0 }
 paths:
+  /flutterwave/split-payments/{paymentId}/transaction-evidence:
+    get:
+      operationId: getFlutterwaveTransactionSplitEvidence
+      tags: [flutterwave-splits]
+      parameters:
+        - { name: paymentId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Explicit TEST provider read-back; no financial writes or bank settlement claim
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlutterwaveTransactionSplitEvidence" }
   /flutterwave/split-dashboard:
     get:
       operationId: getFlutterwaveSplitDashboard
@@ -105,40 +117,68 @@ paths:
               schema: { $ref: "#/components/schemas/FlutterwaveSplitAdjustment" }
 components:
   schemas:
+    FlutterwaveTransactionSplitEvidence:
+      type: object
+      required: [status, reason, bankSettlementVerified, paymentId, transactionId, reference, checkedAt, source, platformGrossMinor, platformNetMinor, appFeeMinor, additionalFeeMinor, recipients]
+      properties:
+        status: { type: string, enum: [UNCONFIRMED, MISMATCH, CONFIRMED] }
+        reason: { type: string }
+        bankSettlementVerified: { type: boolean, enum: [false] }
+        paymentId: { type: integer }
+        transactionId: { type: string }
+        reference: { type: string }
+        checkedAt: { type: string }
+        source: { type: string }
+        platformGrossMinor: { type: integer }
+        platformNetMinor: { type: [integer, "null"] }
+        appFeeMinor: { type: [integer, "null"] }
+        additionalFeeMinor: { type: [integer, "null"] }
+        recipients:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveTransactionSplitRecipientEvidence" }
+    FlutterwaveTransactionSplitRecipientEvidence:
+      type: object
+      required: [subaccountId, amountMinor, observedAmountMinor]
+      properties:
+        subaccountId: { type: string }
+        amountMinor: { type: integer }
+        observedAmountMinor: { type: [integer, "null"] }
     FlutterwaveRecipientInput:
       type: object
       additionalProperties: false
-      required: [kind, entityId, bankCode, accountNumber, contactPhone, ownershipAttestation]
+      required: [kind, entityId, bankCode, accountNumber, contactPhone, businessEmail, ownershipAttestation]
       properties:
         kind: { type: string, enum: [SCHOOL, PARTNER] }
         entityId: { type: integer, minimum: 1 }
         bankCode: { type: string, pattern: "^[0-9]{3,6}$" }
         accountNumber: { type: string, pattern: "^[0-9]{10}$" }
         contactPhone: { type: string, minLength: 10, maxLength: 16 }
+        businessEmail: { type: string, format: email, maxLength: 254 }
         ownershipAttestation: { type: boolean }
     FlutterwaveRecipientReview:
       type: object
       additionalProperties: false
       required: [action, note]
       properties:
-        action: { type: string, enum: [APPROVE_AND_CREATE_TEST, RECOVER, SUSPEND, RETIRE] }
+        action: { type: string, enum: [APPROVE_AND_CREATE_TEST, VERIFY_EXISTING_TEST, RECOVER, SUSPEND, RETIRE] }
         note: { type: string, minLength: 10, maxLength: 1000 }
         ownershipConfirmed: { type: boolean }
         distinctFromPlatformAccountConfirmed: { type: boolean }
+        existingTestReference: { type: string, enum: [RS_5F0DB5C736A2550E783A15B9EB9FBF09] }
     FlutterwaveSchoolSplitInput:
       type: object
       additionalProperties: false
-      required: [enabled, automaticSettlementConfirmed]
+      required: [enabled, testSplitVerificationAuthorized]
       properties:
         enabled: { type: boolean }
-        automaticSettlementConfirmed: { type: boolean }
+        testSplitVerificationAuthorized: { type: boolean }
     FlutterwaveSchoolSplitConfiguration:
       type: object
-      required: [schoolId, enabled, automaticSettlementConfirmed]
+      required: [schoolId, enabled, testSplitVerificationAuthorized]
       properties:
         schoolId: { type: integer }
         enabled: { type: boolean }
-        automaticSettlementConfirmed: { type: boolean }
+        testSplitVerificationAuthorized: { type: boolean }
     FlutterwaveRecipient:
       type: object
       required: [id, kind, entityId, entityName, status, maskedAccount, accountName, bankName, mode]
@@ -151,6 +191,7 @@ components:
         maskedAccount: { type: string }
         accountName: { type: string }
         bankName: { type: string }
+        maskedBusinessEmail: { type: ["string", "null"] }
         mode: { type: string, enum: [TEST] }
         providerSubaccountId: { type: ["string", "null"] }
         reviewNote: { type: ["string", "null"] }

@@ -13028,6 +13028,41 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type FlutterwaveTransactionSplitEvidenceStatus = typeof FlutterwaveTransactionSplitEvidenceStatus[keyof typeof FlutterwaveTransactionSplitEvidenceStatus];
+
+
+export const FlutterwaveTransactionSplitEvidenceStatus = {
+  UNCONFIRMED: 'UNCONFIRMED',
+  MISMATCH: 'MISMATCH',
+  CONFIRMED: 'CONFIRMED',
+} as const;
+
+export interface FlutterwaveTransactionSplitRecipientEvidence {
+  subaccountId: string;
+  amountMinor: number;
+  /** @nullable */
+  observedAmountMinor: number | null;
+}
+
+export interface FlutterwaveTransactionSplitEvidence {
+  status: FlutterwaveTransactionSplitEvidenceStatus;
+  reason: string;
+  bankSettlementVerified: false;
+  paymentId: number;
+  transactionId: string;
+  reference: string;
+  checkedAt: string;
+  source: string;
+  platformGrossMinor: number;
+  /** @nullable */
+  platformNetMinor: number | null;
+  /** @nullable */
+  appFeeMinor: number | null;
+  /** @nullable */
+  additionalFeeMinor: number | null;
+  recipients: FlutterwaveTransactionSplitRecipientEvidence[];
+}
+
 export type FlutterwaveRecipientInputKind = typeof FlutterwaveRecipientInputKind[keyof typeof FlutterwaveRecipientInputKind];
 
 
@@ -13049,6 +13084,8 @@ export interface FlutterwaveRecipientInput {
      * @maxLength 16
      */
   contactPhone: string;
+  /** @maxLength 254 */
+  businessEmail: string;
   ownershipAttestation: boolean;
 }
 
@@ -13057,9 +13094,17 @@ export type FlutterwaveRecipientReviewAction = typeof FlutterwaveRecipientReview
 
 export const FlutterwaveRecipientReviewAction = {
   APPROVE_AND_CREATE_TEST: 'APPROVE_AND_CREATE_TEST',
+  VERIFY_EXISTING_TEST: 'VERIFY_EXISTING_TEST',
   RECOVER: 'RECOVER',
   SUSPEND: 'SUSPEND',
   RETIRE: 'RETIRE',
+} as const;
+
+export type FlutterwaveRecipientReviewExistingTestReference = typeof FlutterwaveRecipientReviewExistingTestReference[keyof typeof FlutterwaveRecipientReviewExistingTestReference];
+
+
+export const FlutterwaveRecipientReviewExistingTestReference = {
+  RS_5F0DB5C736A2550E783A15B9EB9FBF09: 'RS_5F0DB5C736A2550E783A15B9EB9FBF09',
 } as const;
 
 export interface FlutterwaveRecipientReview {
@@ -13071,17 +13116,18 @@ export interface FlutterwaveRecipientReview {
   note: string;
   ownershipConfirmed?: boolean;
   distinctFromPlatformAccountConfirmed?: boolean;
+  existingTestReference?: FlutterwaveRecipientReviewExistingTestReference;
 }
 
 export interface FlutterwaveSchoolSplitInput {
   enabled: boolean;
-  automaticSettlementConfirmed: boolean;
+  testSplitVerificationAuthorized: boolean;
 }
 
 export interface FlutterwaveSchoolSplitConfiguration {
   schoolId: number;
   enabled: boolean;
-  automaticSettlementConfirmed: boolean;
+  testSplitVerificationAuthorized: boolean;
 }
 
 export type FlutterwaveRecipientKind = typeof FlutterwaveRecipientKind[keyof typeof FlutterwaveRecipientKind];
@@ -13108,6 +13154,8 @@ export interface FlutterwaveRecipient {
   maskedAccount: string;
   accountName: string;
   bankName: string;
+  /** @nullable */
+  maskedBusinessEmail?: string | null;
   mode: FlutterwaveRecipientMode;
   /** @nullable */
   providerSubaccountId?: string | null;

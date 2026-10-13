@@ -20,5 +20,7 @@ export interface FlutterwaveRecipientInput {
      * @maxLength 16
      */
   contactPhone: string;
+  /** @maxLength 254 */
+  businessEmail: string;
   ownershipAttestation: boolean;
 }

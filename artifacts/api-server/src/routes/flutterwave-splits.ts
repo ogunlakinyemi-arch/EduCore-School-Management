@@ -4,6 +4,8 @@ import { pool } from "@workspace/db";
 import { AuthError, getUserContext, isPlatformOwner, assertRoles, assertSchoolOperationalAccess, requireAuthentication } from "../middlewares/auth";
 import { requireSplitDevelopment, isSplitDevelopment } from "../lib/flutterwave-split-policy";
 import { developmentFlutterwaveCredential } from "../lib/flutterwave-development-config";
+import { businessEmailSchema, existingDiagnosticTestReference, schoolTestSplitInput } from "../lib/flutterwave-split-review";
+import { transactionSplitEvidence } from "../services/flutterwave-split-evidence";
 import { recipientView, submitSplitRecipient, reviewSplitRecipient } from "../services/flutterwave-split-recipients";
 import { splitPaymentView, reconcileSplitPayment } from "../services/flutterwave-split-reporting";
 import { requestSplitRefund, verifySplitRefund } from "../services/flutterwave-split-refunds";
@@ -47,7 +49,7 @@ router.get("/flutterwave/split-dashboard",run(async(req,res) => {
     [scope.owner,scope.schoolIds,scope.partnerIds],
   )).rows.map(recipientView);
   const settings = (await pool.query(
-    `SELECT school_id AS "schoolId",enabled,automatic_settlement_confirmed AS "automaticSettlementConfirmed"
+    `SELECT school_id AS "schoolId",enabled,automatic_settlement_confirmed AS "testSplitVerificationAuthorized"
      FROM flutterwave_split_settings WHERE $1::boolean OR school_id=ANY($2::int[])`, [scope.owner,scope.schoolIds],
   )).rows;
   const payments = (await pool.query(
@@ -59,7 +61,7 @@ router.get("/flutterwave/split-dashboard",run(async(req,res) => {
   res.set("Cache-Control","no-store").json({
     developmentOnly:true,mode:"TEST",currency:"NGN",feeBearer:"PLATFORM",isOwner:scope.owner,
     testCredentialConfigured:!!developmentFlutterwaveCredential().secret,scopes:scope.items,recipients,
-    schools:scope.schoolIds.map(s => settings.find(r => r.schoolId === s) ?? {schoolId:s,enabled:false,automaticSettlementConfirmed:false}),
+    schools:scope.schoolIds.map(s => settings.find(r => r.schoolId === s) ?? {schoolId:s,enabled:false,testSplitVerificationAuthorized:false}),
     payments:await Promise.all(payments.map(p => splitPaymentView(p.payment_id))),
   });
 }));
@@ -68,6 +70,7 @@ router.post("/flutterwave/split-recipients",run(async(req,res) => {
   const input = z.object({
     kind:z.enum(["SCHOOL","PARTNER"]),entityId:z.number().int().positive(),bankCode:z.string().regex(/^\d{3,6}$/),
     accountNumber:z.string().regex(/^\d{10}$/),contactPhone:z.string().regex(/^\+?\d{10,15}$/),
+    businessEmail:businessEmailSchema,
     ownershipAttestation:z.literal(true),
   }).strict().parse(req.body);
   if (scope.owner) throw new AuthError(403,"Owner reviews submissions; settlement details must be submitted by their own school or Partner");
@@ -79,21 +82,21 @@ router.post("/flutterwave/split-recipients",run(async(req,res) => {
 router.post("/flutterwave/split-recipients/:recipientId/review",run(async(req,res) => {
   requireSplitDevelopment(); const c = assertRoles(req,["PLATFORM_OWNER"]);
   const input = z.object({
-    action:z.enum(["APPROVE_AND_CREATE_TEST","RECOVER","SUSPEND","RETIRE"]),note:z.string().trim().min(10).max(1000),
+    action:z.enum(["APPROVE_AND_CREATE_TEST","VERIFY_EXISTING_TEST","RECOVER","SUSPEND","RETIRE"]),note:z.string().trim().min(10).max(1000),
     ownershipConfirmed:z.boolean().optional(),distinctFromPlatformAccountConfirmed:z.boolean().optional(),
+    existingTestReference:z.literal(existingDiagnosticTestReference).optional(),
   }).strict().parse(req.body);
   res.set("Cache-Control","no-store").json(await reviewSplitRecipient(id(req.params.recipientId),c.user.id,input));
 }));
 router.patch("/flutterwave/split-schools/:schoolId/configuration",run(async(req,res) => {
   requireSplitDevelopment(); const c = assertRoles(req,["PLATFORM_OWNER"]),schoolId = id(req.params.schoolId);
-  const input = z.object({enabled:z.boolean(),automaticSettlementConfirmed:z.boolean()}).strict().parse(req.body);
+  const input = schoolTestSplitInput.parse(req.body);
   const db = await pool.connect();
   try {
     await db.query("BEGIN");
     const school = (await db.query("SELECT id FROM schools WHERE id=$1 FOR SHARE",[schoolId])).rows[0];
     if (!school) throw new AuthError(404,"School not found");
     if (input.enabled) {
-      if (!input.automaticSettlementConfirmed) throw new AuthError(400,"Confirm automatic settlement in the Flutterwave TEST dashboard");
       const ready = (await db.query("SELECT id FROM flutterwave_split_recipients WHERE school_id=$1 AND status='TEST_READY' FOR SHARE",[schoolId])).rows[0];
       if (!ready) throw new AuthError(409,"School recipient must be owned, reviewed and provider-verified first");
       // Partner readiness is checked again against the actual term at checkout.
@@ -101,11 +104,19 @@ router.patch("/flutterwave/split-schools/:schoolId/configuration",run(async(req,
     await db.query(
       `INSERT INTO flutterwave_split_settings(school_id,enabled,automatic_settlement_confirmed,reviewed_by)
        VALUES($1,$2,$3,$4) ON CONFLICT(school_id) DO UPDATE SET enabled=$2,automatic_settlement_confirmed=$3,reviewed_by=$4,updated_at=NOW()`,
-      [schoolId,input.enabled,input.automaticSettlementConfirmed,c.user.id],
+      // Retain the existing storage column; in Development this is an explicit
+      // TEST verification authorization, not an assertion of bank settlement.
+      [schoolId,input.enabled,input.testSplitVerificationAuthorized,c.user.id],
     );
     await db.query("COMMIT");
   } catch(e) { await db.query("ROLLBACK"); throw e; } finally { db.release(); }
   res.json({schoolId,...input});
+}));
+router.get("/flutterwave/split-payments/:paymentId/transaction-evidence",run(async(req,res) => {
+  const scope = await scopes(req), paymentId = id(req.params.paymentId);
+  const p = (await pool.query("SELECT school_id FROM flutterwave_split_payments WHERE payment_id=$1",[paymentId])).rows[0];
+  if (!p || (!scope.owner && !scope.schoolIds.includes(p.school_id))) throw new AuthError(404,"Split payment not found");
+  res.set("Cache-Control","no-store").json(await transactionSplitEvidence(paymentId));
 }));
 router.post("/flutterwave/split-payments/:paymentId/reconcile",run(async(req,res) => {
   const scope = await scopes(req),paymentId = id(req.params.paymentId);

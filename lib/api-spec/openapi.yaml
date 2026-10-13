@@ -34,6 +34,8 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /flutterwave/split-payments/{paymentId}/transaction-evidence:
+    $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-payments~1{paymentId}~1transaction-evidence"
   /flutterwave/split-dashboard:
     $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1split-dashboard"
   /flutterwave/split-recipients:
