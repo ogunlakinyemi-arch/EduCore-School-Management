@@ -2,6 +2,32 @@
 
 Date: 2026-10-13. Development verification only; no publication initiated.
 
+## Current status recheck
+
+The source-change/test batch has ended, but the overall remediation and genuine
+TEST payment acceptance are incomplete. No new tests or payments were initiated
+for this status recheck; the results below are the latest saved executions.
+
+Both Development HTTP checks currently return 200. However, the managed API and
+web workflows report **failed**: a later API start at 19:45 UTC encountered
+`EADDRINUSE` on port 8080, and web encountered its occupied managed port.
+Read-only listener inspection identifies the API as the same process started
+at 19:38 UTC whose rebuilt source and worker pause were previously verified.
+The web listener is also the earlier 19:38 UTC Vite process. Thus the updated API
+still serves requests, but successful health responses do **not** establish
+healthy managed workflow ownership. No process was stopped or service restarted
+during this recheck. Recovery of managed process ownership remains outstanding.
+
+Fresh managed Development SQL reconfirmed session 358, 2026/2027, and term 20,
+FIRST, both ACTIVE and current for school 1393. No record was changed.
+
+The separate webhook inspection selected **“Elsewhere or not confirmed”**:
+no authenticated Flutterwave dashboard connection or confirmed TEST destination
+was available. Dedicated TEST credential/hash existence and receiving routes
+do not establish dashboard routing. No genuine delivered webhook was observed.
+The dependency-remediation, native replay, invoice-fixture and Partner UI
+follow-ups remain queued; their pending status is not completed work.
+
 ## Diagnosis before source changes
 
 One bounded, dedicated-TEST GET against the existing private provider-only
