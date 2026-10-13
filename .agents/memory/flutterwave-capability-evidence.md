@@ -74,3 +74,9 @@ Treat an unexpected or unidentifiable merchant identity on a hosted TEST checkou
 **Why:** The genuine hosted link displayed the requested amount and TEST banner, but its displayed identity could not be recognized as the approved Yetenia merchant; completing a charge would have assumed the recipient merchant was correct.
 
 **How to apply:** Confirm the authorized merchant's registered TEST/trading identity through the user's authenticated Flutterwave dashboard before using the existing link. A returned hosted link only proves checkout initialization; it does not prove payment, split allocation, webhook receipt or settlement.
+
+The user relayed Flutterwave Support clarification on 2026-10-13: a collection subaccount's business name is separate from the main merchant's business name. An unfamiliar checkout identity does not, by itself, justify renaming a matching TEST subaccount.
+
+**Why:** The prior browser observation compared an unlabeled identity row with the synthetic checkout customer/name expectations, without provider evidence establishing whether that row represented the main merchant, customer or subaccount.
+
+**How to apply:** Distinguish main merchant authentication, split-recipient IDs, subaccount labels, bank-holder names and checkout customer/customization fields. Verify main merchant identity independently; do not use cosmetic checkout customization or a subaccount rename as ownership proof. A GET that omits the business email does not establish that the submitted email was deleted or empty.

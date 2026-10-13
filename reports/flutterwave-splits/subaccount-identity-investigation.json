@@ -1,0 +1,84 @@
+{
+  "observedAt": "2026-10-13T02:29:04.677Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.flutterwave.com/v3/subaccounts/26972",
+    "authorization": "Bearer [REDACTED dedicated TEST credential]"
+  },
+  "submittedValues": {
+    "business_name": "Yetenia EduCore TEST ONLY Split Verification",
+    "business_email": "split-probe@example.test",
+    "provenance": "Business name from saved fixture and deterministic create payload; email from executed correction code path and persisted emailCorrectionAttempted marker. Historical HTTP capture did not retain request body/email."
+  },
+  "response": {
+    "httpStatus": 200,
+    "status": "success",
+    "message": "Subaccount fetched",
+    "data": {
+      "id": 26972,
+      "subaccount_id": "RS_5F0DB5C736A2550E783A15B9EB9FBF09",
+      "business_name": "Yetenia EduCore TEST ONLY Split Verification",
+      "business_email_present": false,
+      "bank_name": "ACCESS BANK NIGERIA",
+      "account_bank": "044",
+      "account_number_masked": "••••••0031",
+      "country": "NG",
+      "split_type": "flat",
+      "split_value": 3000,
+      "created_at": "2026-10-12T13:39:46.000Z",
+      "statusFields": {},
+      "returnedKeys": [
+        "id",
+        "account_number",
+        "account_bank",
+        "business_name",
+        "full_name",
+        "created_at",
+        "meta",
+        "account_id",
+        "split_ratio",
+        "split_type",
+        "split_value",
+        "subaccount_id",
+        "bank_name",
+        "country"
+      ],
+      "metadataShape": "null"
+    }
+  },
+  "checks": {
+    "idMatched": true,
+    "referenceMatched": true,
+    "businessNameMatched": true,
+    "bankAccountMatched": true,
+    "bankCodeMatched": true
+  },
+  "checkout": {
+    "request": {
+      "tx_ref": "fw_split_probe_0c3f888822b04cec8c0538027cdc4908",
+      "amount": 5000,
+      "currency": "NGN",
+      "subaccounts": [
+        {
+          "id": "RS_5F0DB5C736A2550E783A15B9EB9FBF09",
+          "transaction_charge_type": "flat_subaccount",
+          "transaction_charge": 2000
+        }
+      ],
+      "feePolicy": "Merchant bears costs; browser must stop if total exceeds NGN 5000"
+    },
+    "customer": {
+      "name": "EDUCORE TEST ONLY",
+      "email": "split-probe@example.test"
+    },
+    "authorization": "Same main merchant dedicated TEST credential; not a subaccount credential",
+    "subaccountBusinessNameSent": false,
+    "subaccountBusinessEmailSent": false,
+    "mainMerchantBusinessNameSent": false,
+    "returnedDataKeys": [
+      "link"
+    ],
+    "merchantIdentity": "NOT VERIFIED BY THE SAVED CHECKOUT RESPONSE"
+  },
+  "mutations": "NONE: one GET only; no update, create, payment, settings, database, Live or Production operations"
+}
