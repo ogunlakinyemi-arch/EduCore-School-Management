@@ -174,13 +174,14 @@ router.get(
   "/me/authorized-context",
   asyncRoute(async (req, res) => {
     const initialContext = getUserContext(req);
+    let schoolInvitationActivated = false;
     if (!initialContext.roles.length) {
       const internalActivated=await activateAcceptedInternalEmployeeInvitation(
         initialContext.user.id,
         initialContext.user.clerkUserId,
       );
       if(!internalActivated) {
-        await activateAcceptedSchoolInvitation(
+        schoolInvitationActivated = await activateAcceptedSchoolInvitation(
           initialContext.user.id,
           initialContext.user.clerkUserId,
         );
@@ -192,6 +193,7 @@ router.get(
       [initialContext.user.id],
     );
     res.json({
+      schoolInvitationActivated,
       user: {
         id: initialContext.user.id,
         name: userName(initialContext.user),

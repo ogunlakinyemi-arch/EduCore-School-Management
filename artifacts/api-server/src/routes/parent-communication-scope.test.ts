@@ -25,7 +25,7 @@ beforeAll(async()=>{
     if(!state.allowed)throw Object.assign(Error("Permission denied"),{statusCode:404});
     return {} as never;
   }));
-  await new Promise<void>(resolve=>{server=app.listen(0,"127.0.0.1",resolve);});
+  await new Promise<void>(resolve=>{server=app.listen(0,"127.0.0.1",()=>resolve());});
   const address=server.address();if(!address||typeof address==="string")throw Error("No server");
   base=`http://127.0.0.1:${address.port}/api`;
 });
@@ -34,7 +34,7 @@ beforeEach(()=>{state.role="TEACHER";state.schoolId=1393;state.allowed=true;stat
 describe("Communication student and guardian route boundaries",()=>{
   it("loads without search and scopes by actor ID, school, active current enrollment and assigned section",async()=>{
     const res=await fetch(`${base}/communication/students?schoolId=1393`);
-    expect(res.status).toBe(200);expect((await res.json()).map((s:any)=>s.id)).toEqual([721]);
+    expect(res.status).toBe(200);expect((await res.json() as Array<{ id: number }>).map(s=>s.id)).toEqual([721]);
     const query=state.queries[0];expect(query.values).toEqual([1393,912,false,""]);
     for(const clause of ["sca.is_current=true","tca.academic_session_id=sca.academic_session_id","current_session.is_current=true",
       "tca.section='' OR tca.section=sca.section","teacher.user_id=$2","st.school_id=$1"])expect(query.sql).toContain(clause);

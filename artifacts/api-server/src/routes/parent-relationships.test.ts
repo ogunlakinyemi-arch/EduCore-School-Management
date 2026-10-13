@@ -1,11 +1,29 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { pool } from "@workspace/db";
+import { createRequire } from "node:module";
+
+// Never use the application's DATABASE_URL, even for rollback-only tests:
+// sequence increments survive rollback. This optional integration test requires
+// an explicitly acknowledged existing disposable loopback database.
+const testUrl = process.env.EDUCORE_PARENT_RELATIONSHIP_TEST_DATABASE_URL;
+let pool: any;
+if (testUrl) {
+  const url = new URL(testUrl);
+  if (!["postgres:", "postgresql:"].includes(url.protocol) ||
+      !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) ||
+      !/^\/educore_disposable_[a-z0-9_]+$/.test(url.pathname) ||
+      process.env.EDUCORE_PARENT_TEST_ISOLATED !== "confirmed-disposable") {
+    throw Error("Parent relationship tests require an explicitly confirmed disposable loopback database");
+  }
+  const require = createRequire(new URL("../../../../lib/db/package.json", import.meta.url));
+  const { Pool } = require("pg");
+  pool = new Pool({ connectionString: testUrl, connectionTimeoutMillis: 3000 });
+}
 
 afterAll(async () => {
-  await pool.end();
+  await pool?.end();
 });
 
-describe("parent-student relationship database rules", () => {
+describe.skipIf(!testUrl)("parent-student relationship database rules", () => {
   it("supports many-to-many links and rejects duplicate relationships", async () => {
     const client = await pool.connect();
     try {

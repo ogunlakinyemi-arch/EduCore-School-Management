@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
+import { developmentFilesystemGuard } from '../../scripts/vite-filesystem-guard.mjs';
 
 const rawPort = process.env.PORT;
 
@@ -27,9 +28,20 @@ if (!basePath) {
   );
 }
 
+const developmentFiles = [
+  path.resolve(import.meta.dirname, 'index.html'),
+  path.resolve(import.meta.dirname, 'src'),
+  path.resolve(import.meta.dirname, 'public'),
+  path.resolve(import.meta.dirname, 'node_modules/.vite'),
+  path.resolve(import.meta.dirname, '../../node_modules/.pnpm'),
+  path.resolve(import.meta.dirname, '../../lib/api-client-react'),
+  path.resolve(import.meta.dirname, '../../lib/api-zod'),
+];
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    developmentFilesystemGuard(import.meta.dirname, developmentFiles, basePath),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
@@ -71,6 +83,15 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+      // Do not use Vite's default workspace-root allowance: it exposes sibling
+      // configuration, audit reports and uploaded documents through /@fs/.
+      allow: developmentFiles,
+      // Keep Vite's default secret protections when supplying an explicit deny.
+      deny: [
+        '.env', '.env.*', '*.{crt,pem,key}', '**/.git/**',
+        '**/.replit', '**/package.json', '**/tsconfig*.json',
+        '**/*.config.*', '**/.agents/**', '**/.local/**', '**/reports/**',
+      ],
     },
   },
   preview: {

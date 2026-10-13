@@ -179,7 +179,7 @@ describe("curriculum and lesson note routes", () => {
     const response=await fetch(`${baseUrl}/api/schools/4/lesson-notes`,{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({sessionId:1,termId:2,classId:10,subjectId:11,section:"Blue",week:3,date:"2026-03-03",content:{}})});
     expect(response.status).toBe(409);
-    expect((await response.json()).error).toContain("choose a different week");
+    expect((await response.json() as { error: string }).error).toContain("choose a different week");
     expect(state.queries.some(q=>q.sql.includes("UPDATE lesson_notes"))).toBe(false);
   });
 

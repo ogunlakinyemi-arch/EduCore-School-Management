@@ -2738,6 +2738,8 @@ export type AuthorizedContextUser = {
 export interface AuthorizedContext {
   user: AuthorizedContextUser;
   isPlatformOwner: boolean;
+  /** True only when this request activated the authenticated account's verified current school invitation. Existing access alone never sets this flag. */
+  schoolInvitationActivated?: boolean;
   roles: RoleAssignment[];
 }
 
@@ -15889,6 +15891,8 @@ export type AuthorizedContext4b96100User = {
 export interface AuthorizedContext4b96100 {
   user: AuthorizedContext4b96100User;
   isPlatformOwner: boolean;
+  /** True only when this request activated the authenticated account's verified current school invitation. Existing access alone never sets this flag. */
+  schoolInvitationActivated?: boolean;
   roles: RoleAssignment4b96100[];
 }
 

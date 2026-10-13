@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
+import { developmentFilesystemGuard } from "../../scripts/vite-filesystem-guard.mjs";
 
 const rawPort = process.env.PORT;
 
@@ -27,9 +28,18 @@ if (!basePath) {
   );
 }
 
+const developmentFiles = [
+  path.resolve(import.meta.dirname, "index.html"),
+  path.resolve(import.meta.dirname, "src"),
+  path.resolve(import.meta.dirname, "public"),
+  path.resolve(import.meta.dirname, "node_modules/.vite"),
+  path.resolve(import.meta.dirname, "../../node_modules/.pnpm"),
+];
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    developmentFilesystemGuard(import.meta.dirname, developmentFiles, basePath),
     mockupPreviewPlugin(),
     react(),
     tailwindcss(),
@@ -61,6 +71,12 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+      allow: developmentFiles,
+      deny: [
+        ".env", ".env.*", "*.{crt,pem,key}", "**/.git/**",
+        "**/.replit", "**/package.json", "**/tsconfig*.json",
+        "**/*.config.*", "**/.agents/**", "**/.local/**", "**/reports/**",
+      ],
     },
   },
   preview: {

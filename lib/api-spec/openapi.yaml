@@ -6814,6 +6814,9 @@ components:
             email: { type: string }
             status: { type: string }
         isPlatformOwner: { type: boolean }
+        schoolInvitationActivated:
+          type: boolean
+          description: True only when this request activated the authenticated account's verified current school invitation. Existing access alone never sets this flag.
         roles:
           type: array
           items: { $ref: "#/components/schemas/RoleAssignment" }

@@ -247,6 +247,61 @@ describe('invitation acceptance context', () => {
     expect(host.textContent).not.toContain('Invitation accepted');
   });
 
+  it('does not use a stale Partner role when its authorization refresh fails', async () => {
+    mocks.auth.isSignedIn = true;
+    mocks.partnerAliasMatch = true;
+    mocks.refetch.mockResolvedValueOnce({
+      error: { status: 503 },
+      data: { roles: [{ role: 'PARTNER', status: 'ACTIVE' }] },
+    });
+    setSearch('?__clerk_ticket=clerk-ticket&partnerInvitation=opaque-token', '/partner/accept-invitation');
+    await renderAcceptance();
+    expect(host.textContent).not.toContain('Invitation accepted');
+    expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+
+  it('recognizes verified activation on the first authorization read for an existing Clerk account', async () => {
+    mocks.auth.isSignedIn = true;
+    mocks.refetch.mockResolvedValueOnce({
+      data: {
+        schoolInvitationActivated: true,
+        roles: [{ role: 'TEACHER', schoolId: 8, status: 'ACTIVE' }],
+      },
+    });
+    setInvitationAuthFlow('school-ticket', 'signin');
+    setSearch('?__clerk_ticket=school-ticket');
+    await renderAcceptance();
+    expect(mocks.refetch).toHaveBeenCalledOnce();
+    expect(host.textContent).toContain('Invitation accepted');
+    expect(host.textContent).not.toContain('already have active access');
+  });
+
+  it.each(['expired', 'revoked', 'reused', 'wrong recipient'])(
+    'does not claim success or navigate for a %s school invitation',
+    async () => {
+      mocks.auth.isSignedIn = true;
+      mocks.refetch.mockResolvedValue({ error: { status: 403 }, data: undefined });
+      setSearch('?__clerk_ticket=school-ticket');
+      await renderAcceptance();
+      expect(host.textContent).toContain('could not verify');
+      expect(host.textContent).not.toContain('Invitation accepted');
+      expect(mocks.setLocation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('offers activation retry after a failed authorization refresh without treating stale roles as success', async () => {
+    mocks.auth.isSignedIn = true;
+    mocks.refetch.mockResolvedValue({
+      error: { status: 503 },
+      data: { roles: [{ role: 'TEACHER', schoolId: 8, status: 'ACTIVE' }] },
+    });
+    setSearch('?__clerk_ticket=school-ticket');
+    await renderAcceptance();
+    expect(host.textContent).toContain('temporarily unavailable');
+    expect(host.textContent).not.toContain('Invitation accepted');
+    expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+
   it('requires an active-role change for an already authenticated school invitee', async () => {
     mocks.auth.isSignedIn = true;
     const sameExistingRole = { data: { roles: [{ role: 'SCHOOL_ADMIN', schoolId: 8, status: 'ACTIVE' }] } };

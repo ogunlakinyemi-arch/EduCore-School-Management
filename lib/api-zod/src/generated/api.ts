@@ -8178,6 +8178,7 @@ export const GetAuthorizedContextResponse = zod.object({
   "status": zod.string()
 }),
   "isPlatformOwner": zod.boolean(),
+  "schoolInvitationActivated": zod.boolean().optional().describe('True only when this request activated the authenticated account\'s verified current school invitation. Existing access alone never sets this flag.'),
   "roles": zod.array(zod.object({
   "id": zod.number().int(),
   "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),

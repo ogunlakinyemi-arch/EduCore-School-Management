@@ -11,5 +11,7 @@ import type { RoleAssignment } from './roleAssignment';
 export interface AuthorizedContext {
   user: AuthorizedContextUser;
   isPlatformOwner: boolean;
+  /** True only when this request activated the authenticated account's verified current school invitation. Existing access alone never sets this flag. */
+  schoolInvitationActivated?: boolean;
   roles: RoleAssignment[];
 }

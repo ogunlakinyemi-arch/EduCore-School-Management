@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { inspectModel } from "./schema-export/model.mjs";
+import { verifyRequiredTenantKeys } from "./schema-export/required-tenant-keys.mjs";
 import { orderExport } from "./schema-export/graph.mjs";
 import { migrationEvidence } from "./schema-export/provenance.mjs";
 
@@ -46,7 +47,9 @@ export async function exportAudit(output) {
   if (processResult.status !== 0 || processResult.error) {
     throw new Error("Read-only standalone Drizzle export failed; status=" + processResult.status + "; " + (processResult.error?.message || processResult.stderr.slice(0, 1000)));
   }
-  const model = await inspectModel(root), plan = orderExport(processResult.stdout, model);
+  const model = await inspectModel(root);
+  const requiredTenantKeys = verifyRequiredTenantKeys(model);
+  const plan = orderExport(processResult.stdout, model);
   if (JSON.stringify(beforeHashes) !== JSON.stringify(schemaHashes(schemaDirectory))) {
     throw new Error("Schema source changed while exporting; refuse a mixed snapshot");
   }
@@ -54,6 +57,7 @@ export async function exportAudit(output) {
   const manifest = {
     label: "DISPOSABLE / AUDIT ONLY — NOT FOR PRODUCTION EXECUTION",
     ...plan, provenance, sqlPath: undefined,
+    requiredTenantKeys,
     schemaSourceHashes: beforeHashes,
     expected: { tables: model.tables.length, checks: model.tables.reduce((n, t) => n + t.checks.length, 0), foreignKeys: plan.foreignKeys.length },
   };

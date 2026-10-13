@@ -110,6 +110,7 @@ export default function InvitationAcceptance() {
         if (partnerToken) {
           await mutateAsync({ data: { partnerInvitation: partnerToken } });
           const freshContext = await refetch();
+          if (freshContext.error) throw freshContext.error;
           const hasActivePartnerRole = freshContext.data?.roles?.some(
             (role) => role.role === 'PARTNER' && role.status === 'ACTIVE',
           ) === true;
@@ -144,9 +145,16 @@ export default function InvitationAcceptance() {
           return;
         }
         if(internalEmployeeInvitation) throw new Error('Internal invitation was not confirmed');
-        const baselineContext = authFlow === 'signup' ? null : (await refetch()).data;
-        const freshContext = (await refetch()).data;
-        const destination = authFlow === 'signup'
+        const first = await refetch();
+        if (first.error) throw first.error;
+        const activatedOnFirstRead = first.data?.schoolInvitationActivated === true;
+        const baselineContext = authFlow === 'signup' ? null : first.data;
+        const fresh = authFlow === 'signup' || activatedOnFirstRead ? first : await refetch();
+        if (fresh.error) throw fresh.error;
+        const freshContext = fresh.data;
+        // The first authorization read can perform verified activation itself.
+        // Comparing two later snapshots would incorrectly report no role change.
+        const destination = authFlow === 'signup' || activatedOnFirstRead
           ? destinationForAuthorizedContext(freshContext)
           : destinationForNewlyActivatedRole(
               baselineContext,

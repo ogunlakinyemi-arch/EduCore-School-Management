@@ -644,3 +644,17 @@ mtime_ms = 1791751408721
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/430e2896-4ec3-4dae-8e7a-f466542f234c/ccc01880-d042-42b0-aad8-6ebe99ac92bb"
 storage_version_token = "1791751480934037"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "E7YQq4bD9tpRykv0RFQKH"
+uri = "file://reports/software-remediation/review.html"
+type = "html"
+title = "EduCore software remediation review"
+description = "Changes, verification results, dependency alerts, audit-only schema plan and approval gates."
+logical_id = "5763f8a3-1374-4e7f-9d22-55d531123b26"
+content_hash = "sha256:9f6d14128f9c9d402366b35bd6ec5704550359c173b8ca89b0ff22d63d06185e"
+size = 10454
+mtime_ms = 1791912000448
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/5763f8a3-1374-4e7f-9d22-55d531123b26/4bd69f6b-2272-401b-826a-2dfab66a1777"
+storage_version_token = "1791912131037310"
+content_type = "text/html"

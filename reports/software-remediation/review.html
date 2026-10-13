@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yetenia EduCore — software remediation review</title>
+<style>
+body{margin:0;background:#f4f6fa;color:#182437;font:16px/1.65 Arial,sans-serif}main{max-width:960px;margin:auto;padding:40px 24px}h1,h2{line-height:1.25}h1{font-size:30px}h2{margin-top:36px;font-size:22px}table{width:100%;border-collapse:collapse;background:white}td,th{text-align:left;padding:12px;border:1px solid #d9dfe8}th{background:#eaf0f8}.notice{padding:18px;background:#fff6df;border-left:4px solid #986b00}code{font-size:13px;overflow-wrap:anywhere}small{color:#526074}li{margin-bottom:8px}@media print{body{background:white}main{padding:0}.notice{border:1px solid #986b00}}
+</style>
+<main>
+<small>13 October 2026 · Development/source-only work · No publication authorized</small>
+<h1>Yetenia EduCore software remediation review</h1>
+<p class="notice"><strong>Partial completion, with explicit safety gates.</strong> Source changes and mock-based regressions are complete. The running Development API is still its earlier build: restarting it immediately processes subscription and notification records, so restart is held for approval and verified non-Production targeting. The SQL below is audit-only, not an approved incremental Production migration.</p>
+<h2>Completed software changes</h2>
+<ul>
+<li><strong>Development file protection:</strong> both Vite servers use narrow file/directory allowances, private-path denial and canonical-path checks against symlink escapes. The application index, approved source libraries, dependency store and each server's optimizer cache remain accessible. Required proxy/host settings are unchanged.</li>
+<li><strong>Three requested API test typing fixes:</strong> typed parsed JSON errors/results and corrected the server-listen callback. API TypeScript checking passes.</li>
+<li><strong>Compatible dependency patches:</strong> proxy-addr, source-map-js, brace-expansion and fast-uri patched through the lockfile without forced major overrides or a React/Clerk migration.</li>
+<li><strong>Invitation confirmation:</strong> the authorization response now reports actual first-read school invitation activation. The acceptance page checks refresh errors, including stale Partner-role results, rather than claiming success from failed refreshes. Existing-role comparison and wrong-account rejection remain.</li>
+<li><strong>Direct API authorization:</strong> an academic-session matrix exercises real routes and authorization middleware across two synthetic schools and eleven roles. Persistence and identity are mocked. It checks same-school permissions, denied cross-school reads, Owner-authorized reads, write denials, dual-role Owner restrictions, inactive users/memberships and anonymous requests.</li>
+<li><strong>Database/tooling safety:</strong> automatic post-merge schema push removed; packaged push/force-push commands fail before connection; direct configured mutation/studio commands are blocked. Offline review commands remain available. These controls do not make arbitrary external SQL clients safe.</li>
+<li><strong>Test safety:</strong> API tests remove inherited credentials, use synthetic signing secrets, and block non-loopback fetch requests. An old rollback-only parent test no longer uses the application pool; it requires an explicitly acknowledged existing disposable local target and otherwise skips. No test database was started.</li>
+</ul>
+<h2>Verification evidence</h2>
+<table><tr><th>Check</th><th>Result</th><th>Limits</th></tr>
+<tr><td>API regressions</td><td>397 passed; 1 skipped<br>20 files passed; 1 skipped</td><td>Provider/database mocks; not genuine email delivery or live Clerk acceptance.</td></tr>
+<tr><td>Invitation component tests</td><td>38 passed</td><td>Includes first-read activation, stale-role refresh failures and invalid/expired/revoked/reused/wrong-recipient error presentation with simulated responses.</td></tr>
+<tr><td>Schema ordering/tooling/file-guard tests</td><td>32 passed</td><td>Pure tests; no PostgreSQL execution.</td></tr>
+<tr><td>Development HTTP checks</td><td>20 of 20 passed on both servers</td><td>Private configuration/report paths return 403; source, Vite client and entry paths return 200. HEAD requests do not read private file contents.</td></tr>
+<tr><td>Anonymous app screenshot</td><td>Expected “Invitation link incomplete” screen; Vite and Clerk load without resource errors</td><td>Does not prove signed-in or emailed-link journeys.</td></tr>
+<tr><td>Type checks</td><td>API and generated shared-library checks pass</td><td>Frontend retains three pre-existing school-messaging errors outside the requested API fixes.</td></tr>
+</table>
+<p>Frontend outstanding locations: <code>artifacts/edupulse/src/pages/parent-communication/threads.tsx</code> (missing ErrorState retry property) and <code>artifacts/edupulse/src/pages/school-threads.tsx</code> (two missing generated query-key options). These are not marked fixed.</p>
+<h2>Dependency risk remaining</h2>
+<table><tr><th>Severity</th><th>Before</th><th>After compatible patches</th></tr><tr><td>Critical</td><td>3</td><td>2</td></tr><tr><td>High</td><td>4</td><td>1</td></tr><tr><td>Moderate</td><td>6</td><td>4</td></tr></table>
+<p>Remaining affected packages: tinypool (two critical alerts; patched line ≥2.1.2), braces (high; no patched release reported), uuid (patched line ≥11.1.1), vitest/@vitest/mocker (≥4.1.11), postcss-selector-parser (≥7.1.6). Installed parent chains require a reviewed upgrade or replacement; forced incompatible transitive majors were not applied. Existing React/Clerk peer warnings remain. Alert severity alone is not proof of an exploitable application path.</p>
+<h2>Reviewable schema plan</h2>
+<p>Offline export: <code>reports/software-remediation/generated/schema-review.sql</code>. Dependency/provenance manifest: <code>reports/software-remediation/generated/schema-review.sql.graph.json</code>. Generated outputs are excluded from Git and publication packaging; regenerate using the reviewed source exporter.</p>
+<p><code>pnpm --filter @workspace/scripts run export:schema:audit --out /home/runner/workspace/reports/software-remediation/generated/schema-review.sql</code></p>
+<p>Export contains <strong>179 tables, 422 checks, 684 foreign keys and 1,227 statements</strong>. The dependency graph preserves the original statement multiset and places existing supporting uniqueness before dependent foreign keys. It refuses missing/mismatched keys, invalid partial/expression support and identifier collisions. Source hashes and migration provenance are retained.</p>
+<table><tr><th>Required source key</th><th>Ownership retained</th><th>Columns</th></tr>
+<tr><td>subscriptions_id_school_student_uq</td><td>Unique index</td><td>id, school_id, student_id</td></tr>
+<tr><td>school_partner_attributions_id_partner_uq</td><td>Unique index</td><td>id, partner_profile_id</td></tr>
+<tr><td>parents_id_school_unique</td><td>Unique index</td><td>id, school_id</td></tr>
+<tr><td>academic_terms_nfc_session_key</td><td>Unique constraint</td><td>id, school_id, academic_session_id</td></tr></table>
+<p>The four declarations were already correct in source. No arbitrary index-to-constraint conversion or weakening of historical/financial guards was performed. The failed earlier generated migration omitted supporting indexes and emitted the academic-term foreign key too early. The full-schema exporter corrects review ordering; it does <strong>not</strong> repair or validate the platform's incremental Publish generator.</p>
+<h2>Mandatory gates before any database-change proposal</h2>
+<ol>
+<li>Obtain explicit authorization for the intended environment and operation. Independently verify the application's actual database target; environment labels and database names are insufficient.</li>
+<li>Confirm the actual hosting provider and available backup/PITR mechanism, a backup preceding the change, retention, restore permissions and acceptable recovery point/time. No backup was inspected or restored during this work.</li>
+<li>Demonstrate recovery in an approved isolated environment. Replit-managed databases offer production recovery options, but this must not be assumed to apply to an externally configured database. Database restoration and code rollback are separate operations.</li>
+<li>Produce a fresh, reviewed incremental preview against the verified existing target. Confirm parent uniqueness precedes every dependent FK, no destructive/data rewrite statements are hidden, existing CHECK differences are represented, and retained records are accounted for.</li>
+<li>Execute the exact reviewed plan only in an already configured and approved disposable PostgreSQL instance first; compare raw versus reordered results, constraints, migration ledger and preservation evidence. None was available in this remediation.</li>
+<li>Request separate approval before any Production access or execution. Current status: <strong>not approved; not executed</strong>.</li>
+</ol>
+<p>Official references: <a href="https://docs.replit.com/features/data-and-storage/data-recovery">Data recovery</a>; <a href="https://docs.replit.com/features/data-and-storage/development-and-production">Development and Production databases</a>; <a href="https://docs.replit.com/features/version-control/checkpoints-and-rollbacks">Checkpoints and rollbacks</a>.</p>
+<h2>Preservation and remaining limits</h2>
+<p>No Production database query/connection, schema push, migration execution, publication, real charge or real notification was initiated by this remediation. Tests did not alter application business records. No secret values were inspected. Existing reports and historical/financial records were not edited. This is a statement about remediation actions, not a claim that normal running workers or other users stopped changing timestamps/records.</p>
+<p>Physical NFC/GPS/device integration, vendor setup, hardware-dependent features and vendor communication/retry work remain unchanged pending delivery. Software-side fixtures and generated schema inspection are not hardware evidence.</p>
+<p>Genuine invited-account/email journeys, the running API update, executable PostgreSQL validation, fresh incremental Publish preview and verified backup recovery remain gated. Passing mock tests must not be presented as proof of those steps.</p>
+</main></html>
