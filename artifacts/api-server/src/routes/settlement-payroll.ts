@@ -4,6 +4,11 @@ import * as PayrollContract from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import { developmentFlutterwaveCollectionStatus } from "../lib/flutterwave-development-config";
 import {
+  assertRemovalEnvironment,
+  reviewSettlementRemoval,
+  removePendingSettlementProfile,
+} from "../services/development-settlement-removal";
+import {
   assertResourceId,
   assertSchoolOperationalAccess,
   AuthError,
@@ -565,6 +570,56 @@ function parsePayrollMonthRange(fromMonth: unknown, toMonth: unknown) {
 // Entering or resolving a bank account never generates collection splits,
 // returns a transfer recipient ID, or asserts actual monetary settlement.
 // ---------------------------------------------------------------------------
+
+router.get("/platform/finance/payment-settlement/removal-review", run(async (req, res) => {
+  assertRemovalEnvironment();
+  requirePlatformOwner(req);
+  res.set("Cache-Control", "no-store");
+  return respond(res, PayrollContract.ReviewCompanySettlementRemovalResponse,
+    await reviewSettlementRemoval({ scope: "YEMAIT_COMPANY", schoolId: null }));
+}));
+
+router.get("/schools/:schoolId/finance/payment-settlement/removal-review", run(async (req, res) => {
+  assertRemovalEnvironment();
+  const { schoolId } = requireSchoolRole(req, req.params.schoolId, SCHOOL_ADMIN_ROLE);
+  res.set("Cache-Control", "no-store");
+  return respond(res, PayrollContract.ReviewSchoolSettlementRemovalResponse,
+    await reviewSettlementRemoval({ scope: "SCHOOL", schoolId }));
+}));
+
+router.delete("/platform/finance/payment-settlement", run(async (req, res) => {
+  assertRemovalEnvironment();
+  const context = requirePlatformOwner(req);
+  const input = body(PayrollContract.RemoveCompanyPendingSettlementBody.strict(), req.body, "Exact profile ID, version and confirmation are required");
+  const result = await removePendingSettlementProfile(
+    { scope: "YEMAIT_COMPANY", schoolId: null }, input,
+    (client, profileId) => audit(client, {
+      actor: context.user, actorRole: "PLATFORM_OWNER", scope: "YEMAIT_COMPANY", schoolId: null,
+      recordType: "SETTLEMENT_PROFILE", recordId: profileId,
+      action: "PENDING_SETTLEMENT_PROFILE_REMOVED", previousStatus: "PENDING_VERIFICATION",
+      newStatus: "NOT_CONFIGURED",
+      metadata: { developmentOnly: true, expectedVersion: input.expectedVersion, providerOperation: false },
+    }),
+  );
+  return respond(res, PayrollContract.RemoveCompanyPendingSettlementResponse, result);
+}));
+
+router.delete("/schools/:schoolId/finance/payment-settlement", run(async (req, res) => {
+  assertRemovalEnvironment();
+  const { schoolId, context } = requireSchoolRole(req, req.params.schoolId, SCHOOL_ADMIN_ROLE);
+  const input = body(PayrollContract.RemoveSchoolPendingSettlementBody.strict(), req.body, "Exact profile ID, version and confirmation are required");
+  const result = await removePendingSettlementProfile(
+    { scope: "SCHOOL", schoolId }, input,
+    (client, profileId) => audit(client, {
+      actor: context.user, actorRole: "SCHOOL_ADMIN", scope: "SCHOOL", schoolId,
+      recordType: "SETTLEMENT_PROFILE", recordId: profileId,
+      action: "PENDING_SETTLEMENT_PROFILE_REMOVED", previousStatus: "PENDING_VERIFICATION",
+      newStatus: "NOT_CONFIGURED",
+      metadata: { developmentOnly: true, expectedVersion: input.expectedVersion, providerOperation: false },
+    }),
+  );
+  return respond(res, PayrollContract.RemoveSchoolPendingSettlementResponse, result);
+}));
 
 router.get("/platform/finance/payment-settlement", run(async (req, res) => {
   requirePlatformOwner(req);

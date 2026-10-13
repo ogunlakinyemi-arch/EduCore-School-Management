@@ -17562,6 +17562,31 @@ export const ResolveSchoolEmployeeNfcAttendanceDiscrepancyResponse = zod.object(
 
 
 /**
+ * @summary Development-only explicit removal of one pending unlinked Company profile, retaining audits
+ */
+
+export const removeCompanyPendingSettlementBodyExpectedVersionRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$');
+export const removeCompanyPendingSettlementBodyConfirmationMin = 15;
+export const removeCompanyPendingSettlementBodyConfirmationMax = 80;
+
+
+
+export const RemoveCompanyPendingSettlementBody = zod.object({
+  "expectedProfileId": zod.number().int().min(1),
+  "expectedVersion": zod.string().regex(removeCompanyPendingSettlementBodyExpectedVersionRegExp),
+  "confirmation": zod.string().min(removeCompanyPendingSettlementBodyConfirmationMin).max(removeCompanyPendingSettlementBodyConfirmationMax)
+})
+
+export const RemoveCompanyPendingSettlementResponse = zod.object({
+  "removed": zod.literal(true),
+  "profileId": zod.number().int(),
+  "scope": zod.enum(['YEMAIT_COMPANY', 'SCHOOL']),
+  "schoolId": zod.number().int().nullable(),
+  "status": zod.enum(['NOT_CONFIGURED'])
+})
+
+
+/**
  * @summary Read global company settlement configuration and provider capability without revealing bank numbers or credentials
  */
 export const getPlatformPaymentSettlementResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
@@ -17684,6 +17709,45 @@ export const UpdatePlatformPaymentSettlementResponse = zod.object({
 }).optional()
 }),
   "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Development-only metadata review before a separately authorized Company profile removal
+ */
+export const ReviewCompanySettlementRemovalResponse = zod.object({
+  "developmentOnly": zod.literal(true),
+  "scope": zod.enum(['YEMAIT_COMPANY', 'SCHOOL']),
+  "schoolId": zod.number().int().nullable(),
+  "profileId": zod.number().int().nullable(),
+  "businessName": zod.string().nullable(),
+  "version": zod.string().nullable(),
+  "status": zod.string(),
+  "eligible": zod.boolean(),
+  "notice": zod.string()
+})
+
+
+/**
+ * @summary Development-only metadata review for the authenticated School Admin's school
+ */
+
+
+
+export const ReviewSchoolSettlementRemovalParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ReviewSchoolSettlementRemovalResponse = zod.object({
+  "developmentOnly": zod.literal(true),
+  "scope": zod.enum(['YEMAIT_COMPANY', 'SCHOOL']),
+  "schoolId": zod.number().int().nullable(),
+  "profileId": zod.number().int().nullable(),
+  "businessName": zod.string().nullable(),
+  "version": zod.string().nullable(),
+  "status": zod.string(),
+  "eligible": zod.boolean(),
+  "notice": zod.string()
 })
 
 
@@ -17876,6 +17940,38 @@ export const VerifyPlatformSchoolSettlementResponse = zod.object({
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
   "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Development-only explicit removal of the School Admin's pending unlinked profile, retaining audits
+ */
+
+
+
+export const RemoveSchoolPendingSettlementParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const removeSchoolPendingSettlementBodyExpectedVersionRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$');
+export const removeSchoolPendingSettlementBodyConfirmationMin = 15;
+export const removeSchoolPendingSettlementBodyConfirmationMax = 80;
+
+
+
+export const RemoveSchoolPendingSettlementBody = zod.object({
+  "expectedProfileId": zod.number().int().min(1),
+  "expectedVersion": zod.string().regex(removeSchoolPendingSettlementBodyExpectedVersionRegExp),
+  "confirmation": zod.string().min(removeSchoolPendingSettlementBodyConfirmationMin).max(removeSchoolPendingSettlementBodyConfirmationMax)
+})
+
+export const RemoveSchoolPendingSettlementResponse = zod.object({
+  "removed": zod.literal(true),
+  "profileId": zod.number().int(),
+  "scope": zod.enum(['YEMAIT_COMPANY', 'SCHOOL']),
+  "schoolId": zod.number().int().nullable(),
+  "status": zod.enum(['NOT_CONFIGURED'])
 })
 
 

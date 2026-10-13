@@ -14,3 +14,7 @@ export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
+// Driver constructors/types let consumers inspect connection metadata or use
+// isolated test pools without introducing a second application DB connection.
+export { Client as DatabaseClient, Pool as DatabasePool } from "pg";
+export type { PoolClient as DatabasePoolClient } from "pg";

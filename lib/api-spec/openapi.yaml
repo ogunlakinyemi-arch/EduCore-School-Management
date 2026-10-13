@@ -5479,6 +5479,10 @@ paths:
     $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1attendance~1discrepancies~1{discrepancyId}~1resolve"
   /platform/finance/payment-settlement:
     $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement"
+  /platform/finance/payment-settlement/removal-review:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1removal-review"
+  /schools/{schoolId}/finance/payment-settlement/removal-review:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payment-settlement~1removal-review"
   /platform/finance/payment-settlement/schools:
     $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1schools"
   /platform/finance/payment-settlement/schools/{schoolId}:

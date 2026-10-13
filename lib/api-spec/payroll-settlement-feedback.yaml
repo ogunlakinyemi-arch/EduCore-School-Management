@@ -1,5 +1,55 @@
 paths:
+  /platform/finance/payment-settlement/removal-review:
+    get:
+      operationId: reviewCompanySettlementRemoval
+      tags: [finance]
+      summary: Development-only metadata review before a separately authorized Company profile removal
+      responses:
+        "200":
+          description: Profile identity and eligibility only; no bank or contact fields
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SettlementRemovalReview" }
+        "403": { description: Active Platform Owner required }
+        "404": { description: Not available outside Development }
+        "503": { description: Development database isolation or guards are not confirmed }
+  /schools/{schoolId}/finance/payment-settlement/removal-review:
+    get:
+      operationId: reviewSchoolSettlementRemoval
+      tags: [finance]
+      summary: Development-only metadata review for the authenticated School Admin's school
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Profile identity and eligibility only; no bank or contact fields
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SettlementRemovalReview" }
+        "403": { description: School operational authorization required }
+        "404": { description: Not available outside Development }
+        "503": { description: Development database isolation or guards are not confirmed }
   /platform/finance/payment-settlement:
+    delete:
+      operationId: removeCompanyPendingSettlement
+      tags: [finance]
+      summary: Development-only explicit removal of one pending unlinked Company profile, retaining audits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettlementRemovalConfirmation" }
+      responses:
+        "200":
+          description: Only the selected settlement profile removed; no provider operation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SettlementRemovalResult" }
+        "400": { description: Exact confirmation required }
+        "403": { description: Active Platform Owner required }
+        "404": { description: Profile not found or unavailable outside Development }
+        "409": { description: Stale version or ineligible profile }
+        "503": { description: Development database isolation or guards are not confirmed }
     get:
       operationId: getPlatformPaymentSettlement
       tags: [finance]
@@ -96,6 +146,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PayrollError" }
   /schools/{schoolId}/finance/payment-settlement:
+    delete:
+      operationId: removeSchoolPendingSettlement
+      tags: [finance]
+      summary: Development-only explicit removal of the School Admin's pending unlinked profile, retaining audits
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettlementRemovalConfirmation" }
+      responses:
+        "200":
+          description: Only the selected settlement profile removed; no provider operation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SettlementRemovalResult" }
+        "400": { description: Exact confirmation required }
+        "403": { description: School operational authorization required }
+        "404": { description: Profile not found or unavailable outside Development }
+        "409": { description: Stale version or ineligible profile }
+        "503": { description: Development database isolation or guards are not confirmed }
     get:
       operationId: getSchoolPaymentSettlement
       tags: [finance]
@@ -611,6 +683,38 @@ paths:
         "404": { description: Payslip not found }
 components:
   schemas:
+    SettlementRemovalConfirmation:
+      type: object
+      additionalProperties: false
+      required: [expectedProfileId, expectedVersion, confirmation]
+      properties:
+        expectedProfileId: { type: integer, minimum: 1 }
+        expectedVersion: { type: string, pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$' }
+        confirmation: { type: string, minLength: 15, maxLength: 80 }
+    SettlementRemovalReview:
+      type: object
+      additionalProperties: false
+      required: [developmentOnly, scope, schoolId, profileId, businessName, version, status, eligible, notice]
+      properties:
+        developmentOnly: { type: boolean, enum: [true] }
+        scope: { type: string, enum: [YEMAIT_COMPANY, SCHOOL] }
+        schoolId: { type: ["integer", "null"] }
+        profileId: { type: ["integer", "null"] }
+        businessName: { type: ["string", "null"] }
+        version: { type: ["string", "null"] }
+        status: { type: string }
+        eligible: { type: boolean }
+        notice: { type: string }
+    SettlementRemovalResult:
+      type: object
+      additionalProperties: false
+      required: [removed, profileId, scope, schoolId, status]
+      properties:
+        removed: { type: boolean, enum: [true] }
+        profileId: { type: integer }
+        scope: { type: string, enum: [YEMAIT_COMPANY, SCHOOL] }
+        schoolId: { type: ["integer", "null"] }
+        status: { type: string, enum: [NOT_CONFIGURED] }
     PayrollError:
       type: object
       required: [error]

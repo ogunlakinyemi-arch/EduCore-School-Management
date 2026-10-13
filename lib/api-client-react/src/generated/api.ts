@@ -725,6 +725,9 @@ import type {
   SendPlatformSchoolMessage200,
   SendPlatformSchoolMessageBody,
   SettlementHistoryEntry,
+  SettlementRemovalConfirmation,
+  SettlementRemovalResult,
+  SettlementRemovalReview,
   StaffAdmissionApplicationInput,
   StaffNfcBillingRule,
   StaffNfcBillingRuleInput,
@@ -40172,6 +40175,94 @@ export const useResolveSchoolEmployeeNfcAttendanceDiscrepancy = <TError = ErrorT
       return useMutation(getResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationOptions(options));
     }
 
+export const getRemoveCompanyPendingSettlementUrl = () => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement`
+}
+
+/**
+ * @summary Development-only explicit removal of one pending unlinked Company profile, retaining audits
+ */
+export const removeCompanyPendingSettlement = async (settlementRemovalConfirmation: SettlementRemovalConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<SettlementRemovalResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SettlementRemovalResult>(getRemoveCompanyPendingSettlementUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(settlementRemovalConfirmation)
+  }
+);}
+
+
+
+
+
+export const getRemoveCompanyPendingSettlementMutationKey = () => ['removeCompanyPendingSettlement'] as const;
+
+export const getRemoveCompanyPendingSettlementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCompanyPendingSettlement>>, TError,RemoveCompanyPendingSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeCompanyPendingSettlement>>, TError,RemoveCompanyPendingSettlementMutationVariables, TContext> => {
+
+const mutationKey = getRemoveCompanyPendingSettlementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeCompanyPendingSettlement>>, RemoveCompanyPendingSettlementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  removeCompanyPendingSettlement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveCompanyPendingSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof removeCompanyPendingSettlement>>>
+    export type RemoveCompanyPendingSettlementMutationBody = BodyType<SettlementRemovalConfirmation>
+    export type RemoveCompanyPendingSettlementMutationError = ErrorType<void>
+    export type RemoveCompanyPendingSettlementMutationVariables = {data: BodyType<SettlementRemovalConfirmation>}
+
+    /**
+ * @summary Development-only explicit removal of one pending unlinked Company profile, retaining audits
+ */
+export const useRemoveCompanyPendingSettlement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCompanyPendingSettlement>>, TError,RemoveCompanyPendingSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeCompanyPendingSettlement>>,
+        TError,
+        RemoveCompanyPendingSettlementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveCompanyPendingSettlementMutationOptions(options));
+    }
+
 export const getGetPlatformPaymentSettlementUrl = () => {
 
 
@@ -40337,6 +40428,160 @@ export const useUpdatePlatformPaymentSettlement = <TError = ErrorType<PayrollErr
       > => {
       return useMutation(getUpdatePlatformPaymentSettlementMutationOptions(options));
     }
+
+export const getReviewCompanySettlementRemovalUrl = () => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement/removal-review`
+}
+
+/**
+ * @summary Development-only metadata review before a separately authorized Company profile removal
+ */
+export const reviewCompanySettlementRemoval = async ( options?: Parameters<typeof customFetch>[1]): Promise<SettlementRemovalReview> => {
+
+  return customFetch<SettlementRemovalReview>(getReviewCompanySettlementRemovalUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getReviewCompanySettlementRemovalQueryKey = () => {
+    return [
+    `/api/platform/finance/payment-settlement/removal-review`
+    ] as const;
+    }
+
+
+export const getReviewCompanySettlementRemovalQueryOptions = <TData = Awaited<ReturnType<typeof reviewCompanySettlementRemoval>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof reviewCompanySettlementRemoval>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getReviewCompanySettlementRemovalQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof reviewCompanySettlementRemoval>>> = ({ signal }) => reviewCompanySettlementRemoval({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof reviewCompanySettlementRemoval>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ReviewCompanySettlementRemovalQueryResult = NonNullable<Awaited<ReturnType<typeof reviewCompanySettlementRemoval>>>
+export type ReviewCompanySettlementRemovalQueryError = ErrorType<void>
+
+
+/**
+ * @summary Development-only metadata review before a separately authorized Company profile removal
+ */
+
+export function useReviewCompanySettlementRemoval<TData = Awaited<ReturnType<typeof reviewCompanySettlementRemoval>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof reviewCompanySettlementRemoval>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getReviewCompanySettlementRemovalQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewSchoolSettlementRemovalUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payment-settlement/removal-review`
+}
+
+/**
+ * @summary Development-only metadata review for the authenticated School Admin's school
+ */
+export const reviewSchoolSettlementRemoval = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SettlementRemovalReview> => {
+
+  return customFetch<SettlementRemovalReview>(getReviewSchoolSettlementRemovalUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getReviewSchoolSettlementRemovalQueryKey = (schoolId: number,) => {
+    return [
+    `/api/schools/${schoolId}/finance/payment-settlement/removal-review`
+    ] as const;
+    }
+
+
+export const getReviewSchoolSettlementRemovalQueryOptions = <TData = Awaited<ReturnType<typeof reviewSchoolSettlementRemoval>>, TError = ErrorType<void>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof reviewSchoolSettlementRemoval>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getReviewSchoolSettlementRemovalQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof reviewSchoolSettlementRemoval>>> = ({ signal }) => reviewSchoolSettlementRemoval(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof reviewSchoolSettlementRemoval>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ReviewSchoolSettlementRemovalQueryResult = NonNullable<Awaited<ReturnType<typeof reviewSchoolSettlementRemoval>>>
+export type ReviewSchoolSettlementRemovalQueryError = ErrorType<void>
+
+
+/**
+ * @summary Development-only metadata review for the authenticated School Admin's school
+ */
+
+export function useReviewSchoolSettlementRemoval<TData = Awaited<ReturnType<typeof reviewSchoolSettlementRemoval>>, TError = ErrorType<void>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof reviewSchoolSettlementRemoval>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getReviewSchoolSettlementRemovalQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListPlatformSchoolSettlementsUrl = (params?: ListPlatformSchoolSettlementsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -40572,6 +40817,95 @@ export const useVerifyPlatformSchoolSettlement = <TError = ErrorType<void | Payr
         TContext
       > => {
       return useMutation(getVerifyPlatformSchoolSettlementMutationOptions(options));
+    }
+
+export const getRemoveSchoolPendingSettlementUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payment-settlement`
+}
+
+/**
+ * @summary Development-only explicit removal of the School Admin's pending unlinked profile, retaining audits
+ */
+export const removeSchoolPendingSettlement = async (schoolId: number,
+    settlementRemovalConfirmation: SettlementRemovalConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<SettlementRemovalResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SettlementRemovalResult>(getRemoveSchoolPendingSettlementUrl(schoolId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(settlementRemovalConfirmation)
+  }
+);}
+
+
+
+
+
+export const getRemoveSchoolPendingSettlementMutationKey = () => ['removeSchoolPendingSettlement'] as const;
+
+export const getRemoveSchoolPendingSettlementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeSchoolPendingSettlement>>, TError,RemoveSchoolPendingSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeSchoolPendingSettlement>>, TError,RemoveSchoolPendingSettlementMutationVariables, TContext> => {
+
+const mutationKey = getRemoveSchoolPendingSettlementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeSchoolPendingSettlement>>, RemoveSchoolPendingSettlementMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  removeSchoolPendingSettlement(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveSchoolPendingSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof removeSchoolPendingSettlement>>>
+    export type RemoveSchoolPendingSettlementMutationBody = BodyType<SettlementRemovalConfirmation>
+    export type RemoveSchoolPendingSettlementMutationError = ErrorType<void>
+    export type RemoveSchoolPendingSettlementMutationVariables = {schoolId: number;data: BodyType<SettlementRemovalConfirmation>}
+
+    /**
+ * @summary Development-only explicit removal of the School Admin's pending unlinked profile, retaining audits
+ */
+export const useRemoveSchoolPendingSettlement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeSchoolPendingSettlement>>, TError,RemoveSchoolPendingSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeSchoolPendingSettlement>>,
+        TError,
+        RemoveSchoolPendingSettlementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveSchoolPendingSettlementMutationOptions(options));
     }
 
 export const getGetSchoolPaymentSettlementUrl = (schoolId: number,) => {

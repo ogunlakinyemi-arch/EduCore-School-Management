@@ -64,3 +64,4 @@
 - [Vite private-file hardening](vite-private-file-hardening.md) — allow narrow optimizer caches and reject private URLs before SPA fallback; successful HEAD checks do not prove rendering.
 - [Vendor delivery gate](vendor-delivery-gate.md) — physical NFC/GPS/device integration and vendor-dependent communication/retry work await confirmed hardware/software delivery.
 - [Sandbox callback isolation](sandbox-callback-isolation.md) — TEST charges can trigger app writes; verify callback/webhook targets and use dedicated Development aliases consistently.
+- [Settlement removal consent](settlement-profile-removal-consent.md) — building a Development cleanup feature never authorizes deleting existing bank profiles.

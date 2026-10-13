@@ -6,6 +6,7 @@ import { createDevelopmentCommunicationProviders } from "./services/communicatio
 import { reconcileFinanceCommunicationIntents } from "./routes/finance-communication-service";
 import { evaluateSubscriptionSchools } from "./services/subscription-enforcement";
 import { developmentWorkersPaused } from "./lib/development-worker-policy";
+import { verifyRemovalRuntimeTarget } from "./services/development-settlement-removal";
 
 const rawPort = process.env["PORT"];
 
@@ -28,6 +29,13 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
+    void verifyRemovalRuntimeTarget().then((verified) => {
+      logger.info({ developmentSettlementRemovalIsolation: verified },
+        verified ? "Development settlement removal target verified; every action rechecks isolation"
+          : "Development settlement removal disabled: runtime target isolation is not confirmed");
+    });
+  }
   if (developmentWorkersPaused()) {
     logger.warn("Development subscription and notification workers paused for controlled verification");
     return;

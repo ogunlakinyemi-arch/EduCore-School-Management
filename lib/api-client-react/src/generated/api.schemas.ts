@@ -14025,6 +14025,66 @@ export interface SubscriptionAccessStatus {
   restrictionReason?: SubscriptionAccessStatusRestrictionReason;
 }
 
+export interface SettlementRemovalConfirmation {
+  /** @minimum 1 */
+  expectedProfileId: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$ */
+  expectedVersion: string;
+  /**
+     * @minLength 15
+     * @maxLength 80
+     */
+  confirmation: string;
+}
+
+export type SettlementRemovalReviewScope = typeof SettlementRemovalReviewScope[keyof typeof SettlementRemovalReviewScope];
+
+
+export const SettlementRemovalReviewScope = {
+  YEMAIT_COMPANY: 'YEMAIT_COMPANY',
+  SCHOOL: 'SCHOOL',
+} as const;
+
+export interface SettlementRemovalReview {
+  developmentOnly: true;
+  scope: SettlementRemovalReviewScope;
+  /** @nullable */
+  schoolId: number | null;
+  /** @nullable */
+  profileId: number | null;
+  /** @nullable */
+  businessName: string | null;
+  /** @nullable */
+  version: string | null;
+  status: string;
+  eligible: boolean;
+  notice: string;
+}
+
+export type SettlementRemovalResultScope = typeof SettlementRemovalResultScope[keyof typeof SettlementRemovalResultScope];
+
+
+export const SettlementRemovalResultScope = {
+  YEMAIT_COMPANY: 'YEMAIT_COMPANY',
+  SCHOOL: 'SCHOOL',
+} as const;
+
+export type SettlementRemovalResultStatus = typeof SettlementRemovalResultStatus[keyof typeof SettlementRemovalResultStatus];
+
+
+export const SettlementRemovalResultStatus = {
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+} as const;
+
+export interface SettlementRemovalResult {
+  removed: true;
+  profileId: number;
+  scope: SettlementRemovalResultScope;
+  /** @nullable */
+  schoolId: number | null;
+  status: SettlementRemovalResultStatus;
+}
+
 export type ExistingProfileInvitationRequestRole = typeof ExistingProfileInvitationRequestRole[keyof typeof ExistingProfileInvitationRequestRole];
 
 
