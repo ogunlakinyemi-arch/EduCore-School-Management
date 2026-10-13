@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yetenia EduCore — remediation continuation</title>
+<style>
+body{margin:0;background:#f4f6f8;color:#172535;font:16px/1.6 system-ui,sans-serif}main{max-width:960px;margin:32px auto;padding:32px;background:white;border-radius:12px}h1{font-size:30px;line-height:1.2}h2{margin-top:32px;font-size:22px}h3{font-size:18px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #d8e0e7;padding:10px;text-align:left;vertical-align:top}th{background:#eef3f7}code{overflow-wrap:anywhere}.notice{padding:16px;background:#fff6e5;border-left:4px solid #b77415}.ok{padding:16px;background:#edf7f1}small{color:#536576}li{margin:6px 0}@media(max-width:650px){main{margin:0;padding:20px;border-radius:0}table{font-size:12px}td,th{padding:6px}}
+</style></head><body><main>
+<h1>Yetenia EduCore: safe remediation continuation</h1>
+<p><small>13 October 2026 · Development/source-only work · Review-only schema planning</small></p>
+<div class="notice"><strong>No publication, database connection or SQL execution was initiated.</strong> No Production data was deleted/reset, no real payments or notifications were initiated, and no real accounts were used. Physical NFC/GPS/device integration and vendor setup remain untouched. The existing API process was not restarted.</div>
+<h2>Completed changes</h2>
+<ul>
+<li>Fixed all three remaining school-messaging frontend TypeScript errors: generated student and guardian query keys now include school/student scope; invalid thread links have an explicit error message and a recovery handler for the appropriate portal.</li>
+<li>Updated <code>@google-cloud/storage</code> from 8.2.0 to 8.4.0 within its existing compatible 8.x range. Removed vulnerable UUID from the installed dependency graph without forcing a transitive major override. Updated the package manifest and lockfile.</li>
+<li>Made offline Drizzle configuration credential-free and ESM-compatible. Restricted schema commands to explicit offline generate/export/check; blocked unknown/implicit commands and connected pull/introspection commands before credential access.</li>
+<li>Added 15 mocked school-messaging tests, four invitation UI regressions, two structural smoke tests of the real storage SDK and two new schema-policy tests. Removed invitation-test React act-environment warnings.</li>
+<li>Generated a fresh full-schema review export and prepared a migration review plan and separately authorized manual Clerk test checklist.</li>
+</ul>
+<h2>Checks actually run</h2>
+<table><thead><tr><th>Check</th><th>Final result</th><th>Limits</th></tr></thead><tbody>
+<tr><td>Selected API regressions</td><td>114 distinct tests passed; 1 optional database test skipped</td><td>Includes 36 isolation, 4 authorization activation, 32 invitation, 10 onboarding, 24 curriculum, 6 communication-scope and 2 SDK tests. Mocked persistence/identity; SDK test performs no I/O.</td></tr>
+<tr><td>Frontend tests</td><td>57 passed across 2 files</td><td>42 invitation tests and 15 school-messaging tests; no real accounts or provider acceptance.</td></tr>
+<tr><td>Offline tooling/guard tests</td><td>34 passed</td><td>Includes actual Drizzle config import with a throwing DATABASE_URL getter; no PostgreSQL execution.</td></tr>
+<tr><td>Development HTTP HEAD probes</td><td>20/20 passed across both Vite servers</td><td>Private paths denied; required entry/source/client paths served. Response bodies were not read.</td></tr>
+<tr><td>Frontend and API TypeScript</td><td>Passed individually</td><td>Shared-library build and component-preview typing also passed in the workspace check.</td></tr>
+<tr><td>Whole-workspace TypeScript</td><td><strong>Failed in the scripts package</strong></td><td>188 diagnostic lines in the captured run, including cross-package rootDir and fixture typing errors. Scripts/fixture TypeScript was not changed. This is not an all-tests/all-checks-pass result.</td></tr>
+<tr><td>Public browser preview</td><td>Expected incomplete-ticket page rendered; no resource errors</td><td>Frontend restarted once. Anonymous screenshot only, not authenticated acceptance or messaging evidence.</td></tr>
+</tbody></table>
+<p>The SDK smoke tests were rerun after correcting an unsupported option in the new test; final API typing and those tests passed. Two initially omitted API file arguments were corrected and the actual isolation/activation files ran. Counts above are distinct final tests, not repeated execution totals. Export invocations without a valid absolute output path were safely refused; the corrected offline export completed.</p>
+<h2>Dependency advisories</h2>
+<p>This continuation reduced the installed-graph audit from <strong>2 critical / 1 high / 4 moderate</strong> to <strong>2 critical / 1 high / 3 moderate</strong>. No new overrides or incompatible updates were added.</p>
+<table><thead><tr><th>Remaining package</th><th>Severity / alerts</th><th>Why it remains</th></tr></thead><tbody>
+<tr><td>tinypool 1.1.1</td><td>Critical × 2</td><td>Both fixes require at least 2.1.2; Vitest 3.2.7 declares ^1.1.1. A 2.x override would exceed parent support.</td></tr>
+<tr><td>vitest 3.2.7 and @vitest/mocker 3.2.7</td><td>Moderate × 2 audit entries</td><td>Patched line is 4.1.11 or newer, an incompatible major test-framework update. These entries share the redirect-mock advisory.</td></tr>
+<tr><td>braces 3.0.3</td><td>High × 1</td><td>No patched release reported; latest micromatch 4.0.8 and http-proxy-middleware 4.2.0 retain it. Also present through sandbox fast-glob.</td></tr>
+<tr><td>postcss-selector-parser 6.0.10</td><td>Moderate × 1</td><td>Fix requires 7.1.6+. Latest typography 0.5.20 pins 6.0.10 exactly; no compatible parent update exists.</td></tr>
+</tbody></table>
+<p>Existing Clerk/React peer warnings remain: React/React DOM 19.1.0 are outside Clerk's declared supported patch ranges. Those versions were not changed as part of the storage patch. Runtime/Production dependency remediation has not been proven: the API was not rebuilt/restarted, and Production was not published.</p>
+<h2>Current migration review plan</h2>
+<p>The fresh offline export contains <strong>179 tables, 422 CHECKs, 684 foreign keys and 1,227 statements</strong>. Its graph records source hashes, statement-set integrity and provenance. All four required keys retain their existing source ownership: three unique indexes and one academic-term unique constraint. No schema definitions were rewritten.</p>
+<ol>
+<li>Freeze and review the source/export snapshot, supporting-key eligibility, dependency order and preserved ownership.</li>
+<li>Require explicit approval and clear configuration of an <em>already-existing</em> isolated disposable target before any connection. The optional target URL/acknowledgment were absent, and no local PostgreSQL process was found. No database was started or connected to.</li>
+<li>Only under separate authorization, test raw and reordered exports as separate evidence in that target, inspect actual catalogs/CHECK domains and exercise synthetic isolation behavior.</li>
+<li>Prepare an incremental upgrade only from approved target-baseline and verified backup/recovery evidence. A full empty-schema export does not prove an existing-table upgrade.</li>
+<li>Stop at review. The reported Support instruction remains to await the Publish-planner fix, not bypass it with manual Production indexes. Fresh incremental preview, backup recovery and PostgreSQL executability remain unverified.</li>
+</ol>
+<p>SQL and graph outputs are under <code>reports/software-remediation/generated/continued-schema-review.sql</code> and its <code>.graph.json</code> sidecar, excluded from Git/deployment packaging. Detailed source review: <code>reports/software-remediation/continued-migration-plan.md</code>.</p>
+<h2>Manual Clerk test plan — not executed</h2>
+<p>Use only separately approved Development test identities and two synthetic schools. First require target/startup verification and an explicitly safe API restart. Require provider-documented no-delivery testing or approved pre-issued tickets: test keys alone do not suppress email. Stop if signup, verification or invitation creation would send a real message.</p>
+<ol>
+<li>Check missing-ticket rejection and artifact base-path/ticket continuity through the permitted no-delivery flow.</li>
+<li>Check new identity and existing Clerk identity without app roles; require authoritative active intended-role/school evidence before success.</li>
+<li>Check an already-authorized identity; unrelated existing roles must not prove invitation acceptance.</li>
+<li>Check wrong recipients and expired/revoked/replaced prearranged tickets; no escalation or duplicate memberships.</li>
+<li>Check transient failures and retry; stale cached roles must not produce success.</li>
+<li>Check Partner/internal account-role matching and restricted-employee exclusivity without device or financial operations.</li>
+<li>Check direct school A/B isolation, Owner read-only boundaries and, only if approved no-delivery capture exists, the actual recipient-link redirect.</li>
+</ol>
+<p>Do not use real accounts, send email/SMS, create charges, record full tickets/cookies/secrets, or reset Production. Detailed checklist: <code>reports/software-remediation/clerk-manual-test-plan.md</code>. Mocked tests and a public screenshot do not establish genuine acceptance or delivery.</p>
+<h2>Held work and approvals</h2>
+<ul>
+<li>Development API target verification/startup review and an explicitly safe restart: <strong>not performed</strong>. Existing API process stayed running unchanged; source-tested invitation/backend and storage runtime verification remain pending.</li>
+<li>Existing isolated disposable database and bounded validation authorization: absent. Executable SQL validation remains blocked.</li>
+<li>Incompatible dependency upgrades or replacements: require a separately scoped compatibility review; not forced here.</li>
+<li>Genuine invitation journeys: require approved test identities, no-delivery capability and safe running backend. No accounts/messages were used here.</li>
+<li>Whole-workspace scripts typing cleanup remains unresolved. No fixture execution or broad refactor was undertaken.</li>
+</ul>
+<div class="ok">No remediation job is still running. The authorized source edits and targeted checks are complete; the items above remain held or unresolved. The owner's test-only Production statement did not change preservation or authorization boundaries.</div>
+</main></body></html>

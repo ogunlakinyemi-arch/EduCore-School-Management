@@ -27,7 +27,9 @@ export function Thread({ id, onBack, onChanged }: { id: number; onBack: () => vo
 export function ThreadLinkPage({ threadId,parent=false }: {threadId:string;parent?:boolean}) {
   const [,navigate]=useLocation();
   const id=Number(threadId);
-  if(!/^[1-9]\d*$/.test(threadId)||!Number.isSafeInteger(id))return <ErrorState />;
+  if(!/^[1-9]\d*$/.test(threadId)||!Number.isSafeInteger(id))return <ErrorState
+    message="This conversation link is invalid. Return to your messages."
+    retry={()=>navigate(parent?'/parent/communication':'/communications')} />;
   return <main className="mx-auto max-w-6xl p-5 md:p-8" data-testid="communication-thread-link">
     <Thread id={id} onBack={()=>navigate(parent?'/parent/communication':'/communications')} />
   </main>;

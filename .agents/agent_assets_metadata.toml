@@ -658,3 +658,17 @@ mtime_ms = 1791912000448
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/5763f8a3-1374-4e7f-9d22-55d531123b26/4bd69f6b-2272-401b-826a-2dfab66a1777"
 storage_version_token = "1791912131037310"
 content_type = "text/html"
+
+[[outputs]]
+id = "H1kbFd7wD5mYba5q2Ylxp"
+uri = "file://reports/software-remediation/continued-review.html"
+type = "html"
+title = "EduCore remediation — current results and review plans"
+description = "Completed changes, exact verification results, remaining dependency alerts, review-only migration plan and manual Clerk testing gates. No database execution or publishing."
+logical_id = "d2082935-a29c-43da-abb5-cfc6b34bd4e8"
+content_hash = "sha256:38cd588d6a7005f50ac4f5a0e62b49c04399d0d2e4be7a11afa6800be88cbaf3"
+size = 10616
+mtime_ms = 1791914237644
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/d2082935-a29c-43da-abb5-cfc6b34bd4e8/9f199156-1e98-45a4-a3a4-5c11ee58df33"
+storage_version_token = "1791914311401250"
+content_type = "text/html"

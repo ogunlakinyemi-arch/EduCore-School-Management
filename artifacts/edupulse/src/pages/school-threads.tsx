@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useListSchoolParentMessageThreads, getListSchoolParentMessageThreadsQueryKey,
-  useListCommunicationStudents, useListCommunicationGuardians, useCreateSchoolParentMessageThread } from '@workspace/api-client-react';
+  useListCommunicationStudents, getListCommunicationStudentsQueryKey,
+  useListCommunicationGuardians, getListCommunicationGuardiansQueryKey,
+  useCreateSchoolParentMessageThread } from '@workspace/api-client-react';
 import { MessageSquare } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonPage, StatusPill, date } from '@/components/shared';
 import { inputClass, Notice } from './security/ui';
@@ -13,8 +15,8 @@ export function SchoolThreads({ schoolId, teacher }: { schoolId: number; teacher
   const [parentId,setParentId]=useState(0),[subject,setSubject]=useState(''),[body,setBody]=useState(''),[error,setError]=useState('');
   const [requestKey,setRequestKey]=useState(()=>crypto.randomUUID());
   const sp = { schoolId, ...(search.trim() ? { search: search.trim() } : {}) };
-  const students = useListCommunicationStudents(sp, { query: { enabled: !!schoolId, staleTime: 15000 } });
-  const guardians=useListCommunicationGuardians(childId,{schoolId},{query:{enabled:!!childId&&!!schoolId,staleTime:15000}});
+  const students = useListCommunicationStudents(sp, { query: { queryKey: getListCommunicationStudentsQueryKey(sp), enabled: !!schoolId, staleTime: 15000 } });
+  const guardians=useListCommunicationGuardians(childId,{schoolId},{query:{queryKey:getListCommunicationGuardiansQueryKey(childId,{schoolId}),enabled:!!childId&&!!schoolId,staleTime:15000}});
   const create=useCreateSchoolParentMessageThread();
   useEffect(()=>{setParentId(0);setError('');setRequestKey(crypto.randomUUID());},[childId]);
   useEffect(()=>{if(childId&&guardians.data?.length===1)setParentId(guardians.data[0].userId);},[childId,guardians.data]);

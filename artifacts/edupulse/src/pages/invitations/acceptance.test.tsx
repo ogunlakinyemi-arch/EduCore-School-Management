@@ -54,6 +54,8 @@ vi.mock('@workspace/api-client-react', () => ({
 
 import InvitationAcceptance, { partnerInvitationErrorMessage } from './acceptance';
 
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
 let root: Root;
 let host: HTMLDivElement;
 
@@ -274,6 +276,47 @@ describe('invitation acceptance context', () => {
     expect(mocks.refetch).toHaveBeenCalledOnce();
     expect(host.textContent).toContain('Invitation accepted');
     expect(host.textContent).not.toContain('already have active access');
+  });
+
+  it.each([
+    { label: 'missing', roles: [] },
+    { label: 'inactive', roles: [{ role: 'TEACHER', schoolId: 8, status: 'INACTIVE' }] },
+  ])('does not claim success when activation evidence has $label active permissions', async ({ roles }) => {
+    mocks.auth.isSignedIn = true;
+    mocks.refetch.mockResolvedValueOnce({ data: { schoolInvitationActivated: true, roles } });
+    setSearch('?__clerk_ticket=school-ticket');
+    await renderAcceptance();
+    expect(mocks.refetch).toHaveBeenCalledOnce();
+    expect(host.textContent).not.toContain('Invitation accepted');
+    expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale roles when the second school authorization read fails', async () => {
+    mocks.auth.isSignedIn = true;
+    const data = { roles: [{ role: 'TEACHER', schoolId: 8, status: 'ACTIVE' }] };
+    mocks.refetch.mockResolvedValueOnce({ data }).mockResolvedValueOnce({ error: { status: 503 }, data });
+    setSearch('?__clerk_ticket=school-ticket');
+    await renderAcceptance();
+    expect(mocks.refetch).toHaveBeenCalledTimes(2);
+    expect(host.textContent).toContain('temporarily unavailable');
+    expect(host.textContent).not.toContain('Invitation accepted');
+    expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+
+  it('recovers a transient school refresh failure only after fresh server-confirmed activation', async () => {
+    mocks.auth.isSignedIn = true;
+    mocks.refetch.mockResolvedValueOnce({ error: { status: 503 } }).mockResolvedValueOnce({
+      data: { schoolInvitationActivated: true, roles: [{ role: 'TEACHER', schoolId: 8, status: 'ACTIVE' }] },
+    });
+    setSearch('?__clerk_ticket=school-ticket');
+    await renderAcceptance();
+    await act(async () => {
+      [...host.querySelectorAll('button')].find(button => button.textContent === 'Retry activation')?.click();
+    });
+    expect(mocks.refetch).toHaveBeenCalledTimes(2);
+    expect(host.textContent).toContain('Invitation accepted');
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.internalAccept).not.toHaveBeenCalled();
   });
 
   it.each(['expired', 'revoked', 'reused', 'wrong recipient'])(

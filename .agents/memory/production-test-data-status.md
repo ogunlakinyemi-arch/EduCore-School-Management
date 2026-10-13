@@ -5,6 +5,8 @@ description: User-stated pre-customer Production data status and the read-only r
 
 On 2026-10-06, the user stated that Production contains only test schools/test data and no real customer schools or records. This is user-provided context, not an independently verified database census.
 
+On 2026-10-13, the owner explicitly reconfirmed that all schools, students, parents and other Production records are test data. They authorized planning around that fact only, not deletion, resets, destructive changes, Production migrations/schema pushes, publication, real payments or notifications.
+
 **Why:** Production-readiness compatibility audits concern existing test data, but test-only status does not authorize data repair, schema changes or deployment.
 
 **How to apply:** Preserve the explicit read-only boundary of an authorized audit. Independently verify the intended target before application-data queries. Reconfirm test-only status before future operations; this dated statement must not be assumed permanent.

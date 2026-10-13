@@ -1,17 +1,13 @@
 import { defineConfig } from "drizzle-kit";
 import path from "path";
+import { fileURLToPath } from "node:url";
 import { assertReviewOnlySchemaCommand } from "./schema-tooling-policy.mjs";
 
 assertReviewOnlySchemaCommand(process.argv.slice(2), process.env);
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
-}
-
+// This is an offline review configuration, never an application connection.
+// Do not read DATABASE_URL even when it is available in the shell.
 export default defineConfig({
-  schema: path.join(__dirname, "./src/schema/index.ts"),
+  schema: path.join(path.dirname(fileURLToPath(import.meta.url)), "./src/schema/index.ts"),
   dialect: "postgresql",
-  dbCredentials: {
-    url: process.env.DATABASE_URL,
-  },
 });

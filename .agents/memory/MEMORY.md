@@ -54,6 +54,7 @@
 - [Asynchronous denial audits](asynchronous-denial-audit-evidence.md) — drain delayed audit writes before fixture resets; bind evidence to the actual request.
 - [Wouter path wildcards](wouter-path-wildcards.md) — appended stars are not subtree matchers; test exact roots, slash-star descendants and neighboring portals.
 - [Schema export ordering](schema-export-dependency-ordering.md) — distinguish missing keys from premature FK emission; preserve index ownership and report raw versus reordered validation separately.
+- [Offline schema review](offline-schema-review-boundary.md) — review tooling excludes app credentials; filtered package commands change cwd; audit exports do not prove target upgrades.
 - [Student Finance ownership](student-finance-ownership.md) — school transfers never move original-school payments, allocations, attribution, receipts or subscription history.
 - [Controlled default initialization](controlled-default-initialization.md) — only reviewed empty metadata/default-deny fields may initialize populated rows; keep generation evidence aligned.
 - [Guest NFC payments](guest-nfc-payment-policy.md) — parents need no EduCore account; support printed and assisted online payment without mislabelling cash or internal allocations.
