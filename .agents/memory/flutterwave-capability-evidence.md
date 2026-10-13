@@ -9,6 +9,12 @@ TEST payment collections must be reported independently from payroll/payout conf
 
 **How to apply:** Never implicitly enable transfers from collection readiness. Preserve explicit transfer-mode gates, Development-only credential isolation, independent webhook authentication and provider verification. A credential passing local format validation is not proof Flutterwave accepts it.
 
+Read-only authentication evidence must not be reported as payment, webhook or settlement evidence. Compare an authenticated read with an unauthenticated control before treating a successful catalog response as proof the credential was accepted.
+
+**Why:** A public catalog could succeed without checking credentials; even authenticated catalog access establishes none of the financial operations.
+
+**How to apply:** Record only sanitized status/count evidence and the control result. Keep all payment, callback, persistence and payout claims explicitly unverified until their own checks succeed.
+
 The user reported on 2026-10-11 that the Flutterwave business account is approved and its dashboard exposes API Keys and Payment Links. Treat this as merchant-approval information, not evidence of transfer or split-settlement permissions.
 
 **Why:** Merchant approval must not be confused with either missing integration configuration or verified financial operations.

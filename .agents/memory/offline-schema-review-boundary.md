@@ -4,6 +4,12 @@ description: Why review tooling must exclude application credentials and disting
 ---
 Keep offline review tooling credential-free and command-allow-listed. Database-connected review, validation and mutations require a separately approved target/procedure; they must not reuse the ordinary application connection implicitly.
 
+Compiler remediation does not authorize running browser-fixture commands. Validate fixture JSON and ownership helpers with synthetic inputs only unless execution is separately approved.
+
+**Why:** Existing fixture utilities can create/delete Clerk identities and provision/retire database records. Fixing their types is not permission to exercise those operations.
+
+**How to apply:** Keep type checks and pure helper tests separate from fixture CLI execution; retain the approved-target and identity-operation boundaries during software-only remediation.
+
 **Why:** A review-only command policy originally blocked writes but still allowed database-reading CLI commands, while its config required the application URL even for offline generation. The owner authorizes source-only planning when no existing approved disposable target is clearly configured. Test-only Production data does not weaken this boundary.
 
 **How to apply:** Check command policy and credential loading together. Exercise the actual config with credential access forbidden, not just a mocked predicate. Keep full-schema export, executable isolated validation and incremental Publish preview as distinct evidence.

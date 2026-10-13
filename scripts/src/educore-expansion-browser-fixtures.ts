@@ -5,6 +5,11 @@
  * migration code. It supports plan, provision, read-only verify, and owned-fixture cleanup.
  */
 import { createHash, randomBytes } from "node:crypto";
+import type { BinaryLike } from "node:crypto";
+import type { Client as PgClient } from "pg";
+import { isRecord, parseBaseline, parseMigrationProof, parseFixtureManifest, requireSnapshot, requireSchoolId, requireOwnedIdentity,
+  type DatabaseIdentity, type Baseline, type Evidence, type FixtureManifest,
+  type FixtureIdentity, type FixtureClerkClient, type SchoolFixtureShape } from "./expansion-fixture-types";
 import { readFile, writeFile, rename } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -14,7 +19,7 @@ import { captureOriginalRows, verifyOriginalRows, preservationDigest,
 
 const ROOT = process.cwd();
 const require = createRequire(path.join(ROOT, "lib/db/package.json"));
-const { Client } = require("pg");
+const { Client } = require("pg") as typeof import("pg");
 const MANIFEST_PATH = "/tmp/educore-expansion-browser-fixtures.json";
 const BASELINE_PATH = "/tmp/educore-expansion-baseline.json";
 const MIGRATION_PROOF_PATH = "/tmp/educore-expansion-migration-proof.json";
@@ -35,19 +40,19 @@ const RETENTION_TABLES = [
   "school_security_operation_history",
 ];
 const SAFE_IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
-const hash = (value) => createHash("sha256").update(value).digest("hex");
-const md5 = (value) => createHash("md5").update(value).digest("hex");
+const hash = (value: BinaryLike) => createHash("sha256").update(value).digest("hex");
+const md5 = (value: BinaryLike) => createHash("md5").update(value).digest("hex");
 
-function fail(message) {
+function fail(message: string): never {
   throw new Error(message);
 }
 
-function quoteIdentifier(value) {
+function quoteIdentifier(value: string) {
   if (!SAFE_IDENTIFIER.test(value)) fail("Unsafe database identifier; stopped.");
   return `"${value}"`;
 }
 
-function requireConfirm(mode) {
+function requireConfirm(mode: "provision" | "cleanup") {
   const expected = mode === "provision"
     ? "provision-development-browser-fixtures"
     : "cleanup-development-browser-fixtures";
@@ -71,8 +76,8 @@ async function readEvidence() {
     readFile(BASELINE_PATH, "utf8"),
     readFile(MIGRATION_PROOF_PATH, "utf8"),
   ]);
-  const baseline = JSON.parse(baselineText);
-  const proof = JSON.parse(proofText);
+  const baseline = parseBaseline(JSON.parse(baselineText));
+  const proof = parseMigrationProof(JSON.parse(proofText));
   if (Object.keys(baseline.records ?? {}).length !== 132) {
     fail("Expected the complete 132-table Development preservation baseline.");
   }
@@ -105,8 +110,8 @@ async function migrationFileEvidence() {
   return files;
 }
 
-async function readIdentity(client, excludedSchoolId = 0) {
-  const result = await client.query(`
+async function readIdentity(client: PgClient, excludedSchoolId = 0) {
+  const result = await client.query<DatabaseIdentity>(`
     SELECT current_database() AS db,
       pg_postmaster_start_time()::text AS started,
       md5(string_agg(id::text, ',' ORDER BY id)) AS school_ids_hash,
@@ -117,14 +122,14 @@ async function readIdentity(client, excludedSchoolId = 0) {
   return result.rows[0];
 }
 
-function identityMatches(actual, expected) {
+function identityMatches(actual: DatabaseIdentity, expected: DatabaseIdentity) {
   return actual.db === expected.db &&
     actual.started === expected.started &&
     actual.school_ids_hash === expected.school_ids_hash &&
     Number(actual.schools) === Number(expected.schools);
 }
 
-async function assertOriginalFingerprints(client, baseline) {
+async function assertOriginalFingerprints(client: PgClient, baseline: Baseline) {
   let mismatches = 0;
   for (const [table, expected] of Object.entries(baseline.records)) {
     const originalJson = table === "communication_notifications"
@@ -145,13 +150,13 @@ async function assertOriginalFingerprints(client, baseline) {
   if (mismatches) fail(`Original Development table fingerprints changed (${mismatches}); stopped safely.`);
 }
 
-async function assertMigrationEvidence(client, evidence, migrationFiles, fixture = null) {
+async function assertMigrationEvidence(client: PgClient, evidence: Evidence, migrationFiles: Awaited<ReturnType<typeof migrationFileEvidence>>, fixture: FixtureManifest | null = null) {
   const initial = await readIdentity(client, fixture?.ids.schoolId ?? 0);
   if (!identityMatches(initial, evidence.baseline.identity) ||
       !identityMatches(initial, evidence.proof.identity)) {
     fail("Native Development database identity differs from the captured baseline/proof.");
   }
-  if (fixture) await verifyOriginalRows(client, fixture.preservationSnapshot);
+  if (fixture) await verifyOriginalRows(client, requireSnapshot(fixture));
   else await assertOriginalFingerprints(client, evidence.baseline);
 
   const firstLedger = (await client.query(`
@@ -202,8 +207,8 @@ async function assertMigrationEvidence(client, evidence, migrationFiles, fixture
   }
 }
 
-async function orderedSchoolTables(client) {
-  const names = (await client.query(`
+async function orderedSchoolTables(client: PgClient) {
+  const names = (await client.query<{ name: string }>(`
     SELECT c.relname AS name
       FROM pg_class c
       JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -215,7 +220,7 @@ async function orderedSchoolTables(client) {
        )
      ORDER BY c.relname
   `)).rows.map((row) => row.name);
-  const fks = (await client.query(`
+  const fks = (await client.query<{ child: string; parent: string }>(`
     SELECT child.relname AS child, parent.relname AS parent
       FROM pg_constraint fk
       JOIN pg_class child ON child.oid=fk.conrelid
@@ -225,22 +230,22 @@ async function orderedSchoolTables(client) {
      WHERE fk.contype='f' AND cn.nspname='public' AND pn.nspname='public'
   `)).rows;
   const nodes = new Set(names);
-  const outgoing = new Map(names.map((name) => [name, new Set()]));
+  const outgoing = new Map(names.map((name) => [name, new Set<string>()]));
   const indegree = new Map(names.map((name) => [name, 0]));
   for (const fk of fks) {
     if (nodes.has(fk.child) && nodes.has(fk.parent) && fk.child !== fk.parent &&
-        !outgoing.get(fk.child).has(fk.parent)) {
-      outgoing.get(fk.child).add(fk.parent);
-      indegree.set(fk.parent, indegree.get(fk.parent) + 1);
+        !outgoing.get(fk.child)!.has(fk.parent)) {
+      outgoing.get(fk.child)!.add(fk.parent);
+      indegree.set(fk.parent, indegree.get(fk.parent)! + 1);
     }
   }
   const ready = names.filter((name) => indegree.get(name) === 0);
   const order = [];
   while (ready.length) {
-    const name = ready.pop();
+    const name = ready.pop()!;
     order.push(name);
-    for (const parent of outgoing.get(name)) {
-      indegree.set(parent, indegree.get(parent) - 1);
+    for (const parent of outgoing.get(name)!) {
+      indegree.set(parent, indegree.get(parent)! - 1);
       if (indegree.get(parent) === 0) ready.push(parent);
     }
   }
@@ -248,13 +253,13 @@ async function orderedSchoolTables(client) {
   return { names, order, fks };
 }
 
-async function cleanupPlan(client) {
+async function cleanupPlan(client: PgClient) {
   const scoped = await orderedSchoolTables(client);
   const unscopedRoots = [
     "app_users", "schools", "school_classes", "academic_sessions", "academic_terms",
     "students", "parents", "employees", "partner_profiles",
   ];
-  const unscopedTables = (await client.query(`
+  const unscopedTables = (await client.query<{ name: string }>(`
     SELECT DISTINCT child.relname AS name
       FROM pg_constraint fk
       JOIN pg_class child ON child.oid=fk.conrelid
@@ -273,29 +278,29 @@ async function cleanupPlan(client) {
      ORDER BY child.relname
   `, [unscopedRoots])).rows.map((row) => row.name);
   const unscopedSet = new Set(unscopedTables);
-  const unscopedOutgoing = new Map(unscopedTables.map((name) => [name, new Set()]));
+  const unscopedOutgoing = new Map(unscopedTables.map((name) => [name, new Set<string>()]));
   const unscopedIndegree = new Map(unscopedTables.map((name) => [name, 0]));
   for (const fk of scoped.fks) {
     if (unscopedSet.has(fk.child) && unscopedSet.has(fk.parent) &&
-        fk.child !== fk.parent && !unscopedOutgoing.get(fk.child).has(fk.parent)) {
-      unscopedOutgoing.get(fk.child).add(fk.parent);
-      unscopedIndegree.set(fk.parent, unscopedIndegree.get(fk.parent) + 1);
+        fk.child !== fk.parent && !unscopedOutgoing.get(fk.child)!.has(fk.parent)) {
+      unscopedOutgoing.get(fk.child)!.add(fk.parent);
+      unscopedIndegree.set(fk.parent, unscopedIndegree.get(fk.parent)! + 1);
     }
   }
   const unscopedReady = unscopedTables.filter((name) => unscopedIndegree.get(name) === 0);
   const unscopedOrder = [];
   while (unscopedReady.length) {
-    const name = unscopedReady.pop();
+    const name = unscopedReady.pop()!;
     unscopedOrder.push(name);
-    for (const parent of unscopedOutgoing.get(name)) {
-      unscopedIndegree.set(parent, unscopedIndegree.get(parent) - 1);
+    for (const parent of unscopedOutgoing.get(name)!) {
+      unscopedIndegree.set(parent, unscopedIndegree.get(parent)! - 1);
       if (unscopedIndegree.get(parent) === 0) unscopedReady.push(parent);
     }
   }
   if (unscopedOrder.length !== unscopedTables.length) {
     fail("Unscoped fixture-owned cleanup dependency graph has a cycle; no writes performed.");
   }
-  const retentionTriggers = (await client.query(`
+  const retentionTriggers = (await client.query<Parameters<typeof validateRetentionGuards>[0][number]>(`
     SELECT c.relname AS table_name, tr.tgname AS trigger_name,
       tr.tgenabled AS enabled, pg_get_triggerdef(tr.oid, true) AS definition,
       tr.tgtype AS trigger_type, tr.tgnargs AS argument_count,
@@ -337,17 +342,17 @@ async function cleanupPlan(client) {
   };
 }
 
-async function atomicWriteManifest(manifest) {
+async function atomicWriteManifest(manifest: FixtureManifest) {
   const temp = `${MANIFEST_PATH}.${process.pid}.tmp`;
   await writeFile(temp, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: "wx" });
   await rename(temp, MANIFEST_PATH);
 }
 
-async function newManifest(evidence) {
+async function newManifest(evidence: Evidence): Promise<FixtureManifest> {
   const nonce = randomBytes(8).toString("hex");
   const label = `EDUCORE-EXPANSION-TEST-${nonce.toUpperCase()}`;
   const slug = `educore-expansion-${nonce}`;
-  const identities = [
+  const identities: FixtureIdentity[] = [
     { role: "parent1", firstName: "Expansion", lastName: "Parent One" },
     { role: "student1", firstName: "Expansion", lastName: "Student One" },
     { role: "parent2", firstName: "Expansion", lastName: "Parent Two" },
@@ -396,7 +401,7 @@ async function newManifest(evidence) {
   };
 }
 
-async function verifyNoExistingIdentity(client, manifest) {
+async function verifyNoExistingIdentity(client: PgClient, manifest: FixtureManifest) {
   const emails = manifest.fixtureIdentities.map((identity) => identity.email);
   const duplicate = await client.query(
     `SELECT count(*)::int AS count FROM public.app_users WHERE lower(email)=ANY($1::text[])`,
@@ -419,10 +424,10 @@ async function loadClerkClient() {
   if (!clerkModule.clerkClient?.users?.createUser || !clerkModule.clerkClient?.users?.deleteUser) {
     fail("Existing Clerk SDK client does not expose the required user-management methods.");
   }
-  return clerkModule.clerkClient;
+  return clerkModule.clerkClient as FixtureClerkClient;
 }
 
-async function createClerkUsers(manifest, clerkClient, createdClerkIds) {
+async function createClerkUsers(manifest: FixtureManifest, clerkClient: FixtureClerkClient, createdClerkIds: string[]) {
   for (const identity of manifest.fixtureIdentities) {
     const created = await clerkClient.users.createUser({
       emailAddress: [identity.email],
@@ -444,7 +449,7 @@ async function createClerkUsers(manifest, clerkClient, createdClerkIds) {
   }
 }
 
-async function insertAppUser(client, identity) {
+async function insertAppUser(client: PgClient, identity: FixtureIdentity) {
   const result = await client.query(`
     INSERT INTO public.app_users
       (clerk_user_id,email,first_name,last_name,phone,status)
@@ -461,13 +466,13 @@ async function insertAppUser(client, identity) {
   return identity.appUserId;
 }
 
-function userByRole(manifest, role) {
+function userByRole(manifest: SchoolFixtureShape, role: string) {
   const found = manifest.fixtureIdentities.find((identity) => identity.role === role);
   if (!found?.clerkUserId) fail("An owned Development Clerk identity is missing.");
   return found;
 }
 
-export async function createSchoolRows(client, manifest, persistManifest = true) {
+export async function createSchoolRows(client: PgClient, manifest: SchoolFixtureShape, persistManifest = true) {
   const school = (await client.query(`
     INSERT INTO public.schools
       (code,name,city,state,status,email,address,school_type)
@@ -514,7 +519,7 @@ export async function createSchoolRows(client, manifest, persistManifest = true)
   manifest.ids.sourceTermId = Number(sourceTerm.id);
   manifest.ids.targetTermId = Number(targetTerm.id);
 
-  const users = {};
+  const users: Record<string, number> = {};
   for (const role of [
     "parent1", "student1", "parent2", "teacher", "schoolAdmin", "accountant", "partner",
   ]) {
@@ -707,17 +712,17 @@ export async function createSchoolRows(client, manifest, persistManifest = true)
   if (Number(ownerMemberships.rows[0].count) !== 0) {
     fail("A school fixture account unexpectedly has a Platform Owner role.");
   }
-  if (persistManifest) await atomicWriteManifest(manifest);
+  if (persistManifest) await atomicWriteManifest(parseFixtureManifest(manifest));
 }
 
-async function provision(evidence, migrationFiles, plan) {
+async function provision(evidence: Evidence, migrationFiles: Awaited<ReturnType<typeof migrationFileEvidence>>, plan: Awaited<ReturnType<typeof cleanupPlan>>) {
   requireConfirm("provision");
   assertDevelopmentShell();
   try {
     await readFile(MANIFEST_PATH, "utf8");
     fail("A fixture manifest already exists; nonce reuse is prohibited.");
   } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
+    if (!isRecord(error) || error.code !== "ENOENT") throw error;
   }
   const manifest = await newManifest(evidence);
   manifest.cleanupPlanDigest = plan.digest;
@@ -730,7 +735,7 @@ async function provision(evidence, migrationFiles, plan) {
 
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   const clerkClient = await loadClerkClient();
-  const createdClerkIds = [];
+  const createdClerkIds: string[] = [];
   let transaction = false;
   let databaseCommitAttempted = false;
   try {
@@ -788,9 +793,10 @@ async function provision(evidence, migrationFiles, plan) {
     manifest.state = databaseCommitAttempted ? "PROVISION_COMMIT_UNCERTAIN" : "PROVISION_FAILED";
     manifest.safeFailure = {
       phase: transaction ? "database" : "identity",
-      status: typeof error?.status === "number" ? error.status : null,
-      providerCodes: Array.isArray(error?.errors) ? error.errors.map((entry) => entry.code) : [],
-      databaseCode: typeof error?.code === "string" && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : null,
+      status: isRecord(error) && typeof error.status === "number" ? error.status : null,
+      providerCodes: isRecord(error) && Array.isArray(error.errors) ? error.errors.map((entry: unknown) =>
+        isRecord(entry) ? entry.code : undefined) : [],
+      databaseCode: isRecord(error) && typeof error.code === "string" && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : null,
     };
     await atomicWriteManifest(manifest).catch(() => undefined);
     fail("Fixture provisioning stopped safely. No raw provider, email, ID, or database details were printed.");
@@ -799,8 +805,8 @@ async function provision(evidence, migrationFiles, plan) {
   }
 }
 
-async function getUnscopedOwnedChildren(client, manifest) {
-  const roots = {
+async function getUnscopedOwnedChildren(client: PgClient, manifest: FixtureManifest) {
+  const roots: Record<string, (number | null)[]> = {
     app_users: manifest.fixtureIdentities.map((identity) => identity.appUserId).filter(Number.isInteger),
     schools: [manifest.ids.schoolId].filter(Number.isInteger),
     school_classes: [manifest.ids.classAId, manifest.ids.classBId].filter(Number.isInteger),
@@ -812,7 +818,7 @@ async function getUnscopedOwnedChildren(client, manifest) {
     partner_profiles: [manifest.ids.partnerProfileId].filter(Number.isInteger),
   };
   const rootNames = Object.keys(roots).filter((name) => roots[name].length > 0);
-  const constraints = (await client.query(`
+  const constraints = (await client.query<{ child_table: string; parent_table: string; child_column: string; parent_column: string; has_school_id: boolean }>(`
     SELECT child.relname AS child_table, parent.relname AS parent_table,
       child_att.attname AS child_column, parent_att.attname AS parent_column,
       child_pk.has_school_id
@@ -837,17 +843,17 @@ async function getUnscopedOwnedChildren(client, manifest) {
       AND parent.relname = ANY($1::text[])
     ORDER BY child.relname, parent.relname, child_key.ordinality
   `, [rootNames])).rows;
-  const groups = new Map();
+  const groups = new Map<string, { child: string; parent: string; pairs: [string, string][] }>();
   for (const fk of constraints) {
     if (fk.has_school_id || rootNames.includes(fk.child_table)) continue;
     const key = `${fk.child_table}:${fk.parent_table}`;
     if (!groups.has(key)) groups.set(key, { child: fk.child_table, parent: fk.parent_table, pairs: [] });
-    groups.get(key).pairs.push([fk.child_column, fk.parent_column]);
+    groups.get(key)!.pairs.push([fk.child_column, fk.parent_column]);
   }
   const tables = new Set([...groups.values()].map((entry) => entry.child));
-  const graph = new Map([...tables].map((name) => [name, new Set()]));
+  const graph = new Map([...tables].map((name) => [name, new Set<string>()]));
   const indegree = new Map([...tables].map((name) => [name, 0]));
-  const allEdges = (await client.query(`
+  const allEdges = (await client.query<{ child: string; parent: string }>(`
     SELECT child.relname AS child, parent.relname AS parent
       FROM pg_constraint fk
       JOIN pg_class child ON child.oid=fk.conrelid
@@ -858,18 +864,18 @@ async function getUnscopedOwnedChildren(client, manifest) {
   `)).rows;
   for (const edge of allEdges) {
     if (tables.has(edge.child) && tables.has(edge.parent) && edge.child !== edge.parent &&
-        !graph.get(edge.child).has(edge.parent)) {
-      graph.get(edge.child).add(edge.parent);
-      indegree.set(edge.parent, indegree.get(edge.parent) + 1);
+        !graph.get(edge.child)!.has(edge.parent)) {
+      graph.get(edge.child)!.add(edge.parent);
+      indegree.set(edge.parent, indegree.get(edge.parent)! + 1);
     }
   }
   const ready = [...tables].filter((name) => indegree.get(name) === 0);
   const order = [];
   while (ready.length) {
-    const name = ready.pop();
+    const name = ready.pop()!;
     order.push(name);
-    for (const parent of graph.get(name)) {
-      indegree.set(parent, indegree.get(parent) - 1);
+    for (const parent of graph.get(name)!) {
+      indegree.set(parent, indegree.get(parent)! - 1);
       if (indegree.get(parent) === 0) ready.push(parent);
     }
   }
@@ -877,7 +883,7 @@ async function getUnscopedOwnedChildren(client, manifest) {
   return { roots, groups, order };
 }
 
-async function cleanupUnscopedOwnedChildren(client, manifest) {
+async function cleanupUnscopedOwnedChildren(client: PgClient, manifest: FixtureManifest) {
   const children = await getUnscopedOwnedChildren(client, manifest);
   for (const table of children.order) {
     for (const [key, group] of children.groups) {
@@ -897,7 +903,7 @@ async function cleanupUnscopedOwnedChildren(client, manifest) {
   return Object.fromEntries(Object.entries(children.roots).map(([table, ids]) => [table, ids.length]));
 }
 
-async function assertOwnedSchool(client, manifest, baseline) {
+async function assertOwnedSchool(client: PgClient, manifest: FixtureManifest, baseline: Baseline) {
   const school = await client.query(`
     SELECT id,code,name FROM public.schools
      WHERE id=$1 AND code=$2 AND name=$2
@@ -915,10 +921,10 @@ async function assertOwnedSchool(client, manifest, baseline) {
   }
 }
 
-async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
+async function cleanupOwnedFixture(evidence: Evidence, migrationFiles: Awaited<ReturnType<typeof migrationFileEvidence>>, plan: Awaited<ReturnType<typeof cleanupPlan>>) {
   requireConfirm("cleanup");
   assertDevelopmentShell();
-  const manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
+  const manifest = parseFixtureManifest(JSON.parse(await readFile(MANIFEST_PATH, "utf8")));
   if (manifest.state !== "READY_FOR_LIVE_DEVELOPMENT_BROWSER" &&
       manifest.state !== "DATABASE_CLEANED_CLERK_PENDING" &&
       manifest.state !== "DATABASE_RETIRED_CLERK_PENDING") {
@@ -936,7 +942,7 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
     fail("Exact ownership IDs are incomplete; cleanup refused.");
   }
   if (!manifest.preservationSnapshot ||
-      preservationDigest(manifest.preservationSnapshot) !== manifest.preservationDigest) {
+      preservationDigest(requireSnapshot(manifest)) !== manifest.preservationDigest) {
     fail("Original-row preservation evidence is missing or altered; cleanup refused.");
   }
   if (manifest.state !== "DATABASE_CLEANED_CLERK_PENDING" &&
@@ -962,7 +968,7 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
         fail("Live cleanup guard plan changed; cleanup refused.");
       }
 
-    await verifyOriginalRows(client, manifest.preservationSnapshot);
+    await verifyOriginalRows(client, requireSnapshot(manifest));
     const retainedHistory: Record<string, number> = {};
     for (const table of RETENTION_TABLES) {
       retainedHistory[table] = Number((await client.query(
@@ -974,10 +980,10 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
     manifest.cleanupMode = retire ? "HISTORY_PRESERVING_RETIREMENT" : "EMPTY_HISTORY_PHYSICAL_CLEANUP";
     manifest.retainedHistory = retainedHistory;
     if (retire) {
-      await retireFixture(client, manifest.ids.schoolId, manifest.label, manifest.fixtureIdentities);
+      await retireFixture(client, requireSchoolId(manifest), manifest.label, manifest.fixtureIdentities.map(requireOwnedIdentity));
       const stillProtected = await cleanupPlan(client);
       if (stillProtected.digest !== currentPlan.digest) fail("History protection changed during retirement.");
-      manifest.preservationResult = await verifyOriginalRows(client, manifest.preservationSnapshot);
+      manifest.preservationResult = await verifyOriginalRows(client, requireSnapshot(manifest));
     } else {
     await client.query(`
       LOCK TABLE public.student_care_record_history,
@@ -1045,7 +1051,7 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
     if (!identityMatches(after, evidence.baseline.identity)) {
       fail("Original Development school count/hash did not return to baseline.");
     }
-    manifest.preservationResult = await verifyOriginalRows(client, manifest.preservationSnapshot);
+    manifest.preservationResult = await verifyOriginalRows(client, requireSnapshot(manifest));
     }
       await client.query("COMMIT");
       transaction = false;
@@ -1063,7 +1069,7 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
     try {
       await client.connect();
       await client.query("BEGIN READ ONLY");
-      await verifyOriginalRows(client, manifest.preservationSnapshot);
+      await verifyOriginalRows(client, requireSnapshot(manifest));
       await assertOwnedSchoolOrAbsent(client, manifest, evidence.baseline);
       const school = await client.query(
         "SELECT count(*)::int AS count FROM public.schools WHERE id=$1",
@@ -1085,15 +1091,16 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
   const clerkClient = await loadClerkClient();
   for (const identity of manifest.fixtureIdentities) {
     if (identity.clerkDeleted === true) continue;
+    const { clerkUserId } = requireOwnedIdentity(identity);
     try {
-      const external = await clerkClient.users.getUser(identity.clerkUserId);
+      const external = await clerkClient.users.getUser(clerkUserId);
       if (external.privateMetadata?.edupulseFixture !== manifest.label ||
           !external.emailAddresses?.some(entry =>
             entry.emailAddress.toLowerCase() === identity.email.toLowerCase())) {
         fail("Provider identity ownership differs from the exact fixture; removal refused.");
       }
     } catch (error) {
-      if (error?.status === 404 || error?.statusCode === 404) {
+      if (isRecord(error) && (error.status === 404 || error.statusCode === 404)) {
         identity.clerkDeleted = true;
         await atomicWriteManifest(manifest);
         continue;
@@ -1101,7 +1108,7 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
       fail("Clerk identity status could not be reconciled; retry cleanup without touching other users.");
     }
     try {
-      await clerkClient.users.deleteUser(identity.clerkUserId);
+      await clerkClient.users.deleteUser(clerkUserId);
       identity.clerkDeleted = true;
       await atomicWriteManifest(manifest);
     } catch {
@@ -1123,7 +1130,7 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
   }));
 }
 
-async function assertOwnedSchoolOrAbsent(client, manifest, baseline) {
+async function assertOwnedSchoolOrAbsent(client: PgClient, manifest: FixtureManifest, baseline: Baseline) {
   if (manifest.cleanupMode === "HISTORY_PRESERVING_RETIREMENT") {
     await assertOwnedSchool(client, manifest, baseline);
     const school = (await client.query(
@@ -1146,7 +1153,7 @@ async function main() {
   if (!["plan", "provision", "cleanup", "verify"].includes(mode)) {
     fail("Choose exactly one mode: plan, provision, cleanup, or verify.");
   }
-  if (mode !== "plan" && mode !== "verify") requireConfirm(mode);
+  if (mode === "provision" || mode === "cleanup") requireConfirm(mode);
   assertDevelopmentShell();
   const evidence = await readEvidence();
   const migrationFiles = await migrationFileEvidence();
@@ -1156,14 +1163,14 @@ async function main() {
     await client.query("BEGIN READ ONLY");
     const identity = await readIdentity(client);
     if (mode === "verify") {
-      const manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
-      if (preservationDigest(manifest.preservationSnapshot) !== manifest.preservationDigest) {
+      const manifest = parseFixtureManifest(JSON.parse(await readFile(MANIFEST_PATH, "utf8")));
+      if (preservationDigest(requireSnapshot(manifest)) !== manifest.preservationDigest) {
         fail("Original-row preservation evidence was altered.");
       }
       await assertMigrationEvidence(client, evidence, migrationFiles, manifest);
       console.log(JSON.stringify({
         status: "READ_ONLY_PRESERVATION_VERIFIED",
-        ...await verifyOriginalRows(client, manifest.preservationSnapshot),
+        ...await verifyOriginalRows(client, requireSnapshot(manifest)),
         baselineTables: Object.keys(evidence.baseline.records).length,
         triggerChanges: 0,
       }));

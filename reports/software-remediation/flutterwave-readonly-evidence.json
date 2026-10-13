@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-13",
+  "evidence": "GENUINE_PROVIDER_READ_ONLY",
+  "endpoint": "/v3/banks/NG",
+  "method": "GET",
+  "authenticatedHttpStatus": 200,
+  "catalogEntryCount": 598,
+  "unauthenticatedControlHttpStatus": 401,
+  "providerRequests": 2,
+  "providerMutations": 0,
+  "databaseAccess": "NONE",
+  "paymentVerified": false,
+  "webhookDeliveryVerified": false,
+  "settlementVerified": false,
+  "credentialsAndProviderBodiesStored": false
+}

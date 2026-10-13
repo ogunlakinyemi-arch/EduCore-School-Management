@@ -460,6 +460,9 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
       successfulStatus: "successful",
       providerName: "Flutterwave",
     });
+    if (verified.providerTransactionId !== requestTransactionId) {
+      throw new PaymentProviderError("Flutterwave transaction ID mismatch");
+    }
     return process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
       ? { ...verified,
         ...(data.charged_amount == null ? {} : { providerChargedAmountMinor: majorToMinorNonnegative(data.charged_amount,input.currency) }),

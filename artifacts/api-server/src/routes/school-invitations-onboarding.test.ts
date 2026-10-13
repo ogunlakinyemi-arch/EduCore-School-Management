@@ -59,6 +59,21 @@ describe("school invitation claims", () => {
       acceptedInvitationFromMetadata(invitationMetadata({ firstName: 42 }), invitedEmail),
     ).toThrow("does not match the authenticated account");
   });
+  it.each([
+    { version: 2 },
+    { claimId: "not-a-uuid" },
+    { emailProof: "not-a-valid-proof" },
+    { schoolId: 0 },
+    { schoolId: -1 },
+    { schoolId: 123.5 },
+    { role: "PLATFORM_OWNER" },
+    { role: "INTERNAL_OFFICER" },
+    { studentId: -1 },
+  ])("rejects malformed or privileged Clerk invitation metadata ($role)", overrides => {
+    process.env.CLERK_SECRET_KEY = testSecret;
+    expect(() => acceptedInvitationFromMetadata(invitationMetadata(overrides), invitedEmail))
+      .toThrow("does not match the authenticated account");
+  });
 
   it.each([
     { role: "SCHOOL_ADMIN", employeeNo: null, studentId: null },

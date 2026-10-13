@@ -209,7 +209,7 @@ export function requireAuthentication(): RequestHandler {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Authentication required" });
 
-    loadUserContext(userId)
+    return void loadUserContext(userId)
       .then(async (context) => {
         (req as Request & { edupulseUser?: UserContext }).edupulseUser = context;
         try {

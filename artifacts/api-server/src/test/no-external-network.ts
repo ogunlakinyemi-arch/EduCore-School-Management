@@ -6,7 +6,7 @@ const originalFetch = globalThis.fetch;
 // Remove inherited credentials before test modules are imported. Tests must
 // supply their own synthetic credentials and must never inherit the app pool.
 for (const key of Object.keys(process.env)) {
-  if (/SECRET|TOKEN|PASSWORD|(?:^|_)API_KEY|(?:^|_)PUBLISHABLE_KEY|^FLUTTERWAVE.*KEY|^DATABASE_URL$|^PG(?:HOST|PORT|USER|DATABASE|PASSWORD)$/.test(key)) {
+  if (/SECRET|TOKEN|PASSWORD|(?:^|_)API_KEY|(?:^|_)PUBLISHABLE_KEY|^FLUTTERWAVE|^EDUPULSE_SETUP_KEY$|^DATABASE_URL$|^PG(?:HOST|PORT|USER|DATABASE|PASSWORD)$/.test(key)) {
     delete process.env[key];
   }
 }
