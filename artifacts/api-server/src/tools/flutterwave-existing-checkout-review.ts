@@ -25,6 +25,7 @@ export async function reviewExistingTestCheckout(
     return { ...safety, evidence: "NOT_RUN", credentialState: credential.state, paymentVerified: false };
   }
   const requests: { phase: "REFERENCE_LOOKUP" | "TRANSACTION_VERIFICATION"; httpStatus: number }[] = [];
+  let lookupOutcome: "NO_TRANSACTION_RECORDED" | "UNCONFIRMED" = "UNCONFIRMED";
   let transactionId: string | null = null;
   let attempts = 0;
   const boundedRead: typeof fetch = async (input, init) => {
@@ -44,6 +45,13 @@ export async function reviewExistingTestCheckout(
     requests.push({ phase, httpStatus: response.status });
     if (phase === "REFERENCE_LOOKUP") {
       const payload: unknown = await response.clone().json().catch(() => null);
+      if (response.status === 400 && payload && typeof payload === "object"
+          && "status" in payload && payload.status === "error"
+          && "data" in payload && payload.data === null
+          && "message" in payload && typeof payload.message === "string"
+          && payload.message.trim().toLowerCase() === "no transaction was found for this id") {
+        lookupOutcome = "NO_TRANSACTION_RECORDED";
+      }
       if (payload && typeof payload === "object" && "data" in payload
           && payload.data && typeof payload.data === "object" && "id" in payload.data) {
         const id = payload.data.id;
@@ -68,6 +76,7 @@ export async function reviewExistingTestCheckout(
     // Neither upstream bodies nor exception text are safe to publish.
     return {
       ...safety, evidence: "PROVIDER_READ_UNCONFIRMED", requests,
+      lookupOutcome,
       expectedAmountMinor: 500000, expectedCurrency: "NGN",
       verificationOutcome: "UNVERIFIED", paymentVerified: false,
       referenceTransactionAmountCurrencyMatched: false,

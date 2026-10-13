@@ -5,6 +5,7 @@ import { dispatchCommunicationDeliveries } from "./services/communication-servic
 import { createDevelopmentCommunicationProviders } from "./services/communication-providers";
 import { reconcileFinanceCommunicationIntents } from "./routes/finance-communication-service";
 import { evaluateSubscriptionSchools } from "./services/subscription-enforcement";
+import { developmentWorkersPaused } from "./lib/development-worker-policy";
 
 const rawPort = process.env["PORT"];
 
@@ -27,6 +28,10 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  if (developmentWorkersPaused()) {
+    logger.warn("Development subscription and notification workers paused for controlled verification");
+    return;
+  }
 
   // Provider work runs after request transactions commit. In development the
   // dispatcher uses no-network adapters; real providers require explicit setup.

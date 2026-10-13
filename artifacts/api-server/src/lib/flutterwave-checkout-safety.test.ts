@@ -88,6 +88,17 @@ describe("Existing checkout review (mock transport; no application settlement)",
     expect(transport).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(result)).not.toContain("private upstream");
   });
+  it("reports a provider-confirmed absent transaction without declaring payment failure or settlement", async () => {
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(json({
+      status: "error", message: "No transaction was found for this id", data: null,
+    }, 400));
+    const result = await reviewExistingTestCheckout(reference, env(), transport);
+    expect(result).toMatchObject({
+      lookupOutcome: "NO_TRANSACTION_RECORDED", paymentVerified: false,
+      applicationSettlementVerified: false,
+    });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
   it.each([
     { id: 654321 }, { tx_ref: "other-reference" }, { amount: 4999 }, { currency: "USD" },
   ])("rejects independently verified transaction mismatches: %j", change => {

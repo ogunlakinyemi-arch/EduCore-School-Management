@@ -27,3 +27,14 @@ for the user's authorized Development TEST credential.
 
 **How to apply:** Preserve deployed configuration separately and fail closed on
 missing, invalid or conflicting Development TEST aliases.
+
+A no-network messaging configuration is not a read-only application runtime.
+Pause startup/scheduled subscription and notification jobs independently before
+restarting the Development API for preservation-sensitive finance verification.
+
+**Why:** Even without a provider send, those jobs can change enforcement state
+and durable notification/outbox records immediately after the server starts.
+
+**How to apply:** Use an explicit Development-only pause, verify the updated
+runtime confirms it, and disclose the resulting scheduler pause. Do not disable
+Production workers or assume stopping delivery also stops database effects.
