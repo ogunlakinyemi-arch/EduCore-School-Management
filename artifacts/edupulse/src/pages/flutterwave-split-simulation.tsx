@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { FlaskConical } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import {
 } from '@workspace/api-client-react';
 import type { LocalFlutterwaveSplitSimulationInput } from '@workspace/api-client-react';
 import { PageHeading, Button, SkeletonPage, EmptyState, ErrorState, money } from '@/components/shared';
+import { LocalSplitSimulationReview } from './local-split-simulation-review';
 
 /** Separate screen: no operational recipient/configuration/checkout mutation hooks. */
 export function FlutterwaveSplitSimulationPage() {
@@ -20,6 +21,10 @@ export function FlutterwaveSplitSimulationPage() {
   const action = useRunLocalFlutterwaveSplitSimulation();
   const [ackFor, setAckFor] = useState<string | null>(null);
   const acknowledged = !!userId && ackFor === userId;
+  const [reviewFor, setReviewFor] = useState<string | null>(null);
+  const reviewOpen = !!userId && reviewFor === userId;
+  const reviewTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => { setReviewFor(null); }, [userId]);
   const [error, setError] = useState<{userId:string|null|undefined;text:string}|null>(null);
   const heading = <PageHeading eyebrow="Development simulation — TEST / NOT REAL" title="TEST / NOT REAL — no-partner split simulation"
     description="Fictional in-memory workflow only. Does not change school 1496 or prove any provider allocation." />;
@@ -30,6 +35,7 @@ export function FlutterwaveSplitSimulationPage() {
       onSuccess: data => {
         qc.setQueryData(key,data);
         if (value==='RESET' || value==='DISABLE') setAckFor(null);
+        if (value==='RESET') setReviewFor(null);
       },
       onError: () => setError({userId,text:'TEST / NOT REAL action failed. No operational settings were changed; do not assume simulation enablement succeeded.'}),
     });
@@ -54,7 +60,7 @@ export function FlutterwaveSplitSimulationPage() {
       <p className="mt-2 text-sm">{d.notice}</p>
     </div>
     {error?.userId===userId && <p role="alert">{error?.text}</p>}
-    <section className="panel space-y-2 p-5" data-testid="simulation-fixture">
+    <section className="panel min-w-0 space-y-2 p-5 [overflow-wrap:anywhere]" data-testid="simulation-fixture">
       <h2 className="font-bold">TEST / NOT REAL fictional recipient</h2>
       <p>Example school ID 1496 — {d.exampleSchoolName}. This is a label, not a saved association.</p>
       <dl className="space-y-1 text-sm">
@@ -73,11 +79,19 @@ export function FlutterwaveSplitSimulationPage() {
         disabled={action.isPending} onChange={e=>setAckFor(e.target.checked?userId:null)} data-testid="simulation-ack" />
         I understand this is TEST / NOT REAL, not ownership review, provider verification or permission to pay.</label>
       <div className="flex flex-wrap gap-2">
-        <Button disabled={action.isPending || !acknowledged} onClick={()=>run('REVIEW')} testId="simulation-review">Review fictional fixture — TEST / NOT REAL</Button>
-        <Button disabled={action.isPending || !acknowledged || !d.reviewedForSimulation} onClick={()=>run('ENABLE')} testId="simulation-enable">Enable simulation only — TEST / NOT REAL</Button>
-        <Button variant="outline" disabled={action.isPending || !d.simulatedEnabled} onClick={()=>run('DISABLE')} testId="simulation-disable">Disable simulation — TEST / NOT REAL</Button>
-        <Button variant="outline" disabled={action.isPending} onClick={()=>run('RESET')} testId="simulation-reset">Reset local preview — TEST / NOT REAL</Button>
+        <button type="button" ref={reviewTrigger} disabled={action.isPending || !acknowledged}
+          aria-expanded={reviewOpen} aria-controls="simulation-review-panel" data-testid="simulation-review"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-bold text-[hsl(var(--primary-foreground))] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          onClick={event => { event.preventDefault(); event.stopPropagation(); setReviewFor(userId); }}>
+          Review fictional fixture — TEST / NOT REAL
+        </button>
+        <Button type="button" disabled={action.isPending || !acknowledged || !d.reviewedForSimulation} onClick={()=>run('ENABLE')} testId="simulation-enable">Enable simulation only — TEST / NOT REAL</Button>
+        <Button type="button" variant="outline" disabled={action.isPending || !d.simulatedEnabled} onClick={()=>run('DISABLE')} testId="simulation-disable">Disable simulation — TEST / NOT REAL</Button>
+        <Button type="button" variant="outline" disabled={action.isPending} onClick={()=>run('RESET')} testId="simulation-reset">Reset local preview — TEST / NOT REAL</Button>
       </div>
+      {reviewOpen && <LocalSplitSimulationReview fixture={d} pending={action.isPending} acknowledged={acknowledged}
+        onConfirm={()=>run('REVIEW')}
+        onClose={()=>{ setReviewFor(null); reviewTrigger.current?.focus(); }} />}
       {action.isPending && <p role="status">TEST / NOT REAL — processing local simulation action only…</p>}
       <p>No checkout, payment, webhook or recipient-promotion action exists here. Refresh resets the preview; nothing is saved.</p>
     </section>
