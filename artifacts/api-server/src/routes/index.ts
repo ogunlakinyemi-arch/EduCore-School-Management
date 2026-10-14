@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import flutterwaveSplitsRouter from "./flutterwave-splits";
+import localSplitSimulationRouter from "./local-split-simulation";
+import { rejectOperationalSimulation } from "../middlewares/local-split-simulation";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import peopleRouter from "./people";
@@ -55,6 +57,8 @@ import partnerNfcRouter from "./partner-nfc";
 import nfcPaymentLinksRouter from "./nfc-payment-links";
 
 const router: IRouter = Router();
+router.use(rejectOperationalSimulation);
+router.use(localSplitSimulationRouter);
 router.use(flutterwaveSplitsRouter);
 
 router.use(healthRouter);

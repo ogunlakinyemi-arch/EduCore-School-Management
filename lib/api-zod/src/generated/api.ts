@@ -8,6 +8,77 @@
 import * as zod from 'zod';
 
 
+export const GetLocalFlutterwaveSplitSimulationResponse = zod.object({
+  "mode": zod.enum(['LOCAL_SPLIT_SIMULATION']),
+  "label": zod.enum(['TEST / NOT REAL']),
+  "exampleSchoolId": zod.literal(1496),
+  "exampleSchoolName": zod.string(),
+  "simulationRecipientId": zod.string(),
+  "fictionalBusiness": zod.string(),
+  "fictionalContact": zod.string(),
+  "fictionalPhone": zod.string(),
+  "fictionalBank": zod.string(),
+  "fictionalBankCode": zod.string(),
+  "fictionalAccount": zod.string(),
+  "recipientState": zod.enum(['LOCAL_ONLY_UNVERIFIED']),
+  "reviewedForSimulation": zod.boolean(),
+  "simulatedEnabled": zod.boolean(),
+  "operationalEnabled": zod.literal(false),
+  "testReady": zod.literal(false),
+  "ownershipVerified": zod.literal(false),
+  "providerVerified": zod.literal(false),
+  "checkoutAllowed": zod.literal(false),
+  "webhooksAllowed": zod.literal(false),
+  "allocationProven": zod.literal(false),
+  "bankSettlementVerified": zod.literal(false),
+  "providerFeesIncluded": zod.literal(false),
+  "noPartner": zod.literal(true),
+  "simulationTotalMinor": zod.literal(500000),
+  "simulationSchoolMinor": zod.literal(200000),
+  "simulationPlatformGrossMinor": zod.literal(300000),
+  "notice": zod.string()
+})
+
+
+export const RunLocalFlutterwaveSplitSimulationBody = zod.object({
+  "mode": zod.enum(['LOCAL_SPLIT_SIMULATION']),
+  "exampleSchoolId": zod.literal(1496),
+  "action": zod.enum(['PREVIEW', 'REVIEW', 'ENABLE', 'DISABLE', 'RESET']),
+  "acknowledgeFictional": zod.boolean()
+})
+
+export const RunLocalFlutterwaveSplitSimulationResponse = zod.object({
+  "mode": zod.enum(['LOCAL_SPLIT_SIMULATION']),
+  "label": zod.enum(['TEST / NOT REAL']),
+  "exampleSchoolId": zod.literal(1496),
+  "exampleSchoolName": zod.string(),
+  "simulationRecipientId": zod.string(),
+  "fictionalBusiness": zod.string(),
+  "fictionalContact": zod.string(),
+  "fictionalPhone": zod.string(),
+  "fictionalBank": zod.string(),
+  "fictionalBankCode": zod.string(),
+  "fictionalAccount": zod.string(),
+  "recipientState": zod.enum(['LOCAL_ONLY_UNVERIFIED']),
+  "reviewedForSimulation": zod.boolean(),
+  "simulatedEnabled": zod.boolean(),
+  "operationalEnabled": zod.literal(false),
+  "testReady": zod.literal(false),
+  "ownershipVerified": zod.literal(false),
+  "providerVerified": zod.literal(false),
+  "checkoutAllowed": zod.literal(false),
+  "webhooksAllowed": zod.literal(false),
+  "allocationProven": zod.literal(false),
+  "bankSettlementVerified": zod.literal(false),
+  "providerFeesIncluded": zod.literal(false),
+  "noPartner": zod.literal(true),
+  "simulationTotalMinor": zod.literal(500000),
+  "simulationSchoolMinor": zod.literal(200000),
+  "simulationPlatformGrossMinor": zod.literal(300000),
+  "notice": zod.string()
+})
+
+
 export const GetFlutterwaveTransactionSplitEvidenceParams = zod.object({
   "paymentId": zod.coerce.number().int()
 })

@@ -3,6 +3,7 @@ import { AuthError } from "../middlewares/auth";
 import { fixedSplitInstructions, isSplitDevelopment, type FixedSplitInstruction } from "../lib/flutterwave-split-policy";
 import type { StudentSubscriptionSqlClient } from "../lib/student-subscription-billing";
 import type { VerifiedPayment } from "../lib/fee-providers";
+import { assertNoLocalSplitSimulation } from "../lib/local-split-simulation-barrier";
 
 export async function frozenSplit(db: StudentSubscriptionSqlClient, paymentId: number) {
   if (!isSplitDevelopment()) return null;
@@ -29,6 +30,7 @@ export async function splitAttribution(db: StudentSubscriptionSqlClient, schoolI
 
 /** Transaction owns both the frozen plan and its payment. No browser financial inputs. */
 export async function prepareSplitCheckout(paymentId: number): Promise<FixedSplitInstruction[] | undefined> {
+  assertNoLocalSplitSimulation(paymentId);
   if (!isSplitDevelopment()) return undefined;
   const db = await pool.connect();
   try {
@@ -90,6 +92,7 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
 
 /** Must run before the legacy PAID fast path; split snapshots cannot be reassigned. */
 export async function validateSplitCollection(db: StudentSubscriptionSqlClient, payment: any, verified: VerifiedPayment) {
+  assertNoLocalSplitSimulation([payment,verified]);
   const split = await frozenSplit(db, Number(payment.id));
   if (!split) return null;
   if (verified.reference !== split.reference || verified.amountMinor !== 500000 || verified.currency !== "NGN"

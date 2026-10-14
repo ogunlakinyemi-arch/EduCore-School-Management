@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+import React,{act} from 'react';
+import {createRoot,type Root} from 'react-dom/client';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {beforeEach,afterEach,describe,it,expect,vi} from 'vitest';
+const f=vi.hoisted(()=>({userId:'unit-owner' as string|null,loaded:true,preview:vi.fn(),action:vi.fn()}));
+vi.mock('@clerk/react',()=>({useAuth:()=>({userId:f.userId,isLoaded:f.loaded})}));
+vi.mock('@/components/shared',()=>({
+  PageHeading:({title,description}:any)=><h1>{title}{description}</h1>,
+  Button:({testId,variant:_v,children,...p}:any)=><button data-testid={testId} {...p}>{children}</button>,
+  SkeletonPage:()=><p>TEST / NOT REAL loading</p>,
+  EmptyState:({title}:any)=><p>{title}</p>,
+  ErrorState:({message}:any)=><p role="alert">{message}</p>,
+  money:(n:number)=>`NGN ${n.toLocaleString('en-NG')}`,
+}));
+vi.mock('@workspace/api-client-react',async()=>{
+  const {useQuery,useMutation}=await import('@tanstack/react-query');
+  return {
+    getGetLocalFlutterwaveSplitSimulationQueryKey:()=>['local-simulation'],
+    useGetLocalFlutterwaveSplitSimulation:(opts:any)=>useQuery({...opts.query,queryFn:f.preview}),
+    useRunLocalFlutterwaveSplitSimulation:()=>useMutation({mutationFn:f.action}),
+  };
+});
+import {FlutterwaveSplitSimulationPage} from './flutterwave-split-simulation';
+const fixture=()=>({
+  mode:'LOCAL_SPLIT_SIMULATION',label:'TEST / NOT REAL',exampleSchoolId:1496,exampleSchoolName:'Academic Calendar QA — reference only',
+  simulationRecipientId:'SIMULATION_NOT_REAL_RECIPIENT_1496',fictionalBusiness:'TEST / NOT REAL — Fictional recipient',
+  fictionalContact:'qa@fixture.invalid',fictionalPhone:'SIMULATION_NOT_REAL_PHONE',fictionalBank:'TEST / NOT REAL — NO BANK',
+  fictionalBankCode:'SIMULATION_NOT_REAL_BANK',fictionalAccount:'SIMULATION_NOT_REAL_ACCOUNT',recipientState:'LOCAL_ONLY_UNVERIFIED',
+  reviewedForSimulation:false,simulatedEnabled:false,operationalEnabled:false,testReady:false,ownershipVerified:false,
+  providerVerified:false,checkoutAllowed:false,webhooksAllowed:false,allocationProven:false,bankSettlementVerified:false,
+  providerFeesIncluded:false,noPartner:true,simulationTotalMinor:500000,simulationSchoolMinor:200000,simulationPlatformGrossMinor:300000,
+  notice:'TEST / NOT REAL. In-memory only. No real records or provider verification.',
+});
+let root:Root,host:HTMLDivElement,client:QueryClient;
+const node=(id:string)=>host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;
+async function settle(){await act(async()=>{await new Promise(r=>setTimeout(r,15));});}
+async function render(){await act(async()=>root.render(<QueryClientProvider client={client}><FlutterwaveSplitSimulationPage/></QueryClientProvider>));await settle();}
+async function click(id:string){await act(async()=>node(id).click());await settle();}
+beforeEach(()=>{
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;f.userId='unit-owner';f.loaded=true;
+  f.preview.mockReset().mockResolvedValue(fixture());
+  f.action.mockReset().mockImplementation(async({data}:any)=>({...fixture(),
+    reviewedForSimulation:['REVIEW','ENABLE'].includes(data.action),simulatedEnabled:data.action==='ENABLE'}));
+  vi.stubGlobal('fetch',vi.fn(()=>{throw new Error('Network forbidden in simulation UI tests');}));
+  client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:Infinity},mutations:{retry:false}}});
+  host=document.createElement('div');document.body.append(host);root=createRoot(host);
+});
+afterEach(async()=>{await act(async()=>root.unmount());client.clear();host.remove();vi.unstubAllGlobals();});
+describe('TEST / NOT REAL isolated local simulation screen',()=>{
+  it('labels fiction, excludes fees and shows the exact no-partner gross shares',async()=>{
+    await render();
+    expect(host.textContent).toContain('TEST / NOT REAL');
+    expect(host.textContent).toContain('qa@fixture.invalid');
+    for(const amount of ['NGN 5,000','NGN 2,000','NGN 3,000'])expect(host.textContent).toContain(amount);
+    expect(host.textContent).toContain('Provider fees are excluded');
+    expect(host.textContent).toContain('No real allocation or settlement is proven');
+    expect(host.textContent).toContain('Never TEST_READY');
+    expect(Array.from(host.querySelectorAll('button')).every(x=>x.textContent?.includes('TEST / NOT REAL'))).toBe(true);
+    expect(f.action).not.toHaveBeenCalled();
+  });
+  it('exercises acknowledge, review, simulated enable, disable and reset without operational hooks',async()=>{
+    await render();
+    expect((node('simulation-review') as HTMLButtonElement).disabled).toBe(true);
+    await click('simulation-ack');
+    expect((node('simulation-enable') as HTMLButtonElement).disabled).toBe(true);
+    await click('simulation-review');await click('simulation-enable');
+    expect(node('simulation-state').textContent).toContain('ON');
+    expect(f.action.mock.calls[1][0]).toEqual({data:{mode:'LOCAL_SPLIT_SIMULATION',exampleSchoolId:1496,action:'ENABLE',acknowledgeFictional:true}});
+    await click('simulation-disable');expect(node('simulation-state').textContent).toContain('OFF');
+    expect((node('simulation-ack') as HTMLInputElement).checked).toBe(false);
+    await click('simulation-reset');expect(node('simulation-state').textContent).toContain('OFF');
+  });
+  it('keeps controls disabled while a local action is pending',async()=>{
+    f.action.mockReturnValue(new Promise(()=>{}));await render();await click('simulation-ack');await click('simulation-review');
+    for(const id of ['simulation-review','simulation-enable','simulation-disable','simulation-reset'])expect((node(id) as HTMLButtonElement).disabled).toBe(true);
+    expect(host.textContent).toContain('processing local simulation action');
+  });
+  it('reports action failure without assuming enablement succeeded',async()=>{
+    f.action.mockRejectedValue(new Error('unit-only failure'));
+    await render();await click('simulation-ack');await click('simulation-review');
+    expect(host.querySelector('[role=alert]')?.textContent).toContain('No operational settings were changed');
+    expect(node('simulation-state').textContent).toContain('OFF');
+  });
+  it.each([403,404,503])('hides fictional controls on denied/unavailable preview %s',async status=>{
+    f.preview.mockRejectedValue({status});await render();
+    expect(node('simulation-enable')).toBeNull();expect(host.textContent).toContain('simulation unavailable');
+  });
+  it('shows a labelled loading state without any controls',async()=>{
+    f.preview.mockReturnValue(new Promise(()=>{}));await render();
+    expect(host.textContent).toContain('TEST / NOT REAL loading');expect(node('simulation-enable')).toBeNull();
+  });
+  it('does not request data for a signed-out identity',async()=>{
+    f.userId=null;await render();expect(f.preview).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('sign in required');expect(node('simulation-enable')).toBeNull();
+  });
+  it.each([{testReady:true},{operationalEnabled:true},{providerVerified:true},{simulationSchoolMinor:199999}])('rejects an unsafe response before displaying controls',async change=>{
+    f.preview.mockResolvedValue({...fixture(),...change});await render();
+    expect(host.textContent).toContain('safety contract rejected');expect(node('simulation-enable')).toBeNull();
+  });
+  it('does not carry fictional review, enabled state or acknowledgement across identities',async()=>{
+    await render();await click('simulation-ack');await click('simulation-review');await click('simulation-enable');
+    f.userId='unit-second-owner';await render();
+    expect(node('simulation-state').textContent).toContain('OFF');
+    expect((node('simulation-ack') as HTMLInputElement).checked).toBe(false);
+    expect((node('simulation-enable') as HTMLButtonElement).disabled).toBe(true);
+  });
+});

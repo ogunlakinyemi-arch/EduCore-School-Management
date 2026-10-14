@@ -4,6 +4,7 @@ import { requireSplitDevelopment } from "../lib/flutterwave-split-policy";
 import { decryptSplitBank, encryptSplitBank, splitBankFingerprint } from "./flutterwave-split-crypto";
 import { splitProvider, type BankDetails } from "./flutterwave-split-provider";
 import { businessEmailSchema, maskedBusinessEmail, existingDiagnosticTestReference, existingTestReviewNotePrefix } from "../lib/flutterwave-split-review";
+import { assertNoLocalSplitSimulation } from "../lib/local-split-simulation-barrier";
 
 export function recipientView(row: any) {
   return {
@@ -19,6 +20,7 @@ export async function submitSplitRecipient(
   actorId: number, scope: { kind: string; id: number; name: string },
   input: { bankCode: string; accountNumber: string; contactPhone: string; businessEmail: string },
 ) {
+  assertNoLocalSplitSimulation([scope,input]);
   requireSplitDevelopment();
   input = { ...input, businessEmail: businessEmailSchema.parse(input.businessEmail) };
   const resolved = await splitProvider().resolveBank(input.bankCode, input.accountNumber);
@@ -42,6 +44,7 @@ export async function reviewSplitRecipient(
   id: number, actorId: number,
   input: { action: string; note: string; ownershipConfirmed?: boolean; distinctFromPlatformAccountConfirmed?: boolean; existingTestReference?: string },
 ) {
+  assertNoLocalSplitSimulation([id,input]);
   requireSplitDevelopment();
   const db = await pool.connect();
   let row: any;

@@ -1,5 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { isFlutterwaveTestCheckoutUrl } from "../flutterwave-checkout-url";
+import { assertNoLocalSplitSimulation } from "../local-split-simulation-barrier";
 
 export type FeePaymentStatus = "pending" | "succeeded" | "failed";
 
@@ -217,6 +218,7 @@ abstract class HttpPaymentAdapter implements PaymentProviderAdapter {
   }
 
   protected async request(path: string, init: RequestInit, retrySafeRead = false): Promise<JsonObject> {
+    assertNoLocalSplitSimulation([path,init.body]);
     const target = new URL(path, this.baseUrl);
     const configured = new URL(this.baseUrl);
     if (target.protocol !== "https:" || target.origin !== configured.origin || target.username || target.password) {
@@ -285,6 +287,7 @@ export class PaystackTestAdapter extends HttpPaymentAdapter {
   }
 
   async initializePayment(input: InitializePaymentInput): Promise<InitializePaymentResult> {
+    assertNoLocalSplitSimulation(input);
     this.assertExpected(input);
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {
       throw new PaymentProviderError("Payment customer email or return URL is invalid");
@@ -401,6 +404,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
   }
 
   async initializePayment(input: InitializePaymentInput): Promise<InitializePaymentResult> {
+    assertNoLocalSplitSimulation(input);
     this.assertExpected(input);
     if (input.subaccounts && (process.env.NODE_ENV !== "development" || process.env.REPLIT_DEPLOYMENT
         || input.currency !== "NGN" || input.amountMinor !== 500000

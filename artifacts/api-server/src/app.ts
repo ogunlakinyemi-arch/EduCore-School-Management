@@ -20,6 +20,7 @@ import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
 import { studentSubscriptionFlutterwaveWebhookRouter } from "./routes/student-subscription-webhooks";
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
+import { rejectSimulationWebhook } from "./middlewares/local-split-simulation";
 
 const app: Express = express();
 
@@ -92,16 +93,19 @@ app.use("/api/communication/provider-receipts", express.raw({ type: "application
 app.use(
   "/api/finance/provider-webhooks",
   express.raw({ type: "application/json", limit: "64kb" }),
+  rejectSimulationWebhook,
   feeProviderWebhookRouter,
 );
 app.use(
   "/api/webhooks/flutterwave/staff-nfc",
   express.raw({ type: "application/json", limit: "64kb" }),
+  rejectSimulationWebhook,
   staffFlutterwaveWebhookRouter,
 );
 app.use(
   "/api/webhooks/flutterwave/student-subscription",
   express.raw({ type: "application/json", limit: "64kb" }),
+  rejectSimulationWebhook,
   studentSubscriptionFlutterwaveWebhookRouter,
 );
 app.use(

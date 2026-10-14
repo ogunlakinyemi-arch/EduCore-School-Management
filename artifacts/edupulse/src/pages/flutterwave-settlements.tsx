@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { useAuth } from '@clerk/react';
 import type { FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -298,6 +299,7 @@ export function FlutterwaveSettlementsPage() {
   return (
     <div className="fade-up" key={userId}>
       {heading}
+      {d.isOwner && <div className="panel mb-5 p-4 text-sm"><Link href="/flutterwave-split-simulation" className="font-bold underline">Open separate local simulation — TEST / NOT REAL</Link><p>No saved recipients, settings, payments or provider calls. This does not enable operational splits.</p></div>}
       <Banner tone="warn">TEST mode, {d.currency}, provider fees borne by the {d.feeBearer.toLowerCase()}. No real transfers are made. Existing paid receipts are never changed. Fees and applicable VAT are platform expenses. Only provider-reported costs appear below; confirm VAT inclusion against provider statements.</Banner>
       {!d.testCredentialConfigured && <Banner tone="error">The TEST credential format is not configured. Recipient creation will fail until it is. This reflects configuration format, not permissions.</Banner>}
       {msg && <Banner tone={msg.tone}>{msg.text}</Banner>}

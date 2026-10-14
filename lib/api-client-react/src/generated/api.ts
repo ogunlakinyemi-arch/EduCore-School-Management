@@ -497,6 +497,8 @@ import type {
   ListTransportRequestsParams,
   ListTransportRouteStaffParams,
   ListTransportRoutesParams,
+  LocalFlutterwaveSplitSimulation,
+  LocalFlutterwaveSplitSimulationInput,
   LostCardInput,
   ManualAttendanceInput,
   MarkParentCommunicationThreadRead200,
@@ -866,6 +868,159 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetLocalFlutterwaveSplitSimulationUrl = () => {
+
+
+
+
+  return `/api/flutterwave/local-split-simulation`
+}
+
+export const getLocalFlutterwaveSplitSimulation = async ( options?: Parameters<typeof customFetch>[1]): Promise<LocalFlutterwaveSplitSimulation> => {
+
+  return customFetch<LocalFlutterwaveSplitSimulation>(getGetLocalFlutterwaveSplitSimulationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLocalFlutterwaveSplitSimulationQueryKey = () => {
+    return [
+    `/api/flutterwave/local-split-simulation`
+    ] as const;
+    }
+
+
+export const getGetLocalFlutterwaveSplitSimulationQueryOptions = <TData = Awaited<ReturnType<typeof getLocalFlutterwaveSplitSimulation>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocalFlutterwaveSplitSimulation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLocalFlutterwaveSplitSimulationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLocalFlutterwaveSplitSimulation>>> = ({ signal }) => getLocalFlutterwaveSplitSimulation({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLocalFlutterwaveSplitSimulation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLocalFlutterwaveSplitSimulationQueryResult = NonNullable<Awaited<ReturnType<typeof getLocalFlutterwaveSplitSimulation>>>
+export type GetLocalFlutterwaveSplitSimulationQueryError = ErrorType<unknown>
+
+
+
+export function useGetLocalFlutterwaveSplitSimulation<TData = Awaited<ReturnType<typeof getLocalFlutterwaveSplitSimulation>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocalFlutterwaveSplitSimulation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLocalFlutterwaveSplitSimulationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunLocalFlutterwaveSplitSimulationUrl = () => {
+
+
+
+
+  return `/api/flutterwave/local-split-simulation`
+}
+
+export const runLocalFlutterwaveSplitSimulation = async (localFlutterwaveSplitSimulationInput: LocalFlutterwaveSplitSimulationInput, options?: Parameters<typeof customFetch>[1]): Promise<LocalFlutterwaveSplitSimulation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LocalFlutterwaveSplitSimulation>(getRunLocalFlutterwaveSplitSimulationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(localFlutterwaveSplitSimulationInput)
+  }
+);}
+
+
+
+
+
+export const getRunLocalFlutterwaveSplitSimulationMutationKey = () => ['runLocalFlutterwaveSplitSimulation'] as const;
+
+export const getRunLocalFlutterwaveSplitSimulationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runLocalFlutterwaveSplitSimulation>>, TError,RunLocalFlutterwaveSplitSimulationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runLocalFlutterwaveSplitSimulation>>, TError,RunLocalFlutterwaveSplitSimulationMutationVariables, TContext> => {
+
+const mutationKey = getRunLocalFlutterwaveSplitSimulationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runLocalFlutterwaveSplitSimulation>>, RunLocalFlutterwaveSplitSimulationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  runLocalFlutterwaveSplitSimulation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunLocalFlutterwaveSplitSimulationMutationResult = NonNullable<Awaited<ReturnType<typeof runLocalFlutterwaveSplitSimulation>>>
+    export type RunLocalFlutterwaveSplitSimulationMutationBody = BodyType<LocalFlutterwaveSplitSimulationInput>
+    export type RunLocalFlutterwaveSplitSimulationMutationError = ErrorType<unknown>
+    export type RunLocalFlutterwaveSplitSimulationMutationVariables = {data: BodyType<LocalFlutterwaveSplitSimulationInput>}
+
+    export const useRunLocalFlutterwaveSplitSimulation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runLocalFlutterwaveSplitSimulation>>, TError,RunLocalFlutterwaveSplitSimulationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runLocalFlutterwaveSplitSimulation>>,
+        TError,
+        RunLocalFlutterwaveSplitSimulationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRunLocalFlutterwaveSplitSimulationMutationOptions(options));
+    }
 
 export const getGetFlutterwaveTransactionSplitEvidenceUrl = (paymentId: number,) => {
 

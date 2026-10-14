@@ -1,6 +1,30 @@
 openapi: 3.1.0
 info: { title: FlutterwaveSplits, version: 1.0.0 }
 paths:
+  /flutterwave/local-split-simulation:
+    get:
+      operationId: getLocalFlutterwaveSplitSimulation
+      tags: [flutterwave-splits]
+      responses:
+        "200":
+          description: "Owner-only Development TEST / NOT REAL in-memory preview; no database/provider access"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LocalFlutterwaveSplitSimulation" }
+    post:
+      operationId: runLocalFlutterwaveSplitSimulation
+      tags: [flutterwave-splits]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LocalFlutterwaveSplitSimulationInput" }
+      responses:
+        "200":
+          description: "Stateless TEST / NOT REAL action; never operational configuration"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LocalFlutterwaveSplitSimulation" }
   /flutterwave/split-payments/{paymentId}/transaction-evidence:
     get:
       operationId: getFlutterwaveTransactionSplitEvidence
@@ -117,6 +141,47 @@ paths:
               schema: { $ref: "#/components/schemas/FlutterwaveSplitAdjustment" }
 components:
   schemas:
+    LocalFlutterwaveSplitSimulationInput:
+      type: object
+      additionalProperties: false
+      required: [mode, exampleSchoolId, action, acknowledgeFictional]
+      properties:
+        mode: { type: string, enum: [LOCAL_SPLIT_SIMULATION] }
+        exampleSchoolId: { type: integer, enum: [1496] }
+        action: { type: string, enum: [PREVIEW, REVIEW, ENABLE, DISABLE, RESET] }
+        acknowledgeFictional: { type: boolean }
+    LocalFlutterwaveSplitSimulation:
+      type: object
+      required: [mode, label, exampleSchoolId, exampleSchoolName, simulationRecipientId, fictionalBusiness, fictionalContact, fictionalPhone, fictionalBank, fictionalBankCode, fictionalAccount, recipientState, reviewedForSimulation, simulatedEnabled, operationalEnabled, testReady, ownershipVerified, providerVerified, checkoutAllowed, webhooksAllowed, allocationProven, bankSettlementVerified, providerFeesIncluded, noPartner, simulationTotalMinor, simulationSchoolMinor, simulationPlatformGrossMinor, notice]
+      properties:
+        mode: { type: string, enum: [LOCAL_SPLIT_SIMULATION] }
+        label: { type: string, enum: ["TEST / NOT REAL"] }
+        exampleSchoolId: { type: integer, enum: [1496] }
+        exampleSchoolName: { type: string }
+        simulationRecipientId: { type: string }
+        fictionalBusiness: { type: string }
+        fictionalContact: { type: string }
+        fictionalPhone: { type: string }
+        fictionalBank: { type: string }
+        fictionalBankCode: { type: string }
+        fictionalAccount: { type: string }
+        recipientState: { type: string, enum: [LOCAL_ONLY_UNVERIFIED] }
+        reviewedForSimulation: { type: boolean }
+        simulatedEnabled: { type: boolean }
+        operationalEnabled: { type: boolean, enum: [false] }
+        testReady: { type: boolean, enum: [false] }
+        ownershipVerified: { type: boolean, enum: [false] }
+        providerVerified: { type: boolean, enum: [false] }
+        checkoutAllowed: { type: boolean, enum: [false] }
+        webhooksAllowed: { type: boolean, enum: [false] }
+        allocationProven: { type: boolean, enum: [false] }
+        bankSettlementVerified: { type: boolean, enum: [false] }
+        providerFeesIncluded: { type: boolean, enum: [false] }
+        noPartner: { type: boolean, enum: [true] }
+        simulationTotalMinor: { type: integer, enum: [500000] }
+        simulationSchoolMinor: { type: integer, enum: [200000] }
+        simulationPlatformGrossMinor: { type: integer, enum: [300000] }
+        notice: { type: string }
     FlutterwaveTransactionSplitEvidence:
       type: object
       required: [status, evidenceLevel, reason, bankSettlementVerified, paymentId, transactionId, reference, checkedAt, source, platformGrossMinor, platformNetMinor, appFeeMinor, additionalFeeMinor, recipients]

@@ -13028,6 +13028,118 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type LocalFlutterwaveSplitSimulationInputMode = typeof LocalFlutterwaveSplitSimulationInputMode[keyof typeof LocalFlutterwaveSplitSimulationInputMode];
+
+
+export const LocalFlutterwaveSplitSimulationInputMode = {
+  LOCAL_SPLIT_SIMULATION: 'LOCAL_SPLIT_SIMULATION',
+} as const;
+
+export type LocalFlutterwaveSplitSimulationInputExampleSchoolId = typeof LocalFlutterwaveSplitSimulationInputExampleSchoolId[keyof typeof LocalFlutterwaveSplitSimulationInputExampleSchoolId];
+
+
+export const LocalFlutterwaveSplitSimulationInputExampleSchoolId = {
+  NUMBER_1496: 1496,
+} as const;
+
+export type LocalFlutterwaveSplitSimulationInputAction = typeof LocalFlutterwaveSplitSimulationInputAction[keyof typeof LocalFlutterwaveSplitSimulationInputAction];
+
+
+export const LocalFlutterwaveSplitSimulationInputAction = {
+  PREVIEW: 'PREVIEW',
+  REVIEW: 'REVIEW',
+  ENABLE: 'ENABLE',
+  DISABLE: 'DISABLE',
+  RESET: 'RESET',
+} as const;
+
+export interface LocalFlutterwaveSplitSimulationInput {
+  mode: LocalFlutterwaveSplitSimulationInputMode;
+  exampleSchoolId: LocalFlutterwaveSplitSimulationInputExampleSchoolId;
+  action: LocalFlutterwaveSplitSimulationInputAction;
+  acknowledgeFictional: boolean;
+}
+
+export type LocalFlutterwaveSplitSimulationMode = typeof LocalFlutterwaveSplitSimulationMode[keyof typeof LocalFlutterwaveSplitSimulationMode];
+
+
+export const LocalFlutterwaveSplitSimulationMode = {
+  LOCAL_SPLIT_SIMULATION: 'LOCAL_SPLIT_SIMULATION',
+} as const;
+
+export type LocalFlutterwaveSplitSimulationLabel = typeof LocalFlutterwaveSplitSimulationLabel[keyof typeof LocalFlutterwaveSplitSimulationLabel];
+
+
+export const LocalFlutterwaveSplitSimulationLabel = {
+  'TEST_/_NOT_REAL': 'TEST / NOT REAL',
+} as const;
+
+export type LocalFlutterwaveSplitSimulationExampleSchoolId = typeof LocalFlutterwaveSplitSimulationExampleSchoolId[keyof typeof LocalFlutterwaveSplitSimulationExampleSchoolId];
+
+
+export const LocalFlutterwaveSplitSimulationExampleSchoolId = {
+  NUMBER_1496: 1496,
+} as const;
+
+export type LocalFlutterwaveSplitSimulationRecipientState = typeof LocalFlutterwaveSplitSimulationRecipientState[keyof typeof LocalFlutterwaveSplitSimulationRecipientState];
+
+
+export const LocalFlutterwaveSplitSimulationRecipientState = {
+  LOCAL_ONLY_UNVERIFIED: 'LOCAL_ONLY_UNVERIFIED',
+} as const;
+
+export type LocalFlutterwaveSplitSimulationSimulationTotalMinor = typeof LocalFlutterwaveSplitSimulationSimulationTotalMinor[keyof typeof LocalFlutterwaveSplitSimulationSimulationTotalMinor];
+
+
+export const LocalFlutterwaveSplitSimulationSimulationTotalMinor = {
+  NUMBER_500000: 500000,
+} as const;
+
+export type LocalFlutterwaveSplitSimulationSimulationSchoolMinor = typeof LocalFlutterwaveSplitSimulationSimulationSchoolMinor[keyof typeof LocalFlutterwaveSplitSimulationSimulationSchoolMinor];
+
+
+export const LocalFlutterwaveSplitSimulationSimulationSchoolMinor = {
+  NUMBER_200000: 200000,
+} as const;
+
+export type LocalFlutterwaveSplitSimulationSimulationPlatformGrossMinor = typeof LocalFlutterwaveSplitSimulationSimulationPlatformGrossMinor[keyof typeof LocalFlutterwaveSplitSimulationSimulationPlatformGrossMinor];
+
+
+export const LocalFlutterwaveSplitSimulationSimulationPlatformGrossMinor = {
+  NUMBER_300000: 300000,
+} as const;
+
+export interface LocalFlutterwaveSplitSimulation {
+  mode: LocalFlutterwaveSplitSimulationMode;
+  label: LocalFlutterwaveSplitSimulationLabel;
+  exampleSchoolId: LocalFlutterwaveSplitSimulationExampleSchoolId;
+  exampleSchoolName: string;
+  simulationRecipientId: string;
+  fictionalBusiness: string;
+  fictionalContact: string;
+  fictionalPhone: string;
+  fictionalBank: string;
+  fictionalBankCode: string;
+  fictionalAccount: string;
+  recipientState: LocalFlutterwaveSplitSimulationRecipientState;
+  reviewedForSimulation: boolean;
+  simulatedEnabled: boolean;
+  operationalEnabled: false;
+  testReady: false;
+  ownershipVerified: false;
+  providerVerified: false;
+  checkoutAllowed: false;
+  webhooksAllowed: false;
+  allocationProven: false;
+  bankSettlementVerified: false;
+  providerFeesIncluded: false;
+  noPartner: true;
+  simulationTotalMinor: LocalFlutterwaveSplitSimulationSimulationTotalMinor;
+  simulationSchoolMinor: LocalFlutterwaveSplitSimulationSimulationSchoolMinor;
+  simulationPlatformGrossMinor: LocalFlutterwaveSplitSimulationSimulationPlatformGrossMinor;
+  notice: string;
+}
+
 export type FlutterwaveTransactionSplitEvidenceStatus = typeof FlutterwaveTransactionSplitEvidenceStatus[keyof typeof FlutterwaveTransactionSplitEvidenceStatus];
 
 
