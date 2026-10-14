@@ -178,7 +178,7 @@
     @apply border-border;
   }
   body {
-    @apply font-sans antialiased bg-background text-foreground min-w-[320px];
+    @apply font-sans antialiased bg-background text-foreground min-w-0;
   }
   input, select, textarea {
     @apply w-full border border-input rounded-xl bg-card text-foreground px-3 py-2.5 text-sm outline-none transition-all;

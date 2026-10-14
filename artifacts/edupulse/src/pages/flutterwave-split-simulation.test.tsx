@@ -211,4 +211,30 @@ describe('TEST / NOT REAL isolated local simulation screen',()=>{
     f.userId='unit-owner';await render();
     expect(node('simulation-review-panel')).toBeNull();
   });
+  it.each([
+    ['desktop',1440,1000],
+    ['mobile',390,844],
+    ['narrow mobile',320,740],
+  ] as const)('preserves the review interaction in a controlled %s viewport (%ix%i)',async(_name,width,height)=>{
+    // DOM interaction regression; actual CSS geometry is checked separately in
+    // the network-disabled offline browser harness, not inferred from jsdom.
+    vi.stubGlobal('innerWidth',width);vi.stubGlobal('innerHeight',height);
+    const submitted=vi.fn();
+    await render(children=><form onSubmit={event=>{event.preventDefault();submitted();}}>{children}</form>);
+    await click('simulation-ack');await click('simulation-review');
+    const panel=node('simulation-review-panel');
+    expect(panel.textContent).toContain('TEST / NOT REAL');
+    expect(panel.textContent).toContain('No Partner');
+    for(const amount of ['NGN 5,000','NGN 2,000','NGN 3,000'])expect(panel.textContent).toContain(amount);
+    await act(async()=>{panel.querySelector('dd')!.click();document.body.click();});
+    await settle();
+    expect(node('simulation-review-panel')).toBe(panel);
+    await click('simulation-review-confirm');
+    expect(node('simulation-review-panel')).toBe(panel);
+    expect(node('simulation-review-recorded')).not.toBeNull();
+    expect(submitted).not.toHaveBeenCalled();
+    await click('simulation-review-close');
+    expect(node('simulation-review-panel')).toBeNull();
+    expect(f.action.mock.calls.map(([arg])=>arg.data.action)).toEqual(['REVIEW']);
+  });
 });

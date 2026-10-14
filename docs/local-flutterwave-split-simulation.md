@@ -61,3 +61,44 @@ interactions with mocked API hooks. They do not establish real Clerk/browser
 acceptance or Flutterwave allocation behavior. Viewing the screen in the running
 app requires separate permission to start Development services. No real payment
 is needed to exercise this local simulation.
+
+### Full application and raw-webhook regression tests
+
+`artifacts/api-server/src/app.local-split-simulation.test.ts` imports the actual
+Express app and route registry. Requests are in-memory streams, not HTTP clients;
+no listener is created. Database, identity and provider boundaries throw if used.
+Fetch and socket connections are blocked, including loopback. Tests exercise all
+three actual raw payment-webhook mounts, unchanged ordinary bytes, invalid
+signatures, synthetic valid/tampered HMAC controls, parser limits, route exemption
+boundaries, role checks and Development/deployment gating. A synthetic
+NODE_ENV=production test changes only the test process label, never a database
+target or Production environment.
+
+### Controlled offline desktop/mobile browser checks
+
+Build the isolated real-component fixture with:
+
+```sh
+pnpm --filter @workspace/edupulse exec node scripts/build-offline-split-review.mjs
+```
+
+This writes only `/tmp/educore-offline-split-review.html`; it starts no service.
+The entry uses the real review component, shared Button/currency formatter, app
+CSS and pure fictional builder. It does not import the app entry, Clerk or API
+hooks. External font imports are removed, remote CSS is rejected, and a restrictive
+CSP blocks network and form submissions.
+
+Load the HTML into an offline browser with all HTTP/HTTPS/WebSocket requests
+blocked. Do not substitute a running app URL. At 1440×1000, 390×844 and 320×740:
+
+1. Open review and check TEST / NOT REAL, LOCAL_ONLY_UNVERIFIED, no Partner,
+   ₦5,000 total / ₦2,000 school / ₦3,000 Yetenia gross and fee exclusions.
+2. Wait at least one second, click inside and outside; review must stay open.
+3. Measure `document.documentElement.scrollWidth <= clientWidth`; text must wrap
+   without clipped descendants and Close must be reachable by normal scrolling.
+4. Confirm fictional review; recorded/unverified status must remain visible.
+5. Explicitly close, then reopen. Accidental form-submission count must stay zero.
+
+This is component acceptance, **not authenticated full-app Owner acceptance**.
+The app's 320px minimum body width was removed after the narrow check exposed
+horizontal overflow when a vertical scrollbar reduced the available width.
