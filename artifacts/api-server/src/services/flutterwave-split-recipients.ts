@@ -3,7 +3,7 @@ import { AuthError } from "../middlewares/auth";
 import { requireSplitDevelopment } from "../lib/flutterwave-split-policy";
 import { decryptSplitBank, encryptSplitBank, splitBankFingerprint } from "./flutterwave-split-crypto";
 import { splitProvider, type BankDetails } from "./flutterwave-split-provider";
-import { businessEmailSchema, maskedBusinessEmail, existingDiagnosticTestReference } from "../lib/flutterwave-split-review";
+import { businessEmailSchema, maskedBusinessEmail, existingDiagnosticTestReference, existingTestReviewNotePrefix } from "../lib/flutterwave-split-review";
 
 export function recipientView(row: any) {
   return {
@@ -78,7 +78,7 @@ export async function reviewSplitRecipient(
       }
       await db.query(
         "UPDATE flutterwave_split_recipients SET status='CREATING',reviewed_by=$1,review_note=$2,updated_at=NOW() WHERE id=$3",
-        [actorId,input.note,id],
+        [actorId,input.action === "VERIFY_EXISTING_TEST" ? existingTestReviewNotePrefix + input.note : input.note,id],
       );
     } else if (input.action === "RECOVER") {
       if (!["CREATING","CREATION_UNKNOWN","TEST_READY","SUSPENDED"].includes(row.status) || !row.reviewed_by) {
@@ -94,8 +94,11 @@ export async function reviewSplitRecipient(
   // Only after persisted intent/ownership review; ambiguous outcomes never cause a second POST.
   try {
     const provider = splitProvider(), bank = decryptSplitBank(row.bank_ciphertext);
+    const reviewedExistingReference = input.action === "VERIFY_EXISTING_TEST"
+      || row.provider_subaccount_id === existingDiagnosticTestReference
+      || row.review_note?.startsWith(existingTestReviewNotePrefix);
     const result = input.action === "APPROVE_AND_CREATE_TEST" ? await provider.createRecipient(bank, row.kind)
-      : input.action === "VERIFY_EXISTING_TEST" ? await provider.verifyExistingTestReference(input.existingTestReference!, bank)
+      : reviewedExistingReference ? await provider.verifyExistingTestReference(existingDiagnosticTestReference, bank)
       : row.provider_id ? await provider.verifyRecipient(row.provider_id, bank) : await provider.recoverRecipient(bank);
     const saved = (await pool.query(
       `UPDATE flutterwave_split_recipients SET status=CASE WHEN status='SUSPENDED' THEN status ELSE 'TEST_READY' END,provider_id=$1,provider_subaccount_id=$2,

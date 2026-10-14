@@ -892,6 +892,7 @@ export * from './flutterwaveSplitRefundInput';
 export * from './flutterwaveSplitScope';
 export * from './flutterwaveSplitScopeKind';
 export * from './flutterwaveTransactionSplitEvidence';
+export * from './flutterwaveTransactionSplitEvidenceEvidenceLevel';
 export * from './flutterwaveTransactionSplitEvidenceStatus';
 export * from './flutterwaveTransactionSplitRecipientEvidence';
 export * from './forbiddenResponse';

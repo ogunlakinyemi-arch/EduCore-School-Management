@@ -1,8 +1,7 @@
 import { pool } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
-import { fixedSplitInstructions, ngnMinor, requireSplitDevelopment } from "../lib/flutterwave-split-policy";
-import { compareTransactionSplits, type ReportedTransactionSplit } from "../lib/flutterwave-split-evidence";
-import { decryptSplitBank } from "./flutterwave-split-crypto";
+import { fixedSplitInstructions, requireSplitDevelopment } from "../lib/flutterwave-split-policy";
+import { compareVerificationResponse } from "../lib/flutterwave-split-evidence";
 import { splitProvider } from "./flutterwave-split-provider";
 
 /**
@@ -36,59 +35,13 @@ export async function transactionSplitEvidence(paymentId: number) {
     grossAmountMinor: 500000, platformGrossMinor: Number(p.platform_amount_minor),
     recipients: instructions.map(s => ({ subaccountId: s.id, amountMinor: s.transaction_charge * 100 })),
   };
-  const provider = splitProvider();
-  let transaction: Record<string, unknown>;
-  try { transaction = await provider.transactionEvidence(expected.transactionId); }
-  catch {
-    return {
-      ...compareTransactionSplits(expected, {}, null),
-      status: "UNCONFIRMED" as const, reason: "Independent TEST transaction read-back is unavailable",
-      paymentId, transactionId:expected.transactionId, reference:expected.reference,
-      checkedAt:new Date().toISOString(), source:"FLUTTERWAVE_TEST_READ_BACK",
-    };
-  }
-  const initial = compareTransactionSplits(expected,transaction,null);
-  if (initial.status === "MISMATCH" || initial.platformNetMinor === null) {
-    return {
-      ...initial,paymentId,transactionId:expected.transactionId,reference:expected.reference,
-      checkedAt:new Date().toISOString(),source:"FLUTTERWAVE_TEST_READ_BACK",
-    };
-  }
-  // No saved/documented verify response establishes an authoritative complete
-  // split-set schema. Read known transaction settlement lines as PARTIAL evidence.
-  // Do not promote request echoes, merchant-controlled metadata, or inferred
-  // merchant remainder to full provider allocation confirmation.
-  const observed: NonNullable<ReportedTransactionSplit>["recipients"] = [];
-  const rows = (await pool.query(
-    `SELECT r.* FROM flutterwave_split_settlements s JOIN flutterwave_split_recipients r ON r.id=s.recipient_id
-     WHERE s.payment_id=$1 ORDER BY s.id`, [paymentId],
-  )).rows;
-  for (const row of rows) {
-    try {
-      const bank = decryptSplitBank(row.bank_ciphertext);
-      const verifiedRecipient = await provider.verifyRecipient(Number(row.provider_id), bank);
-      if (verifiedRecipient.subaccountId !== row.provider_subaccount_id
-          || !expected.recipients.some(r => r.subaccountId === verifiedRecipient.subaccountId)) continue;
-      const candidates = await provider.settlementCandidates(verifiedRecipient.subaccountId,new Date(p.created_at).toISOString().slice(0,10));
-      const matches: number[] = [];
-      for (const candidate of candidates) {
-        if (!Number.isSafeInteger(Number(candidate.id)) || Number(candidate.id) < 1) continue;
-        const report = await provider.settlement(Number(candidate.id));
-        if (!Array.isArray(report.transactions) || report.meta?.page_info?.total_pages > 1
-            || report.subaccount_id !== verifiedRecipient.subaccountId
-            || report.currency !== "NGN" || String(report.bank_code) !== bank.bankCode
-            || report.settlement_account !== bank.accountNumber
-            || Number(report.refund ?? 0) > 0 || Number(report.chargeback ?? 0) > 0) continue;
-        for (const t of report.transactions) {
-          if (String(t.id) === expected.transactionId && t.tx_ref === expected.reference && t.currency === "NGN"
-              && t.status === "successful") matches.push(ngnMinor(t.settlement_amount));
-        }
-      }
-      if (matches.length === 1) observed.push({ subaccountId:verifiedRecipient.subaccountId,amountMinor:matches[0] });
-    } catch { /* Unavailable, paginated or ambiguous evidence is never success. */ }
-  }
+  // Only documented verify collection scalars are consumed. No speculative
+  // settlement/report mapping, secondary provider requests, or financial writes.
+  let result;
+  try { result = compareVerificationResponse(expected, await splitProvider().transactionEvidence(expected.transactionId)); }
+  catch { result = { ...compareVerificationResponse(expected, {}), reason: "Independent TEST transaction read-back is unavailable" }; }
   return {
-    ...compareTransactionSplits(expected,transaction,observed.length ? {recipients:observed,completeRecipientSet:false} : null),
+    ...result,
     paymentId, transactionId:expected.transactionId, reference:expected.reference,
     checkedAt:new Date().toISOString(), source:"FLUTTERWAVE_TEST_READ_BACK",
   };

@@ -75,7 +75,8 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
       throw new PaymentProviderError("Subaccount read-back did not match the owned bank account");
     }
     if (requireEntityMatch && ((d.business_name ?? d.full_name) !== bank.entityName
-        || (typeof d.business_email === "string" && d.business_email.toLowerCase() !== bank.businessEmail?.toLowerCase()))) {
+        || typeof d.business_email !== "string"
+        || d.business_email.trim().toLowerCase() !== bank.businessEmail?.trim().toLowerCase())) {
       throw new PaymentProviderError("Existing TEST recipient entity/contact read-back requires ownership review");
     }
     return { providerId: id, subaccountId: d.subaccount_id, bankName: typeof d.bank_name === "string" ? d.bank_name : bank.bankCode };

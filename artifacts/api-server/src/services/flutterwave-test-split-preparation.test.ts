@@ -15,7 +15,7 @@ vi.mock("./flutterwave-split-crypto",() => ({
 }));
 import { transactionSplitEvidence } from "./flutterwave-split-evidence";
 import { reviewSplitRecipient, submitSplitRecipient, recipientView } from "./flutterwave-split-recipients";
-import { existingDiagnosticTestReference } from "../lib/flutterwave-split-review";
+import { existingDiagnosticTestReference, existingTestReviewNotePrefix } from "../lib/flutterwave-split-review";
 
 beforeEach(() => {
   vi.stubEnv("NODE_ENV","development");vi.stubEnv("REPLIT_DEPLOYMENT","");
@@ -43,10 +43,13 @@ describe("Read-only TEST transaction evidence service",() => {
   it("returns unconfirmed when actual split records are absent, without any accounting writes",async() => {
     const result=await transactionSplitEvidence(40);
     expect(result.status).toBe("UNCONFIRMED");
+    expect(result.evidenceLevel).toBe("PARTIAL");
     expect(result.bankSettlementVerified).toBe(false);
     expect(result.platformNetMinor).toBe(293000);
     expect(f.query.mock.calls.every(c => String(c[0]).trim().startsWith("SELECT"))).toBe(true);
     expect(f.create).not.toHaveBeenCalled();
+    expect(f.verifyRecipient).not.toHaveBeenCalled();
+    expect(f.settlementCandidates).not.toHaveBeenCalled();
   });
   it("does not treat echoed instructions as actual provider allocation",async() => {
     f.transactionEvidence.mockResolvedValue({id:1234,tx_ref:f.payment.reference,currency:"NGN",status:"successful",
@@ -64,29 +67,21 @@ describe("Read-only TEST transaction evidence service",() => {
     expect((await transactionSplitEvidence(40)).status).toBe("MISMATCH");
     expect(f.verifyRecipient).not.toHaveBeenCalled();
   });
-  it("compares independent matching recipient transaction amounts but never invents a complete split set",async() => {
-    f.settlementCandidates.mockResolvedValue([{id:90}]);
-    f.settlement.mockResolvedValue({subaccount_id:f.row.provider_subaccount_id,currency:"NGN",bank_code:"044",settlement_account:"0123456789",
-      transactions:[{id:1234,tx_ref:f.payment.reference,currency:"NGN",status:"successful",settlement_amount:2000}]});
+  it("ignores speculative complete split/report fields even in a matching verify response",async() => {
+    f.transactionEvidence.mockResolvedValue({id:1234,tx_ref:f.payment.reference,currency:"NGN",status:"successful",
+      amount:5000,charged_amount:5000,app_fee:70,merchant_fee:0,
+      evidenceLevel:"COMPLETE_VERIFIED",completeRecipientSet:true,statusOfSplits:"CONFIRMED",
+      recipients:[{subaccountId:f.row.provider_subaccount_id,amountMinor:200000}],
+      transactions:[{id:1234,settlement_amount:2000}],subaccount_id:f.row.provider_subaccount_id});
     const result=await transactionSplitEvidence(40);
-    expect(result.recipients[0].observedAmountMinor).toBe(200000);
+    expect(result.recipients[0].observedAmountMinor).toBeNull();
     expect(result.status).toBe("UNCONFIRMED");
-    f.settlement.mockResolvedValue({subaccount_id:f.row.provider_subaccount_id,currency:"NGN",bank_code:"044",settlement_account:"0123456789",
-      transactions:[{id:1234,tx_ref:f.payment.reference,currency:"NGN",status:"successful",settlement_amount:1900}]});
-    expect((await transactionSplitEvidence(40)).status).toBe("MISMATCH");
+    expect(result.evidenceLevel).toBe("PARTIAL");
+    expect(f.settlement).not.toHaveBeenCalled();
   });
   it.each([{provider_mode:"LIVE"},{collection_status:"PENDING"},{status:"REFUND_REVIEW"},{school_amount_minor:199999}])("blocks unsuitable records before provider contact",(change) => {
     Object.assign(f.payment,change);
     return expect(transactionSplitEvidence(40)).rejects.toThrow().then(() => expect(f.transactionEvidence).not.toHaveBeenCalled());
-  });
-  it.each([{subaccount_id:null},{subaccount_id:"RS_AnotherRecipient000"},{settlement_account:"9999999999"}])("does not attribute unidentified or foreign settlement records",(change) => {
-    f.settlementCandidates.mockResolvedValue([{id:90}]);
-    f.settlement.mockResolvedValue({subaccount_id:f.row.provider_subaccount_id,currency:"NGN",bank_code:"044",settlement_account:"0123456789",
-      transactions:[{id:1234,tx_ref:f.payment.reference,currency:"NGN",status:"successful",settlement_amount:2000}],...change});
-    return transactionSplitEvidence(40).then(result => {
-      expect(result.status).toBe("UNCONFIRMED");
-      expect(result.recipients[0].observedAmountMinor).toBeNull();
-    });
   });
   it("blocks deployed environments before any database or provider operation",async() => {
     vi.stubEnv("REPLIT_DEPLOYMENT","1");
@@ -116,7 +111,7 @@ describe("Contact and existing recipient review controls",() => {
     await reviewSplitRecipient(10,1,{action:"VERIFY_EXISTING_TEST",note:"Unit-only reviewed note",
       existingTestReference:existingDiagnosticTestReference,ownershipConfirmed:true,distinctFromPlatformAccountConfirmed:true});
     expect(f.existing).toHaveBeenCalledOnce();expect(f.create).not.toHaveBeenCalled();
-    expect(f.query.mock.calls.find(c => String(c[0]).includes("reviewed_by=$1"))?.[1]).toEqual([1,"Unit-only reviewed note",10]);
+    expect(f.query.mock.calls.find(c => String(c[0]).includes("reviewed_by=$1"))?.[1]).toEqual([1,existingTestReviewNotePrefix + "Unit-only reviewed note",10]);
   });
   it("does not mark readiness when independent read-back fails",async() => {
     f.existing.mockRejectedValue(new Error("unit-only ownership mismatch"));
@@ -124,6 +119,16 @@ describe("Contact and existing recipient review controls",() => {
       existingTestReference:existingDiagnosticTestReference,ownershipConfirmed:true,distinctFromPlatformAccountConfirmed:true});
     expect(f.query.mock.calls.some(c => String(c[0]).includes("THEN 'TEST_READY'"))).toBe(false);
     expect(f.create).not.toHaveBeenCalled();
+  });
+  it("keeps failed existing-reference recovery pinned to its reviewed reference, never generic recovery or creation",async() => {
+    f.row.status="CREATION_UNKNOWN";
+    f.row.reviewed_by=1;
+    f.row.provider_id=null;
+    f.row.review_note=existingTestReviewNotePrefix+"Persisted unit-only review";
+    f.existing.mockResolvedValue({providerId:12,subaccountId:existingDiagnosticTestReference,bankName:"UNIT BANK"});
+    await reviewSplitRecipient(10,1,{action:"RECOVER",note:"Recover unit-only review"});
+    expect(f.existing).toHaveBeenCalledWith(existingDiagnosticTestReference,expect.any(Object));
+    expect(f.create).not.toHaveBeenCalled();expect(f.verifyRecipient).not.toHaveBeenCalled();
   });
   it("refuses an invalid business email before bank resolution or inserts",async() => {
     await expect(submitSplitRecipient(1,{kind:"SCHOOL",id:1,name:"UNIT ONLY SCHOOL"},{

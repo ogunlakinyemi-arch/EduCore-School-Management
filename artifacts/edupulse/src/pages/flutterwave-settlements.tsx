@@ -95,7 +95,15 @@ function RecipientRow({ r, isOwner, onMsg }: { r: FlutterwaveRecipient; isOwner:
       ...(['APPROVE_AND_CREATE_TEST','VERIFY_EXISTING_TEST'].includes(action) ? { ownershipConfirmed: own, distinctFromPlatformAccountConfirmed: distinct } : {}),
       ...(action === 'VERIFY_EXISTING_TEST' ? { existingTestReference: 'RS_5F0DB5C736A2550E783A15B9EB9FBF09' as const } : {}),
     } }, {
-      onSuccess: () => { onMsg({ tone: 'ok', text: `${label(action)} recorded. Check status below; ready means a TEST provider read-back only.` }); setOpen(false); setNoteText(''); void qc.invalidateQueries({ predicate: q => /flutterwave|subscription/i.test(String(q.queryKey[0])) }); },
+      onSuccess: result => {
+        const unconfirmed = ['APPROVE_AND_CREATE_TEST','VERIFY_EXISTING_TEST','RECOVER'].includes(action)
+          && result.status !== 'TEST_READY' && result.status !== 'SUSPENDED';
+        onMsg(unconfirmed
+          ? { tone: 'error', text: 'TEST recipient read-back is unconfirmed. No readiness or allocation is verified. Inspect the reported error; do not create a replacement blindly.' }
+          : { tone: 'ok', text: `${label(action)} recorded. Check status below; ready means a TEST provider read-back only.` });
+        setOpen(false); setNoteText(''); setOwn(false); setDistinct(false);
+        void qc.invalidateQueries({ predicate: q => /flutterwave|subscription/i.test(String(q.queryKey[0])) });
+      },
       onError: e => onMsg({ tone: 'error', text: `${errText(e)} Do not retry creation blindly; use Recover to read the provider state.` }),
     });
   };
@@ -128,7 +136,7 @@ function RecipientRow({ r, isOwner, onMsg }: { r: FlutterwaveRecipient; isOwner:
               <label className="flex items-start gap-2 text-xs"><input className="mt-0.5 h-4 w-4 shrink-0 p-0" type="checkbox" checked={distinct} onChange={e => setDistinct(e.target.checked)} />I confirm it is distinct from the platform account.</label>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" disabled={review.isPending || needsNote || !own || !distinct || r.status !== 'BANK_RESOLVED'} onClick={() => run('VERIFY_EXISTING_TEST')} testId={`button-existing-test-${r.id}`}>Investigate existing TEST recipient (provider GETs)</Button>
-                <Button disabled={review.isPending || needsNote || !own || !distinct} onClick={() => run('APPROVE_AND_CREATE_TEST')} testId={`button-approve-${r.id}`}>Approve and create TEST recipient</Button>
+                <Button disabled={review.isPending || needsNote || !own || !distinct || r.status !== 'BANK_RESOLVED'} onClick={() => run('APPROVE_AND_CREATE_TEST')} testId={`button-approve-${r.id}`}>Approve and create TEST recipient</Button>
                 <Button variant="outline" disabled={review.isPending || needsNote} onClick={() => run('RECOVER')} testId={`button-recover-${r.id}`}>Recover (read-only)</Button>
                 <Button variant="outline" disabled={review.isPending || needsNote} onClick={() => run('SUSPEND')} testId={`button-suspend-${r.id}`}>Suspend</Button>
                 <Button variant="danger" disabled={review.isPending || needsNote} onClick={() => run('RETIRE')} testId={`button-retire-${r.id}`}>Retire</Button>
@@ -174,6 +182,9 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
     queryKey: [...getGetFlutterwaveTransactionSplitEvidenceQueryKey(p.paymentId),userId],
     enabled: false, retry: false,
   } });
+  // The current collection-only adapter cannot prove a complete allocation.
+  // Reject optimistic/old cached confirmation until a supported mapper is reviewed.
+  const unsupportedConfirmation = evidence.data?.status === 'CONFIRMED' || evidence.data?.evidenceLevel === 'COMPLETE_VERIFIED';
   const qc = useQueryClient();
   const reconcile = useReconcileFlutterwaveSplitPayment();
   const refund = useRequestFlutterwaveSplitRefund();
@@ -216,9 +227,10 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
       </div>
       <p className={`mt-1 ${note}`}>Net allocation is not a verified merchant cash balance; recipient refund recovery may still be outstanding.</p>
       <div className="mt-3 rounded-lg border border-[hsl(var(--border))] p-3 text-xs" data-testid={`transaction-evidence-${p.paymentId}`}>
-        <strong>Provider transaction split verification: {evidence.isError || evidence.isFetching ? 'UNCONFIRMED' : evidence.data?.status ?? 'UNCONFIRMED — not checked'}</strong>
-        <p>{evidence.isFetching ? 'Reading provider evidence; a previous result is not current confirmation.' : evidence.isError ? 'Provider read-back unavailable; any previous reading is not current confirmation.' : evidence.data?.reason ?? 'Server-computed shares and a paid collection are not proof of provider split allocation.'}</p>
-        {evidence.data && !evidence.isError && <>
+        <strong>Provider transaction split verification: {evidence.isError || evidence.isFetching || unsupportedConfirmation ? 'UNCONFIRMED' : evidence.data?.status ?? 'UNCONFIRMED — not checked'}</strong>
+        <p>{evidence.isFetching ? 'Reading provider evidence; a previous result is not current confirmation.' : evidence.isError ? 'Provider read-back unavailable; any previous reading is not current confirmation.' : unsupportedConfirmation ? 'Complete allocation confirmation is unsupported by this collection-only reader; no confirmation is accepted.' : evidence.data?.reason ?? 'Server-computed shares and a paid collection are not proof of provider split allocation.'}</p>
+        {evidence.data && !evidence.isError && !evidence.isFetching && !unsupportedConfirmation && <>
+          <p>Evidence level: {evidence.data.evidenceLevel}. Complete verified allocation is unavailable from the current transaction-verification adapter.</p>
           <p>Transaction {evidence.data.transactionId} · checked {evidence.data.checkedAt}</p>
           <p>Provider fees: {naira(evidence.data.appFeeMinor)} + {naira(evidence.data.additionalFeeMinor)}. Expected platform gross: {naira(evidence.data.platformGrossMinor)}; computed net after reported costs: {naira(evidence.data.platformNetMinor)}.</p>
           {evidence.data.recipients.map(r => <p key={r.subaccountId}>{r.subaccountId}: expected {naira(r.amountMinor)}, provider-observed {r.observedAmountMinor == null ? 'unavailable' : naira(r.observedAmountMinor)}</p>)}
@@ -270,16 +282,21 @@ export function FlutterwaveSettlementsPage() {
     enabled:isLoaded && !!userId,
     refetchOnMount: 'always', refetchInterval: 30_000, retry: false,
   } });
-  const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ userId: string | null | undefined; message: { tone: 'ok' | 'error'; text: string } } | null>(null);
+  const msg = feedback?.userId === userId ? feedback?.message : null;
+  const setMsg = (message: { tone: 'ok' | 'error'; text: string }) => setFeedback({ userId, message });
   const d = q.data;
   const heading = <PageHeading eyebrow="Financials / Flutterwave splits" title="Split settlements." description="Development TEST mode only. Provider read-back is not a bank deposit." />;
+  if (!isLoaded) return <div>{heading}<SkeletonPage /></div>;
+  if (!userId) return <div>{heading}<EmptyState icon={Landmark} title="Sign in required" description="Sign in with an authorized Development account to view TEST split verification." /></div>;
   if (q.isLoading) return <div className="fade-up">{heading}<SkeletonPage /></div>;
   if (q.isError && isUnavailable(q.error)) return <div className="fade-up">{heading}<EmptyState icon={FlaskConical} title="Not available in this environment" description="Split settlements exist only in the Development environment. Nothing here is active, and no school or partner receives split payouts from this deployment." /></div>;
   if (q.isError || !d) return <div className="fade-up">{heading}<ErrorState retry={() => void q.refetch()} message={errText(q.error)} /></div>;
+  if (!d.developmentOnly || d.mode !== 'TEST') return <div>{heading}<EmptyState icon={FlaskConical} title="Not available in this environment" description="Only Development TEST split verification is supported." /></div>;
   const nonOwnerScopes = d.isOwner ? [] : d.scopes;
   const canReconcile = true;
   return (
-    <div className="fade-up">
+    <div className="fade-up" key={userId}>
       {heading}
       <Banner tone="warn">TEST mode, {d.currency}, provider fees borne by the {d.feeBearer.toLowerCase()}. No real transfers are made. Existing paid receipts are never changed. Fees and applicable VAT are platform expenses. Only provider-reported costs appear below; confirm VAT inclusion against provider statements.</Banner>
       {!d.testCredentialConfigured && <Banner tone="error">The TEST credential format is not configured. Recipient creation will fail until it is. This reflects configuration format, not permissions.</Banner>}

@@ -14,6 +14,7 @@ export const GetFlutterwaveTransactionSplitEvidenceParams = zod.object({
 
 export const GetFlutterwaveTransactionSplitEvidenceResponse = zod.object({
   "status": zod.enum(['UNCONFIRMED', 'MISMATCH', 'CONFIRMED']),
+  "evidenceLevel": zod.enum(['UNAVAILABLE', 'PARTIAL', 'MISMATCH', 'COMPLETE_VERIFIED']).describe('Application classification, not a Flutterwave field. The current v3 verify adapter cannot emit COMPLETE_VERIFIED or CONFIRMED.'),
   "reason": zod.string(),
   "bankSettlementVerified": zod.literal(false),
   "paymentId": zod.number().int(),

@@ -13037,6 +13037,19 @@ export const FlutterwaveTransactionSplitEvidenceStatus = {
   CONFIRMED: 'CONFIRMED',
 } as const;
 
+/**
+ * Application classification, not a Flutterwave field. The current v3 verify adapter cannot emit COMPLETE_VERIFIED or CONFIRMED.
+ */
+export type FlutterwaveTransactionSplitEvidenceEvidenceLevel = typeof FlutterwaveTransactionSplitEvidenceEvidenceLevel[keyof typeof FlutterwaveTransactionSplitEvidenceEvidenceLevel];
+
+
+export const FlutterwaveTransactionSplitEvidenceEvidenceLevel = {
+  UNAVAILABLE: 'UNAVAILABLE',
+  PARTIAL: 'PARTIAL',
+  MISMATCH: 'MISMATCH',
+  COMPLETE_VERIFIED: 'COMPLETE_VERIFIED',
+} as const;
+
 export interface FlutterwaveTransactionSplitRecipientEvidence {
   subaccountId: string;
   amountMinor: number;
@@ -13046,6 +13059,8 @@ export interface FlutterwaveTransactionSplitRecipientEvidence {
 
 export interface FlutterwaveTransactionSplitEvidence {
   status: FlutterwaveTransactionSplitEvidenceStatus;
+  /** Application classification, not a Flutterwave field. The current v3 verify adapter cannot emit COMPLETE_VERIFIED or CONFIRMED. */
+  evidenceLevel: FlutterwaveTransactionSplitEvidenceEvidenceLevel;
   reason: string;
   bankSettlementVerified: false;
   paymentId: number;

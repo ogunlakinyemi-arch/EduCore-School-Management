@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { compareTransactionSplits } from "./flutterwave-split-evidence";
+import { compareTransactionSplits, compareVerificationResponse } from "./flutterwave-split-evidence";
 import { businessEmailSchema, existingDiagnosticTestReference, maskedBusinessEmail, schoolTestSplitInput } from "./flutterwave-split-review";
 import { FlutterwaveSplitProvider } from "../services/flutterwave-split-provider";
 
@@ -22,6 +22,7 @@ describe("Independent transaction split comparison",() => {
   it("compares the partner allocation and separate platform expenses, never bank settlement",() => {
     const result = compareTransactionSplits(expected,transaction,complete);
     expect(result.status).toBe("CONFIRMED");
+    expect(result.evidenceLevel).toBe("COMPLETE_VERIFIED");
     expect(result.platformGrossMinor).toBe(290000);
     expect(result.platformNetMinor).toBe(283000);
     expect(result.bankSettlementVerified).toBe(false);
@@ -57,6 +58,12 @@ describe("Independent transaction split comparison",() => {
     expect(compareTransactionSplits(expected,{...transaction,app_fee:"bad"},complete).status).toBe("UNCONFIRMED");
     expect(compareTransactionSplits(expected,{...transaction,app_fee:3000},complete).status).toBe("MISMATCH");
   });
+  it("separates unavailable, partial collection evidence and contradiction in the supported verify adapter",() => {
+    expect(compareVerificationResponse(expected,{}).evidenceLevel).toBe("UNAVAILABLE");
+    expect(compareVerificationResponse(expected,transaction).evidenceLevel).toBe("PARTIAL");
+    expect(compareVerificationResponse(expected,{...transaction,charged_amount:5001}).evidenceLevel).toBe("MISMATCH");
+    expect(compareVerificationResponse(expected,{...transaction,completeRecipientSet:true,recipients:expected.recipients}).status).toBe("UNCONFIRMED");
+  });
 });
 
 describe("Business contact and truthful TEST authorization",() => {
@@ -91,7 +98,7 @@ describe("Existing TEST reference investigation",() => {
   it("uses GET only and verifies the exact reference, entity and owned bank",async() => {
     const fetch = vi.fn(async(url:unknown) => String(url).endsWith("/subaccounts")
       ? json([{id:12,subaccount_id:existingDiagnosticTestReference,business_name:bank.entityName}])
-      : json({id:12,business_name:bank.entityName,account_number:bank.accountNumber,account_bank:bank.bankCode,subaccount_id:existingDiagnosticTestReference}));
+      : json({id:12,business_name:bank.entityName,business_email:bank.businessEmail,account_number:bank.accountNumber,account_bank:bank.bankCode,subaccount_id:existingDiagnosticTestReference}));
     expect((await new FlutterwaveSplitProvider(key,{fetch}).verifyExistingTestReference(existingDiagnosticTestReference,bank)).subaccountId).toBe(existingDiagnosticTestReference);
     expect(fetch.mock.calls.every(c => (c as unknown as [unknown,RequestInit])[1].method === "GET")).toBe(true);
   });
@@ -109,6 +116,12 @@ describe("Existing TEST reference investigation",() => {
     const fetch = vi.fn(async(url:unknown) => String(url).endsWith("/subaccounts")
       ? json([{id:12,subaccount_id:existingDiagnosticTestReference,business_name:bank.entityName}])
       : json({id:12,business_name:"UNRELATED ENTITY",account_number:bank.accountNumber,account_bank:bank.bankCode,subaccount_id:existingDiagnosticTestReference}));
+    await expect(new FlutterwaveSplitProvider(key,{fetch}).verifyExistingTestReference(existingDiagnosticTestReference,bank)).rejects.toThrow("ownership");
+  });
+  it.each([null,"other@school.edu.ng"])("requires independently returned matching business contact, not missing/mismatching %s",async(email) => {
+    const fetch = vi.fn(async(url:unknown) => String(url).endsWith("/subaccounts")
+      ? json([{id:12,subaccount_id:existingDiagnosticTestReference,business_name:bank.entityName}])
+      : json({id:12,business_name:bank.entityName,business_email:email,account_number:bank.accountNumber,account_bank:bank.bankCode,subaccount_id:existingDiagnosticTestReference}));
     await expect(new FlutterwaveSplitProvider(key,{fetch}).verifyExistingTestReference(existingDiagnosticTestReference,bank)).rejects.toThrow("ownership");
   });
   it("rejects a bank mismatch and never submits a POST",async() => {

@@ -119,9 +119,13 @@ components:
   schemas:
     FlutterwaveTransactionSplitEvidence:
       type: object
-      required: [status, reason, bankSettlementVerified, paymentId, transactionId, reference, checkedAt, source, platformGrossMinor, platformNetMinor, appFeeMinor, additionalFeeMinor, recipients]
+      required: [status, evidenceLevel, reason, bankSettlementVerified, paymentId, transactionId, reference, checkedAt, source, platformGrossMinor, platformNetMinor, appFeeMinor, additionalFeeMinor, recipients]
       properties:
         status: { type: string, enum: [UNCONFIRMED, MISMATCH, CONFIRMED] }
+        evidenceLevel:
+          type: string
+          enum: [UNAVAILABLE, PARTIAL, MISMATCH, COMPLETE_VERIFIED]
+          description: "Application classification, not a Flutterwave field. The current v3 verify adapter cannot emit COMPLETE_VERIFIED or CONFIRMED."
         reason: { type: string }
         bankSettlementVerified: { type: boolean, enum: [false] }
         paymentId: { type: integer }

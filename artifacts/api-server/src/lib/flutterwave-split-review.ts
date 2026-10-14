@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const existingDiagnosticTestReference = "RS_5F0DB5C736A2550E783A15B9EB9FBF09";
+// Persist scope in the existing review note; encrypted bank identity is immutable.
+export const existingTestReviewNotePrefix = `[VERIFY_EXISTING_TEST:${existingDiagnosticTestReference}] `;
 export const businessEmailSchema = z.string().trim().max(254).email().refine(value => {
   const domain = value.split("@")[1]?.toLowerCase() ?? "";
   return !/(\.test|\.invalid|\.localhost|\.example)$/.test(domain)

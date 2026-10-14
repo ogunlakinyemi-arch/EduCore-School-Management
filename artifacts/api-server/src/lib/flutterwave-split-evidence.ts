@@ -6,6 +6,8 @@ export type ExpectedTransactionSplit = {
   recipients: { subaccountId: string; amountMinor: number }[];
 };
 export type ReportedTransactionSplit = {
+  // INTERNAL normalized comparison input, not a Flutterwave response schema.
+  // No supported production adapter currently constructs a complete split set.
   recipients: { subaccountId: string; amountMinor: number }[];
   completeRecipientSet: boolean;
 };
@@ -18,6 +20,7 @@ export function compareTransactionSplits(
 ) {
   const base = {
     status: "UNCONFIRMED" as "UNCONFIRMED" | "MISMATCH" | "CONFIRMED",
+    evidenceLevel: "UNAVAILABLE" as "UNAVAILABLE" | "PARTIAL" | "MISMATCH" | "COMPLETE_VERIFIED",
     reason: "Reliable complete transaction-level split details are unavailable",
     bankSettlementVerified: false as const,
     platformGrossMinor: expected.platformGrossMinor,
@@ -28,7 +31,7 @@ export function compareTransactionSplits(
       ...r, observedAmountMinor: reported?.recipients.find(a => a.subaccountId === r.subaccountId)?.amountMinor ?? null,
     })),
   };
-  const mismatch = (reason: string) => ({ ...base, status: "MISMATCH" as const, reason });
+  const mismatch = (reason: string) => ({ ...base, status: "MISMATCH" as const, evidenceLevel: "MISMATCH" as const, reason });
   if (new Set(expected.recipients.map(r => r.subaccountId)).size !== expected.recipients.length
       || ![1,2].includes(expected.recipients.length)
       || expected.recipients[0]?.amountMinor !== 200000
@@ -45,11 +48,13 @@ export function compareTransactionSplits(
       || transaction.currency !== expected.currency || transaction.status !== "successful") {
     return mismatch("Provider transaction identity, reference, currency or successful status differs");
   }
+  if (transaction.amount == null) return { ...base, reason: "Provider transaction amount is unavailable" };
   try {
     if (ngnMinor(transaction.amount) !== expected.grossAmountMinor
         || (transaction.charged_amount != null && ngnMinor(transaction.charged_amount) !== expected.grossAmountMinor)) {
       return mismatch("Provider amount or payer charge differs from NGN 5000");
     }
+    base.evidenceLevel = "PARTIAL";
     if (transaction.charged_amount == null || transaction.app_fee == null || transaction.merchant_fee == null) {
       return { ...base, reason: "Exact payer charge and separate provider fee components are required" };
     }
@@ -72,7 +77,19 @@ export function compareTransactionSplits(
   };
   if (reported.recipients.length !== expected.recipients.length) return mismatch("Provider recipient set differs");
   return {
-    ...base, status: "CONFIRMED" as const,
+    ...base, status: "CONFIRMED" as const, evidenceLevel: "COMPLETE_VERIFIED" as const,
     reason: "Complete provider-reported transaction allocation matches; this is not bank settlement",
   };
+}
+
+/**
+ * Current supported v3 verify contract is COLLECTION ONLY.
+ * Deliberately does not read subaccounts, meta, allocations, completeness flags,
+ * or settlement lines from the provider payload. See the evidence-contract doc.
+ */
+export function compareVerificationResponse(expected: ExpectedTransactionSplit, transaction: Record<string, unknown>) {
+  const result = compareTransactionSplits(expected, transaction, null);
+  return result.status === "UNCONFIRMED" && result.evidenceLevel === "PARTIAL"
+    ? { ...result, reason: `${result.reason}. Transaction verification does not establish recipient allocation; obtain a Flutterwave-issued transaction-linked complete split report.` }
+    : result;
 }

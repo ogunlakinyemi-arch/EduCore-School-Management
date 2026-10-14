@@ -74,8 +74,8 @@ a completed recipient bank transfer.
 5. A lost creation response becomes `CREATION_UNKNOWN`. Recovery is GET-only,
    requires a unique matching provider record, and never repeats creation.
    Recovery does not silently resume a suspended recipient.
-6. Owner confirms automatic settlement and merchant-borne fees in the **TEST**
-   dashboard before enabling future school split checkout. Checkout rechecks
+6. Owner explicitly authorizes **Development TEST verification**, not automatic
+   bank settlement, before enabling future school split checkout. Checkout rechecks
    school/eligible-Partner readiness. Retiring preserves history; suspended
    recipients prevent new initialization, but an already-issued provider
    checkout may still complete and requires reconciliation.

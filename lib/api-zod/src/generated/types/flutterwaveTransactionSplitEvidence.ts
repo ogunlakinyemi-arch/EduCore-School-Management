@@ -5,11 +5,14 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { FlutterwaveTransactionSplitEvidenceEvidenceLevel } from './flutterwaveTransactionSplitEvidenceEvidenceLevel';
 import type { FlutterwaveTransactionSplitEvidenceStatus } from './flutterwaveTransactionSplitEvidenceStatus';
 import type { FlutterwaveTransactionSplitRecipientEvidence } from './flutterwaveTransactionSplitRecipientEvidence';
 
 export interface FlutterwaveTransactionSplitEvidence {
   status: FlutterwaveTransactionSplitEvidenceStatus;
+  /** Application classification, not a Flutterwave field. The current v3 verify adapter cannot emit COMPLETE_VERIFIED or CONFIRMED. */
+  evidenceLevel: FlutterwaveTransactionSplitEvidenceEvidenceLevel;
   reason: string;
   bankSettlementVerified: false;
   paymentId: number;
