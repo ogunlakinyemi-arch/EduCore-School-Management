@@ -113,6 +113,10 @@ No external hardware/provider API is called by this adapter.
 
 ## Staging and firmware prerequisites — not completed here
 
+For the fail-closed, worker-free local process and its non-secret configuration
+requirements, see `nfc-terminal-isolated-startup.md`. It does not provision a
+database, build/start a process, or establish real staging readiness.
+
 - Approved isolated staging host/database, verified not Production, and a
   registered, school-bound configured NFC/HYBRID device with a saved direction.
 - Stage-only device credential, eligible student/card fixtures, and HTTPS routing

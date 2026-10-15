@@ -1,72 +1,21 @@
-import app from "./app";
-import { pool } from "@workspace/db";
-import { logger } from "./lib/logger";
-import { dispatchCommunicationDeliveries } from "./services/communication-service";
-import { createDevelopmentCommunicationProviders } from "./services/communication-providers";
-import { reconcileFinanceCommunicationIntents } from "./routes/finance-communication-service";
-import { evaluateSubscriptionSchools } from "./services/subscription-enforcement";
-import { developmentWorkersPaused } from "./lib/development-worker-policy";
-import { verifyRemovalRuntimeTarget } from "./services/development-settlement-removal";
+import { bootstrapApi } from "./lib/api-bootstrap";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+try {
+  await bootstrapApi(process.env, process.argv.slice(2), {
+    normal: async () => { await import("./normal-server"); },
+    terminal: async target => {
+      const { startTerminalTestServer } = await import("./terminal-test-server");
+      await startTerminalTestServer(target);
+    },
+    checked: async target => {
+      const { logger } = await import("./lib/logger");
+      logger.info({ mode: "configuration-check-only", host: target.host, database: target.database,
+        workers: "not-started", databaseConnected: false }, "Local terminal test target configuration passed");
+    },
+  });
+} catch {
+  // Never expose environment values, driver errors or connection strings.
+  const { logger } = await import("./lib/logger");
+  logger.error("API startup refused or failed; check the explicit terminal test configuration and private socket");
+  process.exitCode = 1;
 }
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
-  logger.info({ port }, "Server listening");
-  if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
-    void verifyRemovalRuntimeTarget().then((verified) => {
-      logger.info({ developmentSettlementRemovalIsolation: verified },
-        verified ? "Development settlement removal target verified; every action rechecks isolation"
-          : "Development settlement removal disabled: runtime target isolation is not confirmed");
-    });
-  }
-  if (developmentWorkersPaused()) {
-    logger.warn("Development subscription and notification workers paused for controlled verification");
-    return;
-  }
-
-  // Provider work runs after request transactions commit. In development the
-  // dispatcher uses no-network adapters; real providers require explicit setup.
-  let dispatching = false;
-  let lastSubscriptionEvaluation = 0;
-  const dispatch = async () => {
-    if (dispatching) return;
-    dispatching = true;
-    try {
-      if (Date.now() - lastSubscriptionEvaluation >= 60_000) {
-        await evaluateSubscriptionSchools();
-        lastSubscriptionEvaluation = Date.now();
-      }
-      // The existing invoice notification ledger is durable. Reconcile any
-      // missed channel intents before claiming due deliveries.
-      await reconcileFinanceCommunicationIntents(pool, 50);
-      await dispatchCommunicationDeliveries(pool, 50, {
-        allowConfiguredProviders: process.env.NODE_ENV === "production",
-        providers: process.env.NODE_ENV === "production" ? undefined :
-          createDevelopmentCommunicationProviders(process.env),
-      });
-    } catch (error) {
-      logger.error({ error }, "Communication delivery worker failed");
-    } finally {
-      dispatching = false;
-    }
-  };
-  void dispatch();
-  setInterval(() => void dispatch(), 15_000).unref();
-});

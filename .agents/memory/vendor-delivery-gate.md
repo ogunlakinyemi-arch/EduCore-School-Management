@@ -13,3 +13,9 @@ Terminal direction and protocol receipt audit entries are operational state, not
 **Why:** The bounded compatibility implementation deliberately avoids schema migration and a parallel attendance store. Removing these entries can lose the assigned direction or the original payload identity and decision needed for safe retries.
 
 **How to apply:** Any future audit cleanup must preserve terminal direction and receipt identity/decision metadata for the entire supported replay lifetime. Original terminal event IDs and timestamp strings remain immutable; never replace them with retry time.
+
+Keep isolated terminal startup separate from the normal server import path, and never treat the normal Development worker-pause flag as database isolation.
+
+**Why:** Normal startup performs a database identity probe before checking its worker-pause flag. A pause alone therefore cannot satisfy a no-database-access startup check. The local-only test prerequisite deliberately avoids shared database credentials and does not provision or prove server/schema readiness.
+
+**How to apply:** Independently approve/provision the disposable named local target before any actual scan. Configuration/filesystem verification is not database authentication or hardware evidence; do not claim staging exists merely because the safety gate passes.
