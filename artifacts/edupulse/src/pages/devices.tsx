@@ -95,6 +95,10 @@ export function DevicesPage() {
                   <div className="flex items-center gap-1.5 mt-1 text-xs text-[hsl(var(--muted-foreground))] font-mono">
                     <Tag size={12} /> {dev.serialNumber}
                   </div>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 text-sm text-[hsl(var(--foreground))]">
+                    <span className="font-semibold">Device ID:</span>
+                    <span className="select-all break-all font-mono tabular-nums" data-testid={`device-id-${dev.id}`}>{dev.id}</span>
+                  </div>
                 </div>
                 <div>
                   <span className="bg-[hsl(var(--primary)/.08)] text-[hsl(var(--primary))] dark:bg-[hsl(var(--accent)/.15)] dark:text-[hsl(var(--accent))] text-[10px] font-bold px-2 py-0.5 rounded border border-[hsl(var(--primary)/.2)]">
@@ -110,6 +114,10 @@ export function DevicesPage() {
                   ) : (
                     <span className="text-xs font-medium text-[hsl(var(--muted-foreground))] italic">Unassigned hardware</span>
                   )}
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 text-sm text-[hsl(var(--foreground))]">
+                    <span className="font-semibold">School ID:</span>
+                    <span className="select-all break-all font-mono tabular-nums" data-testid={`device-school-id-${dev.id}`}>{dev.schoolId ?? 'Unassigned'}</span>
+                  </div>
                 </div>
                 <div>
                   <StatusPill value={dev.status} />
