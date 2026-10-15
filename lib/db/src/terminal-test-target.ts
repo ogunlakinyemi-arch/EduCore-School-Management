@@ -7,6 +7,7 @@ export type TerminalTestTarget = {
   user: string;
   port: number;
   httpPort: number;
+  apiBasePath: "/api" | "/nfc-test/api";
 };
 
 /** Non-secret configuration only. Never consult DATABASE_URL or PG credentials. */
@@ -39,7 +40,11 @@ export function terminalTestTarget(env: NodeJS.ProcessEnv): TerminalTestTarget {
   if (httpPort === port || httpPort === 8080 || httpPort === Number(env.PORT)) {
     throw new Error("Terminal test HTTP port must be separate from the preview and database ports");
   }
-  return { name, host, database, user: "educore_terminal_test", port, httpPort };
+  const apiBasePath = env.EDUCORE_TERMINAL_TEST_API_BASE_PATH ?? "/api";
+  if (apiBasePath !== "/api" && apiBasePath !== "/nfc-test/api") {
+    throw new Error("Only the local or dedicated hardware-test API prefix is permitted");
+  }
+  return { name, host, database, user: "educore_terminal_test", port, httpPort, apiBasePath };
 }
 
 /** Filesystem-only check. Does not open a socket, authenticate or query PostgreSQL. */

@@ -46,6 +46,11 @@ describe("explicit isolated terminal target, no database or secret access", () =
       port: 55439, httpPort: 18081,
     });
   });
+  it("permits the separate hardware-test prefix but never arbitrary app routes", () => {
+    expect(terminalTestTarget({ ...environment(), EDUCORE_TERMINAL_TEST_API_BASE_PATH: "/nfc-test/api" }).apiBasePath).toBe("/nfc-test/api");
+    expect(() => terminalTestTarget({ ...environment(), EDUCORE_TERMINAL_TEST_API_BASE_PATH: "/" })).toThrow();
+    expect(terminalTestTarget(environment()).apiBasePath).toBe("/api");
+  });
   it.each([
     ["EDUCORE_TERMINAL_TEST_MODE", undefined], ["EDUCORE_TERMINAL_TEST_MODE", "true"],
     ["NODE_ENV", "production"], ["REPLIT_DEPLOYMENT", "1"], ["REPLIT_DEPLOYMENT", ""],
