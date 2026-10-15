@@ -64,5 +64,6 @@
 - [Published correction safety](published-correction-policy.md) — protect financial history during fee corrections and require academic review and republication after score changes.
 - [Vite private-file hardening](vite-private-file-hardening.md) — allow narrow optimizer caches and reject private URLs before SPA fallback; successful HEAD checks do not prove rendering.
 - [Vendor delivery gate](vendor-delivery-gate.md) — physical NFC/GPS/device integration and vendor-dependent communication/retry work await confirmed hardware/software delivery.
+- [Disposable terminal verification](disposable-terminal-verification.md) — retain standard bundling and real migration indexes when testing against an isolated local PostgreSQL cluster.
 - [Sandbox callback isolation](sandbox-callback-isolation.md) — TEST charges can trigger app writes; verify callback/webhook targets and use dedicated Development aliases consistently.
 - [Settlement removal consent](settlement-profile-removal-consent.md) — building a Development cleanup feature never authorizes deleting existing bank profiles.

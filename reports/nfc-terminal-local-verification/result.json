@@ -1,0 +1,81 @@
+{
+  "verifiedAt": "2026-10-15T13:24:08.870Z",
+  "verification": "Real localhost HTTP requests to the terminal-only application, backed by real disposable PostgreSQL; no mocked authentication or persistence",
+  "target": {
+    "name": "nfc_1792070156",
+    "database": "educore_terminal_test_nfc_1792070156",
+    "role": "educore_terminal_test",
+    "socket": "/tmp/educore-terminal-test-nfc_1792070156",
+    "databasePort": 55439,
+    "httpHost": "127.0.0.1",
+    "httpPort": 53331,
+    "postgresqlVersion": "16.10",
+    "tcpDatabaseListeners": "",
+    "unixSocketConnectionVerified": true,
+    "databaseRoleIsSuperuser": false,
+    "privateDirectoryPermissions": "0700",
+    "dataDirectory": "/tmp/educore-nfc-cluster-gkpAh6",
+    "privateWorkingDirectory": "/tmp/educore-nfc-verification-FN9TZy",
+    "applicationProcessStoppedAfterVerification": true,
+    "databaseProcessStoppedAfterVerification": true,
+    "temporaryFilesMayNotSurviveWorkspaceReset": true
+  },
+  "isolation": {
+    "childEnvironment": "Explicit clean allowlist; no inherited DATABASE_URL or real credentials",
+    "applicationOutboundConnections": "Blocked except the exact disposable PostgreSQL Unix socket",
+    "workers": "disabled",
+    "normalPreviewDistChanged": false,
+    "previewRestarted": false,
+    "productionAccessed": false,
+    "sharedDevelopmentDatabaseAccessed": false,
+    "realSecretsInspectedOrChanged": false,
+    "vendorEndpointCalled": false,
+    "cloudResourcesCreated": false,
+    "publishedOrDeployed": false
+  },
+  "syntheticFixtures": {
+    "schools": 1,
+    "students": 1,
+    "nfcCardMappings": 1,
+    "registeredTerminals": 2,
+    "credentialScope": "Synthetic local-only device credentials; no real credentials used or included in this report",
+    "directions": ["ENTRY", "EXIT"],
+    "supportingAcademicRecords": "Synthetic session, term, class and historical class assignment"
+  },
+  "schema": {
+    "basis": "Offline export of current source schema, plus the existing attendance_discrepancies_event_kind_unique definition from lib/db/drizzle/0009_phase5_attendance.sql",
+    "sourceExportTables": 179,
+    "fullMigrationChainRehearsed": false,
+    "scope": "All schema and fixture writes were restricted to the fresh disposable database"
+  },
+  "initialLiveAttempt": {
+    "case": "Valid CARD_SCAN",
+    "httpStatus": 503,
+    "attendanceRowsAfter": 0,
+    "cause": "Source-only schema export omitted the retained migration's attendance discrepancy unique index, required by ON CONFLICT",
+    "resolution": "Applied that exact existing migration index definition to the disposable database only"
+  },
+  "finalChecks": [
+    {"case": "Valid CARD_SCAN; lowercase UID resolves uppercase card; assigned ENTRY", "httpStatus": 200, "success": true, "duplicate": false, "action": "ENTRY", "attendanceRowsAfter": 1, "passed": true},
+    {"case": "Identical ENTRY replay", "httpStatus": 200, "success": true, "duplicate": true, "action": "ENTRY", "attendanceRowsAfter": 1, "passed": true},
+    {"case": "Invalid authentication", "httpStatus": 401, "success": false, "retryable": false, "code": "ACCESS_DENIED", "attendanceRowsAfter": 1, "passed": true},
+    {"case": "Invalid card", "httpStatus": 200, "success": false, "retryable": false, "action": "DENIED", "attendanceRowsAfter": 1, "passed": true},
+    {"case": "Assigned EXIT", "httpStatus": 200, "success": true, "duplicate": false, "action": "EXIT", "attendanceRowsAfter": 2, "passed": true},
+    {"case": "Identical EXIT replay", "httpStatus": 200, "success": true, "duplicate": true, "action": "EXIT", "attendanceRowsAfter": 2, "passed": true},
+    {"case": "Reused event ID with different data", "httpStatus": 409, "success": false, "retryable": false, "code": "TERMINAL_EVENT_CONFLICT", "attendanceRowsAfter": 2, "passed": true}
+  ],
+  "finalPassed": 7,
+  "finalFailed": 0,
+  "totalLiveNfcEventRequestsIncludingInitialSchemaFailure": 8,
+  "finalDatabaseEvidence": {
+    "attendanceRows": 2,
+    "attendanceEventTypes": ["SCHOOL_ENTRY", "SCHOOL_EXIT"],
+    "terminalReceipts": 3,
+    "terminalReceiptResults": ["SUCCESS", "DENIED", "SUCCESS"],
+    "entryOriginalTimestamp": "2026-10-15T13:23:58.667Z",
+    "exitOriginalTimestamp": "2026-10-15T13:24:08.870Z",
+    "originalEntryTimestampPreserved": true,
+    "replaysCreatedNoAdditionalAttendanceOrTerminalReceipts": true
+  },
+  "limits": "Local software/database verification only. No vendor endpoint, physical hardware, provider delivery, published staging environment or Production migration validation."
+}

@@ -1,8 +1,18 @@
-# Isolated terminal test startup — prerequisites only
+# Isolated terminal test startup
 
-**Not provisioned or started.** This change does not create a database, change
-secrets/settings, build/restart the preview, apply a schema or verify live data.
-The existing terminal endpoint and its payload/response contract are unchanged.
+The original safety-only change did not provision or start a database/process.
+Subsequent authorized verification on **2026-10-15** provisioned a fresh private
+local PostgreSQL cluster and synthetic fixtures, and ran the real terminal-only
+application against it. **All 7 final local HTTP checks passed**, with exactly
+two attendance rows and three terminal receipts. Both temporary processes were
+then stopped. No shared Development/Production database, real credentials,
+vendor endpoint, cloud resource, preview restart or publish was involved.
+
+See `reports/nfc-terminal-local-verification/result.json` for the exact local
+identifier, outcomes, initial schema-index correction and remaining limits.
+This is historical local test evidence, **not** an active hosted staging service;
+temporary directories may disappear after a workspace reset. Never infer that
+an old target is still available or safe without independently revalidating it.
 
 ## Fail-closed boundary
 
@@ -60,11 +70,13 @@ After separately authorized configuration/provisioning and a fresh API build:
 - `pnpm --filter @workspace/api-server run start:terminal-test` starts the
   separate worker-free loopback process, not the preview.
 
-These commands are documented, **not run**. The separate compiled entry file
-must exist; an old normal-server bundle cannot silently ignore a new test flag.
+These package commands were not used for the recorded verification. Instead,
+the standard bundler was scoped to the terminal entry and an ignored temporary
+output directory, leaving the preview's dist untouched. The separate compiled
+entry file must exist; an old normal-server bundle cannot silently ignore a new test flag.
 The normal preview's launcher remains normal unless test mode is explicitly set.
 
-## Still required before one real scan
+## Requirements before a fresh live test
 
 1. Explicit approval and separate provisioning of a disposable local PostgreSQL
    cluster, named database and role satisfying the gate. None exists by virtue
