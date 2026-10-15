@@ -21,6 +21,7 @@ import { studentSubscriptionFlutterwaveWebhookRouter } from "./routes/student-su
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 import { rejectSimulationWebhook } from "./middlewares/local-split-simulation";
+import terminalEventsRouter from "./routes/terminal-events";
 
 const app: Express = express();
 
@@ -86,6 +87,7 @@ app.use(
   }),
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+app.use("/api", terminalEventsRouter);
 app.use(cors({ credentials: true, origin: corsOrigin }));
 app.use("/api/communication/provider-receipts", express.raw({ type: "application/json", limit: "64kb" }), communicationReceiptRouter);
 // Provider callbacks are public and require the untouched raw bytes for

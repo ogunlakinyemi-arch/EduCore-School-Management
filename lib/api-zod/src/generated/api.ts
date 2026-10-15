@@ -8,6 +8,74 @@
 import * as zod from 'zod';
 
 
+/**
+ * Fixed terminal direction; Lagos default timezone; -366 days/+5 minutes. 16 KiB JSON limit. Identical event IDs replay; conflicting reuse returns 409.
+ * @summary Ingest a school-bound NFC terminal CARD_SCAN
+ */
+export const ingestVendorTerminalEventBodyEventIdMax = 128;
+
+
+export const ingestVendorTerminalEventBodyEventIdRegExp = new RegExp('^[A-Za-z0-9_.:-]+$');
+
+export const ingestVendorTerminalEventBodyDeviceIdTwoRegExp = new RegExp('^[1-9][0-9]*$');
+
+export const ingestVendorTerminalEventBodySchoolIdTwoRegExp = new RegExp('^[1-9][0-9]*$');
+export const ingestVendorTerminalEventBodyTerminalNameMax = 128;
+
+export const ingestVendorTerminalEventBodyUidRegExp = new RegExp('^(?:[A-Fa-f0-9]{8}|[A-Fa-f0-9]{14}|[A-Fa-f0-9]{20})$');
+export const ingestVendorTerminalEventBodyFirmwareMax = 128;
+
+
+
+export const IngestVendorTerminalEventBody = zod.object({
+  "event_id": zod.string().min(1).max(ingestVendorTerminalEventBodyEventIdMax).regex(ingestVendorTerminalEventBodyEventIdRegExp),
+  "device_id": zod.union([zod.number().int().min(1),zod.string().regex(ingestVendorTerminalEventBodyDeviceIdTwoRegExp)]),
+  "school_id": zod.union([zod.number().int().min(1),zod.string().regex(ingestVendorTerminalEventBodySchoolIdTwoRegExp)]),
+  "terminal_name": zod.string().max(ingestVendorTerminalEventBodyTerminalNameMax).optional(),
+  "uid": zod.string().regex(ingestVendorTerminalEventBodyUidRegExp),
+  "event_type": zod.enum(['CARD_SCAN']),
+  "timestamp": zod.string().describe('ISO date/time with seconds, optional millisecond fraction and Z/offset. Without timezone, Africa/Lagos is used. Retry the original unchanged string.'),
+  "firmware": zod.string().max(ingestVendorTerminalEventBodyFirmwareMax).optional()
+})
+
+export const IngestVendorTerminalEventResponse = zod.object({
+  "success": zod.boolean(),
+  "duplicate": zod.boolean(),
+  "retryable": zod.boolean(),
+  "message": zod.string(),
+  "student_name": zod.string().nullable(),
+  "action": zod.union([zod.literal('ENTRY'),zod.literal('EXIT'),zod.literal('DENIED'),zod.literal(null)]).nullable()
+})
+
+
+
+
+
+export const GetTerminalDirectionParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const GetTerminalDirectionResponse = zod.object({
+  "direction": zod.union([zod.literal('ENTRY'),zod.literal('EXIT'),zod.literal(null)]).nullable()
+})
+
+
+
+
+
+export const SetTerminalDirectionParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const SetTerminalDirectionBody = zod.object({
+  "direction": zod.enum(['ENTRY', 'EXIT'])
+})
+
+export const SetTerminalDirectionResponse = zod.object({
+  "direction": zod.union([zod.literal('ENTRY'),zod.literal('EXIT'),zod.literal(null)]).nullable()
+})
+
+
 export const GetLocalFlutterwaveSplitSimulationResponse = zod.object({
   "mode": zod.enum(['LOCAL_SPLIT_SIMULATION']),
   "label": zod.enum(['TEST / NOT REAL']),

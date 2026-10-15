@@ -775,6 +775,8 @@ import type {
   TeacherClassAssignment,
   TeacherClassAssignmentInput,
   TeacherDuty,
+  TerminalDirectionConfiguration,
+  TerminalDirectionInput,
   TransitionAdmissionApplicationParams,
   TransportAssignment,
   TransportAssignmentFeePlanInput,
@@ -834,6 +836,8 @@ import type {
   UpdateTransportRouteStaffParams,
   UpdateTransportStopParams,
   UpsertTransportAssignmentFeePlanParams,
+  VendorTerminalEvent,
+  VendorTerminalReceipt,
   VerifyManualBankTransferParams,
   VerifyMyStaffNfcPaymentParams,
   WelfareRecord,
@@ -868,6 +872,249 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getIngestVendorTerminalEventUrl = () => {
+
+
+
+
+  return `/api/v1/terminal/events`
+}
+
+/**
+ * Fixed terminal direction; Lagos default timezone; -366 days/+5 minutes. 16 KiB JSON limit. Identical event IDs replay; conflicting reuse returns 409.
+ * @summary Ingest a school-bound NFC terminal CARD_SCAN
+ */
+export const ingestVendorTerminalEvent = async (vendorTerminalEvent: VendorTerminalEvent, options?: Parameters<typeof customFetch>[1]): Promise<VendorTerminalReceipt> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<VendorTerminalReceipt>(getIngestVendorTerminalEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(vendorTerminalEvent)
+  }
+);}
+
+
+
+
+
+export const getIngestVendorTerminalEventMutationKey = () => ['ingestVendorTerminalEvent'] as const;
+
+export const getIngestVendorTerminalEventMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestVendorTerminalEvent>>, TError,IngestVendorTerminalEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestVendorTerminalEvent>>, TError,IngestVendorTerminalEventMutationVariables, TContext> => {
+
+const mutationKey = getIngestVendorTerminalEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestVendorTerminalEvent>>, IngestVendorTerminalEventMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestVendorTerminalEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestVendorTerminalEventMutationResult = NonNullable<Awaited<ReturnType<typeof ingestVendorTerminalEvent>>>
+    export type IngestVendorTerminalEventMutationBody = BodyType<VendorTerminalEvent>
+    export type IngestVendorTerminalEventMutationError = ErrorType<void>
+    export type IngestVendorTerminalEventMutationVariables = {data: BodyType<VendorTerminalEvent>}
+
+    /**
+ * @summary Ingest a school-bound NFC terminal CARD_SCAN
+ */
+export const useIngestVendorTerminalEvent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestVendorTerminalEvent>>, TError,IngestVendorTerminalEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestVendorTerminalEvent>>,
+        TError,
+        IngestVendorTerminalEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIngestVendorTerminalEventMutationOptions(options));
+    }
+
+export const getGetTerminalDirectionUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/terminal-direction`
+}
+
+export const getTerminalDirection = async (deviceId: number, options?: Parameters<typeof customFetch>[1]): Promise<TerminalDirectionConfiguration> => {
+
+  return customFetch<TerminalDirectionConfiguration>(getGetTerminalDirectionUrl(deviceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTerminalDirectionQueryKey = (deviceId: number,) => {
+    return [
+    `/api/platform/devices/${deviceId}/terminal-direction`
+    ] as const;
+    }
+
+
+export const getGetTerminalDirectionQueryOptions = <TData = Awaited<ReturnType<typeof getTerminalDirection>>, TError = ErrorType<void>>(deviceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTerminalDirection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTerminalDirectionQueryKey(deviceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTerminalDirection>>> = ({ signal }) => getTerminalDirection(deviceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: deviceId !== null && deviceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTerminalDirection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTerminalDirectionQueryResult = NonNullable<Awaited<ReturnType<typeof getTerminalDirection>>>
+export type GetTerminalDirectionQueryError = ErrorType<void>
+
+
+
+export function useGetTerminalDirection<TData = Awaited<ReturnType<typeof getTerminalDirection>>, TError = ErrorType<void>>(
+ deviceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTerminalDirection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTerminalDirectionQueryOptions(deviceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetTerminalDirectionUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/terminal-direction`
+}
+
+export const setTerminalDirection = async (deviceId: number,
+    terminalDirectionInput: TerminalDirectionInput, options?: Parameters<typeof customFetch>[1]): Promise<TerminalDirectionConfiguration> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TerminalDirectionConfiguration>(getSetTerminalDirectionUrl(deviceId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(terminalDirectionInput)
+  }
+);}
+
+
+
+
+
+export const getSetTerminalDirectionMutationKey = () => ['setTerminalDirection'] as const;
+
+export const getSetTerminalDirectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setTerminalDirection>>, TError,SetTerminalDirectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setTerminalDirection>>, TError,SetTerminalDirectionMutationVariables, TContext> => {
+
+const mutationKey = getSetTerminalDirectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setTerminalDirection>>, SetTerminalDirectionMutationVariables> = (props) => {
+          const {deviceId,data} = props ?? {};
+
+          return  setTerminalDirection(deviceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetTerminalDirectionMutationResult = NonNullable<Awaited<ReturnType<typeof setTerminalDirection>>>
+    export type SetTerminalDirectionMutationBody = BodyType<TerminalDirectionInput>
+    export type SetTerminalDirectionMutationError = ErrorType<void>
+    export type SetTerminalDirectionMutationVariables = {deviceId: number;data: BodyType<TerminalDirectionInput>}
+
+    export const useSetTerminalDirection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setTerminalDirection>>, TError,SetTerminalDirectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setTerminalDirection>>,
+        TError,
+        SetTerminalDirectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetTerminalDirectionMutationOptions(options));
+    }
 
 export const getGetLocalFlutterwaveSplitSimulationUrl = () => {
 

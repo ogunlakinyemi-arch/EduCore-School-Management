@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { TerminalDirection } from '@/components/terminal-direction';
 import { useQueryClient } from '@tanstack/react-query';
 import { Smartphone, Plus, Search, ShieldCheck, Tag, Loader2, Link as LinkIcon, Building2 } from 'lucide-react';
 import { 
@@ -135,6 +136,9 @@ export function DevicesPage() {
 
           {modal?.edit && (
             <Modal title="Configure Device" eyebrow={modal.edit.serialNumber} onClose={() => setModal(null)}>
+              {modal.edit.schoolId && ['NFC', 'HYBRID'].includes(modal.edit.deviceType) && (
+                <TerminalDirection key={`${modal.edit.id}:${modal.edit.schoolId}`} deviceId={modal.edit.id} />
+              )}
               <DeviceUpdateForm device={modal.edit} schools={schools} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}

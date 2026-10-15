@@ -5,6 +5,84 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+export type TerminalDirectionInputDirection = typeof TerminalDirectionInputDirection[keyof typeof TerminalDirectionInputDirection];
+
+
+export const TerminalDirectionInputDirection = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export interface TerminalDirectionInput {
+  direction: TerminalDirectionInputDirection;
+}
+
+/**
+ * @nullable
+ */
+export type TerminalDirectionConfigurationDirection = typeof TerminalDirectionConfigurationDirection[keyof typeof TerminalDirectionConfigurationDirection] | null;
+
+
+export const TerminalDirectionConfigurationDirection = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export interface TerminalDirectionConfiguration {
+  /** @nullable */
+  direction: TerminalDirectionConfigurationDirection;
+}
+
+export type VendorTerminalEventEventType = typeof VendorTerminalEventEventType[keyof typeof VendorTerminalEventEventType];
+
+
+export const VendorTerminalEventEventType = {
+  CARD_SCAN: 'CARD_SCAN',
+} as const;
+
+export interface VendorTerminalEvent {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_.:-]+$
+     */
+  event_id: string;
+  device_id: number | string;
+  school_id: number | string;
+  /** @maxLength 128 */
+  terminal_name?: string;
+  /** @pattern ^(?:[A-Fa-f0-9]{8}|[A-Fa-f0-9]{14}|[A-Fa-f0-9]{20})$ */
+  uid: string;
+  event_type: VendorTerminalEventEventType;
+  /** ISO date/time with seconds, optional millisecond fraction and Z/offset. Without timezone, Africa/Lagos is used. Retry the original unchanged string. */
+  timestamp: string;
+  /** @maxLength 128 */
+  firmware?: string;
+}
+
+/**
+ * @nullable
+ */
+export type VendorTerminalReceiptAction = typeof VendorTerminalReceiptAction[keyof typeof VendorTerminalReceiptAction] | null;
+
+
+export const VendorTerminalReceiptAction = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+  DENIED: 'DENIED',
+} as const;
+
+export interface VendorTerminalReceipt {
+  success: boolean;
+  duplicate: boolean;
+  retryable: boolean;
+  message: string;
+  /** @nullable */
+  student_name: string | null;
+  /** @nullable */
+  action: VendorTerminalReceiptAction;
+}
+
 export type StudentNfcObligationStatus = typeof StudentNfcObligationStatus[keyof typeof StudentNfcObligationStatus];
 
 
@@ -14325,6 +14403,84 @@ export interface SchoolCurriculumTopicsResponse {
   topics: CurriculumTopic[];
   progress: CurriculumProgress[];
   curriculumVersion: CurriculumVersion;
+}
+
+export type TerminalDirectionInput4b96100Direction = typeof TerminalDirectionInput4b96100Direction[keyof typeof TerminalDirectionInput4b96100Direction];
+
+
+export const TerminalDirectionInput4b96100Direction = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export interface TerminalDirectionInput4b96100 {
+  direction: TerminalDirectionInput4b96100Direction;
+}
+
+/**
+ * @nullable
+ */
+export type TerminalDirectionConfiguration4b96100Direction = typeof TerminalDirectionConfiguration4b96100Direction[keyof typeof TerminalDirectionConfiguration4b96100Direction] | null;
+
+
+export const TerminalDirectionConfiguration4b96100Direction = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export interface TerminalDirectionConfiguration4b96100 {
+  /** @nullable */
+  direction: TerminalDirectionConfiguration4b96100Direction;
+}
+
+export type VendorTerminalEvent4b96100EventType = typeof VendorTerminalEvent4b96100EventType[keyof typeof VendorTerminalEvent4b96100EventType];
+
+
+export const VendorTerminalEvent4b96100EventType = {
+  CARD_SCAN: 'CARD_SCAN',
+} as const;
+
+export interface VendorTerminalEvent4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_.:-]+$
+     */
+  event_id: string;
+  device_id: number | string;
+  school_id: number | string;
+  /** @maxLength 128 */
+  terminal_name?: string;
+  /** @pattern ^(?:[A-Fa-f0-9]{8}|[A-Fa-f0-9]{14}|[A-Fa-f0-9]{20})$ */
+  uid: string;
+  event_type: VendorTerminalEvent4b96100EventType;
+  /** ISO date/time with seconds, optional millisecond fraction and Z/offset. Without timezone, Africa/Lagos is used. Retry the original unchanged string. */
+  timestamp: string;
+  /** @maxLength 128 */
+  firmware?: string;
+}
+
+/**
+ * @nullable
+ */
+export type VendorTerminalReceipt4b96100Action = typeof VendorTerminalReceipt4b96100Action[keyof typeof VendorTerminalReceipt4b96100Action] | null;
+
+
+export const VendorTerminalReceipt4b96100Action = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+  DENIED: 'DENIED',
+} as const;
+
+export interface VendorTerminalReceipt4b96100 {
+  success: boolean;
+  duplicate: boolean;
+  retryable: boolean;
+  message: string;
+  /** @nullable */
+  student_name: string | null;
+  /** @nullable */
+  action: VendorTerminalReceipt4b96100Action;
 }
 
 export type StudentNfcLedger4b96100 = StudentNfcLedger;

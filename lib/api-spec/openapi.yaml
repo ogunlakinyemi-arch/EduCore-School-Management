@@ -34,6 +34,69 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /v1/terminal/events:
+    post:
+      operationId: ingestVendorTerminalEvent
+      tags: [attendance]
+      summary: Ingest a school-bound NFC terminal CARD_SCAN
+      description: Fixed terminal direction; Lagos default timezone; -366 days/+5 minutes. 16 KiB JSON limit. Identical event IDs replay; conflicting reuse returns 409.
+      security:
+        - TerminalDeviceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VendorTerminalEvent" }
+      responses:
+        "200":
+          description: Accepted, replayed, duplicate-suppressed or business-denied event; inspect success and action
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorTerminalReceipt" }
+        "400": { description: "Invalid JSON, fields, UID or timestamp" }
+        "401": { description: "Missing, invalid, expired or revoked device credential" }
+        "403": { description: Device or school does not match the credential }
+        "405": { description: Only POST is supported }
+        "409": { description: Event ID reused for different data or school assignment }
+        "413": { description: Payload exceeds 16 KiB }
+        "415": { description: Content-Type must be application/json }
+        "503": { description: Service unavailable or terminal direction not configured; retry with original ID and timestamp }
+  /platform/devices/{deviceId}/terminal-direction:
+    parameters:
+      - name: deviceId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      operationId: getTerminalDirection
+      tags: [platform]
+      security: [{ ClerkAuth: [] }]
+      responses:
+        "200":
+          description: Owner-only direction for the current device-school association
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TerminalDirectionConfiguration" }
+        "403": { description: Platform Owner required }
+        "404": { description: Device not found }
+    put:
+      operationId: setTerminalDirection
+      tags: [platform]
+      security: [{ ClerkAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TerminalDirectionInput" }
+      responses:
+        "200":
+          description: Direction saved and audited; no credentials are changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TerminalDirectionConfiguration" }
+        "400": { description: Invalid device ID or direction }
+        "403": { description: Platform Owner required }
+        "404": { description: Assigned NFC or HYBRID device not found }
   /flutterwave/local-split-simulation:
     $ref: "./flutterwave-splits.yaml#/paths/~1flutterwave~1local-split-simulation"
   /flutterwave/split-payments/{paymentId}/transaction-evidence:
@@ -5739,6 +5802,11 @@ paths:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1reminders"
 components:
   securitySchemes:
+    TerminalDeviceKey:
+      type: http
+      scheme: bearer
+      bearerFormat: identifier.secret
+      description: Existing registered-device credential, not a Clerk token
     ClerkAuth:
       type: http
       scheme: bearer
@@ -5888,6 +5956,48 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    TerminalDirectionInput:
+      type: object
+      additionalProperties: false
+      required: [direction]
+      properties:
+        direction: { type: string, enum: [ENTRY, EXIT] }
+    TerminalDirectionConfiguration:
+      type: object
+      required: [direction]
+      properties:
+        direction: { type: [string, "null"], enum: [ENTRY, EXIT, null] }
+    VendorTerminalEvent:
+      type: object
+      additionalProperties: false
+      required: [event_id, device_id, school_id, uid, event_type, timestamp]
+      properties:
+        event_id: { type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_.:-]+$' }
+        device_id:
+          oneOf:
+            - { type: integer, minimum: 1 }
+            - { type: string, pattern: '^[1-9][0-9]*$' }
+        school_id:
+          oneOf:
+            - { type: integer, minimum: 1 }
+            - { type: string, pattern: '^[1-9][0-9]*$' }
+        terminal_name: { type: string, maxLength: 128 }
+        uid: { type: string, pattern: '^(?:[A-Fa-f0-9]{8}|[A-Fa-f0-9]{14}|[A-Fa-f0-9]{20})$' }
+        event_type: { type: string, enum: [CARD_SCAN] }
+        timestamp:
+          type: string
+          description: ISO date/time with seconds, optional millisecond fraction and Z/offset. Without timezone, Africa/Lagos is used. Retry the original unchanged string.
+        firmware: { type: string, maxLength: 128 }
+    VendorTerminalReceipt:
+      type: object
+      required: [success, duplicate, retryable, message, student_name, action]
+      properties:
+        success: { type: boolean }
+        duplicate: { type: boolean }
+        retryable: { type: boolean }
+        message: { type: string }
+        student_name: { type: [string, "null"] }
+        action: { type: [string, "null"], enum: [ENTRY, EXIT, DENIED, null] }
     StudentNfcLedger:
       $ref: "./student-nfc.yaml#/components/schemas/StudentNfcLedger"
     StudentNfcObligation:

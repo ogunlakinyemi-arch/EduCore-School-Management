@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request } from "express";
 import { createHash, randomBytes } from "node:crypto";
 import { pool } from "@workspace/db";
+import { TERMINAL_DIRECTION_ACTION, terminalDirectionSql } from "../lib/terminal-contract";
 import { AuthError, assertRoles, getUserContext, requireAuthentication } from "../middlewares/auth";
 import {
   partnerSchoolRegistrationFields,
@@ -197,6 +198,39 @@ router.get("/platform/devices", run(async (req, res) => {
      LEFT JOIN schools s ON s.id=d.school_id ORDER BY d.created_at DESC`,
   );
   res.json(result.rows);
+}));
+
+router.get("/platform/devices/:deviceId/terminal-direction", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const deviceId = Number(req.params.deviceId);
+  if (!Number.isSafeInteger(deviceId) || deviceId < 1) throw new AuthError(400, "A valid deviceId is required");
+  const device = await pool.query(`SELECT id,school_id AS "schoolId" FROM platform_devices WHERE id=$1`,
+    [deviceId]);
+  if (!device.rows[0]) throw new AuthError(404, "Device not found");
+  const configuration = await pool.query(terminalDirectionSql, [device.rows[0].id, device.rows[0].schoolId]);
+  res.json({ direction: configuration.rows[0]?.direction ?? null });
+}));
+
+router.put("/platform/devices/:deviceId/terminal-direction", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const deviceId = Number(req.params.deviceId);
+  const direction = req.body?.direction;
+  if (!Number.isSafeInteger(deviceId) || deviceId < 1 || !["ENTRY", "EXIT"].includes(direction)) {
+    throw new AuthError(400, "A valid deviceId and ENTRY or EXIT direction are required");
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const device = await client.query(
+      `SELECT id,school_id AS "schoolId" FROM platform_devices
+       WHERE id=$1 AND school_id IS NOT NULL AND upper(device_type) IN ('NFC','HYBRID') FOR UPDATE`, [deviceId]);
+    if (!device.rows[0]) throw new AuthError(404, "Assigned NFC device not found");
+    await audit(req, TERMINAL_DIRECTION_ACTION, "Devices", deviceId, client,
+      { terminalDirection: direction, schoolId: device.rows[0].schoolId });
+    await client.query("COMMIT");
+    res.json({ direction });
+  } catch (error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
 }));
 
 router.post("/platform/devices", run(async (req, res) => {
