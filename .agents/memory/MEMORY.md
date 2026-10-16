@@ -67,3 +67,4 @@
 - [Disposable terminal verification](disposable-terminal-verification.md) — retain standard bundling and real migration indexes when testing against an isolated local PostgreSQL cluster.
 - [Sandbox callback isolation](sandbox-callback-isolation.md) — TEST charges can trigger app writes; verify callback/webhook targets and use dedicated Development aliases consistently.
 - [Settlement removal consent](settlement-profile-removal-consent.md) — building a Development cleanup feature never authorizes deleting existing bank profiles.
+- [Repository references](repository-reference-policy.md) — compare current Replit source with freshly verified GitHub main before fixes; preserve local work and do not infer push permission.

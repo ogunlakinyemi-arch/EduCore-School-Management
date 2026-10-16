@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./terminal-test-target": "./src/terminal-test-target.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./driver": "./src/driver.ts"
   },
   "scripts": {
     "push": "node ./schema-write-disabled.mjs",

@@ -14270,22 +14270,37 @@ export const ListPlatformPartnerPayoutsResponse = zod.array(ListPlatformPartnerP
 
 
 /**
+ * Requires a client-generated idempotency key. Identical retries return the original creation response; reusing a key with different normalized inputs returns 409.
  * @summary Create a partner payout
  */
+export const createPartnerPayoutBodyIdempotencyKeyMin = 8;
+export const createPartnerPayoutBodyIdempotencyKeyMax = 100;
 
-export const createPartnerPayoutBodyAmountMin = 0;
 
+export const createPartnerPayoutBodyIdempotencyKeyRegExp = new RegExp('^[A-Za-z0-9_-]{8,100}$');
+
+export const createPartnerPayoutBodyAmountOneExclusiveMin = 0;
+export const createPartnerPayoutBodyAmountOneMax = 9999999999.99;
+
+export const createPartnerPayoutBodyAmountTwoRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
 export const createPartnerPayoutBodyCurrencyMin = 3;
 export const createPartnerPayoutBodyCurrencyMax = 3;
+
+export const createPartnerPayoutBodyMethodMax = 100;
+
+export const createPartnerPayoutBodyNotesMax = 2000;
 
 
 
 export const CreatePartnerPayoutBody = zod.object({
+  "idempotencyKey": zod.string().min(createPartnerPayoutBodyIdempotencyKeyMin).max(createPartnerPayoutBodyIdempotencyKeyMax).regex(createPartnerPayoutBodyIdempotencyKeyRegExp),
   "partnerId": zod.number().int().min(1),
-  "amount": zod.number().min(createPartnerPayoutBodyAmountMin),
+  "amount": zod.union([zod.number().gt(createPartnerPayoutBodyAmountOneExclusiveMin).max(createPartnerPayoutBodyAmountOneMax),zod.string().regex(createPartnerPayoutBodyAmountTwoRegExp)]),
   "currency": zod.string().min(createPartnerPayoutBodyCurrencyMin).max(createPartnerPayoutBodyCurrencyMax),
   "periodStart": zod.coerce.date().optional(),
-  "periodEnd": zod.coerce.date().optional()
+  "periodEnd": zod.coerce.date().optional(),
+  "method": zod.string().max(createPartnerPayoutBodyMethodMax).optional(),
+  "notes": zod.string().max(createPartnerPayoutBodyNotesMax).optional()
 })
 
 export const createPartnerPayoutResponseAmountMin = 0;

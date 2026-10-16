@@ -7,10 +7,15 @@
  */
 
 export interface PartnerPayoutInput4b96100 {
+  /**
+     * @minLength 8
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]{8,100}$
+     */
+  idempotencyKey: string;
   /** @minimum 1 */
   partnerId: number;
-  /** @minimum 0 */
-  amount: number;
+  amount: number | string;
   /**
      * @minLength 3
      * @maxLength 3
@@ -18,4 +23,8 @@ export interface PartnerPayoutInput4b96100 {
   currency: string;
   periodStart?: Date;
   periodEnd?: Date;
+  /** @maxLength 100 */
+  method?: string;
+  /** @maxLength 2000 */
+  notes?: string;
 }

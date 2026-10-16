@@ -507,6 +507,9 @@ export const partnerPayouts = pgTable(
   },
   (table) => [
     uniqueIndex("partner_payouts_provider_reference_unique").on(table.providerReference),
+    uniqueIndex("partner_payouts_manual_reference_uq")
+      .on(sql`btrim(${table.paymentReference})`)
+      .where(sql`${table.paymentReference} IS NOT NULL AND btrim(${table.paymentReference}) <> ''`),
     index("partner_payouts_partner_status_idx").on(table.partnerProfileId, table.status),
     check("partner_payouts_amount_nonnegative", sql`${table.amount} >= 0`),
     check("partner_payouts_status_check", sql`${table.status} IN ('PENDING','PROCESSING','PAID','FAILED','REVERSED')`),

@@ -1,4 +1,6 @@
 import { Router, type NextFunction, type Request } from "express";
+import { partnerPayoutRequest } from "../lib/partner-payout-request";
+import { updateManualPartnerPayout } from "../services/partner-payout-update";
 import crypto from "node:crypto";
 import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
@@ -1911,19 +1913,30 @@ router.patch("/platform/partner-commission-rules/:ruleId", run(async(req,res)=>{
 router.patch("/platform/partner-commissions/:commissionId/status", run(async(req,res)=>{const c=assertRoles(req,["PLATFORM_OWNER"]),id=idOf(req.params.commissionId,"Commission"),nextStatus=String(req.body?.status??"");const allowed:Record<string,string[]>={PENDING:["APPROVED","HELD","CANCELLED"],APPROVED:["PAYABLE","HELD","CANCELLED"],PAYABLE:["HELD","CANCELLED"],HELD:["APPROVED","CANCELLED"]};const client=await pool.connect();try{await client.query("BEGIN");const current=await client.query(`SELECT status,payout_id FROM commission_ledger WHERE id=$1 FOR UPDATE`,[id]);if(!current.rows[0])throw new AuthError(404,"Commission not found");if(current.rows[0].payout_id||!allowed[current.rows[0].status]?.includes(nextStatus))throw new AuthError(409,`Invalid commission transition from ${current.rows[0].status} to ${nextStatus}`);await client.query(`UPDATE commission_ledger SET status=$1,approved_at=CASE WHEN $1='APPROVED' THEN NOW() ELSE approved_at END,payable_at=CASE WHEN $1='PAYABLE' THEN NOW() ELSE payable_at END,held_at=CASE WHEN $1='HELD' THEN NOW() ELSE held_at END,cancelled_at=CASE WHEN $1='CANCELLED' THEN NOW() ELSE cancelled_at END,created_by=COALESCE(created_by,$2) WHERE id=$3`,[nextStatus,c.user.id,id]);const r=await client.query(`SELECT ${commissionFields} FROM commission_ledger l WHERE l.id=$1`,[id]);await audit(req,`Changed commission status to ${nextStatus}`,"Commissions",id,null,client);await client.query("COMMIT");res.json(r.rows[0])}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
 router.get("/platform/partner-payouts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts ORDER BY created_at DESC`);res.json(r.rows)}));
 router.post("/platform/partner-payouts", run(async (req, res) => {
-  assertRoles(req, ["PLATFORM_OWNER"]);
-  const body = req.body ?? {};
-  const partnerId = idOf(body.partnerId, "Partner");
-  const amount = minorUnitsOf(body.amount);
-  const currency = String(body.currency ?? "NGN").toUpperCase();
-  if (amount === null || amount <= 0n) {
-    throw new AuthError(400, "A positive amount with no more than two decimal places is required");
-  }
-  if (!/^[A-Z]{3}$/.test(currency)) throw new AuthError(400, "A valid three-letter currency is required");
+  const context = assertRoles(req, ["PLATFORM_OWNER"]);
+  const request = partnerPayoutRequest(req.body);
+  const { partnerId, currency } = request.payload;
+  const { amount } = request;
 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // Same-key requests serialize across processes and Owners before touching commissions.
+    // A disconnected caller can retry after COMMIT; rollback leaves no claimed key.
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+      [`partner-payout-request:${request.key}`]);
+    const prior = await client.query(
+      `SELECT request_hash,response_snapshot FROM partner_payout_requests WHERE idempotency_key=$1`,
+      [request.key],
+    );
+    if (prior.rows[0]) {
+      if (prior.rows[0].request_hash !== request.hash) {
+        throw new AuthError(409, "This payout idempotency key was already used with a different payload");
+      }
+      await client.query("COMMIT");
+      res.set("Idempotency-Replayed", "true").status(201).json(prior.rows[0].response_snapshot);
+      return;
+    }
     const payable = await client.query(
       `SELECT id,amount FROM commission_ledger
        WHERE partner_profile_id=$1 AND currency=$2 AND status='PAYABLE' AND payout_id IS NULL
@@ -1947,22 +1960,33 @@ router.post("/platform/partner-payouts", run(async (req, res) => {
        VALUES($1,$2,$3,'PENDING',$4,$5,$6,$7)
        RETURNING id,partner_profile_id AS "partnerId",amount::float,currency,status,
          period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt"`,
-      [partnerId, decimalOfMinorUnits(amount), currency, body.periodStart ?? new Date(0),
-        body.periodEnd ?? new Date(), body.method ?? null, body.notes ?? null],
+      [partnerId, decimalOfMinorUnits(amount), currency, request.payload.periodStart ?? new Date(0),
+        request.payload.periodEnd ?? new Date(), request.payload.method, request.payload.notes],
     );
     await client.query(`UPDATE commission_ledger SET payout_id=$1 WHERE id=ANY($2::int[])`,
       [payout.rows[0].id, selected]);
     await audit(req, "Created partner payout", "Payouts", payout.rows[0].id, null, client);
+    // Freeze the original HTTP representation, not a later mutable payout status.
+    const snapshot = JSON.parse(JSON.stringify(payout.rows[0]));
+    await client.query(
+      `INSERT INTO partner_payout_requests
+       (idempotency_key,request_hash,payout_id,response_snapshot,created_by)
+       VALUES($1,$2,$3,$4::jsonb,$5)`,
+      [request.key, request.hash, payout.rows[0].id, JSON.stringify(snapshot), context.user.id],
+    );
     await client.query("COMMIT");
-    res.status(201).json(payout.rows[0]);
+    res.status(201).json(snapshot);
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => undefined);
     throw error;
   } finally {
     client.release();
   }
 }));
-router.patch("/platform/partner-payouts/:payoutId", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const id=idOf(req.params.payoutId,"Payout"),status=req.body?.status,reference=typeof req.body?.paymentReference==="string"?req.body.paymentReference.trim():"";const transitions:Record<string,string[]>={PENDING:["PROCESSING","FAILED"],PROCESSING:["PAID","FAILED"],PAID:["REVERSED"]};const client=await pool.connect();try{await client.query("BEGIN");const current=await client.query(`SELECT id,status FROM partner_payouts WHERE id=$1 FOR UPDATE`,[id]);if(!current.rows[0])throw new AuthError(404,"Payout not found");if(!transitions[current.rows[0].status]?.includes(status))throw new AuthError(409,`Invalid payout transition from ${current.rows[0].status} to ${status}`);if(status==="PAID"&&!reference)throw new AuthError(400,"paymentReference is required when marking a payout paid");if(status==="REVERSED"&&(!reference||reference.length>200||/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(reference)))throw new AuthError(400,"A valid reversal paymentReference is required");const p=await client.query(`UPDATE partner_payouts SET status=$1,payment_reference=CASE WHEN $1='REVERSED' OR $2='' THEN payment_reference ELSE $2 END,paid_at=CASE WHEN $1='PAID' THEN NOW() ELSE paid_at END,reversed_at=CASE WHEN $1='REVERSED' THEN NOW() ELSE reversed_at END,reversal_reference=CASE WHEN $1='REVERSED' THEN $3 ELSE reversal_reference END WHERE id=$4 RETURNING id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",reversal_reference AS "reversalReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt"`,[status,reference,status==="REVERSED"?reference:null,id]);if(status==="PAID")await client.query(`UPDATE commission_ledger SET status='PAID',paid_at=NOW(),payment_reference=$1 WHERE payout_id=$2 AND status='PAYABLE'`,[reference,id]);if(status==="FAILED")await client.query(`UPDATE commission_ledger SET payout_id=NULL WHERE payout_id=$1 AND status='PAYABLE'`,[id]);if(status==="REVERSED")await client.query(`UPDATE commission_ledger SET payout_id=NULL,status='PAYABLE',reversed_at=NOW(),reversal_reference=$2 WHERE payout_id=$1 AND status='PAID'`,[id,reference]);await audit(req,`Updated partner payout to ${status}`,"Payouts",id,status==="REVERSED"?{reversalReference:reference}:null,client);await client.query("COMMIT");res.json(p.rows[0])}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
+router.patch("/platform/partner-payouts/:payoutId", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  res.json(await updateManualPartnerPayout(req, audit));
+}));
 
 router.post(["/partner/invitations/accept", "/partner/invitations/:invitationToken/accept"], run(async (req, res) => {
   const context = getUserContext(req);

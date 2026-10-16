@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
 const dbMock = vi.hoisted(() => {
   const query = vi.fn(async (sql: string, values: unknown[] = []) => {
     state.queries.push({ sql, values });
-    if (sql.includes("SELECT id,status FROM partner_payouts")) {
+    if (sql.includes("SELECT id,status,payment_reference FROM partner_payouts")) {
       return { rows: [{ id: 7, status: state.payoutStatus }], rowCount: 1 };
     }
     if (sql.includes("SELECT id,amount FROM commission_ledger")) {
@@ -50,6 +50,7 @@ vi.mock("../middlewares/auth", () => ({
       roles: [{ role: "PLATFORM_OWNER", schoolId: null }],
     };
   },
+  assertResourceId: (value: unknown) => Number(value),
   getUserContext: () => ({
     user: { id: 1, clerkUserId: "owner", email: "owner@example.test" },
     roles: [{ role: "PLATFORM_OWNER", schoolId: null }],
@@ -139,7 +140,7 @@ describe("partner payout safety", () => {
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ partnerId: 3, amount: 0.3 }),
+      body: JSON.stringify({ idempotencyKey: "payout-test-0001", partnerId: 3, amount: 0.3 }),
     });
     expect(response.status).toBe(201);
     const insert = state.queries.find(({ sql }) => sql.includes("INSERT INTO partner_payouts"));
@@ -153,7 +154,7 @@ describe("partner payout safety", () => {
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ partnerId: 3, amount: "0.20" }),
+      body: JSON.stringify({ idempotencyKey: "payout-test-0002", partnerId: 3, amount: "0.20" }),
     });
     expect(response.status).toBe(201);
     const allocation = state.queries.find(({ sql }) => sql.includes("UPDATE commission_ledger SET payout_id=$1"));
@@ -165,7 +166,7 @@ describe("partner payout safety", () => {
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ partnerId: 3, amount: "0.40" }),
+      body: JSON.stringify({ idempotencyKey: "payout-test-0003", partnerId: 3, amount: "0.40" }),
     });
     expect(response.status).toBe(201);
     const allocation = state.queries.find(({ sql }) => sql.includes("UPDATE commission_ledger SET payout_id=$1"));
@@ -177,7 +178,7 @@ describe("partner payout safety", () => {
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ partnerId: 3, amount: "0.40" }),
+      body: JSON.stringify({ idempotencyKey: "payout-test-0004", partnerId: 3, amount: "0.40" }),
     });
     expect(response.status).toBe(409);
     expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_payouts"))).toBe(false);
@@ -188,7 +189,7 @@ describe("partner payout safety", () => {
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ partnerId: 3, amount: "2.55" }),
+      body: JSON.stringify({ idempotencyKey: "payout-test-0005", partnerId: 3, amount: "2.55" }),
     });
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({
@@ -202,7 +203,7 @@ describe("partner payout safety", () => {
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ partnerId: 3, amount: "0.1009" }),
+      body: JSON.stringify({ idempotencyKey: "payout-test-0006", partnerId: 3, amount: "0.1009" }),
     });
     expect(response.status).toBe(400);
     expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_payouts"))).toBe(false);

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Route, Switch, Link, useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
@@ -11,6 +11,8 @@ import {
   useListPartnerCommissions,
   useListPartnerPayouts,
   useListPlatformPartnerPayouts,
+  getListPlatformPartnerPayoutsQueryKey,
+  useGetAuthorizedContext,
   useUpdatePartnerCommissionStatus,
   useUpdatePartnerPayout,
   useListPartnerAttributionConflicts,
@@ -39,6 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import NotFound from '@/pages/not-found';
 import { PartnerNfcOwnerControl } from '@/pages/partner/nfc-owner-control';
+import { clearPayoutDraft, readPayoutDraft, savePayoutDraft, type PayoutDraft } from '@/lib/partner-payout-retry';
 
 const inviteSchema = z.object({
   email: z.string().email(),
@@ -622,7 +625,9 @@ function PartnerCommissionsList({ partnerId }: { partnerId: number }) {
   );
 }
 
-function PayoutsOverview() {
+export function PayoutsOverview() {
+  const context = useGetAuthorizedContext();
+  const actorId = context.data?.user.id;
   const query = useListPlatformPartnerPayouts();
   const createPayout = useCreatePartnerPayout();
   const updatePayout = useUpdatePartnerPayout();
@@ -631,41 +636,90 @@ function PayoutsOverview() {
   const [partnerId, setPartnerId] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('NGN');
+  const [pending, setPending] = useState<PayoutDraft | null>(null);
+  const [storageReady, setStorageReady] = useState(false);
+  const submitting = useRef(false);
+  const currentActor = useRef(actorId);
+  currentActor.current = actorId;
+  useEffect(() => {
+    setStorageReady(false);
+    setPending(null);
+    setPartnerId('');
+    setAmount('');
+    if (!actorId) return;
+    try {
+      const saved = readPayoutDraft(sessionStorage, actorId);
+      setPending(saved);
+      if (saved) {
+        setPartnerId(String(saved.partnerId));
+        setAmount(saved.amount);
+        setCurrency(saved.currency);
+      }
+      setStorageReady(true);
+    } catch (error) {
+      toast({ title: 'Payout retry storage unavailable', description: String(error), variant: 'destructive' });
+    }
+  }, [actorId, toast]);
   
   if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
 
   const payouts = query.data ?? [];
 
-  const create = () => {
+  const create = async () => {
+    if (!actorId || !storageReady || submitting.current) return;
     const parsedPartnerId = Number(partnerId);
-    const parsedAmount = Number(amount);
-    if (!Number.isInteger(parsedPartnerId) || parsedPartnerId < 1 || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isSafeInteger(parsedPartnerId) || parsedPartnerId < 1 ||
+        !/^\d{1,10}(\.\d{1,2})?$/.test(amount.trim()) || Number(amount) <= 0) {
       toast({ title: 'Invalid payout', description: 'Enter a valid partner ID and positive amount.', variant: 'destructive' });
       return;
     }
-    createPayout.mutate({ data: { partnerId: parsedPartnerId, amount: parsedAmount, currency } }, {
-      onSuccess: () => {
+    const draft = pending ?? {
+      idempotencyKey: crypto.randomUUID(), partnerId: parsedPartnerId, amount: amount.trim(), currency,
+    };
+    try {
+      // Persist BEFORE sending. An unknown response, remount or reload must reuse this request.
+      savePayoutDraft(sessionStorage, actorId, draft);
+    } catch {
+      toast({ title: 'Payout not sent', description: 'Retry storage could not be saved.', variant: 'destructive' });
+      return;
+    }
+    setPending(draft);
+    submitting.current = true;
+    try {
+      await createPayout.mutateAsync({ data: draft });
+      // Execution-owned cleanup still runs if navigation removes this component.
+      clearPayoutDraft(sessionStorage, actorId);
+      queryClient.invalidateQueries({ queryKey: getListPlatformPartnerPayoutsQueryKey() });
+      if (currentActor.current === actorId) {
+        setPending(null);
         toast({ title: 'Payout created', description: 'The payable commission entries are now reserved.' });
         setPartnerId('');
         setAmount('');
-        queryClient.invalidateQueries({ queryKey: ['listPlatformPartnerPayouts'] });
-      },
-      onError: (err: any) => {
-        toast({ title: 'Payout creation failed', description: err.error || 'Use an amount matching whole payable commission entries.', variant: 'destructive' });
-      },
-    });
+      }
+    } catch (err: any) {
+      // These responses guarantee no new payout committed. Unknown/5xx results retain the key.
+      if ([400, 409].includes(err.status) && !String(err.message).includes('idempotency key')) {
+        clearPayoutDraft(sessionStorage, actorId);
+        if (currentActor.current === actorId) setPending(null);
+      }
+      if (currentActor.current === actorId) {
+        toast({ title: 'Payout creation failed', description: err.message || 'Retry the saved request before starting another payout.', variant: 'destructive' });
+      }
+    } finally {
+      submitting.current = false;
+    }
   };
 
   const transition = (payoutId: number, status: 'PROCESSING' | 'PAID' | 'FAILED' | 'REVERSED') => {
-    const paymentReference = status === 'PAID'
-      ? window.prompt('Enter the payment reference')
+    const paymentReference = status === 'PAID' || status === 'REVERSED'
+      ? window.prompt(status === 'REVERSED' ? 'Enter the reversal reference' : 'Enter the payment reference')
       : undefined;
-    if (status === 'PAID' && !paymentReference?.trim()) return;
+    if ((status === 'PAID' || status === 'REVERSED') && !paymentReference?.trim()) return;
     updatePayout.mutate({ payoutId, data: { status, paymentReference: paymentReference?.trim() } }, {
       onSuccess: () => {
         toast({ title: 'Payout updated', description: `Payout moved to ${status.toLowerCase()}.` });
-        queryClient.invalidateQueries({ queryKey: ['listPlatformPartnerPayouts'] });
+        queryClient.invalidateQueries({ queryKey: getListPlatformPartnerPayoutsQueryKey() });
       },
       onError: (err: any) => {
         toast({ title: 'Payout update failed', description: err.error || 'The payout could not be updated.', variant: 'destructive' });
@@ -683,16 +737,17 @@ function PayoutsOverview() {
 
       <div className="panel mb-6 grid gap-4 p-5 md:grid-cols-[1fr_1fr_140px_auto] md:items-end">
         <Field label="Partner ID">
-          <input inputMode="numeric" value={partnerId} onChange={(event) => setPartnerId(event.target.value)} placeholder="e.g. 12" />
+          <input disabled={!!pending || createPayout.isPending} inputMode="numeric" value={partnerId} onChange={(event) => setPartnerId(event.target.value)} placeholder="e.g. 12" />
         </Field>
         <Field label="Exact payable amount">
-          <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="e.g. 5000" />
+          <input disabled={!!pending || createPayout.isPending} inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="e.g. 5000" />
         </Field>
         <Field label="Currency">
-          <input maxLength={3} value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} />
+          <input disabled={!!pending || createPayout.isPending} maxLength={3} value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} />
         </Field>
-        <Button onClick={create} disabled={createPayout.isPending}>{createPayout.isPending ? 'Creating…' : 'Create payout'}</Button>
+        <Button onClick={create} disabled={!storageReady || createPayout.isPending}>{createPayout.isPending ? 'Creating…' : pending ? 'Retry saved payout' : 'Create payout'}</Button>
       </div>
+      {pending && <p className="mb-4 text-sm" role="status">This payout request is saved. Retry it to confirm its result before creating another payout.</p>}
 
       <div className="panel overflow-hidden">
         <div className="overflow-x-auto">

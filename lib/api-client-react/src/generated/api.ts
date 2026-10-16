@@ -33140,6 +33140,7 @@ export const getCreatePartnerPayoutUrl = () => {
 }
 
 /**
+ * Requires a client-generated idempotency key. Identical retries return the original creation response; reusing a key with different normalized inputs returns 409.
  * @summary Create a partner payout
  */
 export const createPartnerPayout = async (partnerPayoutInput: PartnerPayoutInput, options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayout> => {
@@ -33173,7 +33174,7 @@ return customFetch<PartnerPayout>(getCreatePartnerPayoutUrl(),
 
 export const getCreatePartnerPayoutMutationKey = () => ['createPartnerPayout'] as const;
 
-export const getCreatePartnerPayoutMutationOptions = <TError = ErrorType<unknown>,
+export const getCreatePartnerPayoutMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPartnerPayout>>, TError,CreatePartnerPayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createPartnerPayout>>, TError,CreatePartnerPayoutMutationVariables, TContext> => {
 
@@ -33202,13 +33203,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreatePartnerPayoutMutationResult = NonNullable<Awaited<ReturnType<typeof createPartnerPayout>>>
     export type CreatePartnerPayoutMutationBody = BodyType<PartnerPayoutInput>
-    export type CreatePartnerPayoutMutationError = ErrorType<unknown>
+    export type CreatePartnerPayoutMutationError = ErrorType<void>
     export type CreatePartnerPayoutMutationVariables = {data: BodyType<PartnerPayoutInput>}
 
     /**
  * @summary Create a partner payout
  */
-export const useCreatePartnerPayout = <TError = ErrorType<unknown>,
+export const useCreatePartnerPayout = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPartnerPayout>>, TError,CreatePartnerPayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createPartnerPayout>>,

@@ -42,3 +42,4 @@ export * from "./school-security-operations";
 export * from "./student-nfc-replacement";
 export * from "./nfc-payment-links";
 export * from "./flutterwave-splits";
+export * from "./partner-payout-requests";
