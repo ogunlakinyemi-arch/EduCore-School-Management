@@ -700,3 +700,17 @@ mtime_ms = 1792272166241
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/1e65d0c8-7a2c-47a8-866e-9bb426fd31a7/6814387c-6486-4987-b6ab-9f4d0a42dc31"
 storage_version_token = "1792272166902659"
 content_type = "text/html"
+
+[[outputs]]
+id = "385X0NEDg5temgSO_RmV-"
+uri = "file://reports/software-remediation/generated/post-rename-publish-preview.html"
+type = "html"
+title = "Complete post-rename Publish preview — 646 statements"
+description = "Exact numbered SQL, all warnings, and the read-only Production index-name comparison. Review only; not published or approved."
+logical_id = "f40d8fca-84a0-46fe-84c6-b0d022cbf360"
+content_hash = "sha256:4e8262cc4fea81230d5bac633c490c73a235b5bc0dfaf67d2d38c257721c20a5"
+size = 325069
+mtime_ms = 1792275238045
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f40d8fca-84a0-46fe-84c6-b0d022cbf360/9a4fd45f-9c2b-4d82-ba51-43940631e894"
+storage_version_token = "1792275238900531"
+content_type = "text/html"
