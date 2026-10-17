@@ -17,8 +17,12 @@ export const studentSubscriptionTerms=pgTable("student_subscription_terms",{
   unique().on(t.subscriptionId),
   foreignKey({columns:[t.studentId,t.schoolId],foreignColumns:[students.id,students.schoolId]}),
   foreignKey({columns:[t.academicSessionId,t.schoolId],foreignColumns:[academicSessions.id,academicSessions.schoolId]}),
+  /* Round 1: omitted. Round 2: restore these exact live names with default NO ACTION delete/update:
+   * student_subscription_terms_academic_term_id_school_id_acad_fkey
+   * student_subscription_terms_subscription_id_school_id_stude_fkey
   foreignKey({columns:[t.academicTermId,t.schoolId,t.academicSessionId],foreignColumns:[academicTerms.id,academicTerms.schoolId,academicTerms.academicSessionId]}),
   foreignKey({columns:[t.subscriptionId,t.schoolId,t.studentId],foreignColumns:[subscriptions.id,subscriptions.schoolId,subscriptions.studentId]}),
+  */
   foreignKey({columns:[t.legacyInvoiceId,t.schoolId],foreignColumns:[feeInvoices.id,feeInvoices.schoolId]}),
   check("student_subscription_terms_one_source",sql`(${t.subscriptionId} IS NOT NULL)::integer + (${t.legacyInvoiceId} IS NOT NULL)::integer = 1`),
 ]);

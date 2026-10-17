@@ -170,11 +170,14 @@ export const admissionApplications = pgTable(
       foreignColumns: [students.id, students.schoolId],
       name: "admission_applications_student_school_fk",
     }).onDelete("restrict"),
+    /* Temporarily omitted for Support's Round 1 Publish staging.
+     * Round 2: restore this exact name and RESTRICT action.
     foreignKey({
       columns: [table.convertedParentId, table.schoolId],
       foreignColumns: [parents.id, parents.schoolId],
       name: "admission_applications_parent_school_fk",
     }).onDelete("restrict"),
+    */
     check(
       "admission_applications_status_check",
       sql`${table.status} IN ('Draft','Submitted','UnderReview','Shortlisted','InterviewScheduled','AssessmentPending','AssessmentCompleted','Accepted','Waitlisted','Rejected','Withdrawn','Enrolled')`,

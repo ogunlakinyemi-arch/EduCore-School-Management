@@ -23,7 +23,10 @@ export const nfcPaymentLinks = pgTable("nfc_payment_links", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, t => [
+  /* Round 1: omitted. Round 2: restore nfc_payment_links_subscription_id_school_id_student_id_fkey,
+   * with the original default NO ACTION delete/update actions.
   foreignKey({ columns: [t.subscriptionId, t.schoolId, t.studentId], foreignColumns: [subscriptions.id, subscriptions.schoolId, subscriptions.studentId] }),
+  */
   foreignKey({ columns: [t.schoolId, t.studentId, t.sessionId, t.termId], foreignColumns: [studentSubscriptionTerms.schoolId, studentSubscriptionTerms.studentId, studentSubscriptionTerms.academicSessionId, studentSubscriptionTerms.academicTermId] }),
   check("nfc_payment_links_mode", sql`${t.mode} IN ('DEVELOPMENT_SIMULATION','FLUTTERWAVE_SANDBOX')`),
   check("nfc_payment_links_status", sql`${t.status} IN ('PENDING','SIMULATED_SUCCESS','SIMULATED_FAILED','CANCELLED')`),

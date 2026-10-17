@@ -71,11 +71,14 @@ export const studentSubscriptionPayments = pgTable(
       table.academicSessionId,
       table.academicTermId,
     ),
+    /* Temporarily omitted for Support's Round 1 Publish staging.
+     * Round 2: restore the exact live constraint name and RESTRICT action.
     foreignKey({
       columns: [table.subscriptionId, table.schoolId, table.studentId],
       foreignColumns: [subscriptions.id, subscriptions.schoolId, subscriptions.studentId],
       name: "student_subscription_payments_subscription_owner_fk",
-    }),
+    }).onDelete("restrict"),
+    */
     foreignKey({
       columns: [table.academicSessionId, table.schoolId],
       foreignColumns: [academicSessions.id, academicSessions.schoolId],
@@ -191,11 +194,14 @@ export const studentSubscriptionAllocations = pgTable(
       foreignColumns: [academicTerms.id, academicTerms.schoolId],
       name: "student_subscription_allocations_term_school_fk",
     }),
+    /* Temporarily omitted for Support's Round 1 Publish staging.
+     * Round 2: restore the exact live constraint name and RESTRICT action.
     foreignKey({
       columns: [table.attributionId, table.recipientId],
       foreignColumns: [schoolPartnerAttributions.id, schoolPartnerAttributions.partnerProfileId],
       name: "student_subscription_allocations_attribution_partner_fk",
-    }),
+    }).onDelete("restrict"),
+    */
     check(
       "student_subscription_allocations_recipient_ck",
       sql`${table.recipientType} IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')`,

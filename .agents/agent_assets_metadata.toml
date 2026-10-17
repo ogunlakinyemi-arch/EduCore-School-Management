@@ -686,3 +686,17 @@ mtime_ms = 1791916386544
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0416cee2-8178-4d43-a546-ee45f83051f1/d20c1ffd-63ec-459b-a2ad-e752df85b926"
 storage_version_token = "1791916512766569"
 content_type = "text/html"
+
+[[outputs]]
+id = "3ZNwEf7aofRA5RnnHMzJg"
+uri = "file://reports/software-remediation/generated/round-1-publish-review.html"
+type = "html"
+title = "Round 1 — complete 646-statement Publish preview"
+description = "Every fresh preview SQL statement, numbered in original order, with warnings, staging verification and retained Round 2 FK definitions. Review only; not published or approved."
+logical_id = "1e65d0c8-7a2c-47a8-866e-9bb426fd31a7"
+content_hash = "sha256:e280d3195460793be72798175545dda6f18eab7063c23da5327fdcb48617c4a9"
+size = 335232
+mtime_ms = 1792272166241
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/1e65d0c8-7a2c-47a8-866e-9bb426fd31a7/6814387c-6486-4987-b6ab-9f4d0a42dc31"
+storage_version_token = "1792272166902659"
+content_type = "text/html"
