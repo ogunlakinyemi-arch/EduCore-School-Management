@@ -15,6 +15,12 @@ The local Development database can restart during a workspace session while reta
 
 **How to apply:** Revalidate through both Development connection paths and exact owned fixture identifiers before updating a session-bound fingerprint. Never weaken the guard to the database name alone or query Production to resolve it.
 
+For preservation/backup entry points, retain the Production-environment veto even when an interactive shell may be mislabeled. A synthetic-only test runner may use a clean credential-free subprocess; that is not permission to strip deployment flags for a real backup.
+
+**Why:** This workspace's ambient labels can cause a correctly guarded preservation tool to refuse execution before any database connection. Making a fixture test runnable must not create a bypass for live preservation operations.
+
+**How to apply:** Establish a genuinely verified non-deployment execution context and independently attest the Development target before a real backup. Keep synthetic test configuration separate from live commands, and report unresolved label ambiguity as a blocker rather than overriding the guard.
+
 Fixtures must also satisfy the actual lifecycle and retained historical tenant scope, not merely the visible current status and school.
 
 **Why:** Raw fixture inserts appeared unassigned in the UI but were not in the prepared lifecycle state. A device passed current authorization yet could not record an event because its historical school binding was absent. These were fixture errors, not permission defects.

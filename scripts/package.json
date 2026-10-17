@@ -9,6 +9,9 @@
     "test:phase7-finance-ledger": "bash ./test-phase7-finance-ledger.sh",
     "export:schema:audit": "tsx ./src/export-dependency-aware-schema.mjs",
     "test:schema-export": "node --test ./src/schema-export/*.test.mjs",
+    "dev-backup:verify": "node ./src/dev-backup/cli.mjs",
+    "test:dev-backup": "node --test ./src/dev-backup/safety.test.mjs",
+    "test:dev-backup:synthetic": "env -i PATH=\"$PATH\" HOME=\"$HOME\" LANG=C.UTF-8 NODE_ENV=test node --test ./src/dev-backup/integration.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
