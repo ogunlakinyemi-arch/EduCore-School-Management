@@ -46,3 +46,9 @@ A valid standalone unique index can legitimately support a foreign key without a
 **Why:** Live Development foreign keys were validated and bound to valid, ready, immediate, non-partial unique indexes, while Production lacked those keys and a fresh Publish diff omitted their creation entirely. The observed defect was an incomplete generated plan, not missing Development integrity.
 
 **How to apply:** Compare both live catalogs with the complete ordered diff. Distinguish an omitted prerequisite from one emitted too late. Treat conversion to an explicit constraint as a proposed planner-compatibility workaround, not an inherently required integrity repair. Under read-only instructions, prepare a prerequisite-first plan for review without changing source, attaching indexes, or removing foreign keys.
+
+Support subsequently authorized a new-name UNIQUE constraint in Development for the class-assignment key, while retaining Production's legacy standalone index. Reuse the existing Development index with `UNIQUE USING INDEX` rather than dropping or rebuilding it; attachment renames the index to the new constraint name.
+
+**Why:** Equivalent indexes can have different FK dependencies across environments, and a reader that mistakes referencing FKs for owning constraints can omit the Production index while proposing to create it again. A new constraint name is a Support-directed comparison workaround, not proof that the resulting Publish plan is safe.
+
+**How to apply:** Preserve existing FK bindings and the intentionally omitted Round 1 FKs. Require unchanged physical index identity and unrelated constraints during Development attachment. The human must inspect a fresh Publish plan for the absent duplicate CREATE, the new constraint, and no existing-index drops; do not infer success from the Development change or regenerate a preview when instructed not to.

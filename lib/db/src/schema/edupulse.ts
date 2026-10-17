@@ -755,7 +755,9 @@ export const studentClassAssignments = pgTable(
         table.section,
       )
       .where(sql`${table.status} = 'ACTIVE'`),
-    uniqueIndex("student_class_assignments_id_school_unique").on(table.id, table.schoolId),
+    // Support-directed Round 1 staging: reuse the legacy Development index as a
+    // newly named constraint; do not remove the legacy index from Production.
+    unique("student_class_assignments_id_school_publish_key").on(table.id, table.schoolId),
     unique("student_class_assignments_id_school_tenant_key").on(table.id, table.schoolId),
     foreignKey({
       columns: [table.studentId, table.schoolId],
