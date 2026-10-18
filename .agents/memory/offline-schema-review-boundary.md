@@ -19,3 +19,9 @@ Filtered pnpm commands execute in the package directory, not the workspace root.
 **Why:** A workspace-relative report output was resolved inside the scripts package and correctly rejected by the audit-output guard after a missing-output invocation had already been refused. An absolute approved report path avoided changing the guard.
 
 **How to apply:** Resolve review-output paths from the intended workspace root before invoking package commands. Never weaken path/symlink checks merely to accept a misplaced output.
+
+Publish does not support selecting individual statements from the Development-to-Production schema diff.
+
+**Why:** The user explicitly reported Replit Support confirmation of this limitation. A five-statement allowlist or edited offline export cannot isolate a release when the actual Development schema contains additional differences.
+
+**How to apply:** Obtain a fresh read-only preview when authorized, and treat statement numbers as capture-specific. If the actual release baseline is not safe, stop before mutations unless a Production-compatible code/schema baseline and a verified recovery path for current Development are established. Do not repeat generic backup-tool builds or broad audits to rediscover this limitation.
