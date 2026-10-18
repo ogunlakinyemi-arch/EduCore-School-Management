@@ -3,8 +3,8 @@ import { bootstrapApi } from "./api-bootstrap";
 import { terminalTestTarget, terminalTestPoolOptions, verifyTerminalTestSocket } from "@workspace/db/terminal-test-target";
 
 const fs = vi.hoisted(() => ({
-  directory: { uid: 0, mode: 0o40700, isDirectory: () => true, isSymbolicLink: () => false },
-  socket: { uid: 0, isSocket: () => true, isSymbolicLink: () => false },
+  directory: { uid: 0, mode: 0o40700, isDirectory: () => true, isSymbolicLink: (): boolean => false },
+  socket: { uid: 0, isSocket: (): boolean => true, isSymbolicLink: (): boolean => false },
   realpath: "/tmp/educore-terminal-test-nfc_qa",
   stat: vi.fn(),
 }));
@@ -114,7 +114,7 @@ describe("startup import boundary: no normal app, workers, probes or SQL in test
     expect(load.normal).not.toHaveBeenCalled();
     expect(load.terminal).not.toHaveBeenCalled();
   });
-  it.each([["--terminal-test"], ["--terminal-test-check"], []])("never falls back after failed opt-in gate %j", async args => {
+  it.each([{ args: ["--terminal-test"] }, { args: ["--terminal-test-check"] }, { args: [] }])("never falls back after failed opt-in gate %j", async ({ args }) => {
     const load = loaders();
     await expect(bootstrapApi({ EDUCORE_TERMINAL_TEST_MODE: "typo" }, args, load)).rejects.toThrow();
     expect(load.normal).not.toHaveBeenCalled(); expect(load.terminal).not.toHaveBeenCalled();
