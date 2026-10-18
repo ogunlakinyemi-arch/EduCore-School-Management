@@ -29,3 +29,9 @@ Do not retain multiple large catalog responses in one durable notebook execution
 **Why:** A parallel full-catalog acquisition exceeded durable entry/state limits even though individual catalog queries were read-only. Large constraint queries also terminated without SQL diagnostics.
 
 **How to apply:** Acquire bounded table slices sequentially, persist each result promptly, and assemble catalogs with local offline tools. Report query failures separately from schema differences; chunked observations are not one transaction snapshot.
+
+A catalog SELECT can report SQL success while its single CSV JSON field is replaced by an output-truncation marker.
+
+**Why:** The response-size cap and durable-entry cap are separate from PostgreSQL execution success; a successful callback is not proof that the captured catalog is complete.
+
+**How to apply:** Require successful JSON decoding and verify bounded captures against server-side metadata digests. Redundant derived dependency lists may be excluded only symmetrically from both compared projections; never omit authoritative FK supporting-index names. Do not retry an oversized aggregate unchanged.
