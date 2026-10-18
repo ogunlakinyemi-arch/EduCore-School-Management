@@ -100,8 +100,15 @@ export async function loadUserContext(clerkUserId: string): Promise<UserContext>
   assertUserActive(user.status);
   const roles = await pool.query(
     `SELECT id, role, school_id AS "schoolId", status
-     FROM school_memberships
-     WHERE user_id = $1 AND status = 'ACTIVE'`,
+     FROM school_memberships sm
+     WHERE user_id = $1 AND status = 'ACTIVE'
+       AND NOT EXISTS (
+         SELECT 1 FROM employees e
+          WHERE e.user_id=sm.user_id AND e.school_id=sm.school_id
+            AND UPPER(e.employee_type)=sm.role::text
+            AND sm.role IN ('TEACHER','STAFF')
+            AND UPPER(e.employment_status)<>'ACTIVE'
+       )`,
     [user.id],
   );
 

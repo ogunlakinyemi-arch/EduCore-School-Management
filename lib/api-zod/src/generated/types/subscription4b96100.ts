@@ -16,7 +16,8 @@ export interface Subscription4b96100 {
   studentName: string;
   amount: number;
   schoolShare: number;
-  edupulseShare: number;
+  /** Returned only to the Platform Owner. */
+  edupulseShare?: number;
   status: Subscription4b96100Status;
   verificationStatus: Subscription4b96100VerificationStatus;
   provider: string;

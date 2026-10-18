@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   currentSchoolLogoObjectPath: null as string | null,
   legacySchoolLogoPath: null as string | null,
   portalLogoObjectPath: null as string | null,
+  portalSettingsMissing: false,
 }));
 
 const poolMock = vi.hoisted(() => {
@@ -68,6 +69,7 @@ const poolMock = vi.hoisted(() => {
       return { rows: [{ id: 1, name: "Grade One", section: "A" }] };
     }
     if (sql.includes("SELECT * FROM admission_portal_settings WHERE school_id=$1")) {
+      if (state.portalSettingsMissing) return { rows: [] };
       return { rows: [{
         school_id: 1,
         portal_key: "greenfield-1",
@@ -100,7 +102,9 @@ const poolMock = vi.hoisted(() => {
     if (sql.includes("SELECT count(*)::int AS count FROM school_classes")) {
       return { rows: [{ count: (values[1] as number[]).length }] };
     }
+    if (sql.includes("INSERT INTO admission_portal_settings")) return { rows: [], rowCount: 1 };
     if (sql.includes("UPDATE admission_portal_settings SET")) {
+      state.portalSettingsMissing = false;
       state.publicPortalOpen = Boolean(values[1]);
       state.portalLogoObjectPath = values[15] == null ? null : String(values[15]);
       return { rows: [], rowCount: 1 };
@@ -409,6 +413,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
   server.close((error) => error ? reject(error) : resolve()),
 ).finally(() => vi.unstubAllEnvs()));
 beforeEach(() => {
+  state.portalSettingsMissing = false;
   vi.stubEnv("CLERK_SECRET_KEY", "test-secret");
   vi.mocked(emitDomainParentEvent).mockClear();
   state.calls.length = 0;
@@ -471,6 +476,32 @@ describe("admissions expansion security and retry protections", () => {
     });
     expect(JSON.stringify(body)).not.toMatch(/student|parent|staff|finance|internalNotes|registration_number/i);
     expect(body.availableClasses).toEqual([{ id: 1, name: "Grade One", section: "A" }]);
+  });
+
+  it("returns a closed draft without writing when a school has no portal settings", async () => {
+    state.portalSettingsMissing = true;
+    const response = await get("/admissions/portal-settings?schoolId=1");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      schoolId: 1, open: false, availableClassIds: [], requirements: [],
+      requiredDocuments: [], portalKey: "not-configured-1",
+    });
+    expect(state.calls.every(({ sql }) => !/\b(INSERT|UPDATE|DELETE)\b/.test(sql))).toBe(true);
+  });
+
+  it("creates closed settings only on the authorized first save", async () => {
+    state.portalSettingsMissing = true;
+    const response = await fetch(`${baseUrl}/admissions/portal-settings?schoolId=1`, {
+      method: "PUT", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ open: false, availableClassIds: [], requirements: [], requiredDocuments: [] }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ schoolId: 1, open: false });
+    const insert = state.calls.find(({ sql }) => sql.includes("INSERT INTO admission_portal_settings"));
+    expect(insert?.sql).toContain("ON CONFLICT (school_id) DO NOTHING");
+    expect(insert?.values[0]).toBe(1);
+    expect(insert?.values[1]).toMatch(/^[0-9a-f]{48}$/);
+    expect(state.calls.some(({ sql }) => sql === "COMMIT")).toBe(true);
   });
 
   it("returns only a school-scoped stored logo path to settings and exposes its image publicly only after explicit opt-in", async () => {

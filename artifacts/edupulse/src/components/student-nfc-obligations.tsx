@@ -70,7 +70,7 @@ export const nfcStatusLabel: Record<NfcObligationStatus, string> = {
 };
 export const nfcFeeStatusLabel = (row: NfcObligationRow) =>
   ['UNPAID', 'FAILED'].includes(row.status) && row.paymentLinkStatus === 'EXPIRED' ? 'Link expired' : nfcStatusLabel[row.status];
-export const minorToNaira = (minor: number) => money(minor / 100);
+export const minorToNaira = (minor: number | undefined) => minor == null ? 'Not available' : money(minor / 100);
 
 function RowPayment({ row, onPaid }: { row: NfcObligationRow; onPaid: () => void }) {
   const enabled = !!row.subscriptionId && !!row.lastPaymentId && (row.status === 'PENDING' || row.status === 'FAILED');
@@ -144,7 +144,7 @@ export function StudentNfcObligationsPanel({
       if (r.status === 'PAID') s.paid += 1; else if (r.status === 'UNPAID') s.unpaid += 1;
       else if (r.status === 'PENDING') s.pending += 1; else if (r.status === 'FAILED') s.failed += 1;
       else if (r.status === 'LEGACY_REVIEW') s.legacy += 1; else s.exempt += 1;
-      s.school += r.schoolAllocatedMinor; s.platform += r.platformAllocatedMinor; s.partner += r.partnerAllocatedMinor;
+      s.school += r.schoolAllocatedMinor ?? 0; s.platform += r.platformAllocatedMinor ?? 0; s.partner += r.partnerAllocatedMinor ?? 0;
       if (r.status === 'PAID') s.collected += r.amountMinor;
     });
     return s;
@@ -241,7 +241,7 @@ export function StudentNfcObligationsPanel({
     return <select aria-label={label} className={sel} value={f[key]} onChange={e => setF({ ...f, [key]: e.target.value })} data-testid={`filter-nfc-${key}`}>
       <option value="">{label}: all</option>{o.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>;
   };
-  const showAllocations = canSeeSplit || isOwner;
+  const showAllocations = isOwner;
 
   return <section className="panel mt-6 overflow-hidden" data-testid="panel-student-nfc">
     <div className="border-b border-[hsl(var(--border))] p-5 md:p-6">
@@ -249,7 +249,7 @@ export function StudentNfcObligationsPanel({
       <h2 className="display-font mt-1 text-xl font-bold">Term NFC fee, shown separately</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
         NFC Card Subscription — {minorToNaira(500000)} per term. Payable separately through Flutterwave when genuine payments are configured. Schools cannot create or change it.
-        {' '}Expected allocations: {minorToNaira(200000)} to the school and {minorToNaira(300000)} to the platform before eligible Partner commission. These are not verified bank settlements.
+        {isOwner && <> Expected allocations: {minorToNaira(200000)} to the school and {minorToNaira(300000)} to the platform before eligible Partner commission. These are not verified bank settlements.</>}
         {teacherView && ' The school allocation is school revenue; it is not personal Teacher income and not an amount a Teacher pays.'}
         {' '}Terms already paid under the older school NFC charge are kept and flagged for Owner review; no second charge is made.
       </p>

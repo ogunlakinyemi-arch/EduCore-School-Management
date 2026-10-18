@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
+import { visibleSubscription } from "../lib/subscription-visibility";
 import { resolveRegistrationClass, saveRegistrationAssignment, registrationParent } from "../lib/student-registration-assignment";
 import { generateSchoolCode } from "../lib/generated-person-codes";
 import {assignAvailableStudentCard} from "../services/student-card-assignment";
@@ -1125,7 +1126,9 @@ router.get("/subscriptions", async (req, res) => {
       ) latest ON TRUE
       WHERE sub.school_id = $1 ${condition} ORDER BY sub.created_at DESC
     `, values);
-    res.json(result.rows.map((row) => ({ ...row, expiresAt: dateString(row.expiresAt) })));
+    const owner = getUserContext(req).roles.some(role => role.role === "PLATFORM_OWNER" && role.schoolId === null && role.status === "ACTIVE");
+    res.json(result.rows.map((row) => visibleSubscription(
+      { ...row, expiresAt: dateString(row.expiresAt) }, owner, "SCHOOL")));
   } catch (error) {
     fail(req, res, error);
   }

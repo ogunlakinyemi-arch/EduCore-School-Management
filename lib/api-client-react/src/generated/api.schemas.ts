@@ -138,11 +138,11 @@ export interface StudentNfcObligation {
   ordinaryFeesMinor: number;
   ordinaryFeesAssigned?: boolean;
   totalMinor: number;
-  schoolShareMinor: number;
-  platformShareMinor: number;
-  schoolAllocatedMinor: number;
-  platformAllocatedMinor: number;
-  partnerAllocatedMinor: number;
+  schoolShareMinor?: number;
+  platformShareMinor?: number;
+  schoolAllocatedMinor?: number;
+  platformAllocatedMinor?: number;
+  partnerAllocatedMinor?: number;
   lastPaymentId: number | null;
   reference: string | null;
   paidAt: string | null;
@@ -165,9 +165,9 @@ export interface StudentNfcSummary {
   legacyReview: number;
   exempt: number;
   collectedMinor: number;
-  schoolAllocatedMinor: number;
-  platformAllocatedMinor: number;
-  partnerAllocatedMinor: number;
+  schoolAllocatedMinor?: number;
+  platformAllocatedMinor?: number;
+  partnerAllocatedMinor?: number;
 }
 
 export interface StudentNfcLedger {
@@ -3631,7 +3631,8 @@ export interface Subscription {
   studentName: string;
   amount: number;
   schoolShare: number;
-  edupulseShare: number;
+  /** Returned only to the Platform Owner. */
+  edupulseShare?: number;
   status: SubscriptionStatus;
   verificationStatus: SubscriptionVerificationStatus;
   provider: string;
@@ -17073,7 +17074,8 @@ export interface Subscription4b96100 {
   studentName: string;
   amount: number;
   schoolShare: number;
-  edupulseShare: number;
+  /** Returned only to the Platform Owner. */
+  edupulseShare?: number;
   status: Subscription4b96100Status;
   verificationStatus: Subscription4b96100VerificationStatus;
   provider: string;

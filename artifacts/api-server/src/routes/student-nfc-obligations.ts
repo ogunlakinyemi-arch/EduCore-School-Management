@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "@workspace/db";
 import { getUserContext, isPlatformOwner, requireAuthentication } from "../middlewares/auth";
 import { studentNfcReadScope } from "../lib/student-nfc-obligations";
+import { visibleSubscription } from "../lib/subscription-visibility";
 
 const router=Router();
 router.use(requireAuthentication());
@@ -109,7 +110,11 @@ router.get("/student-nfc/obligations",async(req,res,next)=>{
       };
     });
     const paid=rows.filter(r=>r.status==="PAID");
-    res.json({rows,summary:{
+    const canReadSchoolAllocation = (row: { schoolId: number }) => ctx.roles.some(role =>
+      role.status === "ACTIVE" && role.schoolId === row.schoolId && ["SCHOOL_ADMIN", "ACCOUNTANT"].includes(role.role));
+    res.json({
+      rows: rows.map(row => visibleSubscription(row, owner, canReadSchoolAllocation(row) ? "SCHOOL" : undefined)),
+      summary: visibleSubscription({
       eligible:rows.filter(r=>!["EXEMPT","LEGACY_REVIEW"].includes(r.status)).length,
       paid:paid.length,unpaid:rows.filter(r=>r.status==="UNPAID").length,
       pending:rows.filter(r=>r.status==="PENDING").length,failed:rows.filter(r=>r.status==="FAILED").length,
@@ -118,7 +123,7 @@ router.get("/student-nfc/obligations",async(req,res,next)=>{
       schoolAllocatedMinor:paid.reduce((n,r)=>n+r.schoolAllocatedMinor,0),
       platformAllocatedMinor:paid.reduce((n,r)=>n+r.platformAllocatedMinor,0),
       partnerAllocatedMinor:paid.reduce((n,r)=>n+r.partnerAllocatedMinor,0),
-    }});
+    }, owner, rows.length > 0 && rows.every(canReadSchoolAllocation) ? "SCHOOL" : undefined)});
   } catch(error){if(error instanceof z.ZodError){res.status(400).json({error:"Invalid NFC subscription filters"});return;}next(error);}
 });
 export default router;

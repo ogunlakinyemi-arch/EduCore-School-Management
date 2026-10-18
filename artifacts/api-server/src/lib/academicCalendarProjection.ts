@@ -33,6 +33,9 @@ export async function refreshConfiguredTermCalendarEvents(
       WHERE ce.school_id=$1
         AND ce.academic_session_id=$2
         AND ce.academic_term_id=$3
+        AND t.id=ce.academic_term_id
+        AND t.school_id=ce.school_id
+        AND ac.id=ce.academic_session_id
         AND ce.source='GENERATED'
         AND ce.status='ACTIVE'
         AND (

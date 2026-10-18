@@ -33,7 +33,7 @@ components:
         summary: {$ref: "#/components/schemas/StudentNfcSummary"}
     StudentNfcSummary:
       type: object
-      required: [eligible, paid, unpaid, pending, failed, legacyReview, exempt, collectedMinor, schoolAllocatedMinor, platformAllocatedMinor, partnerAllocatedMinor]
+      required: [eligible, paid, unpaid, pending, failed, legacyReview, exempt, collectedMinor]
       properties:
         eligible: {type: integer}
         paid: {type: integer}
@@ -48,7 +48,7 @@ components:
         partnerAllocatedMinor: {type: number}
     StudentNfcObligation:
       type: object
-      required: [schoolId, schoolName, studentId, studentName, className, section, sessionId, sessionName, termId, termName, subscriptionId, legacyInvoiceId, status, amountMinor, ordinaryFeesMinor, totalMinor, schoolShareMinor, platformShareMinor, schoolAllocatedMinor, platformAllocatedMinor, partnerAllocatedMinor, lastPaymentId, reference, paidAt, paymentMethod, systemFee, canPay]
+      required: [schoolId, schoolName, studentId, studentName, className, section, sessionId, sessionName, termId, termName, subscriptionId, legacyInvoiceId, status, amountMinor, ordinaryFeesMinor, totalMinor, lastPaymentId, reference, paidAt, paymentMethod, systemFee, canPay]
       properties:
         schoolId: {type: integer}
         schoolName: {type: string}

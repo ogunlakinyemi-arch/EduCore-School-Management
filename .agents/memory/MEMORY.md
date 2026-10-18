@@ -69,3 +69,5 @@
 - [Sandbox callback isolation](sandbox-callback-isolation.md) — TEST charges can trigger app writes; verify callback/webhook targets and use dedicated Development aliases consistently.
 - [Settlement removal consent](settlement-profile-removal-consent.md) — building a Development cleanup feature never authorizes deleting existing bank profiles.
 - [Repository references](repository-reference-policy.md) — compare current Replit source with freshly verified GitHub main before fixes; preserve local work and do not infer push permission.
+- [Subscription business policy](subscription-business-policy.md) — requested future 1,900/3,000/100 split, separate Owner provider fees, immutable history and Owner-only full disclosure.
+- [Employee deactivation boundary](employee-deactivation-boundary.md) — deny school employment permissions without globally disabling independent family or other-tenant access.

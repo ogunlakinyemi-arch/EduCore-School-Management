@@ -371,9 +371,9 @@ function PortalSettings({ schoolId }: { schoolId: number }) {
     <form onSubmit={submit} className="panel space-y-6 p-6 md:p-8" data-testid="form-portal-settings">
       <div className="rounded-2xl bg-[hsl(var(--muted)/.5)] p-4">
         <div className="eyebrow mb-1">Public admissions link</div>
-        <div className="break-all font-mono text-xs" data-testid="text-portal-url">{link}</div>
-        <div className="mt-3 flex flex-wrap gap-3"><Button variant="outline" onClick={copy}><Copy size={15} />Copy link</Button>
-          <Link href={`/admissions/portal/${s.portalKey}`} className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold"><ExternalLink size={15} />Preview</Link></div>
+        <div className="break-all font-mono text-xs" data-testid="text-portal-url">{s.portalKey.startsWith('not-configured-') ? 'Save these settings to create the school’s admission link.' : link}</div>
+        {!s.portalKey.startsWith('not-configured-') && <div className="mt-3 flex flex-wrap gap-3"><Button variant="outline" onClick={copy}><Copy size={15} />Copy link</Button>
+          <Link href={`/admissions/portal/${s.portalKey}`} className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold"><ExternalLink size={15} />Preview</Link></div>}
         {copied && <p role="status" className="mt-2 text-xs">{copied}</p>}
       </div>
       <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" className="h-4 w-4" checked={open} onChange={e => setOpen(e.target.checked)} data-testid="checkbox-portal-open" />Accept public applications</label>

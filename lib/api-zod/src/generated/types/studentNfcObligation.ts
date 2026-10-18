@@ -27,11 +27,11 @@ export interface StudentNfcObligation {
   ordinaryFeesMinor: number;
   ordinaryFeesAssigned?: boolean;
   totalMinor: number;
-  schoolShareMinor: number;
-  platformShareMinor: number;
-  schoolAllocatedMinor: number;
-  platformAllocatedMinor: number;
-  partnerAllocatedMinor: number;
+  schoolShareMinor?: number;
+  platformShareMinor?: number;
+  schoolAllocatedMinor?: number;
+  platformAllocatedMinor?: number;
+  partnerAllocatedMinor?: number;
   lastPaymentId: number | null;
   reference: string | null;
   paidAt: string | null;

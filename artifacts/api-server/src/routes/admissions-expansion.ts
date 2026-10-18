@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
 import { AuthError, assertSchoolOperationalAccess, getUserContext, handleAuthError, requireAuthentication } from "../middlewares/auth";
@@ -42,6 +42,7 @@ import {
   publicAdmissionLogoUrl,
 } from "../services/admissions-storage";
 import { isManagedSchoolLogoObjectPath, readValidatedSchoolLogo } from "../lib/schoolLogoStorage";
+import { admissionPortalDraft } from "../lib/admission-portal-defaults";
 import { emitDomainParentEvent } from "../services/communication-service";
 
 const router = Router();
@@ -235,8 +236,7 @@ async function fetchSettings(client: { query: (sql: string, values?: unknown[]) 
     `SELECT * FROM admission_portal_settings WHERE school_id=$1`,
     [schoolId],
   );
-  const row = result.rows[0];
-  if (!row) throw new AuthError(404, "Admission portal settings not found");
+  const row = result.rows[0] ?? admissionPortalDraft(schoolId);
   const classes = await client.query(
     `SELECT class_id FROM admission_portal_classes WHERE school_id=$1 ORDER BY class_id`,
     [schoolId],
@@ -671,6 +671,11 @@ router.put("/admissions/portal-settings", requireAuthentication(), asyncRoute(as
         }
       }
     }
+    await client.query(
+      `INSERT INTO admission_portal_settings (school_id,portal_key)
+       VALUES ($1,$2) ON CONFLICT (school_id) DO NOTHING`,
+      [schoolId, randomBytes(24).toString("hex")],
+    );
     await client.query(
       `UPDATE admission_portal_settings SET
          is_open=$2,academic_session_id=$3,academic_term_id=$4,deadline=$5,fee_info=$6,

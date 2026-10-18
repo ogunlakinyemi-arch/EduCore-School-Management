@@ -7436,7 +7436,7 @@ components:
         classTeacher: { type: string }
     Subscription:
       type: object
-      required: [id, schoolId, studentId, studentName, amount, schoolShare, edupulseShare, status, verificationStatus, provider, term, expiresAt]
+      required: [id, schoolId, studentId, studentName, amount, schoolShare, status, verificationStatus, provider, term, expiresAt]
       properties:
         id: { type: integer }
         schoolId: { type: integer }
@@ -7444,7 +7444,7 @@ components:
         studentName: { type: string }
         amount: { type: number }
         schoolShare: { type: number }
-        edupulseShare: { type: number }
+        edupulseShare: { type: number, description: "Returned only to the Platform Owner." }
         status:
           type: string
           enum: [active, pending, expired, failed]

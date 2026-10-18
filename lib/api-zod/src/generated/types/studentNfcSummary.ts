@@ -15,7 +15,7 @@ export interface StudentNfcSummary {
   legacyReview: number;
   exempt: number;
   collectedMinor: number;
-  schoolAllocatedMinor: number;
-  platformAllocatedMinor: number;
-  partnerAllocatedMinor: number;
+  schoolAllocatedMinor?: number;
+  platformAllocatedMinor?: number;
+  partnerAllocatedMinor?: number;
 }

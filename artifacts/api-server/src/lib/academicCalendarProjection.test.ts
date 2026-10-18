@@ -19,6 +19,9 @@ describe("refreshConfiguredTermCalendarEvents", () => {
     expect(sql).toContain("ce.source='GENERATED'");
     expect(sql).toContain("ce.status='ACTIVE'");
     expect(sql).toContain("ce.category='RESULT_PUBLICATION'");
+    expect(sql).toContain("t.id=ce.academic_term_id");
+    expect(sql).toContain("t.school_id=ce.school_id");
+    expect(sql).toContain("ac.id=ce.academic_session_id");
     expect(values).toEqual([1, 8, 11, 42]);
   });
 

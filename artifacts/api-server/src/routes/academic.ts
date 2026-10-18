@@ -20,7 +20,7 @@ import {
   handleAuthError,
   requireAuthentication,
 } from "../middlewares/auth";
-import { ensureCurrentStaffNfcTermSubscriptions } from "./staff-nfc-billing-service";
+import { ensureCurrentStaffNfcTermSubscriptions, StaffNfcDomainError } from "./staff-nfc-billing-service";
 import { refreshConfiguredTermCalendarEvents } from "../lib/academicCalendarProjection";
 import { validateAcademicPeriod,parseCalendarBody } from "../lib/academic-period-validation";
 
@@ -29,6 +29,16 @@ router.use(requireAuthentication());
 const writeRoles = ["SCHOOL_ADMIN"] as const;
 const viewRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"] as const;
 
+export async function syncStaffBilling(client: any, req: Request, schoolId: number) {
+  try {
+    await ensureCurrentStaffNfcTermSubscriptions(client, schoolId, getUserContext(req).user.id);
+  } catch (error) {
+    // An Owner's not-yet-configured billing rule is not an invalid academic
+    // calendar. No subscription is fabricated and no default money rule is used.
+    if (!(error instanceof StaffNfcDomainError) || error.code !== "BILLING_RULE_REQUIRED") throw error;
+    req.log?.warn({ schoolId, code: error.code }, "Staff NFC billing deferred until Owner configures a billing rule");
+  }
+}
 function audit(req: Request, schoolId: number, action: string, recordId: number, client: any = pool) {
   const c = getUserContext(req);
   const actor = [c.user.firstName, c.user.lastName].filter(Boolean).join(" ") || c.user.email;
@@ -77,7 +87,7 @@ router.post("/academic-sessions", wrap(async (req, res) => {
     await validateAcademicPeriod(client, q.schoolId, b);
     if (isCurrent) await client.query(`UPDATE academic_sessions SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND is_current=true`, [q.schoolId]);
     r = await client.query(`INSERT INTO academic_sessions (school_id,name,start_date,end_date,status,is_current,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${sessionSelect}`, [q.schoolId,b.name.trim(),b.startDate,b.endDate,b.status ?? "ACTIVE",isCurrent,getUserContext(req).user.id]);
-    await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await syncStaffBilling(client, req, q.schoolId);
     await audit(req,q.schoolId,"Created academic session",r.rows[0].id,client);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
@@ -97,7 +107,7 @@ router.patch("/academic-sessions/:sessionId", wrap(async (req, res) => {
     await validateAcademicPeriod(client,q.schoolId,b,target.rows[0]);
     if (isCurrent) await client.query(`UPDATE academic_sessions SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND id<>$2 AND is_current=true`, [q.schoolId,p.sessionId]);
     r = await client.query(`UPDATE academic_sessions SET name=COALESCE($1,name),start_date=COALESCE($2,start_date),end_date=COALESCE($3,end_date),status=COALESCE($4,status),is_current=CASE WHEN $5 THEN $6 ELSE is_current END,updated_at=NOW() WHERE id=$7 AND school_id=$8 RETURNING ${sessionSelect}`, [b.name??null,b.startDate??null,b.endDate??null,wantsCurrent ? b.status ?? null : b.status ?? null,wantsCurrent,isCurrent,p.sessionId,q.schoolId]);
-    await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await syncStaffBilling(client, req, q.schoolId);
     await audit(req,q.schoolId,"Updated academic session",p.sessionId,client);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
@@ -117,7 +127,7 @@ router.post("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {
     await validateAcademicPeriod(client,q.schoolId,b,{},p.sessionId);
     if (isCurrent) await client.query(`UPDATE academic_terms SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND academic_session_id=$2 AND is_current=true`,[q.schoolId,p.sessionId]);
     r=await client.query(`INSERT INTO academic_terms (school_id,academic_session_id,name,start_date,end_date,status,is_current,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${termSelect}`,[q.schoolId,p.sessionId,b.name,b.startDate,b.endDate,b.status??"ACTIVE",isCurrent,getUserContext(req).user.id]);
-    await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await syncStaffBilling(client, req, q.schoolId);
     await refreshConfiguredTermCalendarEvents(client, {
       schoolId: q.schoolId,
       sessionId: Number(r.rows[0].sessionId),
@@ -141,7 +151,7 @@ router.patch("/academic-terms/:termId", wrap(async(req,res)=>{
     await validateAcademicPeriod(client,q.schoolId,b,target.rows[0],target.rows[0].academic_session_id);
     if(isCurrent) await client.query(`UPDATE academic_terms SET is_current=false,updated_at=NOW() WHERE school_id=$1 AND academic_session_id=$2 AND id<>$3 AND is_current=true`,[q.schoolId,target.rows[0].academic_session_id,p.termId]);
     r=await client.query(`UPDATE academic_terms SET name=COALESCE($1,name),start_date=COALESCE($2,start_date),end_date=COALESCE($3,end_date),status=COALESCE($4,status),is_current=CASE WHEN $5 THEN $6 ELSE is_current END,updated_at=NOW() WHERE id=$7 AND school_id=$8 RETURNING ${termSelect}`,[b.name??null,b.startDate??null,b.endDate??null,b.status??null,wantsCurrent,isCurrent,p.termId,q.schoolId]);
-    await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await syncStaffBilling(client, req, q.schoolId);
     await refreshConfiguredTermCalendarEvents(client, {
       schoolId: q.schoolId,
       sessionId: Number(r.rows[0].sessionId),

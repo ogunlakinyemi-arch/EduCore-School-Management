@@ -5,7 +5,7 @@ import { Route, Switch, Redirect, Link } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useGetAuthorizedContext } from '@workspace/api-client-react';
+import { useGetAuthorizedContext, getGetAuthorizedContextQueryKey } from '@workspace/api-client-react';
 import { ShieldAlert } from 'lucide-react';
 
 // Layout & Shared
@@ -151,7 +151,16 @@ export function ProtectedRoutes() {
 
   if (contextQuery.isLoading) return <div role="status" className="flex min-h-[100dvh] items-center justify-center">Loading your authorized portal…</div>;
 
-  if (contextQuery.isError || (!context?.isPlatformOwner && (!context?.roles || context.roles.length === 0))) {
+  if (contextQuery.isError) {
+    return <div className="flex min-h-[100dvh] items-center justify-center p-8">
+      <div className="panel max-w-md p-8 text-center">
+        <h1 className="display-font text-2xl font-bold">Unable to verify your access</h1>
+        <p className="mt-3 text-sm">EduCore could not verify your portal access. Retry the access check without signing in again.</p>
+        <Button className="mt-5" onClick={() => void contextQuery.refetch()}>Retry access check</Button>
+      </div>
+    </div>;
+  }
+  if (!context?.isPlatformOwner && (!context?.roles || context.roles.length === 0)) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center p-8 text-center bg-[hsl(var(--background))]">
         <div className="panel p-8 max-w-md shadow-xl fade-up">
@@ -412,10 +421,11 @@ export function ProtectedRoutes() {
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded } = useAuth();
-  const contextQuery = useGetAuthorizedContext();
+  const contextQuery = useGetAuthorizedContext({ query: { queryKey: getGetAuthorizedContextQueryKey(), enabled: isLoaded && !!isSignedIn } });
   if (!isLoaded) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
   if (!isSignedIn) return <Redirect to="/sign-in" />;
   if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
+  if (contextQuery.isError) return <ProtectedRoutes />;
   const isActivationOfficer = contextQuery.data?.roles?.some(
     role => (role.role as string) === 'DEVICE_ACTIVATION_OFFICER' && role.status === 'ACTIVE',
   ) === true;
@@ -484,7 +494,8 @@ export default function App() {
               <Route>
                 <AuthGuard>
                   <Switch>
-                     <Route path="/parent*"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
+                    <Route path="/parent"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
+                    <Route path="/parent/*"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
                     <Route path="/partner/staff-nfc"><RoleGuard allowedRoles={['PARTNER']}><TenantProvider><Shell><PartnerStaffNfcCommissionsPage /></Shell></TenantProvider></RoleGuard></Route>
                     <Route path="/partner"><RoleGuard allowedRoles={['PARTNER']}><PartnerPortal /></RoleGuard></Route>
                     <Route path="/partner/*"><RoleGuard allowedRoles={['PARTNER']}><PartnerPortal /></RoleGuard></Route>

@@ -1012,11 +1012,11 @@ export const GetStudentNfcObligationsResponse = zod.object({
   "ordinaryFeesMinor": zod.number(),
   "ordinaryFeesAssigned": zod.boolean().optional(),
   "totalMinor": zod.number(),
-  "schoolShareMinor": zod.number(),
-  "platformShareMinor": zod.number(),
-  "schoolAllocatedMinor": zod.number(),
-  "platformAllocatedMinor": zod.number(),
-  "partnerAllocatedMinor": zod.number(),
+  "schoolShareMinor": zod.number().optional(),
+  "platformShareMinor": zod.number().optional(),
+  "schoolAllocatedMinor": zod.number().optional(),
+  "platformAllocatedMinor": zod.number().optional(),
+  "partnerAllocatedMinor": zod.number().optional(),
   "lastPaymentId": zod.number().int().nullable(),
   "reference": zod.string().nullable(),
   "paidAt": zod.string().nullable(),
@@ -1034,9 +1034,9 @@ export const GetStudentNfcObligationsResponse = zod.object({
   "legacyReview": zod.number().int(),
   "exempt": zod.number().int(),
   "collectedMinor": zod.number(),
-  "schoolAllocatedMinor": zod.number(),
-  "platformAllocatedMinor": zod.number(),
-  "partnerAllocatedMinor": zod.number()
+  "schoolAllocatedMinor": zod.number().optional(),
+  "platformAllocatedMinor": zod.number().optional(),
+  "partnerAllocatedMinor": zod.number().optional()
 })
 })
 
@@ -13410,7 +13410,7 @@ export const ListSubscriptionsResponseItem = zod.object({
   "studentName": zod.string(),
   "amount": zod.number(),
   "schoolShare": zod.number(),
-  "edupulseShare": zod.number(),
+  "edupulseShare": zod.number().optional().describe('Returned only to the Platform Owner.'),
   "status": zod.enum(['active', 'pending', 'expired', 'failed']),
   "verificationStatus": zod.enum(['verified', 'pending', 'unverified']),
   "provider": zod.string(),
@@ -13450,7 +13450,7 @@ export const CreateSubscriptionResponse = zod.object({
   "studentName": zod.string(),
   "amount": zod.number(),
   "schoolShare": zod.number(),
-  "edupulseShare": zod.number(),
+  "edupulseShare": zod.number().optional().describe('Returned only to the Platform Owner.'),
   "status": zod.enum(['active', 'pending', 'expired', 'failed']),
   "verificationStatus": zod.enum(['verified', 'pending', 'unverified']),
   "provider": zod.string(),
