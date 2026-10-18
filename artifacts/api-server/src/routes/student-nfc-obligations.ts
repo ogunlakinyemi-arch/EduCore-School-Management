@@ -4,6 +4,7 @@ import { pool } from "@workspace/db";
 import { getUserContext, isPlatformOwner, requireAuthentication } from "../middlewares/auth";
 import { studentNfcReadScope } from "../lib/student-nfc-obligations";
 import { visibleSubscription } from "../lib/subscription-visibility";
+import { studentAllocationPolicy } from "../lib/student-allocation-policy";
 
 const router=Router();
 router.use(requireAuthentication());
@@ -98,7 +99,9 @@ router.get("/student-nfc/obligations",async(req,res,next)=>{
         termId:Number(row.termId),termName:row.termName,subscriptionId:row.subscriptionId==null?null:Number(row.subscriptionId),
         legacyInvoiceId:row.legacyInvoiceId==null?null:Number(row.legacyInvoiceId),status,amountMinor,ordinaryFeesMinor,
         ordinaryFeesAssigned:!!row.ordinaryFeesAssigned,
-        totalMinor:ordinaryFeesMinor+amountMinor,schoolShareMinor:200000,platformShareMinor:300000,
+        totalMinor:ordinaryFeesMinor+amountMinor,
+        schoolShareMinor:studentAllocationPolicy(row.reference ?? "SCV2_").schoolMinor,
+        platformShareMinor:studentAllocationPolicy(row.reference ?? "SCV2_").platformWithoutPartnerMinor,
         schoolAllocatedMinor,platformAllocatedMinor:teacherOnly?0:platformAllocatedMinor,
         partnerAllocatedMinor:owner && status==="PAID"?Number(row.partnerAllocatedMinor):0,
         lastPaymentId:row.lastPaymentId==null?null:Number(row.lastPaymentId),reference:row.reference??null,

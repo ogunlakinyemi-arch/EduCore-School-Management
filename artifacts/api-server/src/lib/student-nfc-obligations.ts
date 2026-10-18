@@ -103,7 +103,7 @@ export async function ensureStudentNfcSubscription(db: Sql, schoolId: number, st
   const legacyInvoiceId: number|null = subscriptionId==null ? legacy.rows[0]?.id ?? null : null;
   if (subscriptionId==null && legacyInvoiceId==null) {
     const inserted = await db.query(`INSERT INTO subscriptions(school_id,student_id,term,amount,school_share,edupulse_share,provider,expires_at)
-      VALUES($1,$2,$3,5000,2000,3000,'FLUTTERWAVE',($4::date+1)::timestamptz) RETURNING id`,
+      VALUES($1,$2,$3,5000,1900,3100,'FLUTTERWAVE',($4::date+1)::timestamptz) RETURNING id`,
       [schoolId,studentId,term.name,term.endDate]);
     subscriptionId = inserted.rows[0].id;
   }

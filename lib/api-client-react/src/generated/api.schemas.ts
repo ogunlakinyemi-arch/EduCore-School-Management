@@ -9404,12 +9404,12 @@ export interface StaffNfcPaymentSummary {
      * @minimum 0
      * @nullable
      */
-  providerFeeMinor: number | null;
+  providerFeeMinor?: number | null;
   /**
      * @minimum 0
      * @nullable
      */
-  settlementAmountMinor: number | null;
+  settlementAmountMinor?: number | null;
   currency: StaffNfcPaymentSummaryCurrency;
   /** @nullable */
   providerTransactionId?: string | null;
@@ -9480,16 +9480,16 @@ export interface StaffNfcSubscription {
   sessionName: string;
   termId: number;
   termName: string;
-  billingRuleId: number;
-  billingRuleVersion: number;
+  billingRuleId?: number;
+  billingRuleVersion?: number;
   /** @minimum 0 */
   priceMinor: number;
   /** @minimum 0 */
-  schoolShareMinor: number;
+  schoolShareMinor?: number;
   /** @minimum 0 */
-  platformShareMinor: number;
+  platformShareMinor?: number;
   /** @minimum 0 */
-  partnerShareMinor: number;
+  partnerShareMinor?: number;
   status: StaffNfcSubscriptionStatus;
   currency: StaffNfcSubscriptionCurrency;
   dueDate: string;
@@ -9637,10 +9637,10 @@ export const StaffNfcFinanceResponseRole = {
 
 export type StaffNfcFinanceResponseTotals = {
   grossAmountMinor: number;
-  schoolAllocationMinor: number;
-  platformRevenueMinor: number;
-  partnerCommissionMinor: number;
-  providerFeeExpenseMinor: number;
+  schoolAllocationMinor?: number;
+  platformRevenueMinor?: number;
+  partnerCommissionMinor?: number;
+  providerFeeExpenseMinor?: number;
   paidCount: number;
   pendingCount: number;
   failedCount: number;

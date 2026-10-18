@@ -1,3 +1,5 @@
+import { newStudentPaymentReference } from "../lib/student-allocation-policy";
+import { splitAttribution } from "./flutterwave-split-checkout";
 import { pool } from "@workspace/db";
 import { nfcPayableTermPredicate } from "../lib/nfc-payable-term";
 import { AuthError } from "../middlewares/auth";
@@ -74,7 +76,7 @@ export async function reserveGuestNfcPayment(
     return Number(existing.id);
   }
   const current = (await db.query(
-    `SELECT t.id FROM academic_terms t JOIN academic_sessions ses
+    `SELECT t.id,t.name AS "termName" FROM academic_terms t JOIN academic_sessions ses
        ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
        WHERE t.id=$1 AND ses.id=$2 AND t.school_id=$3
          AND ${nfcPayableTermPredicate} FOR SHARE OF t,ses`,
@@ -87,6 +89,7 @@ export async function reserveGuestNfcPayment(
   if (!canonical || Number(canonical.subscriptionId) !== Number(scope.subscriptionId)) {
     throw new AuthError(409, "The authoritative NFC obligation requires review");
   }
+  await splitAttribution(db, Number(scope.schoolId), current.termName, 2);
   const payment = (await db.query(
     `INSERT INTO student_subscription_payments
       (subscription_id,school_id,student_id,academic_session_id,academic_term_id,payer_user_id,
@@ -94,7 +97,7 @@ export async function reserveGuestNfcPayment(
      VALUES($1,$2,$3,$4,$5,$6,'FLUTTERWAVE','SANDBOX',$7,$8,500000,'NGN','GUEST_CHECKOUT_RESERVED')
      RETURNING id`,
     [scope.subscriptionId, scope.schoolId, scope.studentId, scope.sessionId, scope.termId,
-      issuingUserId, adapter.generateReference(), `guest:${reference}`],
+      issuingUserId, newStudentPaymentReference(adapter.generateReference()), `guest:${reference}`],
   )).rows[0];
   return Number(payment.id);
 }

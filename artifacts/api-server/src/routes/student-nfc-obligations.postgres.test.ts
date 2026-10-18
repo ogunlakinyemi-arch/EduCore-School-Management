@@ -37,6 +37,7 @@ import paymentLinks from "./nfc-payment-links";
 import assistedNfcPayments from "./assisted-nfc-payments";
 import subscriptions from "./edupulse";
 import academicResults from "./academic-results";
+import academic from "./academic";
 import platformWorkspace from "./platform-workspace";
 import communicationInbox from "./communication-inbox";
 import {studentNfcCardLookupSql} from "../lib/nfc-device-first";
@@ -72,6 +73,7 @@ beforeAll(async()=>{
   await q(ddl);
   // pg_dump deliberately leaves the restoring connection's search path empty.
   await q("SET search_path TO public");
+  await q(readFileSync(new URL("../../../../lib/db/drizzle/0167_student_allocation_v2.sql",import.meta.url),"utf8"));
   vi.stubEnv("NODE_ENV","development");
   vi.stubEnv("REPLIT_DEPLOYMENT","");
   vi.stubEnv("SESSION_SECRET","private-disposable-nfc-preview-signing-only");
@@ -120,7 +122,7 @@ beforeAll(async()=>{
       VALUES(1,100,1,'Tuition','Tuition',800000),(1,100,2,'NfC ID Card subscription','NfC ID Card subscription',500000);
     SELECT setval('fee_invoices_id_seq',100);
   `);
-  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations,paymentLinks,assistedNfcPayments,academicResults,platformWorkspace,communicationInbox);
+  const app=express();app.use(express.json());app.use("/api",finance,subscriptions,obligations,paymentLinks,assistedNfcPayments,academicResults,academic,platformWorkspace,communicationInbox);
   app.use((error:any,_req:any,res:any,_next:any)=>res.status(error instanceof AuthError?error.statusCode:500).json({error:error.message}));
   server=app.listen(0,"127.0.0.1");await new Promise<void>(r=>server.once("listening",()=>r()));
   base=`http://127.0.0.1:${(server.address() as any).port}`;
@@ -132,6 +134,16 @@ afterAll(async()=>{
   if(directory)rmSync(directory,{recursive:true,force:true});
   vi.unstubAllEnvs();
 },15000);
+
+it.skipIf(!snapshot)("saves the actual first-term route with no staff billing rule and preserves dates",async()=>{
+  state.actor=actor(2,"SCHOOL_ADMIN");
+  const before=(await q("SELECT start_date::text,end_date::text FROM academic_terms WHERE id=1")).rows[0];
+  const saved=await call("/academic-terms/1?schoolId=1",{isCurrent:true},{},"PATCH");
+  expect(saved.status,JSON.stringify(saved.body)).toBe(200);
+  expect(saved.body.isCurrent).toBe(true);
+  expect((await q("SELECT start_date::text,end_date::text FROM academic_terms WHERE id=1")).rows[0]).toEqual(before);
+  expect((await q("SELECT count(*)::int AS n FROM staff_nfc_subscriptions")).rows[0].n).toBe(0);
+});
 
 it.skipIf(!snapshot)("verifies requested correction workspace persistence, permissions, unlock and message replay in PostgreSQL",async()=>{
   const legacyBefore=(await q("SELECT md5(row_to_json(i)::text) AS hash FROM fee_invoices i WHERE id=100")).rows[0].hash;
@@ -331,21 +343,23 @@ it.skipIf(!snapshot)("executes automatic attachment, scoped views, canonical uni
   await Promise.all([finalizeVerifiedStudentSubscriptionPayment(state.db,payment.paymentId,verified),finalizeVerifiedStudentSubscriptionPayment(state.db,payment.paymentId,verified)]);
   await finalizeVerifiedStudentSubscriptionPayment(state.db,payment.paymentId,verified);
   const paid=await call("/student-nfc/obligations?studentId=1");
-  expect(paid.body.rows[0]).toMatchObject({status:"PAID",schoolAllocatedMinor:200000,platformAllocatedMinor:300000,canPay:false});
+  expect(paid.body.rows[0]).toMatchObject({status:"PAID",canPay:false});
+  expect(paid.body.rows[0]).not.toHaveProperty("schoolAllocatedMinor");
+  expect(paid.body.rows[0]).not.toHaveProperty("platformAllocatedMinor");
   const money=await q("SELECT recipient_type,entry_type,amount_minor FROM student_subscription_allocations WHERE payment_id=$1 ORDER BY recipient_type",[payment.paymentId]);
   expect(money.rows.filter((r:any)=>r.entry_type==="CREDIT")).toHaveLength(2);
-  expect(money.rows.find((r:any)=>r.recipient_type==="SCHOOL").amount_minor).toBe(200000);
-  expect(money.rows.find((r:any)=>r.recipient_type==="PLATFORM").amount_minor).toBe(300000);
+  expect(money.rows.find((r:any)=>r.recipient_type==="SCHOOL").amount_minor).toBe(190000);
+  expect(money.rows.find((r:any)=>r.recipient_type==="PLATFORM").amount_minor).toBe(310000);
   expect((await q("SELECT receipt_snapshot FROM student_subscription_payments WHERE id=$1",[payment.paymentId])).rows[0].receipt_snapshot).toBeTruthy();
   state.actor=actor(2,"SCHOOL_ADMIN");expect((await call("/student-nfc/obligations")).body.summary.paid).toBe(1);
   state.actor=actor(5,"TEACHER");const teacher=await call("/student-nfc/obligations");
-  expect(teacher.body.summary.schoolAllocatedMinor).toBe(200000);expect(teacher.body.rows.every((r:any)=>r.ordinaryFeesMinor===0 && !r.canPay)).toBe(true);
+  expect(teacher.body.summary).not.toHaveProperty("schoolAllocatedMinor");expect(teacher.body.rows.every((r:any)=>r.ordinaryFeesMinor===0 && !r.canPay)).toBe(true);
   state.actor=actor(6,"SCHOOL_ADMIN",2);
   const b=await call("/school/finance/structures?schoolId=2",{sessionId:2,termId:2,classId:2,section:"A",lines:[{categoryId:3,amountMinor:800000}]});
   expect(b.status,JSON.stringify(b.body)).toBe(201);
   state.actor=actor(1,"PLATFORM_OWNER",null);const owner=await call("/student-nfc/obligations");
   expect(new Set(owner.body.rows.map((r:any)=>r.schoolId))).toEqual(new Set([1,2]));
-  expect(owner.body.summary.platformAllocatedMinor).toBe(300000);expect(owner.body.rows.every((r:any)=>!r.canPay)).toBe(true);
+  expect(owner.body.summary.platformAllocatedMinor).toBe(310000);expect(owner.body.rows.every((r:any)=>!r.canPay)).toBe(true);
   state.actor=actor(3,"PARENT");const second=owner.body.rows.find((r:any)=>r.studentId===6);state.mode="failed";
   const failed=await call(`/subscriptions/${second.subscriptionId}/checkout`,{},{"Idempotency-Key":"nfc-failed-0001"});
   expect(failed.status).toBe(201);
@@ -357,7 +371,7 @@ it.skipIf(!snapshot)("executes automatic attachment, scoped views, canonical uni
   await q(`INSERT INTO partner_profiles(id,partner_code,full_name,email,status) VALUES(11,'NFC_NATIVE_PARTNER','NFC Native Partner','nfc-partner@example.com','ACTIVE');
     INSERT INTO school_partner_attributions(school_id,partner_profile_id,status,is_current,starts_at) VALUES(1,11,'ACTIVE',true,NOW()-interval '1 day');
     INSERT INTO commission_rules(id,name,allocation_total,school_amount,partner_amount,edupulse_amount,currency,status,effective_at)
-      VALUES(11,'NFC Native Rule',5000,2000,100,2900,'NGN','ACTIVE',NOW()-interval '1 day')`);
+      VALUES(11,'NFC Native Rule',5000,1900,100,3000,'NGN','ACTIVE',NOW()-interval '1 day')`);
   state.mode="succeeded";state.fee=null;
   const partnerRetry=await call(`/subscriptions/${second.subscriptionId}/checkout`,{},{"Idempotency-Key":"nfc-partner-retry-0001"});
   expect(partnerRetry.status,JSON.stringify(partnerRetry.body)).toBe(201);
@@ -506,7 +520,28 @@ async function verifyRegistrationAndAssistedRequests() {
   };
   state.actor=actor(1,"PLATFORM_OWNER",null);
   const partnerRow=(await call("/student-nfc/obligations?studentId=6")).body.rows[0];
-  expect(partnerRow).toMatchObject({status:"PAID",schoolAllocatedMinor:200000,platformAllocatedMinor:290000,partnerAllocatedMinor:10000});
+  expect(partnerRow).toMatchObject({status:"PAID",schoolAllocatedMinor:190000,platformAllocatedMinor:300000,partnerAllocatedMinor:10000});
+  // Exercise the actual migrated CHECKs in PostgreSQL, not string or arithmetic mocks.
+  // LIKE copies CHECKs but not FKs. Scratch tables belong only to the disposable
+  // cluster; pool error recovery may replace connections, so do not use TEMP.
+  await q(`CREATE TABLE allocation_policy_checks (LIKE flutterwave_split_payments INCLUDING DEFAULTS INCLUDING CONSTRAINTS);
+    CREATE TABLE allocation_settlement_checks (LIKE flutterwave_split_settlements INCLUDING DEFAULTS INCLUDING CONSTRAINTS)`);
+  const checkSplit = (reference: string, school: number, platform: number, partner = false) => q(
+    `INSERT INTO allocation_policy_checks(payment_id,school_id,student_id,subscription_id,session_id,term_id,
+      reference,school_recipient_id,instructions,school_amount_minor,platform_amount_minor,partner_amount_minor,
+      partner_recipient_id,partner_profile_id,attribution_id,commission_rule_id)
+     VALUES(1,1,1,1,1,1,$1,1,'[]',$2,$3,$4,$5,$5,$5,$5)`,
+    [reference,school,platform,partner ? 10000 : 0,partner ? 2 : null]);
+  await checkSplit("legacy_pending_preserved",200000,300000);
+  await checkSplit("legacy_partner_preserved",200000,290000,true);
+  await checkSplit("SCV2_new_without_partner",190000,310000);
+  await checkSplit("SCV2_new_with_partner",190000,300000,true);
+  await expect(checkSplit("legacy_cannot_be_repriced",190000,310000)).rejects.toMatchObject({code:"23514"});
+  await expect(checkSplit("SCV2_cannot_use_old_amounts",200000,300000)).rejects.toMatchObject({code:"23514"});
+  await q(`INSERT INTO allocation_settlement_checks(payment_id,recipient_id,expected_amount_minor)
+    VALUES(1,1,190000),(1,1,200000),(1,1,10000)`);
+  await expect(q(`INSERT INTO allocation_settlement_checks(payment_id,recipient_id,expected_amount_minor)
+    VALUES(1,1,190001)`)).rejects.toMatchObject({code:"23514"});
   expect(Number((await q("SELECT count(*) FROM commission_ledger WHERE subscription_id=$1",[second.subscriptionId])).rows[0].count)).toBe(1);
   expect(Number((await q("SELECT count(*) FROM nfc_cards")).rows[0].count)).toBe(0);
   await Promise.all([1,2,3].map(async()=>{

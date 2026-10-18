@@ -12,6 +12,7 @@ import {
   configuredTestAdapter,
 } from "../lib/fee-providers/factory";
 import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
+import { visibleSubscription } from "../lib/subscription-visibility";
 import {
   AuthError,
   assertRoles,
@@ -44,6 +45,21 @@ import {
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
+// Project every staff-subscription JSON response, including receipts, payment
+// verification and finance summaries. Route guards still enforce row ownership.
+router.use((req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = body => {
+    const context = getUserContext(req);
+    const self = req.path.endsWith("/me") || req.path.includes("/me/");
+    const recipient = req.path.startsWith("/partner/") && hasRole(context, "PARTNER")
+      ? "PARTNER" as const
+      : !self && context.roles.some(role => role.status === "ACTIVE" && ["SCHOOL_ADMIN", "ACCOUNTANT"].includes(role.role))
+        ? "SCHOOL" as const : undefined;
+    return json(visibleSubscription(body, isPlatformOwner(context), recipient));
+  };
+  next();
+});
 
 const safeId = z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const schoolQuery = z.object({ schoolId: safeId }).passthrough();

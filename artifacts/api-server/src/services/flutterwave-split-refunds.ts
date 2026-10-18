@@ -2,6 +2,7 @@ import { pool } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
 import { requireSplitDevelopment, cumulativeRefundShares } from "../lib/flutterwave-split-policy";
 import { splitProvider } from "./flutterwave-split-provider";
+import { studentAllocationPolicy } from "../lib/student-allocation-policy";
 
 export function adjustmentView(r: any) {
   return { id:r.id,paymentId:r.payment_id,amountMinor:r.amount_minor,status:r.status,
@@ -87,8 +88,9 @@ export async function verifySplitRefund(id: number) {
       const previous = Number((await db.query(
         "SELECT COALESCE(sum(amount_minor),0) amount FROM flutterwave_split_adjustments WHERE payment_id=$1 AND status='CONFIRMED'", [split.payment_id],
       )).rows[0].amount);
-      const before = cumulativeRefundShares(previous, !!split.partner_profile_id);
-      const after = cumulativeRefundShares(previous + row.amount_minor, !!split.partner_profile_id);
+      const version = studentAllocationPolicy(split.reference).version;
+      const before = cumulativeRefundShares(previous, !!split.partner_profile_id, version);
+      const after = cumulativeRefundShares(previous + row.amount_minor, !!split.partner_profile_id, version);
       row = (await db.query(
         `UPDATE flutterwave_split_adjustments SET status='CONFIRMED',recovery_status='RECIPIENT_RECOVERY_REVIEW',
          school_recovery_minor=$1,partner_recovery_minor=$2,platform_reversal_minor=$3,updated_at=NOW() WHERE id=$4 RETURNING *`,

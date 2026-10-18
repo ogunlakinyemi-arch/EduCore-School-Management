@@ -143,7 +143,7 @@ describe("NFC link routed input and operational authorization", () => {
     state.query.mockImplementation(async (sql: string, params: any[] = []) => {
       if (sql.includes("FROM student_subscription_terms b")) return { rows: [state.scope] };
       if (sql.includes("SELECT sub.amount")) return { rows: [{ amount: 5000, status: "pending", verification_status: "pending" }] };
-      if (sql.includes("SELECT t.id FROM academic_terms")) return { rows: [{ id: 3 }] };
+      if (sql.includes('SELECT t.id,t.name AS "termName" FROM academic_terms')) return { rows: [{ id: 3, termName: "FIRST" }] };
       if (sql.includes("INSERT INTO student_subscription_payments")) { order.push("payment"); return { rows: [{ id: 17 }] }; }
       if (sql.includes("INSERT INTO nfc_payment_links")) {
         // Reproduce PostgreSQL's nfc_payment_links_isolation rejection, not a permissive DB mock.
@@ -161,6 +161,7 @@ describe("NFC link routed input and operational authorization", () => {
     expect(response.status).toBe(200); expect(order).toEqual(["payment", "link"]);
     const body = await response.json() as any;
     expect(body.amountMinor).toBe(500000); expect(body.status).toBe("PENDING");
+    expect(body.expectedAllocations).toEqual([]);
     expect(body.subscriptionActivated).toBe(false); expect(body.receiptReference).toBeNull();
     expect(new URL(body.paymentUrl).hash.length).toBe(44);
     expect(state.query.mock.calls.some(([sql]) => sql.includes("COMMIT"))).toBe(true);

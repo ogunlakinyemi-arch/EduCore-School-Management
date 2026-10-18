@@ -64,7 +64,7 @@ export const flutterwaveSplitPayments = pgTable("flutterwave_split_payments", {
   reconciliationNote: text("reconciliation_note"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, t => [
-  check("flw_split_amounts_ck", sql`${t.schoolAmountMinor}=200000 AND ${t.currency}='NGN' AND ((${t.partnerRecipientId} IS NULL AND ${t.partnerProfileId} IS NULL AND ${t.attributionId} IS NULL AND ${t.commissionRuleId} IS NULL AND ${t.partnerAmountMinor}=0 AND ${t.platformAmountMinor}=300000) OR (${t.partnerRecipientId} IS NOT NULL AND ${t.partnerProfileId} IS NOT NULL AND ${t.attributionId} IS NOT NULL AND ${t.commissionRuleId} IS NOT NULL AND ${t.partnerAmountMinor}=10000 AND ${t.platformAmountMinor}=290000))`),
+  check("flw_split_amounts_ck", sql`${t.currency}='NGN' AND ${t.schoolAmountMinor}=CASE WHEN left(${t.reference},5)='SCV2_' THEN 190000 ELSE 200000 END AND ((${t.partnerRecipientId} IS NULL AND ${t.partnerProfileId} IS NULL AND ${t.attributionId} IS NULL AND ${t.commissionRuleId} IS NULL AND ${t.partnerAmountMinor}=0 AND ${t.platformAmountMinor}=500000-${t.schoolAmountMinor}) OR (${t.partnerRecipientId} IS NOT NULL AND ${t.partnerProfileId} IS NOT NULL AND ${t.attributionId} IS NOT NULL AND ${t.commissionRuleId} IS NOT NULL AND ${t.partnerAmountMinor}=10000 AND ${t.platformAmountMinor}=490000-${t.schoolAmountMinor}))`),
   check("flw_split_status_ck", sql`${t.status} IN ('CHECKOUT_FROZEN','COLLECTION_PAID','COLLECTION_FAILED','COLLECTION_EXCEPTION','REPORT_EXCEPTION','TEST_PROVIDER_REPORTED_COMPLETE','REFUND_REVIEW','REFUNDED')`),
   check("flw_split_costs_ck", sql`(${t.providerFeeMinor} IS NULL OR ${t.providerFeeMinor}>=0) AND (${t.providerAdditionalFeeMinor} IS NULL OR ${t.providerAdditionalFeeMinor}>=0)`),
 ]);
@@ -81,7 +81,7 @@ export const flutterwaveSplitSettlements = pgTable("flutterwave_split_settlement
 }, t => [
   uniqueIndex("flw_settlement_payment_recipient_uq").on(t.paymentId, t.recipientId),
   uniqueIndex("flw_settlement_report_payment_recipient_uq").on(t.providerSettlementId, t.paymentId, t.recipientId),
-  check("flw_settlement_amount_ck", sql`${t.expectedAmountMinor} IN (200000,10000) AND (${t.observedAmountMinor} IS NULL OR ${t.observedAmountMinor}>=0)`),
+  check("flw_settlement_amount_ck", sql`${t.expectedAmountMinor} IN (190000,200000,10000) AND (${t.observedAmountMinor} IS NULL OR ${t.observedAmountMinor}>=0)`),
   check("flw_settlement_status_ck", sql`${t.status} IN ('UNVERIFIED','PENDING','FAILED','MISMATCH','TEST_PROVIDER_REPORTED_COMPLETE')`),
 ]);
 export const flutterwaveSplitAdjustments = pgTable("flutterwave_split_adjustments", {

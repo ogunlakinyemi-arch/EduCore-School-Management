@@ -2,6 +2,7 @@ import { nfcPayableTermPredicate } from "./nfc-payable-term";
 import type { VerifiedPayment, ExpectedPayment } from "./fee-providers";
 import { validateSplitCollection, recordSplitCollection } from "../services/flutterwave-split-checkout";
 import { isSplitDevelopment } from "./flutterwave-split-policy";
+import { studentAllocationPolicy, type StudentAllocationVersion } from "./student-allocation-policy";
 
 export type StudentSubscriptionAllocation = {
   recipientType: "SCHOOL" | "PLATFORM" | "PARTNER" | "PLATFORM_PROVIDER_FEE";
@@ -11,6 +12,7 @@ export type StudentSubscriptionAllocation = {
 
 export type StudentSubscriptionAllocationInput = {
   partnerProfileId: number | null;
+  policyVersion?: StudentAllocationVersion;
   commissionRule?: {
     id: number;
     allocationTotal: number;
@@ -97,13 +99,14 @@ async function hasUnresolvedFailedStudentTermPayment(
 export function calculateStudentSubscriptionAllocations(
   input: StudentSubscriptionAllocationInput,
 ): StudentSubscriptionAllocation[] {
+  const policy = studentAllocationPolicy(input.policyVersion === 2 ? "SCV2_" : undefined);
   if (input.partnerProfileId === null) {
     if (input.commissionRule) {
       throw new StudentSubscriptionBillingError(409, "Unattributed subscriptions cannot use a Partner commission rule");
     }
     return [
-      { recipientType: "SCHOOL", recipientId: null, amountMinor: 200_000 },
-      { recipientType: "PLATFORM", recipientId: null, amountMinor: 300_000 },
+      { recipientType: "SCHOOL", recipientId: null, amountMinor: policy.schoolMinor },
+      { recipientType: "PLATFORM", recipientId: null, amountMinor: policy.platformWithoutPartnerMinor },
     ];
   }
   const rule = input.commissionRule;
@@ -111,9 +114,9 @@ export function calculateStudentSubscriptionAllocations(
       || !Number.isSafeInteger(rule.id) || rule.id < 1
       || rule.currency.toUpperCase() !== "NGN"
       || rule.allocationTotal !== 5_000
-      || rule.schoolAmount !== 2_000
+      || rule.schoolAmount !== policy.schoolMinor / 100
       || rule.partnerAmount !== 100
-      || rule.edupulseAmount !== 2_900
+      || rule.edupulseAmount !== policy.platformWithPartnerMinor / 100
       || rule.schoolAmount + rule.partnerAmount + rule.edupulseAmount !== rule.allocationTotal) {
     throw new StudentSubscriptionBillingError(
       409,
@@ -122,8 +125,8 @@ export function calculateStudentSubscriptionAllocations(
     );
   }
   return [
-    { recipientType: "SCHOOL", recipientId: null, amountMinor: 200_000 },
-    { recipientType: "PLATFORM", recipientId: null, amountMinor: 290_000 },
+    { recipientType: "SCHOOL", recipientId: null, amountMinor: policy.schoolMinor },
+    { recipientType: "PLATFORM", recipientId: null, amountMinor: policy.platformWithPartnerMinor },
     { recipientType: "PARTNER", recipientId: input.partnerProfileId, amountMinor: 10_000 },
   ];
 }
@@ -234,6 +237,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     );
     const payment = locked.rows[0];
     if (!payment) throw new StudentSubscriptionBillingError(404, "Student subscription payment not found");
+    const policy = studentAllocationPolicy(payment.reference);
     let split: any = null;
     try { split = await validateSplitCollection(client, payment, verified); }
     catch {
@@ -438,12 +442,12 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
           WHERE status='ACTIVE' AND currency='NGN'
             AND (term=$1 OR term IS NULL)
             AND effective_at<=NOW() AND (ends_at IS NULL OR ends_at>NOW())
-            AND allocation_total=5000 AND school_amount=2000
-            AND partner_amount=100 AND edupulse_amount=2900
+            AND allocation_total=5000 AND school_amount=$2
+            AND partner_amount=100 AND edupulse_amount=$3
           ORDER BY (term=$1) DESC,effective_at DESC,id DESC
           LIMIT 1
           FOR SHARE`,
-        [payment.subscriptionTerm],
+        [payment.subscriptionTerm, policy.schoolMinor / 100, policy.platformWithPartnerMinor / 100],
       );
       const rule = ruleResult.rows[0];
       if (!rule) {
@@ -468,6 +472,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     let revenueAllocations: StudentSubscriptionAllocation[];
     try {
       revenueAllocations = calculateStudentSubscriptionAllocations({
+        policyVersion: policy.version,
         partnerProfileId: attribution ? Number(attribution.partnerProfileId) : null,
         commissionRule,
       });
@@ -510,13 +515,14 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
         payment.reference,
         attribution ? Number(attribution.partnerProfileId) : null,
         attribution ? 100 : null,
-        2_000,
-        attribution ? 2_900 : 3_000,
+        policy.schoolMinor / 100,
+        (attribution ? policy.platformWithPartnerMinor : policy.platformWithoutPartnerMinor) / 100,
         JSON.stringify({
           grossAmountMinor: STUDENT_SUBSCRIPTION_GROSS_MINOR,
           currency: "NGN",
-          schoolAmountMinor: 200_000,
-          platformAmountMinor: attribution ? 290_000 : 300_000,
+          policyVersion: policy.version,
+          schoolAmountMinor: policy.schoolMinor,
+          platformAmountMinor: attribution ? policy.platformWithPartnerMinor : policy.platformWithoutPartnerMinor,
           partnerAmountMinor: attribution ? 10_000 : 0,
           partnerProfileId: attribution ? Number(attribution.partnerProfileId) : null,
           attributionId: attribution ? Number(attribution.attributionId) : null,

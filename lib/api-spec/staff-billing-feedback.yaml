@@ -414,7 +414,7 @@ components:
         status: { type: ["string", "null"], enum: [PENDING, PAID, REVERSED, null] }
     StaffNfcPaymentSummary:
       type: object
-      required: [id, provider, providerMode, status, grossAmountMinor, providerFeeMinor, settlementAmountMinor, currency, settledAt, reconciliationStatus]
+      required: [id, provider, providerMode, status, grossAmountMinor, currency, settledAt, reconciliationStatus]
       properties:
         id: { type: integer }
         provider: { type: string, enum: [FLUTTERWAVE, MOCK] }
@@ -433,7 +433,7 @@ components:
         allocations: { type: array, items: { $ref: "#/components/schemas/StaffNfcAllocation" } }
     StaffNfcSubscription:
       type: object
-      required: [id, employeeId, employeeName, employeeNumber, schoolId, sessionId, sessionName, termId, termName, billingRuleId, billingRuleVersion, priceMinor, schoolShareMinor, platformShareMinor, partnerShareMinor, status, currency, dueDate, createdAt, cardStatus, isEligibleForNfc]
+      required: [id, employeeId, employeeName, employeeNumber, schoolId, sessionId, sessionName, termId, termName, priceMinor, status, currency, dueDate, createdAt, cardStatus, isEligibleForNfc]
       properties:
         id: { type: integer }
         employeeId: { type: integer }
@@ -531,7 +531,7 @@ components:
       required: [role, totals, items, nextCursor]
       properties:
         role: { type: string, enum: [SCHOOL_ADMIN, ACCOUNTANT, PLATFORM_OWNER, TEACHER, STAFF] }
-        totals: { type: object, required: [grossAmountMinor, schoolAllocationMinor, platformRevenueMinor, partnerCommissionMinor, providerFeeExpenseMinor, paidCount, pendingCount, failedCount, refundedCount], properties: { grossAmountMinor: { type: integer }, schoolAllocationMinor: { type: integer }, platformRevenueMinor: { type: integer }, partnerCommissionMinor: { type: integer }, providerFeeExpenseMinor: { type: integer }, paidCount: { type: integer }, pendingCount: { type: integer }, failedCount: { type: integer }, refundedCount: { type: integer } } }
+        totals: { type: object, required: [grossAmountMinor, paidCount, pendingCount, failedCount, refundedCount], properties: { grossAmountMinor: { type: integer }, schoolAllocationMinor: { type: integer }, platformRevenueMinor: { type: integer }, partnerCommissionMinor: { type: integer }, providerFeeExpenseMinor: { type: integer }, paidCount: { type: integer }, pendingCount: { type: integer }, failedCount: { type: integer }, refundedCount: { type: integer } } }
         items: { type: array, items: { $ref: "#/components/schemas/StaffNfcSubscription" } }
         nextCursor: { type: ["integer", "null"] }
     StaffNfcRefundInput:

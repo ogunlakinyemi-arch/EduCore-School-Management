@@ -13,6 +13,21 @@ const snapshot = {
   ],
 };
 
+it("preserves JSON dates and exposes only the school's own staff finance totals", () => {
+  const value = {
+    dueDate: new Date("2026-10-18T00:00:00Z"), grossAmountMinor: 500000,
+    schoolAllocationMinor: 190000, platformRevenueMinor: 300000,
+    partnerCommissionMinor: 10000, providerFeeExpenseMinor: 1000, paidCount: 1,
+  };
+  expect(visibleSubscription(value, false, "SCHOOL")).toEqual({
+    dueDate: "2026-10-18T00:00:00.000Z", grossAmountMinor: 500000, schoolAllocationMinor: 190000, paidCount: 1,
+  });
+  expect(visibleSubscription(value, false)).toEqual({
+    dueDate: "2026-10-18T00:00:00.000Z", grossAmountMinor: 500000, paidCount: 1,
+  });
+  expect(visibleSubscription(value, true)).toBe(value);
+});
+
 describe("subscription response privacy", () => {
   it("leaves the Owner response unchanged", () => {
     expect(visibleSubscription(snapshot, true)).toBe(snapshot);

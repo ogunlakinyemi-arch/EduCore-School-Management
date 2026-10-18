@@ -24,12 +24,12 @@ export interface StaffNfcPaymentSummary {
      * @minimum 0
      * @nullable
      */
-  providerFeeMinor: number | null;
+  providerFeeMinor?: number | null;
   /**
      * @minimum 0
      * @nullable
      */
-  settlementAmountMinor: number | null;
+  settlementAmountMinor?: number | null;
   currency: StaffNfcPaymentSummaryCurrency;
   /** @nullable */
   providerTransactionId?: string | null;

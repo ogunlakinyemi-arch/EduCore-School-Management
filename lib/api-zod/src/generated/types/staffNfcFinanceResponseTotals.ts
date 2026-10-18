@@ -8,10 +8,10 @@
 
 export type StaffNfcFinanceResponseTotals = {
   grossAmountMinor: number;
-  schoolAllocationMinor: number;
-  platformRevenueMinor: number;
-  partnerCommissionMinor: number;
-  providerFeeExpenseMinor: number;
+  schoolAllocationMinor?: number;
+  platformRevenueMinor?: number;
+  partnerCommissionMinor?: number;
+  providerFeeExpenseMinor?: number;
   paidCount: number;
   pendingCount: number;
   failedCount: number;

@@ -46,7 +46,7 @@ describe("Development guest NFC link isolation", () => {
     expect(result.checkoutUrl).toBeNull(); expect(result.receiptReference).toBeNull();
     expect(result.settlementStatus).toBe("UNVERIFIED");
     expect(result.amountDueMinor).toBe(500000);
-    expect(result.expectedAllocations).toEqual([{ recipientType: "SCHOOL", amountMinor: 200000 }, { recipientType: "PLATFORM", amountMinor: 300000 }]);
+    expect(result.expectedAllocations).toEqual([]);
   });
   it.each(["https://evil.test", "https://user:secret@checkout.flutterwave.com/pay", "http://checkout.flutterwave.com/pay"])("does not expose unsafe checkout %s", checkoutUrl => {
     expect(publicNfcLink(row({ mode: "FLUTTERWAVE_SANDBOX", payment_id: 17, paymentReference: "student_fixture", checkoutUrl })).checkoutUrl).toBeNull();
@@ -83,20 +83,27 @@ describe("Development guest NFC link isolation", () => {
   it("reuses the existing allocation calculator without an eligible Partner", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] });
     expect(await expectedNfcAllocations({ query }, { schoolId: 1 })).toEqual([
-      { recipientType: "SCHOOL", recipientId: null, amountMinor: 200000 },
-      { recipientType: "PLATFORM", recipientId: null, amountMinor: 300000 },
+      { recipientType: "SCHOOL", recipientId: null, amountMinor: 190000 },
+      { recipientType: "PLATFORM", recipientId: null, amountMinor: 310000 },
     ]);
   });
   it("uses the existing eligible Partner rule and handles numeric PostgreSQL values", async () => {
     const query = vi.fn().mockResolvedValueOnce({ rows: [{ partnerProfileId: 4 }] }).mockResolvedValueOnce({
-      rows: [{ id: 2, allocationTotal: "5000", schoolAmount: "2000", partnerAmount: "100", edupulseAmount: "2900", currency: "NGN" }],
+      rows: [{ id: 2, allocationTotal: "5000", schoolAmount: "1900", partnerAmount: "100", edupulseAmount: "3000", currency: "NGN" }],
     });
     const allocations = await expectedNfcAllocations({ query }, { schoolId: 1, subscriptionTerm: "FIRST" });
-    expect(allocations.map(a => a.amountMinor)).toEqual([200000, 290000, 10000]);
+    expect(allocations.map(a => a.amountMinor)).toEqual([190000, 300000, 10000]);
+    expect(query.mock.calls[1][1]).toEqual(["FIRST",1900,3000]);
     expect(allocations.reduce((n, a) => n + a.amountMinor, 0)).toBe(500000);
   });
   it("fails closed rather than inventing a missing eligible Partner rule", async () => {
     const query = vi.fn().mockResolvedValueOnce({ rows: [{ partnerProfileId: 4 }] }).mockResolvedValueOnce({ rows: [] });
     await expect(expectedNfcAllocations({ query }, { schoolId: 1 })).rejects.toThrow();
+  });
+  it("retains the legacy policy when previewing an already-bound old payment", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    expect((await expectedNfcAllocations({ query }, {
+      schoolId: 1, paymentReference: "student_existing_legacy_payment",
+    })).map(a => a.amountMinor)).toEqual([200000,300000]);
   });
 });

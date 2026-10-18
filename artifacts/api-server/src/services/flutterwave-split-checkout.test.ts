@@ -29,6 +29,31 @@ beforeEach(() => {
   });
 });
 afterEach(() => vi.unstubAllEnvs());
+it.each([true, false])("freezes and replays new-policy TEST instructions, Partner=%s", async hasPartner => {
+  const reference = payment.reference;
+  try {
+    payment.reference = `SCV2_${reference}`;
+    f.partnerEligible = hasPartner;
+    const original = f.query.getMockImplementation()!;
+    f.query.mockImplementation(async (sql: string, args: any[]) => sql.includes("pg_get_constraintdef")
+      ? { rows: [{ definition: "CHECK (left(reference,5)='SCV2_')" }] } : original(sql, args));
+    const first = await prepareSplitCheckout(40);
+    expect(first?.map(x => x.transaction_charge)).toEqual(hasPartner ? [1900, 100] : [1900]);
+    expect(f.snapshot.platform_amount_minor).toBe(hasPartner ? 300000 : 310000);
+    expect(f.query.mock.calls.find(c => c[0].includes("INSERT INTO flutterwave_split_payments"))?.[1][15]).toBe(190000);
+    expect(await prepareSplitCheckout(40)).toEqual(first);
+    expect(f.query.mock.calls.filter(c => c[0].includes("INSERT INTO flutterwave_split_payments"))).toHaveLength(1);
+    expect(f.query.mock.calls.some(c => c[0].includes("INSERT INTO flutterwave_split_settlements") && c[1][2] === 190000)).toBe(true);
+  } finally { payment.reference = reference; }
+});
+it("blocks new-policy TEST split checkout before provider initialization until its CHECK upgrade is present", async () => {
+  const reference = payment.reference;
+  try {
+    payment.reference = `SCV2_${reference}`;
+    await expect(prepareSplitCheckout(40)).rejects.toThrow("database policy upgrade is required");
+    expect(f.query.mock.calls.some(c => c[0].includes("INSERT INTO flutterwave_split_payments"))).toBe(false);
+  } finally { payment.reference = reference; }
+});
 it("preserves the default-off unsplit checkout",async() => {
   f.enabled=false; expect(await prepareSplitCheckout(40)).toBeUndefined();
   expect(f.query.mock.calls.some(c => c[0].includes("INSERT"))).toBe(false);

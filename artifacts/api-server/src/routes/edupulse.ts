@@ -1,6 +1,8 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
 import { visibleSubscription } from "../lib/subscription-visibility";
+import { newStudentPaymentReference } from "../lib/student-allocation-policy";
+import { splitAttribution } from "../services/flutterwave-split-checkout";
 import { resolveRegistrationClass, saveRegistrationAssignment, registrationParent } from "../lib/student-registration-assignment";
 import { generateSchoolCode } from "../lib/generated-person-codes";
 import {assignAvailableStudentCard} from "../services/student-card-assignment";
@@ -1014,6 +1016,7 @@ function cloneImmutableReceipt(value: any): any {
 }
 
 function schoolVisibleFinancialSnapshot(value: any): any {
+  value = visibleSubscription(value, false, "SCHOOL");
   if (Array.isArray(value)) {
     return value
       .filter((item) => !item || typeof item !== "object"
@@ -1245,7 +1248,8 @@ router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
         if(!canonical || Number(canonical.subscriptionId)!==subscriptionId) {
           throw new AuthError(409,"This academic period already has an authoritative NFC obligation or a legacy charge requiring Owner reconciliation","STUDENT_TERM_PAYMENT_ALREADY_EXISTS");
         }
-        const reference = adapter.generateReference();
+        await splitAttribution(client, Number(subscription.schoolId), subscription.term, 2);
+        const reference = newStudentPaymentReference(adapter.generateReference());
         const inserted = await client.query(
           `INSERT INTO student_subscription_payments (
              subscription_id,school_id,student_id,academic_session_id,academic_term_id,

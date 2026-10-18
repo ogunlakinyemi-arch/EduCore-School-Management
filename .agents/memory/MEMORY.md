@@ -71,3 +71,4 @@
 - [Repository references](repository-reference-policy.md) — compare current Replit source with freshly verified GitHub main before fixes; preserve local work and do not infer push permission.
 - [Subscription business policy](subscription-business-policy.md) — requested future 1,900/3,000/100 split, separate Owner provider fees, immutable history and Owner-only full disclosure.
 - [Employee deactivation boundary](employee-deactivation-boundary.md) — deny school employment permissions without globally disabling independent family or other-tenant access.
+- [Pooled PostgreSQL sessions](pooled-postgres-session-state.md) — pin a client for session-local SQL state; expected query errors can replace pooled connections.

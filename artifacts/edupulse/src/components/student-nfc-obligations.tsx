@@ -249,7 +249,7 @@ export function StudentNfcObligationsPanel({
       <h2 className="display-font mt-1 text-xl font-bold">Term NFC fee, shown separately</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
         NFC Card Subscription — {minorToNaira(500000)} per term. Payable separately through Flutterwave when genuine payments are configured. Schools cannot create or change it.
-        {isOwner && <> Expected allocations: {minorToNaira(200000)} to the school and {minorToNaira(300000)} to the platform before eligible Partner commission. These are not verified bank settlements.</>}
+        {isOwner && <> New checkout allocations: {minorToNaira(190000)} to the school and {minorToNaira(310000)} to the platform; an eligible Partner receives {minorToNaira(10000)} from the platform portion. The platform bears provider fees. Historical payments retain their original allocations. These are not verified bank settlements.</>}
         {teacherView && ' The school allocation is school revenue; it is not personal Teacher income and not an amount a Teacher pays.'}
         {' '}Terms already paid under the older school NFC charge are kept and flagged for Owner review; no second charge is made.
       </p>

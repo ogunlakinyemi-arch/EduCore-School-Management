@@ -4,12 +4,14 @@ import { fixedSplitInstructions, isSplitDevelopment, type FixedSplitInstruction 
 import type { StudentSubscriptionSqlClient } from "../lib/student-subscription-billing";
 import type { VerifiedPayment } from "../lib/fee-providers";
 import { assertNoLocalSplitSimulation } from "../lib/local-split-simulation-barrier";
+import { studentAllocationPolicy, type StudentAllocationVersion } from "../lib/student-allocation-policy";
 
 export async function frozenSplit(db: StudentSubscriptionSqlClient, paymentId: number) {
   if (!isSplitDevelopment()) return null;
   return (await db.query("SELECT * FROM flutterwave_split_payments WHERE payment_id=$1", [paymentId])).rows[0] ?? null;
 }
-export async function splitAttribution(db: StudentSubscriptionSqlClient, schoolId: number, term: string) {
+export async function splitAttribution(db: StudentSubscriptionSqlClient, schoolId: number, term: string, version: StudentAllocationVersion = 1) {
+  const policy = studentAllocationPolicy(version === 2 ? "SCV2_" : undefined);
   const a = (await db.query(
     `SELECT a.id,a.partner_profile_id FROM school_partner_attributions a
      JOIN partner_profiles pp ON pp.id=a.partner_profile_id
@@ -20,9 +22,10 @@ export async function splitAttribution(db: StudentSubscriptionSqlClient, schoolI
   if (!a) return null;
   const rule = (await db.query(
     `SELECT id FROM commission_rules WHERE status='ACTIVE' AND currency='NGN'
-      AND allocation_total=5000 AND school_amount=2000 AND partner_amount=100 AND edupulse_amount=2900
+      AND allocation_total=5000 AND school_amount=$2 AND partner_amount=100 AND edupulse_amount=$3
       AND (term=$1 OR term IS NULL) AND effective_at<=NOW() AND (ends_at IS NULL OR ends_at>NOW())
-     ORDER BY (term=$1) DESC,effective_at DESC,id DESC LIMIT 1 FOR SHARE`, [term],
+     ORDER BY (term=$1) DESC,effective_at DESC,id DESC LIMIT 1 FOR SHARE`,
+    [term, policy.schoolMinor / 100, policy.platformWithPartnerMinor / 100],
   )).rows[0];
   if (!rule) throw new AuthError(409, "Eligible partner has no matching effective commission rule");
   return { attributionId: Number(a.id), partnerId: Number(a.partner_profile_id), ruleId: Number(rule.id) };
@@ -51,12 +54,22 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
       "SELECT * FROM flutterwave_split_recipients WHERE school_id=$1 AND status='TEST_READY' FOR SHARE", [p.school_id],
     )).rows[0];
     if (!school) throw new AuthError(409, "School needs its own reviewed and provider-verified TEST subaccount");
-    const eligibility = await splitAttribution(db, p.school_id, p.term);
+    const policy = studentAllocationPolicy(p.reference);
+    if (policy.version === 2) {
+      const constraint = (await db.query(
+        `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+          WHERE conrelid='flutterwave_split_payments'::regclass AND conname='flw_split_amounts_ck'`,
+      )).rows[0];
+      if (!constraint?.definition?.includes("SCV2_")) {
+        throw new AuthError(409, "TEST split database policy upgrade is required before new-policy checkout");
+      }
+    }
+    const eligibility = await splitAttribution(db, p.school_id, p.term, policy.version);
     const partner = eligibility ? (await db.query(
       "SELECT * FROM flutterwave_split_recipients WHERE partner_profile_id=$1 AND status='TEST_READY' FOR SHARE", [eligibility.partnerId],
     )).rows[0] : null;
     if (eligibility && !partner) throw new AuthError(409, "Eligible partner needs its own reviewed and provider-verified TEST subaccount");
-    const instructions = fixedSplitInstructions(school.provider_subaccount_id, partner?.provider_subaccount_id ?? null);
+    const instructions = fixedSplitInstructions(school.provider_subaccount_id, partner?.provider_subaccount_id ?? null, policy.version);
     if (existing) {
       const canonicalInstructions = (value: FixedSplitInstruction[]) => JSON.stringify(
         value.map(s => [s.id,s.transaction_charge_type,s.transaction_charge]));
@@ -71,13 +84,14 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
       await db.query(
         `INSERT INTO flutterwave_split_payments(payment_id,school_id,student_id,subscription_id,session_id,term_id,reference,
            school_recipient_id,partner_recipient_id,partner_profile_id,attribution_id,commission_rule_id,
-           instructions,partner_amount_minor,platform_amount_minor)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15)`,
+           instructions,partner_amount_minor,platform_amount_minor,school_amount_minor)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16)`,
         [paymentId,p.school_id,p.student_id,p.subscription_id,p.academic_session_id,p.academic_term_id,p.reference,
           school.id,partner?.id ?? null,eligibility?.partnerId ?? null,eligibility?.attributionId ?? null,
-          eligibility?.ruleId ?? null,JSON.stringify(instructions),eligibility ? 10000 : 0,eligibility ? 290000 : 300000],
+          eligibility?.ruleId ?? null,JSON.stringify(instructions),eligibility ? 10000 : 0,
+          eligibility ? policy.platformWithPartnerMinor : policy.platformWithoutPartnerMinor, policy.schoolMinor],
       );
-      for (const r of [{ id: school.id, amount: 200000 }, ...(partner ? [{ id: partner.id, amount: 10000 }] : [])]) {
+      for (const r of [{ id: school.id, amount: policy.schoolMinor }, ...(partner ? [{ id: partner.id, amount: 10000 }] : [])]) {
         await db.query(
           `INSERT INTO flutterwave_split_settlements(payment_id,recipient_id,expected_amount_minor)
            VALUES($1,$2,$3) ON CONFLICT(payment_id,recipient_id) DO NOTHING`, [paymentId,r.id,r.amount],
@@ -113,7 +127,7 @@ export async function validateSplitCollection(db: StudentSubscriptionSqlClient, 
   if (verified.providerChargedAmountMinor !== 500000) {
     throw new AuthError(409, "Provider must independently confirm the payer was charged exactly NGN 5000 without a surcharge");
   }
-  const attribution = await splitAttribution(db, split.school_id, payment.subscriptionTerm);
+  const attribution = await splitAttribution(db, split.school_id, payment.subscriptionTerm, studentAllocationPolicy(split.reference).version);
   if ((attribution?.attributionId ?? null) !== split.attribution_id
       || (attribution?.partnerId ?? null) !== split.partner_profile_id
       || (attribution?.ruleId ?? null) !== split.commission_rule_id) {

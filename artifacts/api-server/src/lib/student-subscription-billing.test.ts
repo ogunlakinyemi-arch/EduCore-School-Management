@@ -39,7 +39,7 @@ class FinalizationMemoryPool {
   logoVersionId: number | null = null;
   termPaymentConflict: { id: number; subscriptionId: number; status: string } | null = null;
   private transactionTail = Promise.resolve();
-  constructor(private readonly attributed: boolean) {}
+  constructor(private readonly attributed: boolean, private readonly policyVersion: 1 | 2 = 1) {}
 
   async connect() {
     let releaseTransaction: (() => void) | undefined;
@@ -75,7 +75,7 @@ class FinalizationMemoryPool {
         payerUserId: 6,
         provider: "FLUTTERWAVE",
         providerMode: "SANDBOX",
-        reference: expected.reference,
+        reference: this.policyVersion === 2 ? `SCV2_${expected.reference}` : expected.reference,
         grossAmountMinor: 500_000,
         currency: "NGN",
          status: this.paymentStatus,
@@ -103,7 +103,8 @@ class FinalizationMemoryPool {
       return { rows: this.attributed ? [{ attributionId: 22, partnerProfileId: 44 }] : [] };
     }
     if (sql.includes("FROM commission_rules")) {
-      return { rows: [partnerRule] };
+      return { rows: [this.policyVersion === 2
+        ? { ...partnerRule, schoolAmount: 1900, edupulseAmount: 3000 } : partnerRule] };
     }
     if (sql.includes("UPDATE subscriptions")) return { rows: [{ id: 12 }] };
     if (sql.includes("INSERT INTO student_subscription_allocations")) {
@@ -213,6 +214,21 @@ describe("student subscription trusted billing policy", () => {
     ]);
     expect(database.partnerLedgerCount).toBe(0);
     expect(database.paymentStatus).toBe("PAID");
+  });
+
+  it.each([true, false])("finalizes new-policy allocations, fees and replay without reducing recipients, Partner=%s", async attributed => {
+    const database = new FinalizationMemoryPool(attributed, 2);
+    const payment = { ...verified, reference: `SCV2_${expected.reference}`, providerFeeMinor: 1500, providerSettlementAmountMinor: 498500 };
+    const first = await finalizeVerifiedStudentSubscriptionPayment(database, 17, payment);
+    expect(first.status).toBe("PAID");
+    expect(database.allocations.filter(x => x.entryType === "CREDIT").map(x => x.amountMinor))
+      .toEqual(attributed ? [190000, 300000, 10000] : [190000, 310000]);
+    expect(database.allocations).toContainEqual({
+      entryType: "EXPENSE", recipientType: "PLATFORM_PROVIDER_FEE", recipientId: null, amountMinor: 1500,
+    });
+    const before = structuredClone(database.allocations);
+    await finalizeVerifiedStudentSubscriptionPayment(database, 17, payment);
+    expect(database.allocations).toEqual(before);
   });
 
   it("finalizes an eligible Partner allocation and a positive provider fee as a separate expense", async () => {

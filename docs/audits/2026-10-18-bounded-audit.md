@@ -1,5 +1,9 @@
 # Yetenia EduCore bounded audit — 2026-10-18
 
+Follow-up: [versioned subscription policy and disclosure verification](2026-10-18-subscription-policy.md).
+That follow-up supersedes the allocation and TypeScript status below; this report
+otherwise describes the original bounded pass.
+
 ## Completion boundary
 
 This was a partial audit/fix pass, not completion of the entire request and not
@@ -66,8 +70,8 @@ files matched. Local changes were preserved.
   membership SQL. The temporary database was stopped and removed.
 - API build/restart succeeded; frontend restart succeeded; Development
   `/api/healthz` returned 200; sign-in screenshot rendered.
-- Full API typecheck remains blocked by five errors in the unchanged
-  `src/lib/api-bootstrap.test.ts`. Do not describe all project checks as green.
+- The original API typecheck was blocked by five bootstrap-test errors. Those
+  were subsequently corrected; API and frontend TypeScript checks now pass.
 - The unrelated NFC Hardware Test workflow remains failed; hardware work was
   not attempted. Production deployment logs also showed communication-worker
   errors; these were not resolved or treated as proof of the reported bugs.

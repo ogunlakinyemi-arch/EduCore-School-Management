@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import { isFlutterwaveTestCheckoutUrl } from "../lib/flutterwave-checkout-url";
 import { AuthError } from "../middlewares/auth";
 import { calculateStudentSubscriptionAllocations, type StudentSubscriptionSqlClient } from "../lib/student-subscription-billing";
+import { studentAllocationPolicy } from "../lib/student-allocation-policy";
 
 export function requireNfcLinkDevelopment() {
   if (process.env.NODE_ENV !== "development" || process.env.REPLIT_DEPLOYMENT) {
@@ -87,14 +88,15 @@ export function publicNfcLink(row: any) {
     checkoutUrl,
     // Never manufacture a receipt for a simulation or reveal a full financial snapshot.
     receiptReference: status === "PAID" && row.receiptSnapshot ? row.paymentReference ?? null : null,
-    expectedAllocations: (row.expected_allocations as any[]).map(a => ({
-      recipientType: a.recipientType, amountMinor: a.amountMinor,
-    })),
+    // This serializer also serves unauthenticated payers. Internal forecasts
+    // remain persisted for audit; public links never disclose recipient shares.
+    expectedAllocations: [],
   };
 }
 
 /** Same eligibility lookup as existing billing, for an explicitly NONfinancial preview. */
 export async function expectedNfcAllocations(db: StudentSubscriptionSqlClient, scope: any) {
+  const policy = studentAllocationPolicy(scope.paymentReference ?? "SCV2_");
   const attribution = (await db.query(
     `SELECT a.partner_profile_id AS "partnerProfileId"
        FROM school_partner_attributions a JOIN partner_profiles pp ON pp.id=a.partner_profile_id
@@ -102,18 +104,19 @@ export async function expectedNfcAllocations(db: StudentSubscriptionSqlClient, s
         AND a.starts_at<=NOW() AND (a.ends_at IS NULL OR a.ends_at>NOW())
       ORDER BY a.starts_at DESC,a.id DESC LIMIT 1`, [scope.schoolId],
   )).rows[0];
-  if (!attribution) return calculateStudentSubscriptionAllocations({ partnerProfileId: null });
+  if (!attribution) return calculateStudentSubscriptionAllocations({ partnerProfileId: null, policyVersion: policy.version });
   const rule = (await db.query(
     `SELECT id,allocation_total AS "allocationTotal",school_amount AS "schoolAmount",
             partner_amount AS "partnerAmount",edupulse_amount AS "edupulseAmount",currency
        FROM commission_rules WHERE status='ACTIVE' AND currency='NGN'
          AND (term=$1 OR term IS NULL) AND effective_at<=NOW() AND (ends_at IS NULL OR ends_at>NOW())
-         AND allocation_total=5000 AND school_amount=2000 AND partner_amount=100 AND edupulse_amount=2900
+          AND allocation_total=5000 AND school_amount=$2 AND partner_amount=100 AND edupulse_amount=$3
        ORDER BY (term=$1) DESC,effective_at DESC,id DESC LIMIT 1 FOR SHARE`,
-    [scope.subscriptionTerm],
+    [scope.subscriptionTerm, policy.schoolMinor / 100, policy.platformWithPartnerMinor / 100],
   )).rows[0];
   if (!rule) throw new AuthError(409, "The existing eligible Partner commission rule must be configured");
   return calculateStudentSubscriptionAllocations({
+    policyVersion: policy.version,
     partnerProfileId: Number(attribution.partnerProfileId),
     commissionRule: {
       id: Number(rule.id), allocationTotal: Number(rule.allocationTotal),

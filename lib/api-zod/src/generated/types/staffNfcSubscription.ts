@@ -26,16 +26,16 @@ export interface StaffNfcSubscription {
   sessionName: string;
   termId: number;
   termName: string;
-  billingRuleId: number;
-  billingRuleVersion: number;
+  billingRuleId?: number;
+  billingRuleVersion?: number;
   /** @minimum 0 */
   priceMinor: number;
   /** @minimum 0 */
-  schoolShareMinor: number;
+  schoolShareMinor?: number;
   /** @minimum 0 */
-  platformShareMinor: number;
+  platformShareMinor?: number;
   /** @minimum 0 */
-  partnerShareMinor: number;
+  partnerShareMinor?: number;
   status: StaffNfcSubscriptionStatus;
   currency: StaffNfcSubscriptionCurrency;
   dueDate: Date;
