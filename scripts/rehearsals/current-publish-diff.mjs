@@ -7,9 +7,10 @@ import { createHash } from "node:crypto";
 import { createDisposable, databaseClient, verifyToolchain } from "../src/dev-backup/processes.mjs";
 
 const root = process.cwd();
+const apiCompatibility = process.argv.includes("--api-compatibility");
 const dir = path.resolve(root, ".local/release-rehearsal/2026-10-18-current-diff");
 const read = async name => JSON.parse(await fs.readFile(path.join(dir, name + ".json"), "utf8"));
-const write = async (name, value) => fs.writeFile(path.join(dir, name + ".json"),
+const write = async (name, value) => fs.writeFile(path.join(dir, (apiCompatibility ? "api-" : "") + name + ".json"),
   JSON.stringify(value, null, 2) + "\n", { mode: 0o600 });
 const q = value => '"' + value.replaceAll('"', '""') + '"';
 const digest = value => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -211,7 +212,7 @@ try {
     assert.equal(actual, capturedDigests[section], "CAPTURE_CHANGED_OR_INCOMPLETE:" + section);
   }
   pass("Captured catalog slices match final source metadata digests");
-  for (const label of ["empty", "populated"]) {
+  for (const label of (apiCompatibility ? ["populated"] : ["empty", "populated"])) {
     const database = "release_rehearsal_" + label;
     await admin.query(`CREATE DATABASE ${q(database)} OWNER restore_check TEMPLATE template0
       ENCODING 'UTF8' LC_COLLATE '${rebuild.collate.replaceAll("'", "''")}' LC_CTYPE '${rebuild.ctype.replaceAll("'", "''")}'`);
@@ -241,8 +242,17 @@ try {
         assert.ok(probes.every(p => p.status === "PASS"), "BEHAVIORAL_PROBE_FAILED");
       }
       await write(label + "-after-catalog", actual);
+      if (apiCompatibility) {
+        await client.query("COMMIT"); // Only the owned disposable DB, so routes may use their own transactions.
+        const { runCurrentReleaseApi } = await import("./current-release-api.mjs");
+        const apiResults = await runCurrentReleaseApi(client, cluster);
+        await write("checks", apiResults);
+        result.tests.push(...apiResults.tests);
+        assert.ok(apiResults.tests.every(t => t.status === "PASS"), "CURRENT_API_COMPATIBILITY_FAILED");
+      } else {
       await client.query("ROLLBACK");
       pass(label + ": all 646 statements executed in exact order", { executed, transactionRolledBack: true });
+      }
     } catch (error) {
       await client.query("ROLLBACK");
       result.tests.push({ name: label + ": exact current diff", status: "FAIL", executed,
@@ -251,9 +261,11 @@ try {
       // Values and errors below concern fictional local records only.
       console.log("FAIL", label, "after", executed, "SQLSTATE", error.code || "ASSERTION", error.message);
     }
-    const rolledBack = await catalog(client);
-    for (const section of Object.keys(source)) assert.ok(equal(source[section], rolledBack[section]), "ROLLBACK_CATALOG_DRIFT:" + section);
-    pass(label + ": transaction rollback restored source-shaped catalog");
+    if (!apiCompatibility) {
+      const rolledBack = await catalog(client);
+      for (const section of Object.keys(source)) assert.ok(equal(source[section], rolledBack[section]), "ROLLBACK_CATALOG_DRIFT:" + section);
+      pass(label + ": transaction rollback restored source-shaped catalog");
+    }
   }
   result.status = result.tests.some(t => t.status === "FAIL") ? "FAIL" : "PASS";
 } catch (error) {
