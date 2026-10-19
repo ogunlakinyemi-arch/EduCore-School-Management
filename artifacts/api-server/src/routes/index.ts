@@ -12,6 +12,7 @@ import assistedNfcPaymentsRouter from "./assisted-nfc-payments";
 import partnersRouter, { publicPartnersRouter } from "./partners";
 import bootstrapRouter from "./bootstrap";
 import devOwnerAccessDiagnosticRouter from "./dev-owner-access-diagnostic";
+import devPaymentDiagnosticRouter from "./dev-payment-diagnostic";
 import platformRouter from "./platform";
 import platformWorkspaceRouter from "./platform-workspace";
 import attendanceRouter from "./attendance";
@@ -57,6 +58,8 @@ import partnerNfcRouter from "./partner-nfc";
 import nfcPaymentLinksRouter from "./nfc-payment-links";
 
 const router: IRouter = Router();
+// Mount before routers that can provision identity or enforce mutable eligibility.
+if (process.env.NODE_ENV === "development") router.use(devPaymentDiagnosticRouter);
 router.use(rejectOperationalSimulation);
 router.use(localSplitSimulationRouter);
 router.use(flutterwaveSplitsRouter);

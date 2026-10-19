@@ -1,0 +1,46 @@
+paymentDiagnostic:
+  get:
+    operationId: getDevelopmentPaymentDiagnostic
+    tags: [finance]
+    summary: Read sanitized local TEST payment evidence without provider calls
+    description: |
+      Development-only active global Platform Owner diagnostic. Exactly one
+      selector is required. No identity provisioning or provider requests.
+      Requires fresh independent Development binding before any DB connection.
+      Exact txRef searches the base payment table, including payments without
+      split plans. flutterwaveReference currently returns LOOKUP_UNAVAILABLE,
+      not NOT_FOUND, because this pipeline does not persist Flutterwave flw_ref.
+      Historical amounts are returned as saved, never recalculated.
+      No customer data, bank details, raw payloads or receipt snapshots returned.
+    parameters:
+      - in: query
+        name: txRef
+        schema: { type: string, pattern: '^[A-Za-z0-9_-]{8,100}$' }
+        description: Exact full application tx_ref, not a prefix.
+      - in: query
+        name: flutterwaveReference
+        schema: { type: string, pattern: '^[A-Za-z0-9_-]{8,100}$' }
+        description: Exact flw_ref; not interchangeable with provider transaction ID.
+    responses:
+      "200":
+        description: Sanitized saved evidence, NOT_FOUND, or LOOKUP_UNAVAILABLE.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome:
+                  type: string
+                  enum: [FOUND, NOT_FOUND, LOOKUP_UNAVAILABLE]
+              additionalProperties: true
+      "400":
+        description: Exactly one valid reference required; unknown parameters rejected.
+      "401":
+        description: No authenticated session.
+      "403":
+        description: No active global Owner membership or restricted internal role.
+      "404":
+        description: Development/deployment veto.
+      "503":
+        description: Missing, stale or mismatched independent binding or unavailable local evidence.

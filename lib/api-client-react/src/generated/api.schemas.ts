@@ -21671,6 +21671,33 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type GetDevelopmentPaymentDiagnosticParams = {
+/**
+ * Exact full application tx_ref, not a prefix.
+ * @pattern ^[A-Za-z0-9_-]{8,100}$
+ */
+txRef?: string;
+/**
+ * Exact flw_ref; not interchangeable with provider transaction ID.
+ * @pattern ^[A-Za-z0-9_-]{8,100}$
+ */
+flutterwaveReference?: string;
+};
+
+export type GetDevelopmentPaymentDiagnostic200Outcome = typeof GetDevelopmentPaymentDiagnostic200Outcome[keyof typeof GetDevelopmentPaymentDiagnostic200Outcome];
+
+
+export const GetDevelopmentPaymentDiagnostic200Outcome = {
+  FOUND: 'FOUND',
+  NOT_FOUND: 'NOT_FOUND',
+  LOOKUP_UNAVAILABLE: 'LOOKUP_UNAVAILABLE',
+} as const;
+
+export type GetDevelopmentPaymentDiagnostic200 = {
+  outcome: GetDevelopmentPaymentDiagnostic200Outcome;
+  [key: string]: unknown;
+ };
+
 export type GetReportFilterOptionsParams = {
 /**
  * @minimum 1

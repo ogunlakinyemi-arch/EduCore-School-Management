@@ -9,6 +9,31 @@ import * as zod from 'zod';
 
 
 /**
+ * Development-only active global Platform Owner diagnostic. Exactly one
+ * selector is required. No identity provisioning or provider requests.
+ * Requires fresh independent Development binding before any DB connection.
+ * Exact txRef searches the base payment table, including payments without
+ * split plans. flutterwaveReference currently returns LOOKUP_UNAVAILABLE,
+ * not NOT_FOUND, because this pipeline does not persist Flutterwave flw_ref.
+ * Historical amounts are returned as saved, never recalculated.
+ * No customer data, bank details, raw payloads or receipt snapshots returned.
+ * @summary Read sanitized local TEST payment evidence without provider calls
+ */
+export const getDevelopmentPaymentDiagnosticQueryTxRefRegExp = new RegExp('^[A-Za-z0-9_-]{8,100}$');
+export const getDevelopmentPaymentDiagnosticQueryFlutterwaveReferenceRegExp = new RegExp('^[A-Za-z0-9_-]{8,100}$');
+
+
+export const GetDevelopmentPaymentDiagnosticQueryParams = zod.object({
+  "txRef": zod.coerce.string().regex(getDevelopmentPaymentDiagnosticQueryTxRefRegExp).optional().describe('Exact full application tx_ref, not a prefix.'),
+  "flutterwaveReference": zod.coerce.string().regex(getDevelopmentPaymentDiagnosticQueryFlutterwaveReferenceRegExp).optional().describe('Exact flw_ref; not interchangeable with provider transaction ID.')
+})
+
+export const GetDevelopmentPaymentDiagnosticResponse = zod.object({
+  "outcome": zod.enum(['FOUND', 'NOT_FOUND', 'LOOKUP_UNAVAILABLE'])
+})
+
+
+/**
  * Report-authorized, tenant-scoped dropdown choices. Family and teacher catalogs remain relationship scoped. Choices do not authorize report access or replace server validation.
  */
 export const GetReportFilterOptionsParams = zod.object({

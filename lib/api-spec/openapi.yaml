@@ -34,6 +34,8 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /dev/payment-diagnostic:
+    $ref: "./development-payment-diagnostic.yaml#/paymentDiagnostic"
   /reports/{reportId}/filter-options:
     $ref: "./report-filter-options.yaml#/paths/~1reports~1{reportId}~1filter-options"
   /v1/terminal/events:

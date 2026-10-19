@@ -332,6 +332,8 @@ import type {
   GetCommunicationPreferencesParams,
   GetCommunicationPushConfiguration200,
   GetCompanyPayrollReportParams,
+  GetDevelopmentPaymentDiagnostic200,
+  GetDevelopmentPaymentDiagnosticParams,
   GetDriverTransportParams,
   GetEmployeeParams,
   GetFeePaymentReceiptParams,
@@ -876,6 +878,98 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetDevelopmentPaymentDiagnosticUrl = (params?: GetDevelopmentPaymentDiagnosticParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dev/payment-diagnostic?${stringifiedParams}` : `/api/dev/payment-diagnostic`
+}
+
+/**
+ * Development-only active global Platform Owner diagnostic. Exactly one
+ * selector is required. No identity provisioning or provider requests.
+ * Requires fresh independent Development binding before any DB connection.
+ * Exact txRef searches the base payment table, including payments without
+ * split plans. flutterwaveReference currently returns LOOKUP_UNAVAILABLE,
+ * not NOT_FOUND, because this pipeline does not persist Flutterwave flw_ref.
+ * Historical amounts are returned as saved, never recalculated.
+ * No customer data, bank details, raw payloads or receipt snapshots returned.
+ * @summary Read sanitized local TEST payment evidence without provider calls
+ */
+export const getDevelopmentPaymentDiagnostic = async (params?: GetDevelopmentPaymentDiagnosticParams, options?: Parameters<typeof customFetch>[1]): Promise<GetDevelopmentPaymentDiagnostic200> => {
+
+  return customFetch<GetDevelopmentPaymentDiagnostic200>(getGetDevelopmentPaymentDiagnosticUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDevelopmentPaymentDiagnosticQueryKey = (params?: GetDevelopmentPaymentDiagnosticParams,) => {
+    return [
+    `/api/dev/payment-diagnostic`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDevelopmentPaymentDiagnosticQueryOptions = <TData = Awaited<ReturnType<typeof getDevelopmentPaymentDiagnostic>>, TError = ErrorType<void>>(params?: GetDevelopmentPaymentDiagnosticParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDevelopmentPaymentDiagnostic>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDevelopmentPaymentDiagnosticQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDevelopmentPaymentDiagnostic>>> = ({ signal }) => getDevelopmentPaymentDiagnostic(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDevelopmentPaymentDiagnostic>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDevelopmentPaymentDiagnosticQueryResult = NonNullable<Awaited<ReturnType<typeof getDevelopmentPaymentDiagnostic>>>
+export type GetDevelopmentPaymentDiagnosticQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read sanitized local TEST payment evidence without provider calls
+ */
+
+export function useGetDevelopmentPaymentDiagnostic<TData = Awaited<ReturnType<typeof getDevelopmentPaymentDiagnostic>>, TError = ErrorType<void>>(
+ params?: GetDevelopmentPaymentDiagnosticParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDevelopmentPaymentDiagnostic>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDevelopmentPaymentDiagnosticQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetReportFilterOptionsUrl = (reportId: string,
     params?: GetReportFilterOptionsParams,) => {
