@@ -12,6 +12,8 @@ export const GetMyAccountApplicationResponse = zod.object({
   "application": zod.union([zod.object({
   "id": zod.number().int(),
   "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "fullName": zod.string(),
+  "partnerType": zod.union([zod.literal('BUSINESS'),zod.literal('INDIVIDUAL'),zod.literal(null)]).nullish(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),
@@ -32,17 +34,16 @@ export const GetMyAccountApplicationResponse = zod.object({
 })
 
 
-export const submitAccountApplicationBodyFirstNameMax = 100;
+export const submitAccountApplicationBodyFullNameMin = 2;
+export const submitAccountApplicationBodyFullNameMax = 200;
 
-export const submitAccountApplicationBodyLastNameMax = 100;
+export const submitAccountApplicationBodyEmailMax = 254;
 
 export const submitAccountApplicationBodyPhoneMin = 7;
 export const submitAccountApplicationBodyPhoneMax = 32;
 
-export const submitAccountApplicationBodyCityMin = 2;
 export const submitAccountApplicationBodyCityMax = 100;
 
-export const submitAccountApplicationBodyStateMin = 2;
 export const submitAccountApplicationBodyStateMax = 100;
 
 export const submitAccountApplicationBodySchoolNameMin = 2;
@@ -59,11 +60,12 @@ export const submitAccountApplicationBodyReferralTokenMax = 256;
 
 export const SubmitAccountApplicationBody = zod.object({
   "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
-  "firstName": zod.string().min(1).max(submitAccountApplicationBodyFirstNameMax),
-  "lastName": zod.string().min(1).max(submitAccountApplicationBodyLastNameMax),
+  "fullName": zod.string().min(submitAccountApplicationBodyFullNameMin).max(submitAccountApplicationBodyFullNameMax),
+  "email": zod.string().email().max(submitAccountApplicationBodyEmailMax).optional().describe('Required for Partner; must match the verified account email.'),
+  "partnerType": zod.enum(['BUSINESS', 'INDIVIDUAL']).optional().describe('Required for Partner; omitted for School Admin.'),
   "phone": zod.string().min(submitAccountApplicationBodyPhoneMin).max(submitAccountApplicationBodyPhoneMax),
-  "city": zod.string().min(submitAccountApplicationBodyCityMin).max(submitAccountApplicationBodyCityMax),
-  "state": zod.string().min(submitAccountApplicationBodyStateMin).max(submitAccountApplicationBodyStateMax),
+  "city": zod.string().max(submitAccountApplicationBodyCityMax).optional(),
+  "state": zod.string().max(submitAccountApplicationBodyStateMax).optional(),
   "schoolName": zod.string().min(submitAccountApplicationBodySchoolNameMin).max(submitAccountApplicationBodySchoolNameMax).optional(),
   "businessName": zod.string().max(submitAccountApplicationBodyBusinessNameMax).optional(),
   "address": zod.string().max(submitAccountApplicationBodyAddressMax).optional(),
@@ -73,6 +75,8 @@ export const SubmitAccountApplicationBody = zod.object({
 export const SubmitAccountApplicationResponse = zod.object({
   "id": zod.number().int(),
   "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "fullName": zod.string(),
+  "partnerType": zod.union([zod.literal('BUSINESS'),zod.literal('INDIVIDUAL'),zod.literal(null)]).nullish(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),
@@ -94,6 +98,8 @@ export const SubmitAccountApplicationResponse = zod.object({
 export const GetAccountApplicationsResponseItem = zod.object({
   "id": zod.number().int(),
   "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "fullName": zod.string(),
+  "partnerType": zod.union([zod.literal('BUSINESS'),zod.literal('INDIVIDUAL'),zod.literal(null)]).nullish(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),
@@ -132,6 +138,8 @@ export const DecideAccountApplicationBody = zod.object({
 export const DecideAccountApplicationResponse = zod.object({
   "id": zod.number().int(),
   "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "fullName": zod.string(),
+  "partnerType": zod.union([zod.literal('BUSINESS'),zod.literal('INDIVIDUAL'),zod.literal(null)]).nullish(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),

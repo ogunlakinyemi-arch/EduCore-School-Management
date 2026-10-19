@@ -7,7 +7,9 @@ import {
   invitationReturnUrl,
   readInvitationContext,
 } from '@/pages/invitations/acceptance-context';
-import { parseApplicantType, saveApplicationIntent, readApplicationIntent, type ApplicantType } from '@/lib/application-intent';
+import { parseApplicantType, saveApplicationIntent, readApplicationIntent } from '@/lib/application-intent';
+import { ApplicationForm } from '@/components/application-form';
+import { emptyValues, loadDraft, saveDraft, switchApplicantType, validateApplication, type ApplicationValues, type FieldErrors } from '@/lib/application-draft';
 import { shouldEndPreviousSignInSession } from '@/lib/sign-in-session-policy';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -90,29 +92,26 @@ function SignInSessionGate({
   );
 }
 
-function ApplicantChooser({ onChoose }: { onChoose: (t: ApplicantType) => void }) {
-  return (
-    <div className="w-full max-w-sm" data-testid="applicant-chooser">
-      <h2 className="display-font text-2xl font-bold">Apply for an account</h2>
-      <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Choose how you want to use Yetenia EduCore. Applications are reviewed before access is granted.</p>
-      <div className="mt-5 grid gap-3">
-        <button type="button" data-testid="choose-school-admin" onClick={() => onChoose('SCHOOL_ADMIN')} className="rounded-xl border border-[hsl(var(--border))] p-4 text-left text-sm font-bold hover:border-[hsl(var(--primary)/.5)]">School Admin</button>
-        <button type="button" data-testid="choose-partner" onClick={() => onChoose('PARTNER')} className="rounded-xl border border-[hsl(var(--border))] p-4 text-left text-sm font-bold hover:border-[hsl(var(--primary)/.5)]">Partner</button>
-      </div>
-    </div>
-  );
-}
-
 export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [, navigate] = useLocation();
   const isSignIn = mode === 'sign-in';
   const [accountType, setAccountType] = useState('');
-  const [chosen, setChosen] = useState<ApplicantType | null>(() => {
+  const [values, setValues] = useState<ApplicationValues>(() => {
     const q = new URLSearchParams(window.location.search);
     const t = parseApplicantType(q.get('applicantType'));
-    if (t) { saveApplicationIntent(t, q.get('ref')); return t; }
-    return readApplicationIntent().type;
+    const priorIntent = readApplicationIntent();
+    const referralToken = q.get('ref') ?? priorIntent.referralToken;
+    if (t) saveApplicationIntent(t, t === 'SCHOOL_ADMIN' ? referralToken : '');
+    const intent = readApplicationIntent();
+    const draft = loadDraft();
+    const initial = draft ? (t ? switchApplicantType(draft, t) : draft)
+      : emptyValues(t ?? intent.type ?? 'SCHOOL_ADMIN', referralToken);
+    return { ...initial, referralToken: initial.applicantType === 'SCHOOL_ADMIN'
+      ? referralToken || initial.referralToken : '' };
   });
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [authStep, setAuthStep] = useState(() => (window.location.pathname ?? '').replace(/\/$/, '') !== `${base}/sign-up` && (window.location.pathname ?? '').startsWith(`${base}/sign-up/`) && loadDraft() !== null);
   const invitationContext = readInvitationContext(window.location.search);
   const invitationRedirectUrl = invitationContext.ticket
     ? invitationReturnUrl(invitationContext, base)
@@ -123,7 +122,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const signInUrl = `${base}/sign-in${invitationQuery}`;
   const signUpUrl = `${base}/sign-up${invitationQuery}`;
   const isPublicApplication = !isSignIn && !invitationContext.ticket;
-  const signUpRedirect = invitationRedirectUrl ?? (isPublicApplication ? `${base}/apply` : undefined);
+  const signUpRedirect = invitationRedirectUrl ?? (isPublicApplication ? `${base}/apply?submit=1` : undefined);
 
   useEffect(() => {
     if (invitationContext.ticket) {
@@ -186,35 +185,45 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           )}
           {isSignIn ? (
             <SignInSessionGate invitationRedirectUrl={invitationRedirectUrl} signUpUrl={signUpUrl} />
-          ) : isPublicApplication && !chosen ? (
-            <ApplicantChooser onChoose={t => { saveApplicationIntent(t, readApplicationIntent().referralToken); setChosen(t); }} />
+          ) : isPublicApplication && !authStep ? (
+            <ApplicationForm values={values} onChange={setValues} errors={errors} formError={formError}
+              onSubmit={() => {
+                const r = validateApplication(values);
+                setErrors(r.errors);
+                if (!r.data) { setFormError('Please correct the highlighted fields.'); return; }
+                const saved = saveDraft(values);
+                if (!saved.ok) { setFormError(saved.error ?? 'Could not save your application.'); return; }
+                saveApplicationIntent(values.applicantType, values.referralToken);
+                setFormError(null);
+                setAuthStep(true);
+              }} />
           ) : (
             <>
             {isPublicApplication && (
               <div className="mb-5 w-full min-w-0 max-w-sm rounded-xl border border-[hsl(var(--border))] p-3 text-sm" data-testid="application-approval-notice">
-                <h2 className="font-bold">{chosen === 'PARTNER' ? 'Partner' : 'School Admin'} application</h2>
+                <h2 className="font-bold">{values.applicantType === 'PARTNER' ? 'Partner' : 'School Admin'} application</h2>
                 <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
-                  Create your sign-in account, then complete your application. Platform Owner approval is required before you can access a dashboard.
+                  Your details are saved for this browser session only. Create your account with email and password or Google; finishing authentication submits your application automatically. Platform Owner approval is required before you can access a dashboard.
                 </p>
-                <button type="button" className="mt-2 text-xs font-bold underline" onClick={() => setChosen(null)}>Change applicant type</button>
+                <button type="button" data-testid="button-edit-application" className="mt-2 text-xs font-bold underline" onClick={() => setAuthStep(false)}>Edit application details</button>
               </div>
             )}
             <SignUp
               routing="path"
               path={`${base}/sign-up`}
               signInUrl={signInUrl}
+              initialValues={isPublicApplication && values.email ? { emailAddress: values.email.trim().toLowerCase() } : undefined}
               forceRedirectUrl={signUpRedirect}
               fallbackRedirectUrl={invitationRedirectUrl ?? `${base}/`}
               appearance={{ elements: { rootBox: 'w-full', cardBox: 'w-full shadow-none', card: 'shadow-none border-0' } }}
             />
             </>
           )}
-          <p className="mt-5 text-center text-xs text-[hsl(var(--muted-foreground))]">
-            {isSignIn ? 'Need an account?' : 'Already registered?'}{' '}
-            <Link href={isSignIn ? (invitationRedirectUrl ?? '/sign-up') : (invitationContext.ticket ? signInUrl : '/sign-in')} className="font-bold text-[hsl(var(--primary))]">
-              {isSignIn ? 'Create one' : 'Sign in'}
-            </Link>
-          </p>
+          {isPublicApplication && !authStep && (
+            <p className="mt-5 text-center text-xs text-[hsl(var(--muted-foreground))]" data-testid="footer-sign-in">
+              Already registered?{' '}<Link href="/sign-in" className="font-bold text-[hsl(var(--primary))]">Sign in</Link>
+            </p>
+          )}
         </section>
       </div>
     </main>

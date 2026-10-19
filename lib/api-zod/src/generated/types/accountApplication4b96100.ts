@@ -7,11 +7,15 @@
  */
 import type { AccountApplication4b96100ApplicantType } from './accountApplication4b96100ApplicantType';
 import type { AccountApplication4b96100NotificationStatus } from './accountApplication4b96100NotificationStatus';
+import type { AccountApplication4b96100PartnerType } from './accountApplication4b96100PartnerType';
 import type { AccountApplication4b96100Status } from './accountApplication4b96100Status';
 
 export interface AccountApplication4b96100 {
   id: number;
   applicantType: AccountApplication4b96100ApplicantType;
+  fullName: string;
+  /** @nullable */
+  partnerType?: AccountApplication4b96100PartnerType;
   firstName: string;
   lastName: string;
   email: string;

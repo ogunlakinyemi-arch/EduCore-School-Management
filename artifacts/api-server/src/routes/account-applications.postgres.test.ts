@@ -34,8 +34,9 @@ import { decideApplication } from "../services/account-applications";
 describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
   let server: Server, url: string;
   const payload = (applicantType = "PARTNER") => ({
-    applicantType,firstName:"Application",lastName:"Tester",phone:"+2348000000000",
-    city:"Lagos",state:"Lagos", ...(applicantType === "SCHOOL_ADMIN" ? {schoolName:"Application QA School"} : {}),
+    applicantType,fullName:"Application Tester",phone:"0800 000 0000",
+    ...(applicantType === "SCHOOL_ADMIN" ? {schoolName:"Application QA School",address:"1 School Road"}
+      : {email:state.clerkEmail,partnerType:"BUSINESS",businessName:"Application QA Business"}),
   });
   const call = (path: string, body?: unknown) => fetch(`${url}${path}`, {
     method: body ? "POST":"GET", headers:{"content-type":"application/json"},
@@ -87,6 +88,20 @@ describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
     expect((await call("/protected")).status).toBe(403);
     expect((await call("/account-application")).status).toBe(200);
   });
+  it.each([
+    ["SCHOOL_ADMIN","APPROVED"],["PARTNER","APPROVED"],["SCHOOL_ADMIN","REJECTED"],["PARTNER","REJECTED"],
+  ])("lists a new %s signup for the Owner and reflects its %s decision",async(type,status)=>{
+    const a=await submit(type);
+    state.userId=state.ownerId;
+    const pending=await call("/platform/account-applications");
+    expect(pending.status).toBe(200);
+    expect((await pending.json() as any[]).find(row=>row.id===a.id)).toMatchObject({applicantType:type,status:"PENDING"});
+    const decision=await call(`/platform/account-applications/${a.id}/decision`,
+      status==="REJECTED"?{status,reason:"Details not verified"}:{status});
+    expect(decision.status).toBe(200);
+    const listed=await call("/platform/account-applications");
+    expect((await listed.json() as any[]).find(row=>row.id===a.id)).toMatchObject({applicantType:type,status});
+  });
   it.each(["TEACHER","STAFF","PARENT","STUDENT","PLATFORM_OWNER"])("rejects public %s applications",async(type)=>{
     expect((await call("/account-application",payload(type))).status).toBe(400);
   });
@@ -119,11 +134,51 @@ describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
     const roles=(await pool.query(`SELECT role FROM school_memberships WHERE user_id=$1`,[userId])).rows;
     expect(roles).toEqual([{role:type}]);
     const record=(await pool.query(`SELECT * FROM account_applications WHERE id=$1`,[a.id])).rows[0];
-    if(type==="SCHOOL_ADMIN")expect((await pool.query(`SELECT status FROM schools WHERE id=$1`,[record.school_id])).rows[0].status).toBe("active");
-    else expect((await pool.query(`SELECT status FROM partner_profile_users WHERE partner_profile_id=$1 AND user_id=$2`,[record.partner_profile_id,userId])).rows[0].status).toBe("ACTIVE");
+    expect((await pool.query(`SELECT first_name,last_name,phone FROM app_users WHERE id=$1`,[userId])).rows[0])
+      .toMatchObject({first_name:"Application",last_name:"Tester",phone:"+2348000000000"});
+    if(type==="SCHOOL_ADMIN")expect((await pool.query(`SELECT status,name,address,phone,email FROM schools WHERE id=$1`,[record.school_id])).rows[0])
+      .toMatchObject({status:"active",name:"Application QA School",address:"1 School Road",phone:"+2348000000000",email});
+    else {
+      expect((await pool.query(`SELECT status FROM partner_profile_users WHERE partner_profile_id=$1 AND user_id=$2`,[record.partner_profile_id,userId])).rows[0].status).toBe("ACTIVE");
+      expect((await pool.query(`SELECT type,full_name,business_name,email,phone FROM partner_profiles WHERE id=$1`,[record.partner_profile_id])).rows[0])
+        .toMatchObject({type:"BUSINESS",full_name:"Application Tester",business_name:"Application QA Business",email,phone:"+2348000000000"});
+    }
     expect((await pool.query(`SELECT action FROM audit_logs WHERE module='Account Applications' AND record_id=$1`,[a.id])).rows.map(r=>r.action)).toContain("Approved account application");
     state.userId=userId;
     expect((await call("/protected")).status).toBe(200);
+  });
+  it("persists an Individual Partner selection and normalized profile through approval",async()=>{
+    const userId=state.userId,email=state.clerkEmail;
+    const response=await call("/account-application",{...payload(),fullName:"  Ada   Example  ",email:` ${email.toUpperCase()} `,
+      phone:"00234 (803) 123-4567",partnerType:"INDIVIDUAL",businessName:undefined});
+    expect(response.status,await response.clone().text()).toBe(201);
+    const a=await response.json() as {id:number;fullName:string;partnerType:string};
+    expect(a).toMatchObject({fullName:"Ada Example",partnerType:"INDIVIDUAL",phone:"+2348031234567",email});
+    state.userId=state.ownerId;
+    expect((await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).status).toBe(200);
+    expect((await pool.query(`SELECT type,full_name,email,phone,business_name FROM partner_profiles WHERE user_id=$1`,[userId])).rows[0])
+      .toMatchObject({type:"INDIVIDUAL",full_name:"Ada Example",email,phone:"+2348031234567",business_name:null});
+  });
+  it.each(["fullName","phone","email","partnerType"])("rejects a Partner application missing %s",async key=>{
+    expect((await call("/account-application",{...payload(),[key]:undefined})).status).toBe(400);
+    expect((await pool.query(`SELECT id FROM account_applications WHERE user_id=$1`,[state.userId])).rows).toHaveLength(0);
+  });
+  it.each(["fullName","phone","schoolName"])("rejects a School Admin application missing %s",async key=>{
+    expect((await call("/account-application",{...payload("SCHOOL_ADMIN"),[key]:undefined})).status).toBe(400);
+  });
+  it("rejects invalid phone, invalid email, unsupported type and mixed application details",async()=>{
+    for(const changes of [{phone:"letters-08001234567"},{phone:"123"},{email:"invalid@@"},{partnerType:"RESELLER"}]){
+      expect((await call("/account-application",{...payload(),...changes})).status).toBe(400);
+    }
+    expect((await call("/account-application",{...payload("SCHOOL_ADMIN"),partnerType:"BUSINESS"})).status).toBe(400);
+    expect((await call("/account-application",{...payload(),email:"different@example.test"})).status).toBe(409);
+  });
+  it("preserves legacy application rows and refuses inconsistent Partner types at the database boundary",async()=>{
+    const a=await submit();
+    await pool.query(`UPDATE account_applications SET partner_type=NULL WHERE id=$1`,[a.id]);
+    expect((await pool.query(`SELECT partner_type FROM account_applications WHERE id=$1`,[a.id])).rows[0].partner_type).toBeNull();
+    await expect(pool.query(`UPDATE account_applications SET partner_type='UNSUPPORTED' WHERE id=$1`,[a.id]))
+      .rejects.toMatchObject({code:"23514"});
   });
   it("requires global Owner decisions; rejects and retains reason without granting access",async()=>{
     const a=await submit(),userId=state.userId;

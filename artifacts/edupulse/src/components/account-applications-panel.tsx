@@ -9,7 +9,10 @@ type Filter = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export default function AccountApplicationsPanel() {
   const qc = useQueryClient();
-  const q = useGetAccountApplications();
+  const q = useGetAccountApplications({ query: {
+    queryKey: getGetAccountApplicationsQueryKey(),
+    staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true, refetchInterval: 30_000,
+  } });
   const decide = useDecideAccountApplication();
   const [filter, setFilter] = useState<Filter>('PENDING');
   const [confirm, setConfirm] = useState<{ id: number; status: 'APPROVED' | 'REJECTED' } | null>(null);
@@ -53,10 +56,11 @@ export default function AccountApplicationsPanel() {
         : <ul className="space-y-3">{rows.map(a => (
           <li key={a.id} data-testid={`row-application-${a.id}`} className="min-w-0 break-words rounded-xl border border-[hsl(var(--border))] p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <strong>{a.firstName} {a.lastName}</strong>
+              <strong>{a.fullName || `${a.firstName} ${a.lastName}`}</strong>
               <span className="text-xs font-bold">{a.applicantType === 'SCHOOL_ADMIN' ? 'School Admin' : 'Partner'}</span>
             </div>
-            <div className="mt-1 text-[hsl(var(--muted-foreground))]">{a.email} · {a.phone} · {a.city}, {a.state}</div>
+            <div className="mt-1 text-[hsl(var(--muted-foreground))]">{a.email} · {a.phone}</div>
+            {a.partnerType && <div data-testid={`text-partner-type-${a.id}`}>Partner type: {a.partnerType === 'BUSINESS' ? 'Business' : 'Individual'}</div>}
             {a.schoolName && <div>School: {a.schoolName}</div>}
             {a.businessName && <div>Business: {a.businessName}</div>}
             {a.address && <div>Address: {a.address}</div>}

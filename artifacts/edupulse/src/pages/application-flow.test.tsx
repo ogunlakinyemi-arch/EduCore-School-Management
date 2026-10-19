@@ -45,30 +45,94 @@ const input=(id:string,value:string)=>{
   });
 };
 describe('public application UI behavior',()=>{
-  it('requires choosing School Admin or Partner before public Clerk signup',()=>{
+  it('filters new School Admin and Partner applications and moves a decided row after refresh',()=>{
+    state.rows=[
+      {id:81,applicantType:'SCHOOL_ADMIN',fullName:'School Applicant',status:'PENDING',createdAt:'2026-10-19T00:00:00Z'},
+      {id:82,applicantType:'PARTNER',fullName:'Partner Applicant',status:'APPROVED',createdAt:'2026-10-19T00:00:00Z'},
+      {id:83,applicantType:'PARTNER',fullName:'Rejected Applicant',status:'REJECTED',createdAt:'2026-10-19T00:00:00Z'},
+    ];
+    render(<AccountApplicationsPanel/>);
+    expect(host.textContent).toContain('School Applicant');
+    expect(host.textContent).not.toContain('Partner Applicant');
+    click('filter-approved');
+    expect(host.textContent).toContain('Partner Applicant');
+    expect(host.querySelector('[data-testid="button-approve-82"]')).toBeNull();
+    click('filter-rejected');expect(host.textContent).toContain('Rejected Applicant');
+    click('filter-pending');click('button-approve-81');click('button-confirm-decision');
+    expect(state.decide).toHaveBeenCalledWith({applicationId:81,data:{status:'APPROVED'}},expect.any(Object));
+    act(()=>state.decide.mock.calls[0][1].onSuccess());
+    expect(state.invalidate).toHaveBeenCalledWith({queryKey:['applications']});
+    state.rows[0].status='APPROVED';render(<AccountApplicationsPanel/>);
+    expect(host.textContent).not.toContain('School Applicant');
+    click('filter-approved');expect(host.textContent).toContain('School Applicant');
+  });
+  it('preserves the current referral intent when a typed school signup resumes an older draft',()=>{
+    const original=window.location.pathname+window.location.search;
+    try{
+      window.history.replaceState(null,'','/sign-up?applicantType=SCHOOL_ADMIN');
+      sessionStorage.setItem('edupulse:application-intent',JSON.stringify({type:'SCHOOL_ADMIN',referralToken:'current-referral-token'}));
+      sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{
+        applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'08031234567',schoolName:'Hill School',referralToken:'older-referral-token',
+      }}));
+      render(<AuthScreen mode="sign-up"/>);
+      click('button-submit-application');
+      expect(JSON.parse(sessionStorage.getItem('edupulse:application-draft')!).v.referralToken).toBe('current-referral-token');
+    }finally{window.history.replaceState(null,'',original)}
+  });
+  it('validates, stores a draft, then shows Clerk only after Submit Application',()=>{
     render(<AuthScreen mode="sign-up"/>);
     expect(host.querySelector('[data-testid="clerk-signup"]')).toBeNull();
-    expect([...host.querySelectorAll('[data-testid^="choose-"]')].map(n=>n.textContent)).toEqual(['School Admin','Partner']);
-    click('choose-partner');
+    click('button-submit-application');
+    expect(host.querySelector('[data-testid="error-schoolName"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="clerk-signup"]')).toBeNull();
+    input('input-school-name','Hill School');input('input-full-name','  Ada   Obi ');input('input-phone','0803 123 4567');
+    click('button-submit-application');
     expect(host.querySelector('[data-testid="clerk-signup"]')).not.toBeNull();
-    expect(host.querySelector('[data-testid="application-approval-notice"]')?.textContent).toContain('Partner application');
-    expect(host.textContent).toContain('Platform Owner approval is required');
-    expect(sessionStorage.getItem('edupulse:application-intent')).toContain('PARTNER');
+    expect(host.querySelector('[data-testid="footer-sign-in"]')).toBeNull();
+    expect(host.textContent).toContain('finishing authentication submits your application');
+    expect(state.submit).not.toHaveBeenCalled();
+    const raw=sessionStorage.getItem('edupulse:application-draft')!;
+    expect(raw).toContain('Hill School');expect(raw.toLowerCase()).not.toContain('password');
   });
-  it('submits complete school details without client-owned user, status or role grants',()=>{
-    render(<ApplicationPortal/>);
-    for(const [id,value] of Object.entries({
-      'input-first-name':'First','input-last-name':'Last','input-phone':'+2348000000000',
-      'input-city':'Lagos','input-state':'Lagos','input-school-name':'Application School',
-    })) input(id,value);
-    act(()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
-    expect(state.submit).toHaveBeenCalledWith({data:{
-      applicantType:'SCHOOL_ADMIN',firstName:'First',lastName:'Last',phone:'+2348000000000',
-      city:'Lagos',state:'Lagos',schoolName:'Application School',
-    }},expect.any(Object));
-    const options=state.submit.mock.calls[0][1];
-    act(()=>options.onSuccess());
+  it('requires partner type and email, and drops school fields when switching type',()=>{
+    render(<AuthScreen mode="sign-up"/>);
+    input('input-school-name','Hill School');
+    const sel=host.querySelector('[data-testid="select-applicant-type"]') as HTMLSelectElement;
+    act(()=>{Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')!.set!.call(sel,'PARTNER');sel.dispatchEvent(new Event('change',{bubbles:true}))});
+    click('button-submit-application');
+    expect(host.querySelector('[data-testid="error-email"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="error-partnerType"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="input-school-name"]')).toBeNull();
+  });
+  it('auto-submits a valid draft once and clears it on success',()=>{
+    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'+2348031234567',schoolName:'Hill School'}}));
+    render(<ApplicationPortal autoSubmit/>);
+    render(<ApplicationPortal autoSubmit/>);
+    expect(state.submit).toHaveBeenCalledTimes(1);
+    expect(state.submit.mock.calls[0][0]).toEqual({data:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'+2348031234567',schoolName:'Hill School'}});
+    act(()=>state.submit.mock.calls[0][1].onSuccess());
+    expect(sessionStorage.getItem('edupulse:application-draft')).toBeNull();
     expect(state.invalidate).toHaveBeenCalledWith({queryKey:['my-application']});
+  });
+  it('keeps the form editable and refetches after a submit error',()=>{
+    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'08031234567',schoolName:'Hill School'}}));
+    render(<ApplicationPortal autoSubmit/>);
+    act(()=>state.submit.mock.calls[0][1].onError({data:{error:'Lost response'}}));
+    expect(host.querySelector('[data-testid="text-apply-error"]')?.textContent).toBe('Lost response');
+    expect(state.refetch).toHaveBeenCalled();
+    expect(host.querySelector('[data-testid="input-school-name"]')).not.toBeNull();
+    expect(sessionStorage.getItem('edupulse:application-draft')).not.toBeNull();
+  });
+  it('does not auto-submit expired drafts or without the submit flag',()=>{
+    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now()-31*60000,v:{applicantType:'SCHOOL_ADMIN',fullName:'A',phone:'+2348031234567',schoolName:'S'}}));
+    render(<ApplicationPortal autoSubmit/>);
+    expect(state.submit).not.toHaveBeenCalled();
+  });
+  it('direct apply submits the reusable form with normalized fields',()=>{
+    render(<ApplicationPortal/>);
+    input('input-school-name','Application School');input('input-full-name','First Last');input('input-phone','0803 123 4567');
+    act(()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+    expect(state.submit.mock.calls[0][0]).toEqual({data:{applicantType:'SCHOOL_ADMIN',fullName:'First Last',phone:'+2348031234567',schoolName:'Application School'}});
   });
   it.each(['PENDING','REJECTED'])('shows %s without a portal access action',(status)=>{
     state.my={application:{id:3,status,rejectionReason:'Not verified'},eligible:false};

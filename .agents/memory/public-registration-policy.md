@@ -37,3 +37,17 @@ the existing authentication provider and approval/notification workflow.
 
 **How to apply:** Use the existing application store, validate on both sides, and
 explain any strictly necessary additive schema change before applying it.
+
+The user separately approved the minimal additive Development extension for
+registration profile details on 2026-10-19. That approval does not authorize
+reclassifying existing Partner profiles, broad schema changes or Production work.
+
+Owner application review must be directly discoverable from Owner navigation
+and remain accessible independently of platform metrics and selected-school data.
+An embedded component alone does not satisfy this requirement.
+
+**Why:** The user reported the section missing even though a review component
+was embedded below unrelated dashboard queries.
+
+**How to apply:** Preserve the explicit Owner entry point and independent review
+loading/error/empty states when changing dashboard composition or navigation.

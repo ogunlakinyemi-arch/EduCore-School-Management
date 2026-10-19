@@ -69,7 +69,7 @@ describe('Platform Owner navigation', () => {
       <Shell><div>Dashboard content</div></Shell>,
     );
 
-    for (const href of ['/schools', '/records', '/students', '/company-employees', '/partners', '/devices', '/cards', '/audit', '/users', '/results', '/communications']) {
+    for (const href of ['/schools', '/records', '/students', '/company-employees', '/partners', '/account-applications', '/devices', '/cards', '/audit', '/users', '/results', '/communications']) {
       expect(html).toContain(`href="${href}"`);
     }
     for (const href of ['/parents', '/employees', '/academics', '/subjects', '/classes', '/academic-work', '/timetable', '/attendance', '/finance', '/people/imports', '/my-academics', '/my-fees']) {

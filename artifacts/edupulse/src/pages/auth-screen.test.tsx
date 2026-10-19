@@ -18,6 +18,10 @@ import { AuthScreen } from './auth-screen';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('responsive authentication shell', () => {
+  it('forwards the authentication completion flag through the roleless protected entry', () => {
+    const source = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+    expect(source).toMatch(/ApplicationPortal\s+pendingAccess\s+autoSubmit=/);
+  });
   it.each(['sign-in', 'sign-up'] as const)('constrains the %s grid and content without changing authentication', (mode) => {
     vi.stubGlobal('window', { location: { search: '', origin: 'https://example.com' } });
     const html = renderToStaticMarkup(<AuthScreen mode={mode} />);
@@ -25,11 +29,11 @@ describe('responsive authentication shell', () => {
     expect(html).toContain('grid-cols-[minmax(0,1fr)]');
     expect(html).toContain('md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)]');
     expect(html).toContain('flex min-w-0 flex-col');
-    expect(html).toContain(mode === 'sign-in' ? 'Sign in control' : 'Apply for an account');
+    expect(html).toContain(mode === 'sign-in' ? 'Sign in control' : 'Submit Application');
     if (mode === 'sign-up') {
       expect(html).not.toContain('Sign up control');
-      expect(html).toContain('choose-school-admin');
-      expect(html).toContain('choose-partner');
+      expect(html).toContain('input-school-name');
+      expect(html).toContain('footer-sign-in');
     }
     if (mode === 'sign-in') {
       for (const role of ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT', 'PARTNER']) {
@@ -47,11 +51,11 @@ describe('responsive authentication shell', () => {
     expect(css).toContain('overflow-wrap: anywhere');
     expect(css).not.toContain('overflow-x: hidden');
   });
-  it.each(['SCHOOL_ADMIN', 'PARTNER'])('keeps the selected %s application and approval requirement above account creation', (type) => {
-    vi.stubGlobal('window', { location: { search: `?applicantType=${type}`, origin: 'https://example.com' } });
+  it('shows the profile form first, never the Clerk widget, for a typed applicant', () => {
+    vi.stubGlobal('window', { location: { search: '?applicantType=PARTNER', origin: 'https://example.com' } });
     const html = renderToStaticMarkup(<AuthScreen mode="sign-up" />);
-    expect(html).toContain('Sign up control');
-    expect(html).toContain(type === 'PARTNER' ? 'Partner application' : 'School Admin application');
-    expect(html).toContain('Platform Owner approval is required');
+    expect(html).not.toContain('Sign up control');
+    expect(html).toContain('Partner Full Name');
+    expect(html).toContain('Business Name (optional)');
   });
 });

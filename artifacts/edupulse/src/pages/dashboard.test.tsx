@@ -5,6 +5,8 @@ const state = vi.hoisted(() => ({
   schoolId: 0,
   context: null as any,
   schoolDashboardCalls: 0,
+  platformLoading: false,
+  platformError: false,
   setSchoolId: vi.fn(),
   schools: [{
     id: 12,
@@ -24,8 +26,8 @@ vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: state.context, isLoading: false, isError: false }),
   useGetPlatformDashboard: () => ({
     data: { totalSchools: 3, activeSchools: 3, suspendedSchools: 0, totalStudents: 96, revenue: 1000 },
-    isLoading: false,
-    isError: false,
+    isLoading: state.platformLoading,
+    isError: state.platformError,
     refetch: vi.fn(),
   }),
   useGetSchoolDashboard: () => {
@@ -64,6 +66,23 @@ vi.mock('@/components/shared', () => ({
 }));
 
 import { Dashboard } from './dashboard';
+
+describe('Owner Applications entry availability', () => {
+  it.each(['loading','error'])('keeps the review link visible during platform metrics %s', (mode) => {
+    state.context = {isPlatformOwner:true,roles:[{role:'PLATFORM_OWNER',schoolId:null,status:'ACTIVE'}]};
+    state.schoolId = 0;
+    state.platformLoading = mode === 'loading';
+    state.platformError = mode === 'error';
+    try {
+      const html = renderToStaticMarkup(<Dashboard />);
+      expect(html).toContain('href="/account-applications"');
+      expect(html).toContain('New Users / Applications');
+    } finally {
+      state.platformLoading = false;
+      state.platformError = false;
+    }
+  });
+});
 
 const ownerContext = {
   isPlatformOwner: true,

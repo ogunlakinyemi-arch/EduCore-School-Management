@@ -7,15 +7,29 @@ import { logger } from "../lib/logger";
 import { z } from "zod";
 
 const text = (max: number, min = 1) => z.string().trim().min(min).max(max);
+export function normalizeApplicationPhone(value: string) {
+  let phone = value.trim().replace(/[\s().-]/g, "");
+  if (phone.startsWith("00")) phone = `+${phone.slice(2)}`;
+  if (/^0[789]\d{9}$/.test(phone)) phone = `+234${phone.slice(1)}`;
+  if (/^234\d{10}$/.test(phone)) phone = `+${phone}`;
+  return phone;
+}
 export const applicationInput = z.object({
   applicantType: z.enum(["SCHOOL_ADMIN", "PARTNER"]),
-  firstName: text(100), lastName: text(100), phone: text(32, 7),
-  city: text(100, 2), state: text(100, 2), schoolName: text(200, 2).optional(),
+  fullName: text(200, 2).transform(v => v.replace(/\s+/g, " ")),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address").max(254).optional(),
+  partnerType: z.enum(["BUSINESS", "INDIVIDUAL"]).optional(),
+  phone: text(32, 7).transform(normalizeApplicationPhone).refine(v => /^\+[1-9]\d{7,14}$/.test(v),
+    "Enter a valid international phone number or Nigerian mobile number"),
+  city: z.string().trim().max(100).optional(), state: z.string().trim().max(100).optional(), schoolName: text(200, 2).optional(),
   businessName: text(200).optional(), address: text(500).optional(),
   referralToken: text(256, 16).optional(),
 }).strict().superRefine((v, ctx) => {
   if (v.applicantType === "SCHOOL_ADMIN" && !v.schoolName) ctx.addIssue({ code: "custom", path: ["schoolName"], message: "School name is required" });
   if (v.applicantType !== "SCHOOL_ADMIN" && v.referralToken) ctx.addIssue({ code: "custom", path: ["referralToken"], message: "School referrals apply only to school applicants" });
+  if (v.applicantType === "PARTNER" && !v.email) ctx.addIssue({ code: "custom", path: ["email"], message: "Email is required" });
+  if (v.applicantType === "PARTNER" && !v.partnerType) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "Select a Partner type" });
+  if (v.applicantType === "SCHOOL_ADMIN" && (v.partnerType || v.businessName)) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "Partner details cannot be submitted for a school application" });
 });
 export const applicationDecision = z.object({
   status: z.enum(["APPROVED", "REJECTED"]), reason: text(1000).optional(),
@@ -25,6 +39,7 @@ export const applicationDecision = z.object({
 });
 
 export const applicationFields = `a.id,a.applicant_type AS "applicantType",
+ a.partner_type AS "partnerType",trim(concat_ws(' ',a.first_name,a.last_name)) AS "fullName",
  a.first_name AS "firstName",a.last_name AS "lastName",a.email,a.phone,a.city,a.state,
  a.school_name AS "schoolName",a.business_name AS "businessName",a.address,a.status,
  a.created_at AS "createdAt",a.reviewed_at AS "reviewedAt",
@@ -54,6 +69,11 @@ export async function assertNewApplicant(client: PoolClient, userId: number) {
 }
 
 export async function submitApplication(actor: UserContext, input: z.infer<typeof applicationInput>, verifiedEmail: string) {
+  if (input.email && input.email !== verifiedEmail) {
+    throw new AuthError(409, "Application email must match your verified sign-in email. Update the form or sign in with the intended account.");
+  }
+  const [firstName, ...surname] = input.fullName.split(" ");
+  const lastName = surname.join(" ");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -74,10 +94,10 @@ export async function submitApplication(actor: UserContext, input: z.infer<typeo
       referralId = link.rows[0].id;
     }
     const result = await client.query(`INSERT INTO account_applications
-      (user_id,applicant_type,first_name,last_name,email,phone,city,state,school_name,business_name,address,referral_link_id)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
-    [actor.user.id,input.applicantType,input.firstName,input.lastName,verifiedEmail,input.phone,input.city,input.state,
-      input.schoolName ?? null,input.businessName ?? null,input.address ?? null,referralId]);
+      (user_id,applicant_type,first_name,last_name,email,phone,city,state,school_name,business_name,address,referral_link_id,partner_type)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+    [actor.user.id,input.applicantType,firstName,lastName,verifiedEmail,input.phone,input.city ?? "",input.state ?? "",
+      input.schoolName ?? null,input.businessName ?? null,input.address ?? null,referralId,input.partnerType ?? null]);
     await audit(client, actor, result.rows[0].id, "Submitted account application", { applicantType: input.applicantType, status: "PENDING" });
     await client.query("COMMIT");
     return result.rows[0].id as number;
@@ -103,8 +123,11 @@ export async function decideApplication(actor: UserContext, id: number, decision
     await assertNewApplicant(client, a.user_id);
     let schoolId: number | null = null, partnerId: number | null = null;
     if (decision.status === "APPROVED") {
-      const account = await client.query(`SELECT status FROM app_users WHERE id=$1`, [a.user_id]);
+      const account = await client.query(`SELECT status,email FROM app_users WHERE id=$1`, [a.user_id]);
       if (account.rows[0]?.status !== "ACTIVE") throw new AuthError(409, "Applicant account is inactive; approval cannot restore it");
+      if (account.rows[0]?.email.trim().toLowerCase() !== a.email.trim().toLowerCase()) {
+        throw new AuthError(409, "Applicant account email changed after submission. Review the identity before approval.");
+      }
       if (a.applicant_type === "SCHOOL_ADMIN") {
         const school = await client.query(`INSERT INTO schools(code,name,city,state,status,address,phone,email)
           VALUES($1,$2,$3,$4,'active',$5,$6,$7) RETURNING id`,
@@ -123,14 +146,17 @@ export async function decideApplication(actor: UserContext, id: number, decision
       } else {
         const profile = await client.query(`INSERT INTO partner_profiles
           (user_id,partner_code,type,full_name,business_name,email,phone,address,state,status,registered_at,activated_at,created_by)
-          VALUES($1,$2,'RESELLER',$3,$4,$5,$6,$7,$8,'ACTIVE',NOW(),NOW(),$9) RETURNING id`,
-        [a.user_id,`APP-${randomUUID()}`,`${a.first_name} ${a.last_name}`,a.business_name,a.email,a.phone,a.address,a.state,actor.user.id]);
+           VALUES($1,$2,$10,$3,$4,$5,$6,$7,$8,'ACTIVE',NOW(),NOW(),$9) RETURNING id`,
+        [a.user_id,`APP-${randomUUID()}`,`${a.first_name} ${a.last_name}`.trim(),a.business_name,a.email,a.phone,a.address,a.state,actor.user.id,
+          a.partner_type ?? "RESELLER"]); // Retain legacy behavior only for pre-extension applications.
         partnerId = profile.rows[0].id;
         await client.query(`INSERT INTO partner_profile_users(partner_profile_id,user_id,role,status)
           VALUES($1,$2,'PARTNER','ACTIVE')`, [partnerId,a.user_id]);
       }
       await client.query(`INSERT INTO school_memberships(user_id,school_id,role,status) VALUES($1,$2,$3,'ACTIVE')`,
       [a.user_id,schoolId,a.applicant_type]);
+      await client.query(`UPDATE app_users SET first_name=$2,last_name=$3,phone=$4,updated_at=NOW() WHERE id=$1`,
+        [a.user_id,a.first_name,a.last_name,a.phone]);
     }
     await client.query(`UPDATE account_applications SET status=$2,reviewed_at=NOW(),reviewed_by=$3,
       rejection_reason=$4,school_id=$5,partner_profile_id=$6 WHERE id=$1`,

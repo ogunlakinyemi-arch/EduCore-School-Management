@@ -22,6 +22,7 @@ import { ThreadLinkPage } from '@/pages/parent-communication/threads';
 import PartnerPortal from '@/pages/partner/portal';
 import PartnerManagement from '@/pages/partner/management';
 import ApplyPage, { ApplicationPortal } from '@/pages/apply';
+import AccountApplicationsPage from '@/pages/account-applications';
 import { SchoolRegisterRedirect } from '@/pages/school-register-redirect';
 import { Dashboard } from '@/pages/dashboard';
 import { SchoolsPage, SchoolOverview } from '@/pages/schools';
@@ -164,7 +165,7 @@ export function ProtectedRoutes() {
   }
   if (!context?.isPlatformOwner && (!context?.roles || context.roles.length === 0)) {
     return (
-      <ApplicationPortal pendingAccess />
+      <ApplicationPortal pendingAccess autoSubmit={new URLSearchParams(window.location.search).get('submit') === '1'} />
     );
   }
 
@@ -287,6 +288,9 @@ export function ProtectedRoutes() {
           <Route path="/finance-workspace"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><FinanceWorkspacePage /></RoleGuard></Route>
           <Route path="/partners">
             <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>
+          </Route>
+          <Route path="/account-applications">
+            <RoleGuard isPlatformOwnerOnly><AccountApplicationsPage /></RoleGuard>
           </Route>
           <Route path="/partners/*">
             <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>

@@ -13,33 +13,40 @@ export const AccountApplicationInputApplicantType = {
   PARTNER: 'PARTNER',
 } as const;
 
+/**
+ * Required for Partner; omitted for School Admin.
+ */
+export type AccountApplicationInputPartnerType = typeof AccountApplicationInputPartnerType[keyof typeof AccountApplicationInputPartnerType];
+
+
+export const AccountApplicationInputPartnerType = {
+  BUSINESS: 'BUSINESS',
+  INDIVIDUAL: 'INDIVIDUAL',
+} as const;
+
 export interface AccountApplicationInput {
   applicantType: AccountApplicationInputApplicantType;
   /**
-     * @minLength 1
-     * @maxLength 100
+     * @minLength 2
+     * @maxLength 200
      */
-  firstName: string;
+  fullName: string;
   /**
-     * @minLength 1
-     * @maxLength 100
+     * Required for Partner; must match the verified account email.
+     * @maxLength 254
      */
-  lastName: string;
+  email?: string;
+  /** Required for Partner; omitted for School Admin. */
+  partnerType?: AccountApplicationInputPartnerType;
   /**
      * @minLength 7
      * @maxLength 32
      */
   phone: string;
-  /**
-     * @minLength 2
-     * @maxLength 100
-     */
-  city: string;
-  /**
-     * @minLength 2
-     * @maxLength 100
-     */
-  state: string;
+  /** @maxLength 100 */
+  city?: string;
+  /** @maxLength 100 */
+  state?: string;
   /**
      * @minLength 2
      * @maxLength 200
@@ -78,6 +85,17 @@ export const AccountApplicationApplicantType = {
   PARTNER: 'PARTNER',
 } as const;
 
+/**
+ * @nullable
+ */
+export type AccountApplicationPartnerType = typeof AccountApplicationPartnerType[keyof typeof AccountApplicationPartnerType] | null;
+
+
+export const AccountApplicationPartnerType = {
+  BUSINESS: 'BUSINESS',
+  INDIVIDUAL: 'INDIVIDUAL',
+} as const;
+
 export type AccountApplicationStatus = typeof AccountApplicationStatus[keyof typeof AccountApplicationStatus];
 
 
@@ -102,6 +120,9 @@ export const AccountApplicationNotificationStatus = {
 export interface AccountApplication {
   id: number;
   applicantType: AccountApplicationApplicantType;
+  fullName: string;
+  /** @nullable */
+  partnerType?: AccountApplicationPartnerType;
   firstName: string;
   lastName: string;
   email: string;
@@ -14600,33 +14621,40 @@ export const AccountApplicationInput4b96100ApplicantType = {
   PARTNER: 'PARTNER',
 } as const;
 
+/**
+ * Required for Partner; omitted for School Admin.
+ */
+export type AccountApplicationInput4b96100PartnerType = typeof AccountApplicationInput4b96100PartnerType[keyof typeof AccountApplicationInput4b96100PartnerType];
+
+
+export const AccountApplicationInput4b96100PartnerType = {
+  BUSINESS: 'BUSINESS',
+  INDIVIDUAL: 'INDIVIDUAL',
+} as const;
+
 export interface AccountApplicationInput4b96100 {
   applicantType: AccountApplicationInput4b96100ApplicantType;
   /**
-     * @minLength 1
-     * @maxLength 100
+     * @minLength 2
+     * @maxLength 200
      */
-  firstName: string;
+  fullName: string;
   /**
-     * @minLength 1
-     * @maxLength 100
+     * Required for Partner; must match the verified account email.
+     * @maxLength 254
      */
-  lastName: string;
+  email?: string;
+  /** Required for Partner; omitted for School Admin. */
+  partnerType?: AccountApplicationInput4b96100PartnerType;
   /**
      * @minLength 7
      * @maxLength 32
      */
   phone: string;
-  /**
-     * @minLength 2
-     * @maxLength 100
-     */
-  city: string;
-  /**
-     * @minLength 2
-     * @maxLength 100
-     */
-  state: string;
+  /** @maxLength 100 */
+  city?: string;
+  /** @maxLength 100 */
+  state?: string;
   /**
      * @minLength 2
      * @maxLength 200
@@ -14665,6 +14693,17 @@ export const AccountApplication4b96100ApplicantType = {
   PARTNER: 'PARTNER',
 } as const;
 
+/**
+ * @nullable
+ */
+export type AccountApplication4b96100PartnerType = typeof AccountApplication4b96100PartnerType[keyof typeof AccountApplication4b96100PartnerType] | null;
+
+
+export const AccountApplication4b96100PartnerType = {
+  BUSINESS: 'BUSINESS',
+  INDIVIDUAL: 'INDIVIDUAL',
+} as const;
+
 export type AccountApplication4b96100Status = typeof AccountApplication4b96100Status[keyof typeof AccountApplication4b96100Status];
 
 
@@ -14689,6 +14728,9 @@ export const AccountApplication4b96100NotificationStatus = {
 export interface AccountApplication4b96100 {
   id: number;
   applicantType: AccountApplication4b96100ApplicantType;
+  fullName: string;
+  /** @nullable */
+  partnerType?: AccountApplication4b96100PartnerType;
   firstName: string;
   lastName: string;
   email: string;

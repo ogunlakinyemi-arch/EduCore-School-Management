@@ -6110,14 +6110,15 @@ components:
     AccountApplicationInput:
       type: object
       additionalProperties: false
-      required: [applicantType, firstName, lastName, phone, city, state]
+      required: [applicantType, fullName, phone]
       properties:
         applicantType: { type: string, enum: [SCHOOL_ADMIN, PARTNER] }
-        firstName: { type: string, minLength: 1, maxLength: 100 }
-        lastName: { type: string, minLength: 1, maxLength: 100 }
+        fullName: { type: string, minLength: 2, maxLength: 200 }
+        email: { type: string, format: email, maxLength: 254, description: Required for Partner; must match the verified account email. }
+        partnerType: { type: string, enum: [BUSINESS, INDIVIDUAL], description: Required for Partner; omitted for School Admin. }
         phone: { type: string, minLength: 7, maxLength: 32 }
-        city: { type: string, minLength: 2, maxLength: 100 }
-        state: { type: string, minLength: 2, maxLength: 100 }
+        city: { type: string, maxLength: 100 }
+        state: { type: string, maxLength: 100 }
         schoolName: { type: string, minLength: 2, maxLength: 200 }
         businessName: { type: string, maxLength: 200 }
         address: { type: string, maxLength: 500 }
@@ -6131,10 +6132,12 @@ components:
         reason: { type: string, maxLength: 1000 }
     AccountApplication:
       type: object
-      required: [id, applicantType, firstName, lastName, email, phone, city, state, status, createdAt, notificationStatus]
+      required: [id, applicantType, fullName, firstName, lastName, email, phone, city, state, status, createdAt, notificationStatus]
       properties:
         id: { type: integer }
         applicantType: { type: string, enum: [SCHOOL_ADMIN, PARTNER] }
+        fullName: { type: string }
+        partnerType: { type: [string, "null"], enum: [BUSINESS, INDIVIDUAL, null] }
         firstName: { type: string }
         lastName: { type: string }
         email: { type: string }

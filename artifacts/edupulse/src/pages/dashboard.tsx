@@ -27,7 +27,16 @@ export function Dashboard() {
   }
 
   if (isPlatformOwner) {
-    return <PlatformDashboard selectedSchoolId={schoolId} />;
+    return (
+      <div className="w-full min-w-0">
+        <Link href="/account-applications" data-testid="link-owner-applications"
+          className="panel mb-5 flex w-full min-w-0 flex-wrap items-center justify-between gap-2 p-4 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]">
+          <span>New Users / Applications</span>
+          <span className="text-[hsl(var(--primary))]">Review sign-up applications →</span>
+        </Link>
+        <PlatformDashboard selectedSchoolId={schoolId} />
+      </div>
+    );
   } else if (schoolId && schoolId !== 0) {
     const ownTeacherView = isOwnTeacherView(contextQuery.data, schoolId);
     return <SchoolDashboard schoolId={schoolId} canOpenFinance={canOpenSchoolFinance} showTeacherWork={ownTeacherView} />;

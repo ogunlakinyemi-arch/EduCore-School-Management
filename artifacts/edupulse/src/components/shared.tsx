@@ -89,6 +89,7 @@ const nav: NavItem[] = [
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/people/imports', label: 'Import Records', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
   { href: '/partners', label: 'Partners', icon: Handshake, roles: ['PLATFORM_OWNER'] },
+  { href: '/account-applications', label: 'New Users / Applications', icon: ClipboardCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/flutterwave-settlements', label: 'Split Settlements', icon: CircleDollarSign, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
@@ -106,7 +107,7 @@ const nav: NavItem[] = [
   { href: '/audit', label: 'Audit Log', icon: FileClock, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
 ];
 const ownerNavPaths = new Set([
-  '/', '/schools', '/records', '/students', '/company-employees', '/users', '/partners',
+  '/', '/schools', '/records', '/students', '/company-employees', '/users', '/partners', '/account-applications',
   '/devices', '/subscriptions', '/flutterwave-settlements', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results',
@@ -222,7 +223,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </aside>
       {open && <button className="fixed inset-0 z-30 bg-[hsl(var(--foreground)/.4)] backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} aria-label="Close menu" data-testid="button-dismiss-menu" />}
-      <div className="md:pl-[260px] flex flex-col min-h-[100dvh]">
+      <div className="flex min-h-[100dvh] w-full min-w-0 max-w-full flex-col md:pl-[260px]">
         <header className="sticky top-0 z-20 flex min-h-[76px] shrink-0 flex-col justify-center gap-2 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.95)] px-5 py-3 backdrop-blur-xl sm:h-[76px] sm:flex-row sm:items-center sm:justify-between sm:py-0 md:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-4">
             <button className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={22} /></button>
@@ -235,7 +236,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </div>
-          <div className="flex min-w-0 shrink-0 items-center gap-3">
+          <div className="flex min-w-0 max-w-full items-center gap-3 sm:shrink-0">
             {isPlatformOwner && (
               <div className="min-w-0 flex-1 sm:flex-none">
                 <TenantPicker />
@@ -259,9 +260,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <UserButton />
           </div>
         </header>
-        <div className="px-5 pt-3 md:px-8"><PwaInstall /></div>
-        <main className="nav-grid flex-1 p-5 md:p-8">
-          <div className="mx-auto max-w-[1440px]">
+        <div className="min-w-0 px-5 pt-3 md:px-8"><PwaInstall /></div>
+        <main className="nav-grid w-full min-w-0 max-w-full flex-1 p-4 sm:p-5 md:p-8">
+          <div className="mx-auto w-full min-w-0 max-w-[1440px]">
             {!isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && (studentRole || roles.includes('TEACHER') || roles.includes('PARENT')) && <SubscriptionAccessBanner audience={studentRole ? 'student' : roles.includes('TEACHER') ? 'teacher' : 'parent'} />}
             {children}
           </div>

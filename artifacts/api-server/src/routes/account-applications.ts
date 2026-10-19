@@ -30,7 +30,13 @@ router.get("/account-application", requireAuthentication(), run(async (req,res) 
 }));
 router.post("/account-application", requireAuthentication(), run(async (req,res) => {
   const c = getUserContext(req), parsed = applicationInput.safeParse(req.body);
-  if (!parsed.success) throw new AuthError(400,"Only School Admin and Partner applications with complete details are accepted");
+  if (!parsed.success) {
+    const issue=parsed.error.issues[0];
+    const labels:Record<string,string>={fullName:"Full name",phone:"Phone",email:"Email",schoolName:"School name",
+      partnerType:"Partner type",applicantType:"Applicant type",address:"Address",businessName:"Business name"};
+    const label=labels[String(issue?.path[0])] ?? "Application";
+    throw new AuthError(400,`${label}: ${issue?.message ?? "Please complete the required details"}`);
+  }
   const identity = await clerkClient.users.getUser(c.user.clerkUserId);
   const email = identity.emailAddresses.find(e => e.id === identity.primaryEmailAddressId);
   if (!email || email.verification?.status !== "verified") throw new AuthError(403,"Verify your primary email before applying");

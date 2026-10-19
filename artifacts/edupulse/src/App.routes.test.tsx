@@ -26,6 +26,12 @@ function resolvedOwnerPage(path: string) {
 }
 
 describe('dashboard route compatibility', () => {
+  it('registers a dedicated Owner-only Applications route', () => {
+    expect(appSource).toMatch(/<Route path="\/account-applications">\s*<RoleGuard isPlatformOwnerOnly><AccountApplicationsPage \/><\/RoleGuard>/);
+    const shared=readFileSync(new URL('./components/shared.tsx',import.meta.url),'utf8');
+    expect(shared).toContain("href: '/account-applications', label: 'New Users / Applications'");
+    expect(shared).toMatch(/const ownerNavPaths = new Set\([\s\S]*?'\/account-applications'/);
+  });
   it('redirects the legacy /dashboard path to the platform dashboard route', () => {
     expect(appSource).toContain('<Route path="/dashboard"><Redirect to="/" /></Route>');
   });

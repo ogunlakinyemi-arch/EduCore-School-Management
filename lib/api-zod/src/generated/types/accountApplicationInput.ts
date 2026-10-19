@@ -6,34 +6,31 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AccountApplicationInputApplicantType } from './accountApplicationInputApplicantType';
+import type { AccountApplicationInputPartnerType } from './accountApplicationInputPartnerType';
 
 export interface AccountApplicationInput {
   applicantType: AccountApplicationInputApplicantType;
   /**
-     * @minLength 1
-     * @maxLength 100
+     * @minLength 2
+     * @maxLength 200
      */
-  firstName: string;
+  fullName: string;
   /**
-     * @minLength 1
-     * @maxLength 100
+     * Required for Partner; must match the verified account email.
+     * @maxLength 254
      */
-  lastName: string;
+  email?: string;
+  /** Required for Partner; omitted for School Admin. */
+  partnerType?: AccountApplicationInputPartnerType;
   /**
      * @minLength 7
      * @maxLength 32
      */
   phone: string;
-  /**
-     * @minLength 2
-     * @maxLength 100
-     */
-  city: string;
-  /**
-     * @minLength 2
-     * @maxLength 100
-     */
-  state: string;
+  /** @maxLength 100 */
+  city?: string;
+  /** @maxLength 100 */
+  state?: string;
   /**
      * @minLength 2
      * @maxLength 200

@@ -196,7 +196,7 @@ function PartnersOverview() {
   );
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="w-full min-w-0 max-w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <PageHeading 
         eyebrow="Ecosystem" 
         title="Partners & Resellers" 
@@ -204,8 +204,8 @@ function PartnersOverview() {
         action={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} />Invite partner</Button>}
       />
       
-      <div className="mb-6 flex gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="mb-6 flex min-w-0 gap-4">
+        <div className="relative min-w-0 max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16} />
           <input 
             type="text" 
@@ -217,15 +217,15 @@ function PartnersOverview() {
         </div>
       </div>
 
-      <div className="panel overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+      <div className="panel w-full min-w-0 max-w-full overflow-hidden">
+        <div className="w-full max-w-full overflow-x-auto" data-testid="partners-table-scroll">
+          <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
               <tr>
-                <th className="p-4">Partner</th>
+                <th className="min-w-[200px] p-4">Partner</th>
                 <th className="p-4">Type</th>
-                <th className="p-4">Contact</th>
-                <th className="p-4">Status</th>
+                <th className="min-w-[200px] p-4">Contact</th>
+                <th className="min-w-[220px] p-4">Status</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -233,7 +233,7 @@ function PartnersOverview() {
               {filtered.map(partner => (
                 <tr key={partner.id} className="transition-colors hover:bg-[hsl(var(--muted)/.2)]">
                   <td className="p-4">
-                    <div className="font-bold text-[hsl(var(--foreground))]">{partner.fullName}</div>
+                    <div className="break-words font-bold text-[hsl(var(--foreground))]">{partner.fullName}</div>
                     {partner.businessName && <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">{partner.businessName}</div>}
                     <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))] uppercase font-mono tracking-wider">{partner.partnerCode}</div>
                   </td>
@@ -243,7 +243,7 @@ function PartnersOverview() {
                     </span>
                   </td>
                   <td className="p-4">
-                    <div className="text-[hsl(var(--foreground))]">{partner.email}</div>
+                    <div className="break-all text-[hsl(var(--foreground))]">{partner.email}</div>
                     {partner.phone && <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">{partner.phone}</div>}
                   </td>
                 <td className="p-4">
@@ -273,7 +273,7 @@ function PartnersOverview() {
                   })()}
                 </td>
                   <td className="p-4 text-right">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
                     {(() => {
                       const invitation = latestInvitationByPartner.get(partner.id);
                       const invitationStatus = invitation?.status ?? (partner.status === 'INVITED' ? 'PENDING' : partner.status);
@@ -749,15 +749,15 @@ export function PayoutsOverview() {
       </div>
       {pending && <p className="mb-4 text-sm" role="status">This payout request is saved. Retry it to confirm its result before creating another payout.</p>}
 
-      <div className="panel overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+      <div className="panel w-full min-w-0 max-w-full overflow-hidden">
+        <div className="w-full max-w-full overflow-x-auto" data-testid="partners-table-scroll">
+          <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
               <tr>
                 <th className="p-4">Date</th>
                 <th className="p-4">Partner ID</th>
                 <th className="p-4">Amount</th>
-                <th className="p-4">Status</th>
+                <th className="min-w-[220px] p-4">Status</th>
                 <th className="p-4">Ref</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
@@ -888,8 +888,8 @@ export default function PartnerManagement() {
   const [location] = useLocation();
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-8 flex gap-2 border-b border-[hsl(var(--border))] pb-2 overflow-x-auto">
+    <div className="mx-auto w-full min-w-0 max-w-6xl">
+      <div className="mb-8 flex min-w-0 max-w-full gap-2 overflow-x-auto whitespace-nowrap border-b border-[hsl(var(--border))] pb-2">
         <Link href="/partners">
           <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners' || location.match(/^\/partners\/\d+$/) ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
             Partners

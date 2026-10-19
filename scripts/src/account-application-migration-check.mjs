@@ -22,6 +22,7 @@ try {
   const psql = ["-h", socket, "-p", "55482", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1"];
   run("psql", [...psql, "-f", join(temp, "schema.sql")]);
   run("psql", psql, { input: readFileSync(join(root,"lib/db/drizzle/0169_account_applications.sql"), "utf8") });
+  run("psql", psql, { input: readFileSync(join(root,"lib/db/drizzle/0170_account_application_partner_type.sql"), "utf8") });
   // Reapply is intentionally rejected: an unexpected existing table must not be silently adopted.
   const duplicate = spawnSync("psql", psql, {
     encoding:"utf8", input: readFileSync(join(root,"lib/db/drizzle/0169_account_applications.sql"), "utf8"),
