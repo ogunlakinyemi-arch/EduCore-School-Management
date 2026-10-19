@@ -504,6 +504,9 @@ router.patch("/academic/assignments/:assignmentId", asyncRoute(async (req, res) 
         throw new AuthError(403, "You are not authorized to edit this assignment");
       }
     }
+    if (current.status === "ARCHIVED") {
+      throw new AuthError(409, "Archived assignments are read-only. Create a new assignment instead of changing retained academic history.");
+    }
     const nextStatus = (input.status ?? current.status) as string;
     const transitions: Record<string, string[]> = { DRAFT: ["DRAFT", "PUBLISHED", "ARCHIVED"], PUBLISHED: ["PUBLISHED", "CLOSED", "ARCHIVED"], CLOSED: ["CLOSED", "ARCHIVED"], ARCHIVED: ["ARCHIVED"] };
     if (!transitions[current.status]?.includes(nextStatus)) throw new AuthError(400, `Invalid assignment status transition: ${current.status} to ${nextStatus}`);

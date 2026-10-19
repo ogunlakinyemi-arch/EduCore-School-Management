@@ -1,5 +1,8 @@
 # Photo blocker and promotion evidence preview — 2026-10-19
 
+Next handoff: [narrow archived-assignment retention fix](2026-10-19-assignment-retention.md).
+Photo and promotion execution boundaries below remain unchanged.
+
 ## Bounded scope
 
 Read the person-title and non-financial handoffs first, checked the clean

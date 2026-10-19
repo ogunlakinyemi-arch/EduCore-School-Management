@@ -8,6 +8,7 @@ import {
   useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects
 } from '@workspace/api-client-react';
 import { Plus, Pencil, BookOpen, Layers } from 'lucide-react';
+import { academicSaveError } from '@/components/academic-save-error';
 
 function useAcademicContext(schoolId: number) {
   const sessions = useListAcademicSessions({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['sessions', schoolId] } });
@@ -97,7 +98,8 @@ function AssignmentsView({ schoolId, readOnly }: { schoolId: number; readOnly: b
               </div>
               <div className="flex items-center gap-4">
                 <StatusPill value={item.status} />
-                 {!readOnly && <button onClick={() => setModal(item)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"><Pencil size={15} /></button>}
+                 {item.status === 'ARCHIVED' ? <span className="text-xs text-[hsl(var(--muted-foreground))]">Read-only history</span>
+                   : !readOnly && <button aria-label={`Edit assignment: ${item.title}`} onClick={() => setModal(item)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"><Pencil size={15} /></button>}
               </div>
             </div>
           ))}
@@ -106,7 +108,7 @@ function AssignmentsView({ schoolId, readOnly }: { schoolId: number; readOnly: b
         <EmptyState icon={BookOpen} title="No assignments found" description="Create assignments for your classes to get started." />
       )}
 
-      {!readOnly && modal && (
+      {!readOnly && modal && modal.status !== 'ARCHIVED' && (
         <Modal title={modal.create ? "Create Assignment" : "Edit Assignment"} onClose={() => setModal(null)}>
           <AssignmentForm 
             schoolId={schoolId} sessionId={activeSession?.id} termId={activeTerm?.id}
@@ -120,7 +122,7 @@ function AssignmentsView({ schoolId, readOnly }: { schoolId: number; readOnly: b
   );
 }
 
-function AssignmentForm({ schoolId, sessionId, termId, classes, subjects, initial, onDone, onCancel }: any) {
+export function AssignmentForm({ schoolId, sessionId, termId, classes, subjects, initial, onDone, onCancel }: any) {
   const create = useCreateAcademicAssignment();
   const update = useUpdateAcademicAssignment();
   const [form, setForm] = useState({
@@ -200,6 +202,9 @@ function AssignmentForm({ schoolId, sessionId, termId, classes, subjects, initia
           </select>
         </Field>
       </div>
+      {(update.error || create.error) && <p role="alert" className="text-sm text-red-600">
+        {academicSaveError(update.error ?? create.error)}
+      </p>}
       <div className="flex justify-end gap-3 pt-4 border-t border-[hsl(var(--border))]">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending}>{pending ? 'Saving...' : 'Save'}</Button>
