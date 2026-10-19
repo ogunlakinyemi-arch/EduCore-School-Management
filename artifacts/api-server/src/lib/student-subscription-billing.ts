@@ -99,7 +99,7 @@ async function hasUnresolvedFailedStudentTermPayment(
 export function calculateStudentSubscriptionAllocations(
   input: StudentSubscriptionAllocationInput,
 ): StudentSubscriptionAllocation[] {
-  const policy = studentAllocationPolicy(input.policyVersion === 2 ? "SCV2_" : undefined);
+  const policy = studentAllocationPolicy(`SCV${input.policyVersion ?? 1}_`);
   if (input.partnerProfileId === null) {
     if (input.commissionRule) {
       throw new StudentSubscriptionBillingError(409, "Unattributed subscriptions cannot use a Partner commission rule");
@@ -575,6 +575,19 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
       );
     }
     if (attribution && commissionRule) {
+      // Only the new policy binds a payable to immutable verified payment evidence.
+      // Historical entries and references retain their original allocation policy.
+      if (policy.deferredPartner) {
+        await client.query(
+          `INSERT INTO commission_ledger (
+             partner_profile_id,school_id,student_id,subscription_id,commission_rule_id,
+             academic_session_id,term,rate,count,amount,currency,status,created_by,payment_id
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,100,1,100,'NGN','PENDING',$8,$9)
+           ON CONFLICT DO NOTHING`,
+          [attribution.partnerProfileId,payment.schoolId,payment.studentId,payment.subscriptionId,
+            commissionRule.id,payment.sessionId,payment.subscriptionTerm,payment.payerUserId,paymentId],
+        );
+      } else {
       await client.query(
         `INSERT INTO commission_ledger (
            partner_profile_id,school_id,student_id,subscription_id,commission_rule_id,
@@ -592,6 +605,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
           payment.payerUserId,
         ],
       );
+      }
     }
     await client.query(
       `UPDATE nfc_cards SET status='active'

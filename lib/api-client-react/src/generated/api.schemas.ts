@@ -14505,6 +14505,82 @@ export interface SubscriptionAccessStatus {
   restrictionReason?: SubscriptionAccessStatusRestrictionReason;
 }
 
+export interface DeferredCommission {
+  id: number;
+  partnerId: number;
+  partnerName: string;
+  schoolId: number;
+  studentId: number;
+  sessionId: number;
+  termId: number;
+  term: string;
+  sessionName: string;
+  reference: string;
+  status: string;
+  amountMinor: number;
+  grossMinor: number;
+  schoolMinor: number;
+  /** @nullable */
+  providerFeeMinor: number | null;
+  /** @nullable */
+  providerAdditionalFeeMinor: number | null;
+  /** @nullable */
+  vatMinor: number | null;
+  /** @nullable */
+  merchantRemainderMinor: number | null;
+  /** @nullable */
+  ownerNetMinor: number | null;
+  eligible: boolean;
+  termEnded: boolean;
+  settlementStatus: string;
+}
+
+export interface PartnerPayoutBatchInput {
+  /**
+     * @minLength 16
+     * @maxLength 100
+     */
+  idempotencyKey: string;
+  /**
+     * @minItems 1
+     * @maxItems 5000
+     * @items.minimum 1
+     */
+  commissionIds: number[];
+}
+
+export interface PartnerPayoutBatchItem {
+  commissionId: number;
+  partnerId: number;
+  payoutId: number;
+  amountMinor: number;
+  reference: string;
+  schoolId: number;
+  studentId: number;
+  sessionId: number;
+  termId: number;
+  term: string;
+}
+
+export interface PartnerPayoutBatch {
+  id: number;
+  status: string;
+  approvedAt: string;
+  approvedBy: number;
+  currency: string;
+  amountMinor: number;
+  executionMode: string;
+  items: PartnerPayoutBatchItem[];
+}
+
+export interface DeferredCommissionTotals {
+  earnedMinor: number;
+  pendingMinor: number;
+  approvedMinor: number;
+  paidMinor: number;
+  recoveryMinor: number;
+}
+
 export interface SettlementRemovalConfirmation {
   /** @minimum 1 */
   expectedProfileId: number;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   calculateStudentSubscriptionAllocations,
   finalizeVerifiedStudentSubscriptionPayment,
@@ -39,7 +39,7 @@ class FinalizationMemoryPool {
   logoVersionId: number | null = null;
   termPaymentConflict: { id: number; subscriptionId: number; status: string } | null = null;
   private transactionTail = Promise.resolve();
-  constructor(private readonly attributed: boolean, private readonly policyVersion: 1 | 2 = 1) {}
+  constructor(private readonly attributed: boolean, private readonly policyVersion: 1 | 2 | 3 = 1) {}
 
   async connect() {
     let releaseTransaction: (() => void) | undefined;
@@ -75,7 +75,7 @@ class FinalizationMemoryPool {
         payerUserId: 6,
         provider: "FLUTTERWAVE",
         providerMode: "SANDBOX",
-        reference: this.policyVersion === 2 ? `SCV2_${expected.reference}` : expected.reference,
+        reference: this.policyVersion >= 2 ? `SCV${this.policyVersion}_${expected.reference}` : expected.reference,
         grossAmountMinor: 500_000,
         currency: "NGN",
          status: this.paymentStatus,
@@ -100,10 +100,16 @@ class FinalizationMemoryPool {
       return { rows: this.unresolvedFailedTermPayment ? [{ id: 29 }] : [] };
     }
     if (sql.includes("FROM school_partner_attributions a")) {
-      return { rows: this.attributed ? [{ attributionId: 22, partnerProfileId: 44 }] : [] };
+      return { rows: this.attributed ? [{ id:22,partner_profile_id:44,attributionId: 22, partnerProfileId: 44 }] : [] };
+    }
+    if (sql.startsWith("SELECT * FROM flutterwave_split_payments") && this.policyVersion === 3) {
+      return {rows:[{payment_id:17,reference:`SCV3_${expected.reference}`,school_id:8,student_id:4,
+        subscription_id:12,session_id:3,term_id:2,status:this.paymentStatus==="PAID" ? "COLLECTION_PAID" : "CHECKOUT_FROZEN",
+        partner_profile_id:this.attributed ? 44 : null,attribution_id:this.attributed ? 22 : null,
+        commission_rule_id:this.attributed ? 9 : null,platform_amount_minor:this.attributed ? 300000 : 310000}]};
     }
     if (sql.includes("FROM commission_rules")) {
-      return { rows: [this.policyVersion === 2
+      return { rows: [this.policyVersion >= 2
         ? { ...partnerRule, schoolAmount: 1900, edupulseAmount: 3000 } : partnerRule] };
     }
     if (sql.includes("UPDATE subscriptions")) return { rows: [{ id: 12 }] };
@@ -144,6 +150,21 @@ class FinalizationMemoryPool {
 }
 
 describe("student subscription trusted billing policy", () => {
+  it.each([true,false])("SCV3 verified collection accrues exactly once and replay never adds liability; Partner=%s",async hasPartner=>{
+    vi.stubEnv("NODE_ENV","development");vi.stubEnv("REPLIT_DEPLOYMENT","");
+    try {
+      const memory=new FinalizationMemoryPool(hasPartner,3);
+      const payment={...verified,reference:`SCV3_${expected.reference}`,providerChargedAmountMinor:500000,
+        providerCostComponents:{appFeeMinor:6500,additionalFeeMinor:500},providerFlwReference:"FLW-independent-fixture"};
+      const first=await finalizeVerifiedStudentSubscriptionPayment(memory,17,payment);
+      expect(first.status).toBe("PAID");
+      await finalizeVerifiedStudentSubscriptionPayment(memory,17,payment);
+      expect(memory.partnerLedgerCount).toBe(hasPartner ? 1 : 0);
+      expect(memory.allocations.filter(a=>a.entryType==="CREDIT").reduce((sum,a)=>sum+a.amountMinor,0)).toBe(500000);
+      expect(memory.allocations.find(a=>a.recipientType==="SCHOOL")?.amountMinor).toBe(190000);
+      expect(memory.allocations.find(a=>a.recipientType==="PLATFORM_PROVIDER_FEE")?.amountMinor).toBe(7000);
+    } finally {vi.unstubAllEnvs();}
+  });
   it("allocates NGN 5,000 with no Partner as School 2,000 and Platform 3,000", () => {
     const result = calculateStudentSubscriptionAllocations({ partnerProfileId: null });
     expect(result).toEqual([

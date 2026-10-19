@@ -13,8 +13,8 @@ export function requireSplitDevelopment() {
   if (!isSplitDevelopment()) throw new AuthError(404, "Split settlement is Development-only");
 }
 export function fixedSplitInstructions(school: string, partner: string | null, version: StudentAllocationVersion = 1): FixedSplitInstruction[] {
-  const policy = studentAllocationPolicy(version === 2 ? "SCV2_" : undefined);
-  const ids = [school, ...(partner ? [partner] : [])];
+  const policy = studentAllocationPolicy(`SCV${version}_`);
+  const ids = [school, ...(partner && !policy.deferredPartner ? [partner] : [])];
   if (ids.some(id => !/^RS_[A-Za-z0-9]{12,80}$/.test(id)) || new Set(ids).size !== ids.length) {
     throw new AuthError(409, "Distinct verified recipient IDs are required");
   }
@@ -34,7 +34,7 @@ export function cumulativeRefundShares(totalRefundMinor: number, hasPartner: boo
   if (!Number.isSafeInteger(totalRefundMinor) || totalRefundMinor < 0 || totalRefundMinor > 500000) {
     throw new AuthError(409, "Refund exceeds the payment");
   }
-  const policy = studentAllocationPolicy(version === 2 ? "SCV2_" : undefined);
+  const policy = studentAllocationPolicy(`SCV${version}_`);
   const school = Math.floor(totalRefundMinor * policy.schoolMinor / 500000);
   const partner = hasPartner ? Math.floor(totalRefundMinor * 10000 / 500000) : 0;
   return { school, partner, platform: totalRefundMinor - school - partner };

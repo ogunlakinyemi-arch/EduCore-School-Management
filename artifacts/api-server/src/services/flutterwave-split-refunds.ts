@@ -88,13 +88,15 @@ export async function verifySplitRefund(id: number) {
       const previous = Number((await db.query(
         "SELECT COALESCE(sum(amount_minor),0) amount FROM flutterwave_split_adjustments WHERE payment_id=$1 AND status='CONFIRMED'", [split.payment_id],
       )).rows[0].amount);
-      const version = studentAllocationPolicy(split.reference).version;
+      const policy = studentAllocationPolicy(split.reference);
+      const version = policy.version;
       const before = cumulativeRefundShares(previous, !!split.partner_profile_id, version);
       const after = cumulativeRefundShares(previous + row.amount_minor, !!split.partner_profile_id, version);
       row = (await db.query(
         `UPDATE flutterwave_split_adjustments SET status='CONFIRMED',recovery_status='RECIPIENT_RECOVERY_REVIEW',
          school_recovery_minor=$1,partner_recovery_minor=$2,platform_reversal_minor=$3,updated_at=NOW() WHERE id=$4 RETURNING *`,
-        [after.school-before.school,after.partner-before.partner,after.platform-before.platform,id],
+        [after.school-before.school,policy.deferredPartner ? 0 : after.partner-before.partner,
+          policy.deferredPartner ? row.amount_minor-(after.school-before.school) : after.platform-before.platform,id],
       )).rows[0];
       await db.query(
         `UPDATE flutterwave_split_payments SET status=$1,

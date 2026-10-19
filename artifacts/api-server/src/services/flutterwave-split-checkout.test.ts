@@ -58,6 +58,32 @@ it("preserves the default-off unsplit checkout",async() => {
   f.enabled=false; expect(await prepareSplitCheckout(40)).toBeUndefined();
   expect(f.query.mock.calls.some(c => c[0].includes("INSERT"))).toBe(false);
 });
+it.each([true,false])("SCV3 freezes school1900 only; Partner liability is internal, Partner=%s",async hasPartner=>{
+  const reference=payment.reference;
+  try {
+    payment.reference=`SCV3_${reference}`;
+    f.partnerEligible=hasPartner;f.partnerReady=false;
+    const original=f.query.getMockImplementation()!;
+    f.query.mockImplementation(async(sql:string,args:any[])=>sql.includes("pg_get_constraintdef")
+      ? {rows:[{definition:"CHECK (left(reference,5)='SCV3_')"}]} : original(sql,args));
+    const first=await prepareSplitCheckout(40);
+    expect(first).toEqual([{id:school.provider_subaccount_id,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]);
+    expect(f.snapshot).toMatchObject({partner_recipient_id:null,partner_profile_id:hasPartner ? 6 : null,
+      platform_amount_minor:hasPartner ? 300000 : 310000});
+    expect(f.query.mock.calls.some(c=>c[0].includes("WHERE partner_profile_id=$1 AND status='TEST_READY'"))).toBe(false);
+    expect(f.query.mock.calls.filter(c=>c[0].includes("INSERT INTO flutterwave_split_settlements"))).toHaveLength(1);
+    expect(await prepareSplitCheckout(40)).toEqual(first);
+  } finally {payment.reference=reference;}
+});
+it("SCV3 cannot fall back to platform-only checkout or finalize without a frozen plan",async()=>{
+  const reference=payment.reference;
+  try {
+    payment.reference=`SCV3_${reference}`;f.enabled=false;
+    await expect(prepareSplitCheckout(40)).rejects.toThrow("platform-only fallback");
+    await expect(validateSplitCollection({query:f.query},{id:40,reference:payment.reference},{} as any))
+      .rejects.toThrow("original school-only frozen");
+  } finally {payment.reference=reference;}
+});
 it("freezes only school2000 without an eligible Partner",async() => {
   expect((await prepareSplitCheckout(40))!.map(s => s.transaction_charge)).toEqual([2000]);
   expect(f.snapshot.partner_profile_id).toBeNull(); expect(f.snapshot.platform_amount_minor).toBe(300000);

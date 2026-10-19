@@ -28,6 +28,8 @@ export interface InitializePaymentResult {
 }
 
 export interface VerifiedPayment extends ExpectedPayment {
+  /** Independently read-back Flutterwave reference for signed adverse-event binding. */
+  providerFlwReference?: string;
   status: FeePaymentStatus;
   providerTransactionId: string;
   paidAt?: string;
@@ -409,7 +411,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     this.assertExpected(input);
     if (input.subaccounts && (process.env.NODE_ENV !== "development" || process.env.REPLIT_DEPLOYMENT
         || input.currency !== "NGN" || input.amountMinor !== 500000
-        || input.subaccounts.length < 1 || input.subaccounts.length > 2
+        || input.subaccounts.length < 1 || input.subaccounts.length > (studentAllocationPolicy(input.reference).deferredPartner ? 1 : 2)
         || new Set(input.subaccounts.map(s => s.id)).size !== input.subaccounts.length
         || input.subaccounts.some((s, i) => !/^RS_[A-Za-z0-9]{12,80}$/.test(s.id)
           || s.transaction_charge_type !== "flat_subaccount"
@@ -420,7 +422,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     // payouts. Recipient verification does not validate dashboard split settings,
     // and no supported adapter supplies complete recipient allocation evidence.
     // Do not guess percentages, fall back to platform-only, or retry an old charge.
-    if (studentAllocationPolicy(input.reference).version === 2) {
+    if (studentAllocationPolicy(input.reference).version >= 2) {
       throw new PaymentProviderError(
         "Current-policy TEST checkout is blocked: exact post-fee School/Partner payouts and a nonzero merchant remainder are not independently established. Review Flutterwave TEST split configuration; do not pay again for an existing charge.",
       );
@@ -481,6 +483,8 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     }
     return process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
       ? { ...verified,
+        ...(typeof data.flw_ref === "string" && data.flw_ref.length > 0 && data.flw_ref.length <= 200
+          ? {providerFlwReference:data.flw_ref} : {}),
         ...(data.charged_amount == null ? {} : { providerChargedAmountMinor: majorToMinorNonnegative(data.charged_amount,input.currency) }),
         providerCostComponents: {
         appFeeMinor: data.app_fee == null ? null : majorToMinorNonnegative(data.app_fee, input.currency),

@@ -61,10 +61,12 @@ export const flutterwaveSplitPayments = pgTable("flutterwave_split_payments", {
   status: text("status").notNull().default("CHECKOUT_FROZEN"),
   providerFeeMinor: integer("provider_fee_minor"),
   providerAdditionalFeeMinor: integer("provider_additional_fee_minor"),
+  providerFlwReference: text("provider_flw_reference"),
   reconciliationNote: text("reconciliation_note"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, t => [
-  check("flw_split_amounts_ck", sql`${t.currency}='NGN' AND ${t.schoolAmountMinor}=CASE WHEN left(${t.reference},5)='SCV2_' THEN 190000 ELSE 200000 END AND ((${t.partnerRecipientId} IS NULL AND ${t.partnerProfileId} IS NULL AND ${t.attributionId} IS NULL AND ${t.commissionRuleId} IS NULL AND ${t.partnerAmountMinor}=0 AND ${t.platformAmountMinor}=500000-${t.schoolAmountMinor}) OR (${t.partnerRecipientId} IS NOT NULL AND ${t.partnerProfileId} IS NOT NULL AND ${t.attributionId} IS NOT NULL AND ${t.commissionRuleId} IS NOT NULL AND ${t.partnerAmountMinor}=10000 AND ${t.platformAmountMinor}=490000-${t.schoolAmountMinor}))`),
+  uniqueIndex("deferred_split_flw_reference_uq").on(t.providerFlwReference).where(sql`${t.providerFlwReference} IS NOT NULL`),
+  check("flw_split_amounts_ck", sql`${t.currency}='NGN' AND ${t.schoolAmountMinor}=CASE WHEN left(${t.reference},5) IN ('SCV2_','SCV3_') THEN 190000 ELSE 200000 END AND ((${t.partnerRecipientId} IS NULL AND ${t.partnerProfileId} IS NULL AND ${t.attributionId} IS NULL AND ${t.commissionRuleId} IS NULL AND ${t.partnerAmountMinor}=0 AND ${t.platformAmountMinor}=500000-${t.schoolAmountMinor}) OR ((${t.partnerRecipientId} IS NOT NULL OR left(${t.reference},5)='SCV3_') AND (left(${t.reference},5)<>'SCV3_' OR ${t.partnerRecipientId} IS NULL) AND ${t.partnerProfileId} IS NOT NULL AND ${t.attributionId} IS NOT NULL AND ${t.commissionRuleId} IS NOT NULL AND ${t.partnerAmountMinor}=10000 AND ${t.platformAmountMinor}=490000-${t.schoolAmountMinor}))`),
   check("flw_split_status_ck", sql`${t.status} IN ('CHECKOUT_FROZEN','COLLECTION_PAID','COLLECTION_FAILED','COLLECTION_EXCEPTION','REPORT_EXCEPTION','TEST_PROVIDER_REPORTED_COMPLETE','REFUND_REVIEW','REFUNDED')`),
   check("flw_split_costs_ck", sql`(${t.providerFeeMinor} IS NULL OR ${t.providerFeeMinor}>=0) AND (${t.providerAdditionalFeeMinor} IS NULL OR ${t.providerAdditionalFeeMinor}>=0)`),
 ]);

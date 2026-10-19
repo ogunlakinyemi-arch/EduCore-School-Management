@@ -1,0 +1,132 @@
+openapi: 3.1.0
+info: { title: Deferred Commissions, version: 1.0.0 }
+paths:
+  /platform/partner-term-commissions:
+    get:
+      operationId: listPartnerTermCommissions
+      summary: Development-only Owner verified deferred commission reconciliation
+      responses:
+        "200":
+          description: Payment-bound commission evidence; missing monetary evidence stays null
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/DeferredCommission" } }
+  /platform/partner-payout-batches:
+    get:
+      operationId: listPartnerPayoutBatches
+      responses:
+        "200":
+          description: Owner approval history
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerPayoutBatch" } }
+    post:
+      operationId: approvePartnerPayoutBatch
+      summary: Atomically approve selected eligible commissions after each school term has ended; no transfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerPayoutBatchInput" }
+      responses:
+        "201":
+          description: Frozen approved batch or identical replay
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerPayoutBatch" }
+        "409": { description: "Already approved, refund review, term not ended or key conflict" }
+  /platform/partner-payout-batches/{batchId}:
+    get:
+      operationId: getPartnerPayoutBatchExport
+      summary: Audited export of an approved batch; no bank details, transfer, or paid claim
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Frozen approval export with current batch status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerPayoutBatch" }
+  /partner/deferred-commissions:
+    get:
+      operationId: getMyDeferredCommissions
+      summary: Development-only own commission totals, without other recipients' financial allocations
+      responses:
+        "200":
+          description: Commission totals in NGN minor units
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeferredCommissionTotals" }
+components:
+  schemas:
+    DeferredCommission:
+      type: object
+      required: [id, partnerId, partnerName, schoolId, studentId, sessionId, termId, term, sessionName, reference, status, amountMinor, grossMinor, schoolMinor, providerFeeMinor, providerAdditionalFeeMinor, vatMinor, merchantRemainderMinor, ownerNetMinor, eligible, termEnded, settlementStatus]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        partnerName: { type: string }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        term: { type: string }
+        sessionName: { type: string }
+        reference: { type: string }
+        status: { type: string }
+        amountMinor: { type: integer }
+        grossMinor: { type: integer }
+        schoolMinor: { type: integer }
+        providerFeeMinor: { type: [integer, "null"] }
+        providerAdditionalFeeMinor: { type: [integer, "null"] }
+        vatMinor: { type: [integer, "null"] }
+        merchantRemainderMinor: { type: [integer, "null"] }
+        ownerNetMinor: { type: [integer, "null"] }
+        eligible: { type: boolean }
+        termEnded: { type: boolean }
+        settlementStatus: { type: string }
+    PartnerPayoutBatchInput:
+      type: object
+      required: [idempotencyKey, commissionIds]
+      properties:
+        idempotencyKey: { type: string, minLength: 16, maxLength: 100 }
+        commissionIds:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          items: { type: integer, minimum: 1 }
+    PartnerPayoutBatchItem:
+      type: object
+      required: [commissionId, partnerId, payoutId, amountMinor, reference, schoolId, studentId, sessionId, termId, term]
+      properties:
+        commissionId: { type: integer }
+        partnerId: { type: integer }
+        payoutId: { type: integer }
+        amountMinor: { type: integer }
+        reference: { type: string }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        term: { type: string }
+    PartnerPayoutBatch:
+      type: object
+      required: [id, status, approvedAt, approvedBy, currency, amountMinor, items, executionMode]
+      properties:
+        id: { type: integer }
+        status: { type: string }
+        approvedAt: { type: string }
+        approvedBy: { type: integer }
+        currency: { type: string }
+        amountMinor: { type: integer }
+        executionMode: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/PartnerPayoutBatchItem" } }
+    DeferredCommissionTotals:
+      type: object
+      required: [earnedMinor, pendingMinor, approvedMinor, paidMinor, recoveryMinor]
+      properties:
+        earnedMinor: { type: integer }
+        pendingMinor: { type: integer }
+        approvedMinor: { type: integer }
+        paidMinor: { type: integer }
+        recoveryMinor: { type: integer }

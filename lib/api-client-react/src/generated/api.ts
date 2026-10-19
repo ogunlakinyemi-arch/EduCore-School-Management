@@ -221,6 +221,8 @@ import type {
   CurriculumVersion,
   CurriculumVersionDetail,
   CurriculumVersionInput,
+  DeferredCommission,
+  DeferredCommissionTotals,
   DeleteEmployeePhotoParams,
   DeleteStudentPhotoParams,
   DeviceActivationOfficerGrant,
@@ -577,6 +579,8 @@ import type {
   PartnerNfcStudent,
   PartnerOnboardingResult,
   PartnerPayout,
+  PartnerPayoutBatch,
+  PartnerPayoutBatchInput,
   PartnerPayoutInformationInput,
   PartnerPayoutInformationMasked,
   PartnerPayoutInformationPrivate,
@@ -34235,6 +34239,396 @@ export const useCreatePartnerPayout = <TError = ErrorType<void>,
       > => {
       return useMutation(getCreatePartnerPayoutMutationOptions(options));
     }
+
+export const getListPartnerTermCommissionsUrl = () => {
+
+
+
+
+  return `/api/platform/partner-term-commissions`
+}
+
+/**
+ * @summary Development-only Owner verified deferred commission reconciliation
+ */
+export const listPartnerTermCommissions = async ( options?: Parameters<typeof customFetch>[1]): Promise<DeferredCommission[]> => {
+
+  return customFetch<DeferredCommission[]>(getListPartnerTermCommissionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPartnerTermCommissionsQueryKey = () => {
+    return [
+    `/api/platform/partner-term-commissions`
+    ] as const;
+    }
+
+
+export const getListPartnerTermCommissionsQueryOptions = <TData = Awaited<ReturnType<typeof listPartnerTermCommissions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerTermCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPartnerTermCommissionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPartnerTermCommissions>>> = ({ signal }) => listPartnerTermCommissions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPartnerTermCommissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPartnerTermCommissionsQueryResult = NonNullable<Awaited<ReturnType<typeof listPartnerTermCommissions>>>
+export type ListPartnerTermCommissionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Development-only Owner verified deferred commission reconciliation
+ */
+
+export function useListPartnerTermCommissions<TData = Awaited<ReturnType<typeof listPartnerTermCommissions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerTermCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPartnerTermCommissionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPartnerPayoutBatchesUrl = () => {
+
+
+
+
+  return `/api/platform/partner-payout-batches`
+}
+
+export const listPartnerPayoutBatches = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutBatch[]> => {
+
+  return customFetch<PartnerPayoutBatch[]>(getListPartnerPayoutBatchesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPartnerPayoutBatchesQueryKey = () => {
+    return [
+    `/api/platform/partner-payout-batches`
+    ] as const;
+    }
+
+
+export const getListPartnerPayoutBatchesQueryOptions = <TData = Awaited<ReturnType<typeof listPartnerPayoutBatches>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerPayoutBatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPartnerPayoutBatchesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPartnerPayoutBatches>>> = ({ signal }) => listPartnerPayoutBatches({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPartnerPayoutBatches>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPartnerPayoutBatchesQueryResult = NonNullable<Awaited<ReturnType<typeof listPartnerPayoutBatches>>>
+export type ListPartnerPayoutBatchesQueryError = ErrorType<unknown>
+
+
+
+export function useListPartnerPayoutBatches<TData = Awaited<ReturnType<typeof listPartnerPayoutBatches>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerPayoutBatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPartnerPayoutBatchesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApprovePartnerPayoutBatchUrl = () => {
+
+
+
+
+  return `/api/platform/partner-payout-batches`
+}
+
+/**
+ * @summary Atomically approve selected eligible commissions after each school term has ended; no transfer
+ */
+export const approvePartnerPayoutBatch = async (partnerPayoutBatchInput: PartnerPayoutBatchInput, options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutBatch> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerPayoutBatch>(getApprovePartnerPayoutBatchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerPayoutBatchInput)
+  }
+);}
+
+
+
+
+
+export const getApprovePartnerPayoutBatchMutationKey = () => ['approvePartnerPayoutBatch'] as const;
+
+export const getApprovePartnerPayoutBatchMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePartnerPayoutBatch>>, TError,ApprovePartnerPayoutBatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approvePartnerPayoutBatch>>, TError,ApprovePartnerPayoutBatchMutationVariables, TContext> => {
+
+const mutationKey = getApprovePartnerPayoutBatchMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvePartnerPayoutBatch>>, ApprovePartnerPayoutBatchMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  approvePartnerPayoutBatch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApprovePartnerPayoutBatchMutationResult = NonNullable<Awaited<ReturnType<typeof approvePartnerPayoutBatch>>>
+    export type ApprovePartnerPayoutBatchMutationBody = BodyType<PartnerPayoutBatchInput>
+    export type ApprovePartnerPayoutBatchMutationError = ErrorType<void>
+    export type ApprovePartnerPayoutBatchMutationVariables = {data: BodyType<PartnerPayoutBatchInput>}
+
+    /**
+ * @summary Atomically approve selected eligible commissions after each school term has ended; no transfer
+ */
+export const useApprovePartnerPayoutBatch = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePartnerPayoutBatch>>, TError,ApprovePartnerPayoutBatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approvePartnerPayoutBatch>>,
+        TError,
+        ApprovePartnerPayoutBatchMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApprovePartnerPayoutBatchMutationOptions(options));
+    }
+
+export const getGetPartnerPayoutBatchExportUrl = (batchId: number,) => {
+
+
+
+
+  return `/api/platform/partner-payout-batches/${batchId}`
+}
+
+/**
+ * @summary Audited export of an approved batch; no bank details, transfer, or paid claim
+ */
+export const getPartnerPayoutBatchExport = async (batchId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutBatch> => {
+
+  return customFetch<PartnerPayoutBatch>(getGetPartnerPayoutBatchExportUrl(batchId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPartnerPayoutBatchExportQueryKey = (batchId: number,) => {
+    return [
+    `/api/platform/partner-payout-batches/${batchId}`
+    ] as const;
+    }
+
+
+export const getGetPartnerPayoutBatchExportQueryOptions = <TData = Awaited<ReturnType<typeof getPartnerPayoutBatchExport>>, TError = ErrorType<unknown>>(batchId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutBatchExport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPartnerPayoutBatchExportQueryKey(batchId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPartnerPayoutBatchExport>>> = ({ signal }) => getPartnerPayoutBatchExport(batchId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: batchId !== null && batchId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutBatchExport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPartnerPayoutBatchExportQueryResult = NonNullable<Awaited<ReturnType<typeof getPartnerPayoutBatchExport>>>
+export type GetPartnerPayoutBatchExportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Audited export of an approved batch; no bank details, transfer, or paid claim
+ */
+
+export function useGetPartnerPayoutBatchExport<TData = Awaited<ReturnType<typeof getPartnerPayoutBatchExport>>, TError = ErrorType<unknown>>(
+ batchId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutBatchExport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPartnerPayoutBatchExportQueryOptions(batchId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyDeferredCommissionsUrl = () => {
+
+
+
+
+  return `/api/partner/deferred-commissions`
+}
+
+/**
+ * @summary Development-only own commission totals, without other recipients' financial allocations
+ */
+export const getMyDeferredCommissions = async ( options?: Parameters<typeof customFetch>[1]): Promise<DeferredCommissionTotals> => {
+
+  return customFetch<DeferredCommissionTotals>(getGetMyDeferredCommissionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyDeferredCommissionsQueryKey = () => {
+    return [
+    `/api/partner/deferred-commissions`
+    ] as const;
+    }
+
+
+export const getGetMyDeferredCommissionsQueryOptions = <TData = Awaited<ReturnType<typeof getMyDeferredCommissions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDeferredCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyDeferredCommissionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyDeferredCommissions>>> = ({ signal }) => getMyDeferredCommissions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyDeferredCommissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyDeferredCommissionsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyDeferredCommissions>>>
+export type GetMyDeferredCommissionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Development-only own commission totals, without other recipients' financial allocations
+ */
+
+export function useGetMyDeferredCommissions<TData = Awaited<ReturnType<typeof getMyDeferredCommissions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDeferredCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyDeferredCommissionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getUpdatePartnerPayoutUrl = (payoutId: number,) => {
 

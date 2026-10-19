@@ -11,7 +11,7 @@ export async function frozenSplit(db: StudentSubscriptionSqlClient, paymentId: n
   return (await db.query("SELECT * FROM flutterwave_split_payments WHERE payment_id=$1", [paymentId])).rows[0] ?? null;
 }
 export async function splitAttribution(db: StudentSubscriptionSqlClient, schoolId: number, term: string, version: StudentAllocationVersion = 1) {
-  const policy = studentAllocationPolicy(version === 2 ? "SCV2_" : undefined);
+  const policy = studentAllocationPolicy(`SCV${version}_`);
   const a = (await db.query(
     `SELECT a.id,a.partner_profile_id FROM school_partner_attributions a
      JOIN partner_profiles pp ON pp.id=a.partner_profile_id
@@ -48,6 +48,9 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
       "SELECT * FROM flutterwave_split_settings WHERE school_id=$1 FOR SHARE", [p.school_id],
     )).rows[0];
     const existing = await frozenSplit(db, paymentId);
+    if (studentAllocationPolicy(p.reference).deferredPartner && !setting?.enabled) {
+      throw new AuthError(409, "School-only deferred commission checkout requires a reviewed frozen split; platform-only fallback is forbidden");
+    }
     if (!setting?.enabled && !existing) { await db.query("COMMIT"); return undefined; }
     if (!setting?.enabled || !setting.automatic_settlement_confirmed) throw new AuthError(409, "School TEST split verification is not authorized");
     const school = (await db.query(
@@ -55,20 +58,20 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
     )).rows[0];
     if (!school) throw new AuthError(409, "School needs its own reviewed and provider-verified TEST subaccount");
     const policy = studentAllocationPolicy(p.reference);
-    if (policy.version === 2) {
+    if (policy.version >= 2) {
       const constraint = (await db.query(
         `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
           WHERE conrelid='flutterwave_split_payments'::regclass AND conname='flw_split_amounts_ck'`,
       )).rows[0];
-      if (!constraint?.definition?.includes("SCV2_")) {
+      if (!constraint?.definition?.includes(`SCV${policy.version}_`)) {
         throw new AuthError(409, "TEST split database policy upgrade is required before new-policy checkout");
       }
     }
     const eligibility = await splitAttribution(db, p.school_id, p.term, policy.version);
-    const partner = eligibility ? (await db.query(
+    const partner = eligibility && !policy.deferredPartner ? (await db.query(
       "SELECT * FROM flutterwave_split_recipients WHERE partner_profile_id=$1 AND status='TEST_READY' FOR SHARE", [eligibility.partnerId],
     )).rows[0] : null;
-    if (eligibility && !partner) throw new AuthError(409, "Eligible partner needs its own reviewed and provider-verified TEST subaccount");
+    if (eligibility && !partner && !policy.deferredPartner) throw new AuthError(409, "Eligible partner needs its own reviewed and provider-verified TEST subaccount");
     const instructions = fixedSplitInstructions(school.provider_subaccount_id, partner?.provider_subaccount_id ?? null, policy.version);
     if (existing) {
       const canonicalInstructions = (value: FixedSplitInstruction[]) => JSON.stringify(
@@ -108,6 +111,9 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
 export async function validateSplitCollection(db: StudentSubscriptionSqlClient, payment: any, verified: VerifiedPayment) {
   assertNoLocalSplitSimulation([payment,verified]);
   const split = await frozenSplit(db, Number(payment.id));
+  if (!split && studentAllocationPolicy(payment.reference).deferredPartner) {
+    throw new AuthError(409, "Deferred commission payment requires its original school-only frozen checkout plan");
+  }
   if (!split) return null;
   if (verified.reference !== split.reference || verified.amountMinor !== 500000 || verified.currency !== "NGN"
       || split.school_id !== Number(payment.schoolId) || split.student_id !== Number(payment.studentId)
@@ -134,6 +140,13 @@ export async function validateSplitCollection(db: StudentSubscriptionSqlClient, 
     throw new AuthError(409, "Partner eligibility changed after frozen checkout");
   }
   const costs = verified.providerCostComponents;
+  if (studentAllocationPolicy(split.reference).deferredPartner) {
+    if (!verified.providerFlwReference || verified.providerFlwReference.length > 200) {
+      throw new AuthError(409, "Independent Flutterwave reference is required for refund and chargeback matching");
+    }
+    await db.query("UPDATE flutterwave_split_payments SET provider_flw_reference=$1 WHERE payment_id=$2",
+      [verified.providerFlwReference,payment.id]);
+  }
   if (!costs || costs.appFeeMinor === null || costs.additionalFeeMinor === null
       || !Number.isSafeInteger(costs.appFeeMinor) || !Number.isSafeInteger(costs.additionalFeeMinor)
       || costs.appFeeMinor < 0 || costs.additionalFeeMinor < 0
@@ -157,7 +170,7 @@ export async function recordSplitCollection(db: StudentSubscriptionSqlClient, pa
      AND academic_session_id=(SELECT session_id FROM flutterwave_split_payments WHERE payment_id=$2)
      AND term=(SELECT t.name FROM flutterwave_split_payments s JOIN academic_terms t ON t.id=s.term_id WHERE s.payment_id=$2)
      AND partner_profile_id=(SELECT partner_profile_id FROM flutterwave_split_payments WHERE payment_id=$2)
-     AND status='PENDING' AND EXISTS(SELECT 1 FROM flutterwave_split_payments WHERE payment_id=$2 AND partner_profile_id IS NOT NULL)`,
+     AND status='PENDING' AND EXISTS(SELECT 1 FROM flutterwave_split_payments WHERE payment_id=$2 AND partner_profile_id IS NOT NULL AND left(reference,5)<>'SCV3_')`,
     [subscriptionId,paymentId],
   );
 }

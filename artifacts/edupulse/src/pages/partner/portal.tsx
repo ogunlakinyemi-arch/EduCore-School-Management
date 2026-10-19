@@ -2,6 +2,7 @@ import { UserButton } from '@clerk/react';
 import { Route, Switch, Link, Redirect, useLocation } from 'wouter';
 import { 
   useGetPartnerDashboard,
+  useGetMyDeferredCommissions,
   useGetPartnerProfile,
   useGetMyPartnerCommissions,
   useGetMyPartnerPayouts,
@@ -119,6 +120,7 @@ function PortalHeader() {
 function Dashboard() {
   const profile = useGetPartnerProfile();
   const dashboard = useGetPartnerDashboard();
+  const deferred = useGetMyDeferredCommissions();
   if (profile.isLoading || dashboard.isLoading) return <Loading />;
   if (profile.isError || !profile.data) return (
     <div className="mx-auto max-w-3xl p-8">
@@ -173,6 +175,20 @@ function Dashboard() {
           </div>
         </div>}
       </div>
+
+      {canViewFinance && <section className="panel mb-8 p-6" data-testid="section-deferred-commissions">
+        <div className="eyebrow">Term-based commissions (new policy)</div>
+        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Shown separately from the historical totals above. Approval is recording only; it does not mean funds were sent.</p>
+        {deferred.isLoading ? <div className="skeleton mt-4 h-16 rounded-xl" /> : deferred.isError || !deferred.data ? (
+          <div className="mt-4 text-sm">Term commission totals could not be loaded. <Button variant="outline" className="ml-2 h-8 px-3 text-xs" onClick={() => deferred.refetch()}>Retry</Button></div>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-5">
+            {([['Earned', deferred.data.earnedMinor], ['Pending', deferred.data.pendingMinor], ['Approved', deferred.data.approvedMinor], ['Paid', deferred.data.paidMinor], ['Recovery', deferred.data.recoveryMinor]] as const).map(([l, v]) => (
+              <div key={l} data-testid={`text-deferred-${l.toLowerCase()}`}><div className="eyebrow">{l}</div><div className="display-font mt-1 text-xl font-bold">₦{(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div></div>
+            ))}
+          </div>
+        )}
+      </section>}
 
       <div className="grid gap-6 md:grid-cols-[1fr_300px]">
         <div className="panel overflow-hidden">

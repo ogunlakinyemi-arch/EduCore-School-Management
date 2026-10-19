@@ -118,7 +118,7 @@ export async function initializeStudentNfcHostedCheckout(
     subaccounts = await prepareSplitCheckout(Number(payment.paymentId));
     // New-policy charges must never silently fall back to platform-only collection.
     // Legacy checkouts keep their original behavior; already-paid records are not rewritten.
-    if (studentAllocationPolicy(String(payment.reference)).version === 2 && !subaccounts?.length) {
+    if (studentAllocationPolicy(String(payment.reference)).version >= 2 && !subaccounts?.length) {
       throw new AuthError(409,
         "Current-policy TEST checkout requires an approved, migration-ready frozen school/Partner split. No provider checkout was created. Ask the Owner to review TEST split setup; do not pay again for an existing charge.");
     }

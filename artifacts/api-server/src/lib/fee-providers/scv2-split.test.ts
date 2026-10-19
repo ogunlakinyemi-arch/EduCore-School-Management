@@ -65,3 +65,14 @@ it("preserves the legacy fee_ school2000 instruction", async () => {
     email:"payer@example.test",returnUrl:"https://example.test/return",subaccounts:[{...school,transaction_charge:2000}]});
   expect(transport).toHaveBeenCalledTimes(1);
 });
+it("SCV3 school-only checkout stays blocked before transport, with or without a partner liability",async()=>{
+  const {transport,adapter}=setup();
+  const input={reference:"SCV3_deferred_fixture_reference",amountMinor:500000,currency:"NGN",
+    email:"payer@example.test",returnUrl:"https://example.test/return"};
+  await expect(adapter.initializePayment({...input,subaccounts:[school]})).rejects.toThrow("exact post-fee");
+  await expect(adapter.initializePayment(input)).rejects.toThrow("exact post-fee");
+  await expect(adapter.initializePayment({...input,subaccounts:[school,partner]})).rejects.toThrow("Invalid Development split");
+  expect(transport).not.toHaveBeenCalled();
+  expect(studentPostFeePayouts(input.reference,true,7000)).toMatchObject({
+    schoolMinor:190000,merchantRemainderMinor:303000,partnerMinor:10000,ownerNetMinor:293000});
+});

@@ -22,9 +22,12 @@ export async function updateManualPartnerPayout(req: Request, audit: Audit) {
   try {
     await client.query("BEGIN");
     const current = await client.query(
-      `SELECT id,status,payment_reference FROM partner_payouts WHERE id=$1 FOR UPDATE`, [id]);
+      `SELECT id,status,payment_reference,method FROM partner_payouts WHERE id=$1 FOR UPDATE`, [id]);
     const row = current.rows[0];
     if (!row) throw new AuthError(404, "Payout not found");
+    if (row.method === "DEFERRED_BATCH_EXPORT") {
+      throw new AuthError(409, "Deferred batch is approval/export only. Verified transfer reconciliation is required before any Paid status; manual status changes are disabled.");
+    }
     if (!transitions[row.status]?.includes(status)) {
       throw new AuthError(409, `Invalid payout transition from ${row.status} to ${status}`);
     }

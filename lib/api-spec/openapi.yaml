@@ -4485,6 +4485,14 @@ paths:
           description: Invalid request or missing idempotency key
         "409":
           description: Idempotency key payload conflict or insufficient exact payable commissions
+  /platform/partner-term-commissions:
+    $ref: "./deferred-commissions.yaml#/paths/~1platform~1partner-term-commissions"
+  /platform/partner-payout-batches:
+    $ref: "./deferred-commissions.yaml#/paths/~1platform~1partner-payout-batches"
+  /platform/partner-payout-batches/{batchId}:
+    $ref: "./deferred-commissions.yaml#/paths/~1platform~1partner-payout-batches~1{batchId}"
+  /partner/deferred-commissions:
+    $ref: "./deferred-commissions.yaml#/paths/~1partner~1deferred-commissions"
   /platform/partner-payouts/{payoutId}:
     patch:
       operationId: updatePartnerPayout

@@ -3,6 +3,7 @@ import { AuthError } from "../middlewares/auth";
 import { fixedSplitInstructions, requireSplitDevelopment } from "../lib/flutterwave-split-policy";
 import { compareVerificationResponse } from "../lib/flutterwave-split-evidence";
 import { splitProvider } from "./flutterwave-split-provider";
+import { studentAllocationPolicy } from "../lib/student-allocation-policy";
 
 /**
  * Explicit, authorized provider GETs only. No payment, transfer, settlement or
@@ -22,17 +23,19 @@ export async function transactionSplitEvidence(paymentId: number) {
   }
   const instructions = p.instructions;
   if (!Array.isArray(instructions) || ![1,2].includes(instructions.length)) throw new AuthError(409, "Frozen plan requires review");
-  const canonical = fixedSplitInstructions(instructions[0]?.id, instructions[1]?.id ?? null);
+  const policy = studentAllocationPolicy(p.reference);
+  const canonical = fixedSplitInstructions(instructions[0]?.id, instructions[1]?.id ?? null,policy.version);
   if (JSON.stringify(instructions.map(s => [s.id,s.transaction_charge_type,s.transaction_charge]))
       !== JSON.stringify(canonical.map(s => [s.id,s.transaction_charge_type,s.transaction_charge]))
-      || Number(p.platform_amount_minor) !== (instructions.length === 2 ? 290000 : 300000)
-      || Number(p.school_amount_minor) !== 200000
-      || Number(p.partner_amount_minor) !== (instructions.length === 2 ? 10000 : 0)) {
+      || (policy.deferredPartner && (instructions.length !== 1 || p.partner_recipient_id !== null))
+      || Number(p.platform_amount_minor) !== (p.partner_profile_id ? policy.platformWithPartnerMinor : policy.platformWithoutPartnerMinor)
+      || Number(p.school_amount_minor) !== policy.schoolMinor
+      || Number(p.partner_amount_minor) !== (p.partner_profile_id ? 10000 : 0)) {
     throw new AuthError(409, "Frozen allocation differs from the approved policy");
   }
   const expected = {
     transactionId: String(p.provider_transaction_id), reference: String(p.reference), currency: "NGN",
-    grossAmountMinor: 500000, platformGrossMinor: Number(p.platform_amount_minor),
+    grossAmountMinor: 500000, platformGrossMinor: Number(p.platform_amount_minor) + (policy.deferredPartner ? Number(p.partner_amount_minor) : 0),
     recipients: instructions.map(s => ({ subaccountId: s.id, amountMinor: s.transaction_charge * 100 })),
   };
   // Only documented verify collection scalars are consumed. No speculative

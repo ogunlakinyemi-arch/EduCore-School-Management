@@ -179,6 +179,14 @@ describe("Mocked settlement evidence",() => {
   it("accepts TEST provider-reported completion only with exact recipient evidence",() => {
     expect(inspectRecipientSettlement(report,tx,bank,expected).status).toBe("TEST_PROVIDER_REPORTED_COMPLETE");
   });
+  it("SCV3 reconciles the exact school1900 disbursement, not a percentage or the merchant remainder",()=>{
+    const reference="SCV3_school_only_settlement";
+    const expectedV3={transactionId:"77",reference,amountMinor:190000};
+    expect(inspectRecipientSettlement(report,{...tx,tx_ref:reference,settlement_amount:1900},bank,expectedV3))
+      .toMatchObject({status:"TEST_PROVIDER_REPORTED_COMPLETE",amount:190000});
+    expect(inspectRecipientSettlement(report,{...tx,tx_ref:reference,settlement_amount:3030},bank,expectedV3).status).toBe("MISMATCH");
+    expect(inspectRecipientSettlement({...report,refund:100},{...tx,tx_ref:reference,settlement_amount:1900},bank,expectedV3).status).toBe("MISMATCH");
+  });
   it.each([
     {status:"pending"}, {disburse_ref:null}, {processed_date:null},
   ])("pending/incomplete reports do not prove disbursement: %o",overrides => {

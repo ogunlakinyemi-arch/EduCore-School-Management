@@ -41,6 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import NotFound from '@/pages/not-found';
 import { PartnerNfcOwnerControl } from '@/pages/partner/nfc-owner-control';
+import TermCommissionsPage from '@/pages/partner/term-commissions';
 import { clearPayoutDraft, readPayoutDraft, savePayoutDraft, type PayoutDraft } from '@/lib/partner-payout-retry';
 
 const inviteSchema = z.object({
@@ -895,6 +896,11 @@ export default function PartnerManagement() {
             Partners
           </button>
         </Link>
+        <Link href="/partners/term-commissions">
+          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/term-commissions' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))]")}>
+            Term commissions & payouts
+          </button>
+        </Link>
         <Link href="/partners/payouts">
           <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/payouts' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
             Payouts
@@ -909,6 +915,7 @@ export default function PartnerManagement() {
 
       <Switch>
         <Route path="/partners" component={PartnersOverview} />
+        <Route path="/partners/term-commissions" component={TermCommissionsPage} />
         <Route path="/partners/payouts" component={PayoutsOverview} />
         <Route path="/partners/conflicts" component={AttributionConflicts} />
         <Route path="/partners/:id">

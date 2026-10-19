@@ -14724,6 +14724,144 @@ export const CreatePartnerPayoutResponse = zod.object({
 
 
 /**
+ * @summary Development-only Owner verified deferred commission reconciliation
+ */
+export const ListPartnerTermCommissionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "partnerName": zod.string(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "term": zod.string(),
+  "sessionName": zod.string(),
+  "reference": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "grossMinor": zod.number().int(),
+  "schoolMinor": zod.number().int(),
+  "providerFeeMinor": zod.number().int().nullable(),
+  "providerAdditionalFeeMinor": zod.number().int().nullable(),
+  "vatMinor": zod.number().int().nullable(),
+  "merchantRemainderMinor": zod.number().int().nullable(),
+  "ownerNetMinor": zod.number().int().nullable(),
+  "eligible": zod.boolean(),
+  "termEnded": zod.boolean(),
+  "settlementStatus": zod.string()
+})
+export const ListPartnerTermCommissionsResponse = zod.array(ListPartnerTermCommissionsResponseItem)
+
+
+export const ListPartnerPayoutBatchesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "status": zod.string(),
+  "approvedAt": zod.string(),
+  "approvedBy": zod.number().int(),
+  "currency": zod.string(),
+  "amountMinor": zod.number().int(),
+  "executionMode": zod.string(),
+  "items": zod.array(zod.object({
+  "commissionId": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "payoutId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "reference": zod.string(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "term": zod.string()
+}))
+})
+export const ListPartnerPayoutBatchesResponse = zod.array(ListPartnerPayoutBatchesResponseItem)
+
+
+/**
+ * @summary Atomically approve selected eligible commissions after each school term has ended; no transfer
+ */
+export const approvePartnerPayoutBatchBodyIdempotencyKeyMin = 16;
+export const approvePartnerPayoutBatchBodyIdempotencyKeyMax = 100;
+
+
+export const approvePartnerPayoutBatchBodyCommissionIdsMax = 5000;
+
+
+
+export const ApprovePartnerPayoutBatchBody = zod.object({
+  "idempotencyKey": zod.string().min(approvePartnerPayoutBatchBodyIdempotencyKeyMin).max(approvePartnerPayoutBatchBodyIdempotencyKeyMax),
+  "commissionIds": zod.array(zod.number().int().min(1)).min(1).max(approvePartnerPayoutBatchBodyCommissionIdsMax)
+})
+
+export const ApprovePartnerPayoutBatchResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.string(),
+  "approvedAt": zod.string(),
+  "approvedBy": zod.number().int(),
+  "currency": zod.string(),
+  "amountMinor": zod.number().int(),
+  "executionMode": zod.string(),
+  "items": zod.array(zod.object({
+  "commissionId": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "payoutId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "reference": zod.string(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "term": zod.string()
+}))
+})
+
+
+/**
+ * @summary Audited export of an approved batch; no bank details, transfer, or paid claim
+ */
+
+
+
+export const GetPartnerPayoutBatchExportParams = zod.object({
+  "batchId": zod.coerce.number().int().min(1)
+})
+
+export const GetPartnerPayoutBatchExportResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.string(),
+  "approvedAt": zod.string(),
+  "approvedBy": zod.number().int(),
+  "currency": zod.string(),
+  "amountMinor": zod.number().int(),
+  "executionMode": zod.string(),
+  "items": zod.array(zod.object({
+  "commissionId": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "payoutId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "reference": zod.string(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "term": zod.string()
+}))
+})
+
+
+/**
+ * @summary Development-only own commission totals, without other recipients' financial allocations
+ */
+export const GetMyDeferredCommissionsResponse = zod.object({
+  "earnedMinor": zod.number().int(),
+  "pendingMinor": zod.number().int(),
+  "approvedMinor": zod.number().int(),
+  "paidMinor": zod.number().int(),
+  "recoveryMinor": zod.number().int()
+})
+
+
+/**
  * @summary Update payout status or payment reference
  */
 

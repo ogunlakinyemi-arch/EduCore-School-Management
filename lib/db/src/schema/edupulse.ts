@@ -461,6 +461,9 @@ export const commissionLedger = pgTable(
     currency: text("currency").notNull().default("NGN"),
     status: text("status").notNull().default("PENDING"),
     payoutId: integer("payout_id").references(() => partnerPayouts.id),
+    // Nullable only for historical commissions. FK is retained in the reviewed
+    // SQL migration to avoid the circular subscription schema initialization.
+    paymentId: integer("payment_id"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     payableAt: timestamp("payable_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
@@ -475,6 +478,8 @@ export const commissionLedger = pgTable(
   },
   (table) => [
     uniqueIndex("commission_ledger_subscription_period_unique").on(table.subscriptionId, table.term),
+    uniqueIndex("deferred_commission_payment_uq").on(table.paymentId).where(sql`${table.paymentId} IS NOT NULL`),
+    uniqueIndex("deferred_commission_student_partner_term_uq").on(table.schoolId,table.studentId,table.partnerProfileId,table.academicSessionId,table.term).where(sql`${table.paymentId} IS NOT NULL`),
     index("commission_ledger_partner_status_idx").on(table.partnerProfileId, table.status),
     check("commission_ledger_amount_nonnegative", sql`${table.amount} >= 0 AND ${table.count} > 0`),
     check("commission_ledger_status_check", sql`${table.status} IN ('PENDING','APPROVED','PAYABLE','PAID','HELD','REVERSED','CANCELLED')`),

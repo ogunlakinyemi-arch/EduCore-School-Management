@@ -1,17 +1,18 @@
 /** Immutable checkout references select the policy; old checkouts never change. */
-export type StudentAllocationVersion = 1 | 2;
-const CURRENT_STUDENT_ALLOCATION_VERSION: StudentAllocationVersion = 2;
+export type StudentAllocationVersion = 1 | 2 | 3;
+const CURRENT_STUDENT_ALLOCATION_VERSION: StudentAllocationVersion = 3;
 export function studentAllocationPolicy(reference?: string) {
-  const version: StudentAllocationVersion = reference?.startsWith("SCV2_") ? 2 : 1;
+  const version: StudentAllocationVersion = reference?.startsWith("SCV3_") ? 3 : reference?.startsWith("SCV2_") ? 2 : 1;
   return allocationPolicyVersion(version);
 }
 function allocationPolicyVersion(version: StudentAllocationVersion) {
   return {
     version,
-    schoolMinor: version === 2 ? 190_000 : 200_000,
-    platformWithPartnerMinor: version === 2 ? 300_000 : 290_000,
-    platformWithoutPartnerMinor: version === 2 ? 310_000 : 300_000,
+    schoolMinor: version >= 2 ? 190_000 : 200_000,
+    platformWithPartnerMinor: version >= 2 ? 300_000 : 290_000,
+    platformWithoutPartnerMinor: version >= 2 ? 310_000 : 300_000,
     partnerMinor: 10_000,
+    deferredPartner: version === 3,
   };
 }
 /** Current-policy summaries are separate from immutable payment references. */
@@ -34,5 +35,6 @@ export function studentPostFeePayouts(reference: string, hasPartner: boolean, to
   }
   return {schoolMinor:policy.schoolMinor,partnerMinor:hasPartner ? policy.partnerMinor : 0,
     ownerGrossMinor,ownerNetMinor:ownerGrossMinor-totalFeeMinor,totalFeeMinor,
+    merchantRemainderMinor:500000-policy.schoolMinor-totalFeeMinor,
     providerNetMinor:500000-totalFeeMinor};
 }

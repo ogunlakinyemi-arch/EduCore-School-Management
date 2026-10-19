@@ -12,8 +12,20 @@ external account state or a universal API guarantee.
 a percentage of a variable post-fee net. Valid local flat instructions and bank
 ownership verification do not establish effective provider split semantics.
 
-**How to apply:** Require reviewed V3 multi-recipient fee-order semantics and
-exact post-fee payout evidence before enabling current-policy TEST collections.
-Keep School/Partner gross entitlements intact and expense the total processing
-cost once against Owner gross. Never guess percentages or repair prior history
-to match dashboard displays.
+**How to apply:** For new deferred-commission payments, require reviewed V3
+single-school fixed-amount semantics and exact post-fee school/main-merchant
+evidence; do not require or add a Partner checkout subaccount. Older frozen
+multi-recipient references retain their original policy. Keep the school
+entitlement intact, accrue the eligible Partner internally and expense provider
+costs once against the merchant remainder. Never guess percentages or repair
+prior history to match dashboard displays.
+
+Flutterwave's split documentation contains contradictory descriptions of
+`flat_subaccount`, although its explicit override example shows a fixed
+subaccount amount with merchant remainder after fees.
+
+**Why:** The reviewed provider page stated both interpretations. Code payload
+validity cannot settle that contradiction for this merchant's effective settings.
+
+**How to apply:** Retain fail-closed checkout guards until account-specific
+confirmation and independent transaction-level settlement evidence agree.

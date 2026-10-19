@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
+import { holdSignedDeferredAdverseEvent } from "../services/deferred-commission-adverse-events";
 import { PaymentProviderError, type ExpectedPayment } from "../lib/fee-providers";
 import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
 import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
@@ -114,6 +115,10 @@ studentSubscriptionFlutterwaveWebhookRouter.post(
       });
     } catch (error) {
       if (error instanceof PaymentProviderError && error.signatureVerified) {
+        try { await holdSignedDeferredAdverseEvent(rawBody); }
+        catch {
+          res.status(500).json({error:"Adverse webhook hold could not be persisted"});return;
+        }
         const reference = signedReference(rawBody);
         if (reference) {
           try {
