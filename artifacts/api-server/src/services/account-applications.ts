@@ -2,8 +2,8 @@ import { randomUUID, createHash } from "node:crypto";
 import type { DatabasePoolClient as PoolClient } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { AuthError, type UserContext } from "../middlewares/auth";
-import { createEmailProvider } from "./communication-providers";
-import { logger } from "../lib/logger";
+import { auditAccountApplication as audit } from "./account-application-audit";
+export { notifyApplicationDecision } from "./account-application-notifications";
 import { z } from "zod";
 
 const text = (max: number, min = 1) => z.string().trim().min(min).max(max);
@@ -45,14 +45,6 @@ export const applicationFields = `a.id,a.applicant_type AS "applicantType",
  NULLIF(trim(concat_ws(' ',reviewer.first_name,reviewer.last_name)),'') AS "reviewerName",
  a.rejection_reason AS "rejectionReason",a.notification_status AS "notificationStatus"`;
 export const applicationJoin = `FROM account_applications a LEFT JOIN app_users reviewer ON reviewer.id=a.reviewed_by`;
-
-async function audit(client: PoolClient, actor: UserContext, id: number, action: string, metadata: object) {
-  await client.query(`INSERT INTO audit_logs
-    ("user",role,actor_user_id,clerk_user_id,action,module,record_id,severity,event_type,result,metadata)
-    VALUES($1,$2,$3,$4,$5,'Account Applications',$6,'info','ACCOUNT_APPLICATION','SUCCESS',$7::jsonb)`,
-  [actor.user.email, actor.roles.some(r => r.role === "PLATFORM_OWNER") ? "PLATFORM_OWNER" : "APPLICANT",
-    actor.user.id, actor.user.clerkUserId, action, id, JSON.stringify(metadata)]);
-}
 
 export async function assertNewApplicant(client: PoolClient, userId: number) {
   // Lock identity, not just the absent application, to serialize two first submissions.
@@ -162,42 +154,6 @@ export async function decideApplication(actor: UserContext, id: number, decision
     [id,decision.status,actor.user.id,decision.status === "REJECTED" ? decision.reason : null,schoolId,partnerId]);
     await audit(client, actor, id, `${decision.status === "APPROVED" ? "Approved" : "Rejected"} account application`,
       { previousStatus: "PENDING", status: decision.status, reason: decision.reason ?? null, schoolId, partnerProfileId: partnerId });
-    await client.query("COMMIT");
-  } catch (error) { await client.query("ROLLBACK"); throw error; }
-  finally { client.release(); }
-}
-
-export async function notifyApplicationDecision(actor: UserContext, id: number) {
-  // A committed decision is never undone because email failed. A claim prevents duplicate sends.
-  const claim = await pool.query(`UPDATE account_applications SET notification_status='SENDING'
-    WHERE id=$1 AND status IN ('APPROVED','REJECTED') AND notification_status='NOT_REQUESTED' RETURNING *`, [id]);
-  const a = claim.rows[0];
-  if (!a) return;
-  let status = "UNAVAILABLE";
-  let sendAttempted = false;
-  try {
-    const provider = createEmailProvider();
-    if (["resend", "http-email"].includes(provider.provider)) {
-      const approved = a.status === "APPROVED";
-      const body = approved
-        ? `Your Yetenia EduCore ${a.applicant_type === "PARTNER" ? "Partner" : "School Admin"} application has been approved. You can now log in with your registered account to access your dashboard.`
-        : `Your Yetenia EduCore application was not approved. Reason: ${a.rejection_reason}. This decision does not grant portal access.`;
-      sendAttempted = true;
-      const result = await provider.send({ to: a.email,
-        subject: `Yetenia EduCore application ${approved ? "approved" : "not approved"}`,
-        body, idempotencyKey: `account-application-${id}-${a.status}` });
-      status = result.accepted && result.status !== "SIMULATED" ? "ACCEPTED"
-        : result.failure?.retryable ? "UNKNOWN" : "FAILED";
-    }
-  } catch {
-    status = sendAttempted ? "UNKNOWN" : "UNAVAILABLE";
-    logger.warn({ applicationId: id }, "Application decision email could not be confirmed");
-  }
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query(`UPDATE account_applications SET notification_status=$2 WHERE id=$1 AND notification_status='SENDING'`, [id,status]);
-    await audit(client,actor,id,"Recorded application decision email status",{ notificationStatus:status });
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }

@@ -162,15 +162,15 @@ export function StudentsPage() {
           </div>
           
           {canManageSchool && modal && (
-            <Modal title={modal.create ? 'Admit new student' : 'Edit student profile'} eyebrow="Student Records" onClose={() => setModal(null)}>
+            <Modal viewport title={modal.create ? 'Admit new student' : 'Edit student profile'} eyebrow="Student Records" onClose={() => setModal(null)}>
               <StudentForm key={`${schoolId}-${modal.id ?? 'new'}`} schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}
-          {canManageSchool && photoStudent && <Modal title={`Passport photo — ${photoStudent.firstName} ${photoStudent.lastName}`} eyebrow="Student record" onClose={() => setPhotoStudent(null)}>
+          {canManageSchool && photoStudent && <Modal viewport title={`Passport photo — ${photoStudent.firstName} ${photoStudent.lastName}`} eyebrow="Student record" onClose={() => setPhotoStudent(null)}>
             <StudentPhotoField key={`${schoolId}-${photoStudent.id}`} schoolId={schoolId} studentId={photoStudent.id} passportUrl={photoStudent.passportUrl} onUpdated={() => { void qc.invalidateQueries({ queryKey: getListStudentsQueryKey() }); }} />
           </Modal>}
           {canPreviewCards && idCardStudent && (
-            <Modal title="Student details / e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
+            <Modal viewport title="Student details / e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
               <StudentEIdCard studentId={idCardStudent.id} schoolId={schoolId} onClose={() => setIdCardStudent(null)} />
             </Modal>
           )}

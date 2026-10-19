@@ -16,3 +16,18 @@ Avoid YAML anchors and aliases in separately referenced OpenAPI files; expand th
 **Why:** The project's Orval reference resolver failed on anchors in an external Exam/Record contract, while equivalent expanded definitions generated successfully.
 
 **How to apply:** Keep external contracts explicit and confirm code generation before checking their consuming applications.
+
+## Distinguish generation from declaration verification
+
+Generated-source success and passing frontend/API checks do not prove that the
+shared validation library's declaration build completed.
+
+**Why:** The generation command can finish writing both clients and validators,
+then stall in the subsequent shared-library build while consuming-app checks
+still pass. Treating its earlier success messages as full completion hides an
+unverified build gate.
+
+**How to apply:** Inspect the final command result and the specific build stage.
+If a bounded shared build cannot complete, report that limitation separately
+from passing source checks; do not keep regenerating unchanged outputs or claim
+that all build gates passed.

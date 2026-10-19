@@ -9,6 +9,7 @@ vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQue
 vi.mock('@workspace/api-client-react', () => ({
   useGetAccountApplications: () => ({ data, ...flags, isFetching: false, refetch: vi.fn() }),
   useDecideAccountApplication: () => ({ mutate: vi.fn() }),
+  useManageAccountApplicationNotification: () => ({ mutateAsync: vi.fn() }),
   getGetAccountApplicationsQueryKey: () => ['x'],
 }));
 import AccountApplicationsPanel from './account-applications-panel';

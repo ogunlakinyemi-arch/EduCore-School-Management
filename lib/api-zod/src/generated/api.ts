@@ -28,7 +28,12 @@ export const GetMyAccountApplicationResponse = zod.object({
   "reviewedAt": zod.string().nullish(),
   "reviewerName": zod.string().nullish(),
   "rejectionReason": zod.string().nullish(),
-  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE']),
+  "notificationReason": zod.string().nullish(),
+  "notificationRetryAllowed": zod.boolean().optional(),
+  "notificationCanReconcile": zod.boolean().optional(),
+  "notificationDeliveryConfirmed": zod.boolean().optional(),
+  "notificationProviderMessageId": zod.string().nullish()
 }),zod.null()]),
   "eligible": zod.boolean()
 })
@@ -91,7 +96,12 @@ export const SubmitAccountApplicationResponse = zod.object({
   "reviewedAt": zod.string().nullish(),
   "reviewerName": zod.string().nullish(),
   "rejectionReason": zod.string().nullish(),
-  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE']),
+  "notificationReason": zod.string().nullish(),
+  "notificationRetryAllowed": zod.boolean().optional(),
+  "notificationCanReconcile": zod.boolean().optional(),
+  "notificationDeliveryConfirmed": zod.boolean().optional(),
+  "notificationProviderMessageId": zod.string().nullish()
 })
 
 
@@ -114,9 +124,50 @@ export const GetAccountApplicationsResponseItem = zod.object({
   "reviewedAt": zod.string().nullish(),
   "reviewerName": zod.string().nullish(),
   "rejectionReason": zod.string().nullish(),
-  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE']),
+  "notificationReason": zod.string().nullish(),
+  "notificationRetryAllowed": zod.boolean().optional(),
+  "notificationCanReconcile": zod.boolean().optional(),
+  "notificationDeliveryConfirmed": zod.boolean().optional(),
+  "notificationProviderMessageId": zod.string().nullish()
 })
 export const GetAccountApplicationsResponse = zod.array(GetAccountApplicationsResponseItem)
+
+
+export const ManageAccountApplicationNotificationParams = zod.object({
+  "applicationId": zod.coerce.number().int()
+})
+
+export const ManageAccountApplicationNotificationBody = zod.object({
+  "action": zod.enum(['RETRY', 'RECONCILE'])
+})
+
+export const ManageAccountApplicationNotificationResponse = zod.object({
+  "id": zod.number().int(),
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "fullName": zod.string(),
+  "partnerType": zod.union([zod.literal('BUSINESS'),zod.literal('INDIVIDUAL'),zod.literal(null)]).nullish(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "schoolName": zod.string().nullish(),
+  "businessName": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.string(),
+  "reviewedAt": zod.string().nullish(),
+  "reviewerName": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish(),
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE']),
+  "notificationReason": zod.string().nullish(),
+  "notificationRetryAllowed": zod.boolean().optional(),
+  "notificationCanReconcile": zod.boolean().optional(),
+  "notificationDeliveryConfirmed": zod.boolean().optional(),
+  "notificationProviderMessageId": zod.string().nullish()
+})
 
 
 
@@ -154,7 +205,12 @@ export const DecideAccountApplicationResponse = zod.object({
   "reviewedAt": zod.string().nullish(),
   "reviewerName": zod.string().nullish(),
   "rejectionReason": zod.string().nullish(),
-  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE']),
+  "notificationReason": zod.string().nullish(),
+  "notificationRetryAllowed": zod.boolean().optional(),
+  "notificationCanReconcile": zod.boolean().optional(),
+  "notificationDeliveryConfirmed": zod.boolean().optional(),
+  "notificationProviderMessageId": zod.string().nullish()
 })
 
 

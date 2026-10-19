@@ -91,7 +91,7 @@ export function SubjectsPage() {
           </div>
           
           {canManageSchool && modal && (
-            <Modal title={modal.create ? 'Add Subject' : 'Edit Subject'} eyebrow="Curriculum" onClose={() => setModal(null)}>
+            <Modal viewport title={modal.create ? 'Add Subject' : 'Edit Subject'} eyebrow="Curriculum" onClose={() => setModal(null)}>
               <SubjectForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}

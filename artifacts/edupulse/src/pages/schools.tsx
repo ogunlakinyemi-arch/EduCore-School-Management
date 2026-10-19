@@ -301,7 +301,7 @@ export function SchoolsPage() {
       )}
 
       {modal && (
-        <Modal title={modal.create ? 'Add a new school' : 'Edit school profile'} eyebrow="Tenant setup" onClose={() => setModal(null)}>
+        <Modal viewport title={modal.create ? 'Add a new school' : 'Edit school profile'} eyebrow="Tenant setup" onClose={() => setModal(null)}>
           <SchoolForm initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
         </Modal>
       )}

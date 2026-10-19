@@ -77,3 +77,5 @@
 - [Approved promotion policy](promotion-policy-boundary.md) — third-term evidence and legacy heuristics do not establish school-approved promotion eligibility or authorize execution.
 - [Bulk onboarding photos](bulk-onboarding-photos.md) — existing/imported rosters need private per-person photo completion without blocking imports or re-creating records.
 - [Public registration policy](public-registration-policy.md) — only School Admin/Partner applications; Owner approval before operational access; preserve existing users.
+- [Application decision confirmation](application-decision-confirmation.md) — transport failure is not rollback; reconcile status without repeating decisions or notifications.
+- [Admin form presentation](admin-form-presentation-policy.md) — opt confirmed Owner/Admin forms into viewport dialogs without changing authorization, saving or unrelated financial flows.

@@ -66,7 +66,7 @@ export function ClassesPage() {
           </div>
           
           {canManageSchool && modal && (
-            <Modal title="Create Class" eyebrow="Structure" onClose={() => setModal(null)}>
+            <Modal viewport title="Create Class" eyebrow="Structure" onClose={() => setModal(null)}>
               <ClassForm schoolId={schoolId} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}

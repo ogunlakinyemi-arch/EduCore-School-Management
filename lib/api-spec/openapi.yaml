@@ -74,6 +74,23 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/AccountApplication"
+  /platform/account-applications/{applicationId}/notification:
+    post:
+      operationId: manageAccountApplicationNotification
+      tags: [AccountApplications]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountApplicationNotificationInput' }
+      responses:
+        '200':
+          description: Authoritative notification status; never repeats approval
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountApplication' }
   /platform/account-applications/{applicationId}/decision:
     post:
       operationId: decideAccountApplication
@@ -6123,6 +6140,12 @@ components:
         businessName: { type: string, maxLength: 200 }
         address: { type: string, maxLength: 500 }
         referralToken: { type: string, minLength: 16, maxLength: 256 }
+    AccountApplicationNotificationInput:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [RETRY, RECONCILE] }
     AccountApplicationDecision:
       type: object
       additionalProperties: false
@@ -6153,6 +6176,11 @@ components:
         reviewerName: { type: [string, "null"] }
         rejectionReason: { type: [string, "null"] }
         notificationStatus: { type: string, enum: [NOT_REQUESTED, SENDING, ACCEPTED, FAILED, UNKNOWN, UNAVAILABLE] }
+        notificationReason: { type: [string, "null"] }
+        notificationRetryAllowed: { type: boolean }
+        notificationCanReconcile: { type: boolean }
+        notificationDeliveryConfirmed: { type: boolean }
+        notificationProviderMessageId: { type: [string, "null"] }
     AccountApplicationResult:
       type: object
       required: [application, eligible]

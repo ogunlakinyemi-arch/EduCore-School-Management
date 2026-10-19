@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state=vi.hoisted(()=>({
   my: {application:null,eligible:true} as any,
-  rows: [] as any[], submit:vi.fn(), decide:vi.fn(), invalidate:vi.fn(), refetch:vi.fn(), navigate:vi.fn(),
+   rows: [] as any[], submit:vi.fn(), decide:vi.fn(), emailAction:vi.fn(), invalidate:vi.fn(), refetch:vi.fn(), navigate:vi.fn(), cancelQueries:vi.fn(), fetchQuery:vi.fn(),
 }));
 vi.mock('@clerk/react',()=>({
   useAuth:()=>({isLoaded:true,isSignedIn:true}), useClerk:()=>({signOut:vi.fn()}),
@@ -12,12 +12,14 @@ vi.mock('@clerk/react',()=>({
 }));
 vi.mock('wouter',()=>({useLocation:()=>['/',state.navigate],Redirect:()=>null,
   Link:({children,href}:any)=><a href={href}>{children}</a>}));
-vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({invalidateQueries:state.invalidate,refetchQueries:state.refetch})}));
+vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({invalidateQueries:state.invalidate,refetchQueries:state.refetch,cancelQueries:state.cancelQueries,fetchQuery:state.fetchQuery})}));
 vi.mock('@workspace/api-client-react',()=>({
   useGetMyAccountApplication:()=>({data:state.my,isLoading:false,isError:false,refetch:state.refetch}),
   useSubmitAccountApplication:()=>({mutate:state.submit,isPending:false}),
   useGetAccountApplications:()=>({data:state.rows,isLoading:false,isError:false,refetch:state.refetch}),
-  useDecideAccountApplication:()=>({mutate:state.decide}),
+  useDecideAccountApplication:()=>({mutateAsync:state.decide}),
+  useManageAccountApplicationNotification:()=>({mutateAsync:state.emailAction}),
+  getAccountApplications:vi.fn(),
   getGetMyAccountApplicationQueryKey:()=>['my-application'],
   getGetAuthorizedContextQueryKey:()=>['authorized-context'],
   getGetAccountApplicationsQueryKey:()=>['applications'],
@@ -30,7 +32,10 @@ let root:Root,host:HTMLDivElement;
 beforeEach(()=>{
   vi.clearAllMocks();sessionStorage.clear();
   state.my={application:null,eligible:true};state.rows=[];
-  state.invalidate.mockResolvedValue(undefined);state.refetch.mockResolvedValue(undefined);
+  state.invalidate.mockResolvedValue(undefined);state.refetch.mockImplementation(async()=>({data:state.rows,isError:false}));
+  state.cancelQueries.mockResolvedValue(undefined);
+  state.fetchQuery.mockReset().mockRejectedValue(new Error('Status check unavailable'));
+  state.decide.mockReset().mockImplementation(async({applicationId,data}:any)=>({id:applicationId,...data}));
   host=document.createElement('div');document.body.append(host);root=createRoot(host);
 });
 afterEach(()=>{act(()=>root.unmount());host.remove()});
@@ -45,6 +50,54 @@ const input=(id:string,value:string)=>{
   });
 };
 describe('public application UI behavior',()=>{
+  it('explains paused approval email and disables retry without calling the provider action',()=>{
+    state.rows=[{id:92,status:'APPROVED',applicantType:'SCHOOL_ADMIN',email:'school@example.test',createdAt:'2026-10-19',notificationStatus:'UNAVAILABLE',notificationReason:'Development email sending is intentionally paused',notificationRetryAllowed:false}];
+    render(<AccountApplicationsPanel/>);click('filter-approved');
+    expect(host.textContent).toContain('intentionally paused');
+    expect((host.querySelector('[data-testid="button-retry-email-92"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(state.emailAction).not.toHaveBeenCalled();
+  });
+  it('confirms a notification-only retry with its saved recipient and never calls approval',async()=>{
+    state.rows=[{id:93,status:'APPROVED',applicantType:'PARTNER',email:'partner@example.test',createdAt:'2026-10-19',notificationStatus:'FAILED',notificationRetryAllowed:true}];
+    state.emailAction.mockResolvedValue({id:93,notificationStatus:'ACCEPTED'});
+    render(<AccountApplicationsPanel/>);click('filter-approved');click('button-retry-email-93');
+    expect(host.textContent).toContain('partner@example.test');
+    expect(state.emailAction).not.toHaveBeenCalled();
+    await act(async()=>click('button-confirm-email-retry'));
+    expect(state.emailAction).toHaveBeenCalledWith({applicationId:93,data:{action:'RETRY'}});
+    expect(state.decide).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('delivery not confirmed');
+  });
+  it.each(['APPROVED','REJECTED'])('reconciles a lost %s response using a fresh server read without resending',async(status)=>{
+    state.rows=[{id:90,applicantType:'SCHOOL_ADMIN',fullName:'School Applicant',status:'PENDING',createdAt:'2026-10-19T00:00:00Z'}];
+    state.decide.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    state.fetchQuery.mockImplementationOnce(async()=>{state.rows=[{...state.rows[0],status}];return state.rows});
+    render(<AccountApplicationsPanel/>);
+    click(status==='APPROVED'?'button-approve-90':'button-reject-90');
+    if(status==='REJECTED')input('input-rejection-reason','Not verified');
+    await act(async()=>click('button-confirm-decision'));
+    expect(state.decide).toHaveBeenCalledTimes(1);
+    expect(state.cancelQueries).toHaveBeenCalledWith({queryKey:['applications']});
+    expect(state.fetchQuery).toHaveBeenCalledWith(expect.objectContaining({staleTime:0,retry:false}));
+    expect(host.querySelector('[data-testid="text-decision-status"]')?.textContent).toContain(`fresh server check confirms application 90 is ${status.toLowerCase()}`);
+    expect(host.textContent).toContain('Failed to fetch');
+    expect(host.querySelector(`[data-testid="filter-${status.toLowerCase()}"]`)?.getAttribute('aria-selected')).toBe('true');
+    expect(host.querySelector('[data-testid="button-confirm-decision"]')).toBeNull();
+  });
+  it.each(['pending','unreachable'])('does not claim success or allow blind retry when status is %s after transport failure',async(mode)=>{
+    state.rows=[{id:91,applicantType:'PARTNER',fullName:'Partner Applicant',status:'PENDING',createdAt:'2026-10-19T00:00:00Z'}];
+    state.decide.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    if(mode==='pending')state.fetchQuery.mockResolvedValueOnce(state.rows);
+    render(<AccountApplicationsPanel/>);click('button-approve-91');
+    await act(async()=>click('button-confirm-decision'));
+    expect(host.querySelector('[data-testid="text-decision-status"]')?.textContent).toContain('Decision not confirmed');
+    expect((host.querySelector('[data-testid="button-confirm-decision"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(state.decide).toHaveBeenCalledTimes(1);
+    await act(async()=>click('button-refresh-applications'));
+    expect(host.querySelector('[data-testid="button-confirm-decision"]')).toBeNull();
+    expect((host.querySelector('[data-testid="button-approve-91"]') as HTMLButtonElement).disabled).toBe(false);
+    expect(state.decide).toHaveBeenCalledTimes(1);
+  });
   it('requires School Admin email before Clerk, validates it and retains it when editing',()=>{
     render(<AuthScreen mode="sign-up"/>);
     expect(host.textContent).toContain('School Admin Email (required)');
@@ -70,7 +123,7 @@ describe('public application UI behavior',()=>{
     expect(state.submit).not.toHaveBeenCalled();
     expect((host.querySelector('[data-testid="input-email"]') as HTMLInputElement).value).toBe('');
   });
-  it('filters new School Admin and Partner applications and moves a decided row after refresh',()=>{
+  it('filters new School Admin and Partner applications and moves a decided row after refresh',async()=>{
     state.rows=[
       {id:81,applicantType:'SCHOOL_ADMIN',fullName:'School Applicant',status:'PENDING',createdAt:'2026-10-19T00:00:00Z'},
       {id:82,applicantType:'PARTNER',fullName:'Partner Applicant',status:'APPROVED',createdAt:'2026-10-19T00:00:00Z'},
@@ -83,11 +136,13 @@ describe('public application UI behavior',()=>{
     expect(host.textContent).toContain('Partner Applicant');
     expect(host.querySelector('[data-testid="button-approve-82"]')).toBeNull();
     click('filter-rejected');expect(host.textContent).toContain('Rejected Applicant');
-    click('filter-pending');click('button-approve-81');click('button-confirm-decision');
-    expect(state.decide).toHaveBeenCalledWith({applicationId:81,data:{status:'APPROVED'}},expect.any(Object));
-    act(()=>state.decide.mock.calls[0][1].onSuccess());
+    click('filter-pending');click('button-approve-81');
+    await act(async()=>click('button-confirm-decision'));
+    expect(state.decide).toHaveBeenCalledWith({applicationId:81,data:{status:'APPROVED'}});
     expect(state.invalidate).toHaveBeenCalledWith({queryKey:['applications']});
     state.rows[0].status='APPROVED';render(<AccountApplicationsPanel/>);
+    expect(host.textContent).toContain('School Applicant');
+    click('filter-pending');
     expect(host.textContent).not.toContain('School Applicant');
     click('filter-approved');expect(host.textContent).toContain('School Applicant');
   });
@@ -175,15 +230,14 @@ describe('public application UI behavior',()=>{
     expect(sessionStorage.getItem('edupulse:selected-portal')).toBeNull();
     expect(state.navigate).toHaveBeenCalledWith('/');
   });
-  it('requires Owner confirmation and reason for rejection, then refreshes the directory',()=>{
+  it('requires Owner confirmation and reason for rejection, then refreshes the directory',async()=>{
     state.rows=[{id:5,applicantType:'PARTNER',firstName:'Partner',lastName:'Applicant',status:'PENDING',createdAt:'2026-10-19T00:00:00Z'}];
     render(<AccountApplicationsPanel/>);
     click('button-reject-5');
     expect((host.querySelector('[data-testid="button-confirm-decision"]') as HTMLButtonElement).disabled).toBe(true);
     input('input-rejection-reason','Details not verified');
-    click('button-confirm-decision');
-    expect(state.decide).toHaveBeenCalledWith({applicationId:5,data:{status:'REJECTED',reason:'Details not verified'}},expect.any(Object));
-    act(()=>state.decide.mock.calls[0][1].onSuccess());
+    await act(async()=>click('button-confirm-decision'));
+    expect(state.decide).toHaveBeenCalledWith({applicationId:5,data:{status:'REJECTED',reason:'Details not verified'}});
     expect(state.invalidate).toHaveBeenCalledWith({queryKey:['applications']});
   });
 });

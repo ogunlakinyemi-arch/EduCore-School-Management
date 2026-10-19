@@ -4,6 +4,7 @@ import { pool } from "@workspace/db";
 import { AuthError, assertRoles, getUserContext, handleAuthError, requireAuthentication } from "../middlewares/auth";
 import { applicationInput, applicationDecision, applicationFields, applicationJoin,
   submitApplication, decideApplication, notifyApplicationDecision } from "../services/account-applications";
+import { withApplicationNotificationInfo, reconcileApplicationNotification } from "../services/account-application-notifications";
 
 const router = Router();
 router.use(["/account-application","/platform/account-applications"], (_req,res,next) => {
@@ -48,7 +49,7 @@ router.get("/platform/account-applications", requireAuthentication(), run(async 
   if (!c.roles.some(r=>r.role==="PLATFORM_OWNER" && r.schoolId===null && r.status==="ACTIVE")) {
     throw new AuthError(403,"Platform Owner access is required");
   }
-  res.json((await pool.query(`SELECT ${applicationFields} ${applicationJoin} ORDER BY a.created_at DESC,a.id DESC`)).rows);
+  res.json(await withApplicationNotificationInfo((await pool.query(`SELECT ${applicationFields} ${applicationJoin} ORDER BY a.created_at DESC,a.id DESC`)).rows));
 }));
 router.post("/platform/account-applications/:applicationId/decision", requireAuthentication(), run(async (req,res) => {
   const c = assertRoles(req,["PLATFORM_OWNER"]);
@@ -57,6 +58,15 @@ router.post("/platform/account-applications/:applicationId/decision", requireAut
   await decideApplication(c,id,parsed.data);
   try { await notifyApplicationDecision(c,id); }
   catch { req.log?.warn({applicationId:id},"Decision committed; notification needs review"); }
-  res.json(await application(id));
+  res.json((await withApplicationNotificationInfo([await application(id)]))[0]);
+}));
+router.post("/platform/account-applications/:applicationId/notification", requireAuthentication(), run(async (req,res) => {
+  const c = assertRoles(req,["PLATFORM_OWNER"]);
+  const id = Number(req.params.applicationId);
+  if (!Number.isSafeInteger(id) || id < 1 || !["RETRY","RECONCILE"].includes(req.body?.action)
+    || Object.keys(req.body ?? {}).some(key => key !== "action")) throw new AuthError(400,"Valid notification action required");
+  if (req.body.action === "RETRY") await notifyApplicationDecision(c,id,true);
+  else await reconcileApplicationNotification(c,id);
+  res.json((await withApplicationNotificationInfo([await application(id)]))[0]);
 }));
 export default router;

@@ -63,6 +63,18 @@ export interface AccountApplicationInput {
   referralToken?: string;
 }
 
+export type AccountApplicationNotificationInputAction = typeof AccountApplicationNotificationInputAction[keyof typeof AccountApplicationNotificationInputAction];
+
+
+export const AccountApplicationNotificationInputAction = {
+  RETRY: 'RETRY',
+  RECONCILE: 'RECONCILE',
+} as const;
+
+export interface AccountApplicationNotificationInput {
+  action: AccountApplicationNotificationInputAction;
+}
+
 export type AccountApplicationDecisionStatus = typeof AccountApplicationDecisionStatus[keyof typeof AccountApplicationDecisionStatus];
 
 
@@ -144,6 +156,13 @@ export interface AccountApplication {
   /** @nullable */
   rejectionReason?: string | null;
   notificationStatus: AccountApplicationNotificationStatus;
+  /** @nullable */
+  notificationReason?: string | null;
+  notificationRetryAllowed?: boolean;
+  notificationCanReconcile?: boolean;
+  notificationDeliveryConfirmed?: boolean;
+  /** @nullable */
+  notificationProviderMessageId?: string | null;
 }
 
 export interface AccountApplicationResult {
@@ -14671,6 +14690,18 @@ export interface AccountApplicationInput4b96100 {
   referralToken?: string;
 }
 
+export type AccountApplicationNotificationInput4b96100Action = typeof AccountApplicationNotificationInput4b96100Action[keyof typeof AccountApplicationNotificationInput4b96100Action];
+
+
+export const AccountApplicationNotificationInput4b96100Action = {
+  RETRY: 'RETRY',
+  RECONCILE: 'RECONCILE',
+} as const;
+
+export interface AccountApplicationNotificationInput4b96100 {
+  action: AccountApplicationNotificationInput4b96100Action;
+}
+
 export type AccountApplicationDecision4b96100Status = typeof AccountApplicationDecision4b96100Status[keyof typeof AccountApplicationDecision4b96100Status];
 
 
@@ -14752,6 +14783,13 @@ export interface AccountApplication4b96100 {
   /** @nullable */
   rejectionReason?: string | null;
   notificationStatus: AccountApplication4b96100NotificationStatus;
+  /** @nullable */
+  notificationReason?: string | null;
+  notificationRetryAllowed?: boolean;
+  notificationCanReconcile?: boolean;
+  notificationDeliveryConfirmed?: boolean;
+  /** @nullable */
+  notificationProviderMessageId?: string | null;
 }
 
 export interface AccountApplicationResult4b96100 {

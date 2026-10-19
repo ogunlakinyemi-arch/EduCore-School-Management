@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { ViewportFormDialog } from './viewport-form-dialog';
 import { useAuth, UserButton } from '@clerk/react';
 import { buildNavSections, isNavActive, navMode } from './navigation-model';
 import { FeePaymentNotifications } from './fee-payment-notifications';
@@ -398,14 +398,8 @@ export function ActivityFeed({ items = [] as any[] }: { items?: any[] }) {
 }
 
 export function Modal({ title, eyebrow, children, onClose, viewport = false }: { title: string; eyebrow?: string; children: ReactNode; onClose: () => void; viewport?: boolean }) {
-  // Opt-in for forms that must escape animated/transformed page ancestors.
-  // Keep other callers unchanged; restore the original page scroll on close.
-  useEffect(() => {
-    if (!viewport) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
-  }, [viewport]);
+  // Opt in only confirmed affected screens; unrelated flows keep their presentation.
+  if (viewport) return <ViewportFormDialog title={title} eyebrow={eyebrow} onClose={onClose}>{children}</ViewportFormDialog>;
   const dialog = (
     <div role={viewport ? 'dialog' : undefined} aria-modal={viewport || undefined} aria-label={viewport ? title : undefined} className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/.25)] p-4 backdrop-blur-sm fade-up">
       <div className="panel max-h-[90dvh] w-full max-w-lg overflow-auto p-6 md:p-8 shadow-2xl">
@@ -422,7 +416,7 @@ export function Modal({ title, eyebrow, children, onClose, viewport = false }: {
       </div>
     </div>
   );
-  return viewport ? createPortal(dialog, document.body) : dialog;
+  return dialog;
 }
 
 export function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) { 

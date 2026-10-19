@@ -146,15 +146,15 @@ export function EmployeesPage() {
           </div>
           
           {statusEmployee && canManageSchool && (
-            <Modal title={statusEmployee.status === 'ACTIVE' ? 'Deactivate employee' : 'Reactivate employee'} eyebrow="Employment access" onClose={() => setStatusEmployee(null)}>
+            <Modal viewport title={statusEmployee.status === 'ACTIVE' ? 'Deactivate employee' : 'Reactivate employee'} eyebrow="Employment access" onClose={() => setStatusEmployee(null)}>
               <EmployeeStatusConfirmation key={`${schoolId}-${statusEmployee.id}`} schoolId={schoolId} employee={statusEmployee} onCancel={() => setStatusEmployee(null)} onDone={() => { setStatusEmployee(null); done(); }} />
             </Modal>
           )}
-          {photoEmployee && canManageSchool && <Modal title={`Passport photo — ${photoEmployee.firstName} ${photoEmployee.lastName}`} eyebrow="Employee record" onClose={() => setPhotoEmployee(null)}>
+          {photoEmployee && canManageSchool && <Modal viewport title={`Passport photo — ${photoEmployee.firstName} ${photoEmployee.lastName}`} eyebrow="Employee record" onClose={() => setPhotoEmployee(null)}>
             <EmployeePhotoField key={`${schoolId}-${photoEmployee.id}`} schoolId={schoolId} employeeId={photoEmployee.id} photoUrl={photoEmployee.photoUrl} onUpdated={refreshPhotos} />
           </Modal>}
           {modal && (
-            <Modal title={modal.create ? 'Hire new employee' : 'Edit employee profile'} eyebrow="HR Records" onClose={() => setModal(null)}>
+            <Modal viewport title={modal.create ? 'Hire new employee' : 'Edit employee profile'} eyebrow="HR Records" onClose={() => setModal(null)}>
               <EmployeeForm key={`${schoolId}-${modal.id ?? 'new'}`} schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}

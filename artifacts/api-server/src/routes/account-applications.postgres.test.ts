@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   userId: 0, ownerId: 0, accountStatus: "ACTIVE",
   provider: "resend", send: vi.fn(), clerkEmail: "applicant@example.test",
   verified: true, role: "APPLICANT", denied: false,
+  configurationError:false,
 }));
 vi.mock("@workspace/db", async () => {
   const { DatabasePool } = await import("@workspace/db/driver");
@@ -23,13 +24,18 @@ vi.mock("@clerk/express", () => ({
   })) } },
 }));
 vi.mock("../services/communication-providers", () => ({
-  createEmailProvider: () => ({provider:state.provider,send:state.send}),
+  createEmailProvider: () => {if(state.configurationError)throw new Error("Missing provider configuration");return {provider:state.provider,send:state.send};},
 }));
 // Actual authentication middleware and role checks run, with synthetic provider identity.
 import { pool } from "@workspace/db";
 import router from "./account-applications";
 import { loadUserContext, requireAuthentication } from "../middlewares/auth";
 import { decideApplication } from "../services/account-applications";
+
+// Runtime-only browser-client contract test: do not pull DOM source into the
+// backend's Node-only TypeScript project. Vitest loads the actual source.
+const browserApiSource = "../../../../lib/api-client-react/src/generated/api.ts";
+const browserTransportSource = "../../../../lib/api-client-react/src/custom-fetch.ts";
 
 describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
   let server: Server, url: string;
@@ -53,7 +59,7 @@ describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
     state.ownerId=owner.rows[0].id;
     await pool.query(`UPDATE app_users SET clerk_user_id=$2 WHERE id=$1`,[state.ownerId,`application_user_${state.ownerId}`]);
     await pool.query(`INSERT INTO school_memberships(user_id,role,status) VALUES($1,'PLATFORM_OWNER','ACTIVE')`,[state.ownerId]);
-    const app=express();app.use(express.json());app.use(router);
+    const app=express();app.use(express.json());app.use("/api",router);app.use(router);
     app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       res.status(500).json({error:error.message});
     });
@@ -62,8 +68,9 @@ describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
     url=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
   });
   beforeEach(async () => {
+    vi.unstubAllEnvs();state.configurationError=false;
     state.verified=true; state.provider="resend";
-    state.send.mockReset().mockResolvedValue({accepted:true,status:"ACCEPTED"});
+    state.send.mockReset().mockResolvedValue({accepted:true,status:"ACCEPTED",providerMessageId:crypto.randomUUID()});
     const suffix=crypto.randomUUID();
     const user=await pool.query(`INSERT INTO app_users(clerk_user_id,email) VALUES($1,$2) RETURNING id`,
       [`application_user_${suffix}`,`apply-${suffix}@example.test`]);
@@ -247,6 +254,159 @@ describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
     expect((await pool.query(`SELECT source,partner_profile_id,referral_link_id FROM school_partner_attributions
       WHERE school_id=(SELECT school_id FROM account_applications WHERE id=$1)`,[a.id])).rows[0])
       .toMatchObject({source:"PARTNER_DIRECT",partner_profile_id:partner.id,referral_link_id:link.id});
+  });
+  it.each([
+    ["SCHOOL_ADMIN","APPROVED"],["PARTNER","APPROVED"],["SCHOOL_ADMIN","REJECTED"],["PARTNER","REJECTED"],
+  ])("uses the real generated client for %s %s and safely observes a lost HTTP response",async(type,status)=>{
+    const a=await submit(type),userId=state.userId;
+    state.userId=state.ownerId;
+    const {decideAccountApplication,getAccountApplications}=await import(browserApiSource);
+    const {setBaseUrl}=await import(browserTransportSource);
+    const nativeFetch=globalThis.fetch;
+    const requests:Array<{url:string;body:unknown}>=[];
+    setBaseUrl(url);
+    vi.stubGlobal("fetch",async(input:Parameters<typeof globalThis.fetch>[0],init?:RequestInit)=>{
+      const response=await nativeFetch(input,init);
+      if(String(input).endsWith(`/api/platform/account-applications/${a.id}/decision`)){
+        requests.push({url:String(input),body:JSON.parse(String(init?.body))});
+        expect(response.status).toBe(200);
+        throw new TypeError("Failed to fetch");
+      }
+      return response;
+    });
+    try{
+      const data=status==="REJECTED"?{status:"REJECTED" as const,reason:"Not verified"}:{status:"APPROVED" as const};
+      await expect(decideAccountApplication(a.id,data)).rejects.toThrow("Failed to fetch");
+      const fresh=await getAccountApplications();
+      expect(fresh.find((row:{id:number})=>row.id===a.id)).toMatchObject({status,notificationStatus:"ACCEPTED"});
+      expect(requests).toEqual([{url:`${url}/api/platform/account-applications/${a.id}/decision`,body:data}]);
+      expect(state.send).toHaveBeenCalledTimes(1);
+      const memberships=(await pool.query("SELECT role,school_id,status FROM school_memberships WHERE user_id=$1",[userId])).rows;
+      if(status==="APPROVED"){
+        expect(memberships).toHaveLength(1);
+        expect(memberships[0]).toMatchObject({role:type,status:"ACTIVE"});
+        if(type==="SCHOOL_ADMIN")expect(memberships[0].school_id).not.toBeNull();
+      }else expect(memberships).toHaveLength(0);
+    }finally{vi.stubGlobal("fetch",nativeFetch);setBaseUrl(null)}
+  },30_000);
+  it("leaves the application Pending when the real client request fails before reaching the API",async()=>{
+    const a=await submit("SCHOOL_ADMIN");
+    state.userId=state.ownerId;
+    const {decideAccountApplication,getAccountApplications}=await import(browserApiSource);
+    const {setBaseUrl}=await import(browserTransportSource);
+    const nativeFetch=globalThis.fetch;
+    setBaseUrl(url);
+    try{
+      vi.stubGlobal("fetch",()=>Promise.reject(new TypeError("Failed to fetch")));
+      await expect(decideAccountApplication(a.id,{status:"APPROVED"})).rejects.toThrow("Failed to fetch");
+      vi.stubGlobal("fetch",nativeFetch);
+      expect((await getAccountApplications()).find((row:{id:number})=>row.id===a.id)).toMatchObject({status:"PENDING",notificationStatus:"NOT_REQUESTED"});
+      expect(state.send).not.toHaveBeenCalled();
+    }finally{vi.stubGlobal("fetch",nativeFetch);setBaseUrl(null)}
+  });
+  it.each(["SCHOOL_ADMIN","PARTNER"])("rolls back partial %s activation if membership creation fails inside the real API transaction",async(type)=>{
+    const a=await submit(type),userId=state.userId;
+    state.userId=state.ownerId;
+    const before=(await pool.query("SELECT (SELECT count(*) FROM schools)::int AS schools,(SELECT count(*) FROM partner_profiles)::int AS partners")).rows[0];
+    await pool.query(`CREATE FUNCTION qa_application_membership_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'QA membership failure'; END $$`);
+    try{
+      await pool.query(`CREATE TRIGGER qa_application_membership_failure BEFORE INSERT ON school_memberships FOR EACH ROW WHEN (NEW.user_id=${Number(userId)}) EXECUTE FUNCTION qa_application_membership_failure()`);
+      expect((await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).status).toBe(500);
+      expect((await pool.query("SELECT status,school_id,partner_profile_id FROM account_applications WHERE id=$1",[a.id])).rows[0]).toMatchObject({status:"PENDING",school_id:null,partner_profile_id:null});
+      expect((await pool.query("SELECT id FROM school_memberships WHERE user_id=$1",[userId])).rows).toHaveLength(0);
+      expect((await pool.query("SELECT (SELECT count(*) FROM schools)::int AS schools,(SELECT count(*) FROM partner_profiles)::int AS partners")).rows[0]).toEqual(before);
+      expect(state.send).not.toHaveBeenCalled();
+    }finally{
+      await pool.query("DROP TRIGGER IF EXISTS qa_application_membership_failure ON school_memberships");
+      await pool.query("DROP FUNCTION qa_application_membership_failure()");
+    }
+  });
+  it.each(["SCHOOL_ADMIN","PARTNER"])("records paused %s email visibly and refuses retry without affecting approval",async(type)=>{
+    const a=await submit(type),userId=state.userId;
+    vi.stubEnv("NODE_ENV","development");
+    vi.stubEnv("EDUCORE_DEVELOPMENT_WORKERS_PAUSED","true");
+    state.userId=state.ownerId;
+    const response=await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"});
+    expect(await response.json()).toMatchObject({status:"APPROVED",notificationStatus:"UNAVAILABLE",notificationRetryAllowed:false,notificationReason:expect.stringContaining("intentionally paused")});
+    expect((await call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"})).status).toBe(409);
+    expect(state.send).not.toHaveBeenCalled();
+    expect((await pool.query("SELECT status FROM school_memberships WHERE user_id=$1",[userId])).rows[0]).toMatchObject({status:"ACTIVE"});
+  });
+  it("honors the separate payment-test notification lock even when the worker flag is off",async()=>{
+    const a=await submit("SCHOOL_ADMIN");state.userId=state.ownerId;
+    vi.stubEnv("NODE_ENV","development");vi.stubEnv("EDUCORE_DEVELOPMENT_WORKERS_PAUSED","false");vi.stubEnv("EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED","true");
+    const response=await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"});
+    expect(await response.json()).toMatchObject({status:"APPROVED",notificationStatus:"UNAVAILABLE",notificationRetryAllowed:false});
+    expect(state.send).not.toHaveBeenCalled();
+  });
+  it.each(["SCHOOL_ADMIN","PARTNER"])("records %s configuration failure and permits notification-only retry after test configuration becomes ready",async(type)=>{
+    const a=await submit(type);state.userId=state.ownerId;state.configurationError=true;
+    expect(await (await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).json()).toMatchObject({status:"APPROVED",notificationStatus:"UNAVAILABLE",notificationReason:expect.stringContaining("configuration is incomplete")});
+    state.configurationError=false;
+    expect(await (await call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"})).json()).toMatchObject({status:"APPROVED",notificationStatus:"ACCEPTED"});
+    expect(state.send).toHaveBeenCalledTimes(1);
+    expect((await call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"})).status).toBe(409);
+    expect(state.send).toHaveBeenCalledTimes(1);
+  });
+  it.each(["SCHOOL_ADMIN","PARTNER"])("safely retries a known rejected %s email once despite concurrent retry clicks",async(type)=>{
+    const a=await submit(type),recipient=state.clerkEmail;state.userId=state.ownerId;
+    state.send.mockResolvedValueOnce({accepted:false,status:"FAILED",failure:{category:"RATE_LIMITED",retryable:true}});
+    expect(await (await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).json()).toMatchObject({status:"APPROVED",notificationStatus:"FAILED",notificationRetryAllowed:true});
+    const results=await Promise.all([call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"}),call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"})]);
+    expect(results.map(r=>r.status).sort()).toEqual([200,409]);
+    expect(state.send).toHaveBeenCalledTimes(2);
+    expect(state.send.mock.calls[1][0]).toMatchObject({to:recipient,idempotencyKey:`account-application-${a.id}-APPROVED`});
+    expect(state.send.mock.calls[1][0].body).toContain(type==="PARTNER"?"Partner":"School Admin");
+  });
+  it.each(["SCHOOL_ADMIN","PARTNER"])("blocks automatic or manual resend for uncertain %s provider acceptance",async(type)=>{
+    const a=await submit(type);state.userId=state.ownerId;
+    state.send.mockResolvedValueOnce({accepted:false,status:"FAILED",failure:{category:"TIMEOUT",retryable:true}});
+    expect(await (await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).json()).toMatchObject({status:"APPROVED",notificationStatus:"UNKNOWN",notificationRetryAllowed:false});
+    expect((await call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"})).status).toBe(409);
+    expect((await call(`/platform/account-applications/${a.id}/notification`,{action:"RECONCILE"})).status).toBe(409);
+    expect(state.send).toHaveBeenCalledTimes(1);
+  });
+  it("requires global Owner notification access and refuses notifications for Pending applications",async()=>{
+    const a=await submit("SCHOOL_ADMIN");
+    expect((await call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"})).status).toBe(403);
+    state.userId=state.ownerId;
+    expect((await call(`/platform/account-applications/${a.id}/notification`,{action:"RETRY"})).status).toBe(409);
+    expect(state.send).not.toHaveBeenCalled();
+  });
+  it("reconciles verified provider delivery using a GET only, even with sending paused",async()=>{
+    const a=await submit("SCHOOL_ADMIN"),recipient=state.clerkEmail;state.userId=state.ownerId;
+    const saved=await (await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).json() as {notificationProviderMessageId:string};
+    const nativeFetch=globalThis.fetch;let lookups=0;
+    vi.stubEnv("RESEND_API_KEY","isolated-test-key");vi.stubEnv("NODE_ENV","development");vi.stubEnv("EDUCORE_DEVELOPMENT_WORKERS_PAUSED","true");
+    vi.stubGlobal("fetch",async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{
+      if(String(input).startsWith("https://api.resend.com/emails/")){
+        expect(init?.method??"GET").toBe("GET");lookups++;
+        return new Response(JSON.stringify({id:saved.notificationProviderMessageId,to:[recipient],subject:"Yetenia EduCore application approved",last_event:"delivered"}),{status:200,headers:{"content-type":"application/json"}});
+      }
+      return nativeFetch(input,init);
+    });
+    try{
+      const response=await call(`/platform/account-applications/${a.id}/notification`,{action:"RECONCILE"});
+      expect(await response.json()).toMatchObject({status:"APPROVED",notificationStatus:"ACCEPTED",notificationDeliveryConfirmed:true,notificationRetryAllowed:false});
+      expect(lookups).toBe(1);expect(state.send).toHaveBeenCalledTimes(1);
+    }finally{vi.stubGlobal("fetch",nativeFetch)}
+  });
+  it.each(["refused","wrong-recipient"])("does not claim delivery when provider lookup is %s",async(mode)=>{
+    const a=await submit("PARTNER");state.userId=state.ownerId;
+    const saved=await (await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).json() as {notificationProviderMessageId:string};
+    const nativeFetch=globalThis.fetch;
+    vi.stubEnv("RESEND_API_KEY","isolated-test-key");
+    vi.stubGlobal("fetch",async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{
+      if(String(input).startsWith("https://api.resend.com/emails/"))return new Response(JSON.stringify({
+        id:saved.notificationProviderMessageId,to:["wrong@example.test"],subject:"Yetenia EduCore application approved",last_event:"delivered",
+      }),{status:mode==="refused"?403:200,headers:{"content-type":"application/json"}});
+      return nativeFetch(input,init);
+    });
+    try{
+      expect((await call(`/platform/account-applications/${a.id}/notification`,{action:"RECONCILE"})).status).toBe(mode==="refused"?503:409);
+      expect((await pool.query("SELECT status,notification_status FROM account_applications WHERE id=$1",[a.id])).rows[0]).toMatchObject({status:"APPROVED",notification_status:"ACCEPTED"});
+      expect(state.send).toHaveBeenCalledTimes(1);
+    }finally{vi.stubGlobal("fetch",nativeFetch)}
   });
   it("rejects invalid SQL states and rolls back failed approval atomically",async()=>{
     const a=await submit("SCHOOL_ADMIN"),userId=state.userId;

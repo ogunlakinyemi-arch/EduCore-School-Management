@@ -37,4 +37,11 @@ export interface AccountApplication4b96100 {
   /** @nullable */
   rejectionReason?: string | null;
   notificationStatus: AccountApplication4b96100NotificationStatus;
+  /** @nullable */
+  notificationReason?: string | null;
+  notificationRetryAllowed?: boolean;
+  notificationCanReconcile?: boolean;
+  notificationDeliveryConfirmed?: boolean;
+  /** @nullable */
+  notificationProviderMessageId?: string | null;
 }

@@ -115,7 +115,7 @@ export function ParentsPage() {
           </div>
           
           {canManageSchool && modal && (
-            <Modal title={modal.linkChildren ? `Link children to ${modal.parent.name}` : modal.create ? 'Register parent' : 'Edit parent profile'} eyebrow="Community Records" onClose={() => setModal(null)}>
+            <Modal viewport title={modal.linkChildren ? `Link children to ${modal.parent.name}` : modal.create ? 'Register parent' : 'Edit parent profile'} eyebrow="Community Records" onClose={() => setModal(null)}>
               {modal.linkChildren
                 ? <ParentChildrenForm schoolId={schoolId} parent={modal.parent} onDone={done} onCancel={() => setModal(null)} />
                 : <ParentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />}
