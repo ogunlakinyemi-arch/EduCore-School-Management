@@ -60,6 +60,7 @@
 - [Controlled default initialization](controlled-default-initialization.md) — only reviewed empty metadata/default-deny fields may initialize populated rows; keep generation evidence aligned.
 - [Guest NFC payments](guest-nfc-payment-policy.md) — parents need no EduCore account; support printed and assisted online payment without mislabelling cash or internal allocations.
 - [Flutterwave capability evidence](flutterwave-capability-evidence.md) — collection readiness, bank verification, payout permission and actual split settlement are separate evidence.
+- [Flutterwave fee ordering](flutterwave-fee-order-evidence.md) — support-reported fee-first splitting needs exact post-fee payout evidence, not percentage guesses.
 - [Local financial simulations](local-financial-simulation-policy.md) — fictional demonstrations never authorize onboarding, operational enablement or payment.
 - [Company rename safety](company-rename-safety.md) — current branding changes do not authorize rewriting historical records or changing financial/provider identity.
 - [Published correction safety](published-correction-policy.md) — protect financial history during fee corrections and require academic review and republication after score changes.

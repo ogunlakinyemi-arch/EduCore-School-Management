@@ -416,6 +416,15 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
           || s.transaction_charge !== (i === 0 ? studentAllocationPolicy(input.reference).schoolMinor / 100 : 100)))) {
       throw new PaymentProviderError("Invalid Development split instructions");
     }
+    // A valid local flat_subaccount payload is not proof of effective post-fee
+    // payouts. Recipient verification does not validate dashboard split settings,
+    // and no supported adapter supplies complete recipient allocation evidence.
+    // Do not guess percentages, fall back to platform-only, or retry an old charge.
+    if (studentAllocationPolicy(input.reference).version === 2) {
+      throw new PaymentProviderError(
+        "Current-policy TEST checkout is blocked: exact post-fee School/Partner payouts and a nonzero merchant remainder are not independently established. Review Flutterwave TEST split configuration; do not pay again for an existing charge.",
+      );
+    }
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {
       throw new PaymentProviderError("Payment customer email or return URL is invalid");
     }

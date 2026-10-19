@@ -22,3 +22,17 @@ export function newStudentPaymentReference(reference: string) {
   if (!/^[A-Za-z0-9_-]{8,95}$/.test(reference)) throw new Error("Invalid generated student payment reference");
   return `SCV${CURRENT_STUDENT_ALLOCATION_VERSION}_${reference}`;
 }
+
+/** Required net payouts, not a claim about Flutterwave's effective split settings.
+ * Deduct the TOTAL processing expense once, exclusively from the Owner.
+ */
+export function studentPostFeePayouts(reference: string, hasPartner: boolean, totalFeeMinor: number) {
+  const policy = studentAllocationPolicy(reference);
+  const ownerGrossMinor = hasPartner ? policy.platformWithPartnerMinor : policy.platformWithoutPartnerMinor;
+  if (!Number.isSafeInteger(totalFeeMinor) || totalFeeMinor < 0 || totalFeeMinor >= ownerGrossMinor) {
+    throw new Error("Processing expense must leave a positive merchant share");
+  }
+  return {schoolMinor:policy.schoolMinor,partnerMinor:hasPartner ? policy.partnerMinor : 0,
+    ownerGrossMinor,ownerNetMinor:ownerGrossMinor-totalFeeMinor,totalFeeMinor,
+    providerNetMinor:500000-totalFeeMinor};
+}

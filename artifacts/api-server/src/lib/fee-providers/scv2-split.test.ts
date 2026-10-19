@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { FlutterwaveTestAdapter } from "./index";
+import { studentPostFeePayouts } from "../student-allocation-policy";
 
 // All transport responses are fictional and injected. No provider calls/credentials.
 beforeEach(() => {
@@ -16,15 +17,37 @@ function setup() {
       {headers:{"content-type":"application/json"}}));
   return {transport,adapter:new FlutterwaveTestAdapter({secretKey:"FLWSECK_TEST-1234567890abcdef"},{fetch:transport})};
 }
-it.each([true,false])("sends the exact SCV2_fee reference and fixed 1900/100 instructions, Partner=%s", async eligible => {
+it.each([true,false])("blocks unproven post-fee payouts before provider transport, Partner=%s", async eligible => {
   const {transport,adapter}=setup();
   const subaccounts=eligible?[school,partner]:[school];
-  await adapter.initializePayment({reference,amountMinor:500000,currency:"NGN",email:"payer@example.test",
-    returnUrl:"https://example.test/return",subaccounts});
-  expect(transport).toHaveBeenCalledTimes(1);
-  expect(JSON.parse(String(transport.mock.calls[0][1]?.body))).toMatchObject({
-    tx_ref:reference,amount:5000,currency:"NGN",subaccounts,
-  });
+  const input = {reference,amountMinor:500000,currency:"NGN",email:"payer@example.test",
+    returnUrl:"https://example.test/return",subaccounts};
+  // Repeated attempts cannot initiate duplicate collection or settlement.
+  for (let attempt=0;attempt<2;attempt++) {
+    await expect(adapter.initializePayment(input)).rejects.toThrow("exact post-fee");
+  }
+  expect(transport).not.toHaveBeenCalled();
+});
+it("also blocks a new-policy platform-only fallback before transport", async () => {
+  const {transport,adapter}=setup();
+  await expect(adapter.initializePayment({reference,amountMinor:500000,currency:"NGN",email:"payer@example.test",
+    returnUrl:"https://example.test/return"})).rejects.toThrow("nonzero merchant remainder");
+  expect(transport).not.toHaveBeenCalled();
+});
+it.each([true,false])("models the 70 fee once with positive Owner remainder, Partner=%s", eligible => {
+  const p = studentPostFeePayouts(reference,eligible,7000);
+  expect(p).toMatchObject({schoolMinor:190000,partnerMinor:eligible ? 10000 : 0,
+    ownerGrossMinor:eligible ? 300000 : 310000,ownerNetMinor:eligible ? 293000 : 303000,
+    providerNetMinor:493000,totalFeeMinor:7000});
+  expect(p.schoolMinor+p.partnerMinor+p.ownerNetMinor).toBe(p.providerNetMinor);
+  expect(p.ownerNetMinor).toBeGreaterThan(0);
+});
+it("preserves historical gross policy and rejects fees that consume merchant share", () => {
+  expect(studentPostFeePayouts("fee_legacy_12345678",true,7000)).toMatchObject({
+    schoolMinor:200000,partnerMinor:10000,ownerGrossMinor:290000,ownerNetMinor:283000});
+  for (const fee of [-1,0.5,NaN,300000,500000]) {
+    expect(() => studentPostFeePayouts(reference,true,fee)).toThrow("positive merchant share");
+  }
 });
 it.each([
   {reference,charge:2000},
