@@ -3,6 +3,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const state = vi.hoisted(() => ({
   queries: [] as Array<{ sql: string; values: unknown[] }>,
+  titleReady: false,
+  parentRow: { id: 60, schoolId: 1, name: "Example Parent", email: "parent@example.test", phone: "08000000000", status: "ACTIVE", childrenCount: 0, activeChildren: 0, personTitle: null as string | null },
   employeeRow: {
     id: 50,
     schoolId: 1,
@@ -27,6 +29,15 @@ const state = vi.hoisted(() => ({
 const poolMock = vi.hoisted(() => ({
   query: vi.fn(async (sql: string, values: unknown[] = []) => {
     state.queries.push({ sql, values });
+    if (sql.includes("FROM pg_attribute")) return { rows: [{ ready: state.titleReady }] };
+    if (sql.includes("INSERT INTO employees") || sql.includes("UPDATE employees")) {
+      return { rows: [{ ...state.employeeRow, personTitle: sql.includes("person_title=") || sql.includes("qualification, person_title") ? values.at(-1) : null }] };
+    }
+    if (sql.includes("INSERT INTO parents")) return { rows: [{ ...state.parentRow, personTitle: state.titleReady ? values.at(-1) : null }] };
+    if (sql.includes("UPDATE parents") && sql.includes("person_title=")) {
+      state.parentRow.personTitle = values.at(-1) as string | null;
+    }
+    if (sql.includes("FROM parents p")) return { rows: [state.parentRow] };
     if (sql.includes("FROM employees e WHERE e.id = $1")) return { rows: [state.employeeRow] };
     return { rows: [] };
   }),
@@ -71,11 +82,13 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
 });
 
 import peopleRouter from "./people";
+import edupulseRouter from "./edupulse";
 import { AuthError } from "../middlewares/auth";
 
 const app = express();
 app.use(express.json());
 app.use(peopleRouter);
+app.use(edupulseRouter);
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof AuthError) return res.status(error.statusCode).json({ error: error.message });
   return res.status(500).json({ error: String(error) });
@@ -100,6 +113,8 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 
 beforeEach(() => {
   state.queries.length = 0;
+  state.titleReady = false;
+  state.parentRow.personTitle = null;
   poolMock.query.mockClear();
 });
 
@@ -126,5 +141,57 @@ describe("employee read scope follows the requested school's membership", () => 
     const ownerQuery = state.queries.at(-1);
     expect(ownerQuery?.sql).not.toContain("e.user_id =");
     expect(ownerQuery?.values).toEqual([1]);
+  });
+});
+
+describe("title create/edit routes", () => {
+  const send = (path: string, method: string, data: unknown, role = "ADMIN") =>
+    fetch(`${baseUrl}${path}`, { method, headers: { "Content-Type": "application/json", "x-test-role": role }, body: JSON.stringify(data) });
+  const cases = [
+    ["/parents?schoolId=1", "POST", { name: "Example Parent", email: "parent@example.test", phone: "08000000000" }],
+    ["/parents/60?schoolId=1", "PATCH", {}],
+    ["/employees?schoolId=1", "POST", { firstName: "Example", lastName: "Teacher", type: "TEACHER" }],
+    ["/employees/50?schoolId=1", "PATCH", {}],
+  ] as const;
+  it.each(cases)("rejects %s %s with a missing migration before any person write", async (path, method, base) => {
+    const response = await send(path, method, { ...base, personTitle: "Dr" });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: expect.stringContaining("No record was changed") });
+    expect(state.queries.some(({ sql }) => /(?:INSERT INTO|UPDATE) (parents|employees)\b/.test(sql))).toBe(false);
+  });
+  it.each(cases)("saves a selected title through %s %s on an upgraded schema", async (path, method, base) => {
+    state.titleReady = true;
+    const response = await send(path, method, { ...base, personTitle: "Dr" });
+    expect(response.status).toBe(method === "POST" ? 201 : 200);
+    expect(await response.json()).toMatchObject({ personTitle: "Dr" });
+    const write = state.queries.find(({ sql }) => /(?:INSERT INTO|UPDATE) (parents|employees)\b/.test(sql));
+    expect(write?.values.at(-1)).toBe("Dr");
+    expect(write?.values).toContain(1);
+  });
+  it.each(["/parents/60?schoolId=1", "/employees/50?schoolId=1"])("explicitly clears a title through %s", async path => {
+    state.titleReady = true;
+    state.parentRow.personTitle = "Dr";
+    const response = await send(path, "PATCH", { personTitle: null });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ personTitle: null });
+  });
+  it.each(cases)("preserves Owner read-only and cross-school denials on %s %s", async (path, method, base) => {
+    state.titleReady = true;
+    for (const role of ["OWNER", "MIXED"]) {
+      expect([403, 404]).toContain((await send(path, method, { ...base, personTitle: "Dr" }, role)).status);
+    }
+    expect(state.queries.some(({ sql }) => /(?:INSERT INTO|UPDATE) (parents|employees)\b/.test(sql))).toBe(false);
+  });
+  it.each(cases)("keeps no-title saves on %s %s working before migration", async (path, method, base) => {
+    for (const title of [undefined, null]) {
+      const response = await send(path, method, { ...base, personTitle: title });
+      expect(response.status).toBe(method === "POST" ? 201 : 200);
+    }
+    const writes = state.queries.filter(({ sql }) => /(?:INSERT INTO|UPDATE) (parents|employees)\b/.test(sql));
+    expect(writes).toHaveLength(2);
+    for (const { sql } of writes) {
+      expect(sql).not.toContain("person_title=");
+      expect(sql).not.toContain(", person_title)");
+    }
   });
 });

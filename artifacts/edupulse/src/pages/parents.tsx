@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { UsersRound, Plus, Search, Pencil, ArrowRight } from 'lucide-react';
 import { DirectoryExport } from '@/components/directory-export';
+import { PersonTitleField, personDisplayName, personSaveError } from '@/components/person-title';
+import type { PersonTitle } from '@workspace/api-client-react';
 import { 
   useListParents, useCreateParent, useUpdateParent, getListParentsQueryKey,
   useListStudents, getListStudentsQueryKey,
@@ -78,7 +80,7 @@ export function ParentsPage() {
               <div key={parent.id} className="grid gap-3 border-b border-[hsl(var(--border)/.6)] px-5 py-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] last:border-0 md:grid-cols-[1.5fr_1.5fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div>
                   <div className="font-bold text-sm text-[hsl(var(--foreground))] flex items-center gap-2">
-                    {parent.name}
+                    {personDisplayName(parent.personTitle, parent.name)}
                     {parent.clerkUserId && <StatusPill value="Verified" />}
                   </div>
                   <div className="mt-1 text-[11px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
@@ -201,11 +203,12 @@ function ParentChildrenForm({ schoolId, parent, onDone, onCancel }: {
   </form>;
 }
 
-function ParentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {
+export function ParentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {
   const create = useCreateParent(); 
   const update = useUpdateParent(); 
   
   const [form, setForm] = useState({ 
+    personTitle: (initial?.personTitle ?? null) as PersonTitle,
     name: initial?.name ?? '', 
     email: initial?.email ?? '', 
     phone: initial?.phone ?? '', 
@@ -228,6 +231,7 @@ function ParentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number;
 
   return (
     <form onSubmit={save} className="space-y-5">
+      <PersonTitleField value={form.personTitle} onChange={personTitle => setForm({ ...form, personTitle })} />
       <Field label="Full Name">
         <input required minLength={2} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Parent or guardian name" />
       </Field>
@@ -267,7 +271,7 @@ function ParentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number;
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending}>{pending ? 'Saving…' : initial ? 'Save changes' : 'Register parent'}</Button>
       </div>
-      {(create.isError || update.isError) && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this record. Check the fields and try again.</p>}
+      {(create.isError || update.isError) && <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">{personSaveError(create.error ?? update.error)}</p>}
     </form>
   );
 }

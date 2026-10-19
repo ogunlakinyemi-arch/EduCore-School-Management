@@ -7,8 +7,10 @@
  */
 import type { ParentUpdate4b96100RelationshipType } from './parentUpdate4b96100RelationshipType';
 import type { ParentUpdate4b96100Status } from './parentUpdate4b96100Status';
+import type { PersonTitle4b96100 } from './personTitle4b96100';
 
 export interface ParentUpdate4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   /** Default for new child links; does not change existing relationships */
   relationshipType?: ParentUpdate4b96100RelationshipType;
   /** @minLength 2 */

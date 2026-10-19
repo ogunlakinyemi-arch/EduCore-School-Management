@@ -2219,6 +2219,31 @@ export interface StudentPhotoResult {
 }
 
 /**
+ * Optional honorific, stored separately from the person's name. Null clears it.
+ * @nullable
+ */
+export type PersonTitle = typeof PersonTitle[keyof typeof PersonTitle] | null;
+
+
+export const PersonTitle = {
+  Mr: 'Mr',
+  Mrs: 'Mrs',
+  Ms: 'Ms',
+  Miss: 'Miss',
+  Dr: 'Dr',
+  Prof: 'Prof',
+  Rev: 'Rev',
+  Pastor: 'Pastor',
+  Imam: 'Imam',
+  Alhaji: 'Alhaji',
+  Alhaja: 'Alhaja',
+  Chief: 'Chief',
+  Engr: 'Engr',
+  Barr: 'Barr',
+  Hon: 'Hon',
+} as const;
+
+/**
  * @nullable
  */
 export type ParentRelationshipType = typeof ParentRelationshipType[keyof typeof ParentRelationshipType] | null;
@@ -2241,6 +2266,7 @@ export const ParentStatus = {
 } as const;
 
 export interface Parent {
+  personTitle?: PersonTitle | null;
   id: number;
   schoolId: number;
   name: string;
@@ -3134,6 +3160,7 @@ export const ParentInputRelationshipType = {
 } as const;
 
 export interface ParentInput {
+  personTitle?: PersonTitle | null;
   /** @minLength 2 */
   name: string;
   email: string;
@@ -3168,6 +3195,7 @@ export const ParentUpdateStatus = {
 } as const;
 
 export interface ParentUpdate {
+  personTitle?: PersonTitle | null;
   /** Default for new child links; does not change existing relationships */
   relationshipType?: ParentUpdateRelationshipType;
   /** @minLength 2 */
@@ -3218,6 +3246,7 @@ export const EmployeeGender = {
 } as const;
 
 export interface Employee {
+  personTitle?: PersonTitle | null;
   /**
      * Linked login account state
      * @nullable
@@ -3265,6 +3294,7 @@ export const EmployeeInputGender = {
 } as const;
 
 export interface EmployeeInput {
+  personTitle?: PersonTitle | null;
   /** Legacy input ignored on creation; the server generates a permanent number */
   employeeId?: string;
   /** @minLength 2 */
@@ -3295,6 +3325,7 @@ export const EmployeeUpdateGender = {
 } as const;
 
 export interface EmployeeUpdate {
+  personTitle?: PersonTitle | null;
   /** @minLength 2 */
   firstName?: string;
   middleName?: string;
@@ -15695,6 +15726,31 @@ export interface StudentPhotoResult4b96100 {
 }
 
 /**
+ * Optional honorific, stored separately from the person's name. Null clears it.
+ * @nullable
+ */
+export type PersonTitle4b96100 = typeof PersonTitle4b96100[keyof typeof PersonTitle4b96100] | null;
+
+
+export const PersonTitle4b96100 = {
+  Mr: 'Mr',
+  Mrs: 'Mrs',
+  Ms: 'Ms',
+  Miss: 'Miss',
+  Dr: 'Dr',
+  Prof: 'Prof',
+  Rev: 'Rev',
+  Pastor: 'Pastor',
+  Imam: 'Imam',
+  Alhaji: 'Alhaji',
+  Alhaja: 'Alhaja',
+  Chief: 'Chief',
+  Engr: 'Engr',
+  Barr: 'Barr',
+  Hon: 'Hon',
+} as const;
+
+/**
  * @nullable
  */
 export type Parent4b96100RelationshipType = typeof Parent4b96100RelationshipType[keyof typeof Parent4b96100RelationshipType] | null;
@@ -15717,6 +15773,7 @@ export const Parent4b96100Status = {
 } as const;
 
 export interface Parent4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   id: number;
   schoolId: number;
   name: string;
@@ -16577,6 +16634,7 @@ export const ParentInput4b96100RelationshipType = {
 } as const;
 
 export interface ParentInput4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   /** @minLength 2 */
   name: string;
   email: string;
@@ -16611,6 +16669,7 @@ export const ParentUpdate4b96100Status = {
 } as const;
 
 export interface ParentUpdate4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   /** Default for new child links; does not change existing relationships */
   relationshipType?: ParentUpdate4b96100RelationshipType;
   /** @minLength 2 */
@@ -16661,6 +16720,7 @@ export const Employee4b96100Gender = {
 } as const;
 
 export interface Employee4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   /**
      * Linked login account state
      * @nullable
@@ -16708,6 +16768,7 @@ export const EmployeeInput4b96100Gender = {
 } as const;
 
 export interface EmployeeInput4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   /** Legacy input ignored on creation; the server generates a permanent number */
   employeeId?: string;
   /** @minLength 2 */
@@ -16738,6 +16799,7 @@ export const EmployeeUpdate4b96100Gender = {
 } as const;
 
 export interface EmployeeUpdate4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   /** @minLength 2 */
   firstName?: string;
   middleName?: string;

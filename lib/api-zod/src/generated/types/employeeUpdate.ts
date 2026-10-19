@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { EmployeeUpdateGender } from './employeeUpdateGender';
+import type { PersonTitle } from './personTitle';
 
 export interface EmployeeUpdate {
+  personTitle?: PersonTitle | null;
   /** @minLength 2 */
   firstName?: string;
   middleName?: string;

@@ -2,16 +2,19 @@ import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Plus, Search, Pencil } from 'lucide-react';
 import { DirectoryExport } from '@/components/directory-export';
+import { PersonTitleField, personDisplayName, personSaveError } from '@/components/person-title';
+import type { PersonTitle } from '@workspace/api-client-react';
 import { 
   useListEmployees, useCreateEmployee, useUpdateEmployee, getListEmployeesQueryKey 
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
-  Modal, Field, TenantPicker, useTenant, cx, date
+  Modal, Field, TenantPicker, useTenant, cx, date, useSchoolAdminAccess
 } from '@/components/shared';
 
 export function EmployeesPage() {
   const { schoolId, setSchoolId } = useTenant();
+  const { canManageSchool } = useSchoolAdminAccess();
   const [search, setSearch] = useState(''); 
   const [status, setStatus] = useState('ACTIVE'); 
   const [modal, setModal] = useState<any>(null); 
@@ -34,9 +37,9 @@ export function EmployeesPage() {
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
-            <Button onClick={() => setModal({ create: true })} disabled={!schoolId} testId="button-add-employee">
+            {canManageSchool && <Button onClick={() => setModal({ create: true })} disabled={!schoolId} testId="button-add-employee">
               <Plus size={16} />Add employee
-            </Button>
+            </Button>}
           </div>
         } 
       />
@@ -97,7 +100,7 @@ export function EmployeesPage() {
               <div key={emp.id} className="grid gap-3 border-b border-[hsl(var(--border)/.6)] px-5 py-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] last:border-0 md:grid-cols-[1.5fr_1fr_1.5fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div>
                   <div className="font-bold text-sm text-[hsl(var(--foreground))]">
-                    {emp.firstName} {emp.lastName}
+                    {personDisplayName(emp.personTitle, emp.firstName, emp.lastName)}
                   </div>
                   <div className="mt-1.5 flex items-center gap-2.5 text-[11px] text-[hsl(var(--muted-foreground))]">
                     <span className="font-mono bg-[hsl(var(--secondary))] px-1.5 py-0.5 rounded text-[10px]">{emp.employeeId}</span>
@@ -114,16 +117,16 @@ export function EmployeesPage() {
                 <div>
                   <StatusPill value={emp.status} />
                 </div>
-                <Button variant="quiet" onClick={() => setModal(emp)} testId={`button-edit-employee-${emp.id}`}>
+                {canManageSchool && <Button variant="quiet" onClick={() => setModal(emp)} testId={`button-edit-employee-${emp.id}`}>
                   <Pencil size={15} />Edit
-                </Button>
+                </Button>}
               </div>
             )) : (
               <EmptyState 
                 icon={Briefcase} 
                 title="No employees found" 
                 description="Try adjusting your filters or hire a new employee." 
-                action={<Button onClick={() => setModal({ create: true })}><Plus size={15} />Add employee</Button>} 
+                action={canManageSchool ? <Button onClick={() => setModal({ create: true })}><Plus size={15} />Add employee</Button> : undefined}
               />
             )}
           </div>
@@ -139,11 +142,12 @@ export function EmployeesPage() {
   );
 }
 
-function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {
+export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {
   const create = useCreateEmployee(); 
   const update = useUpdateEmployee(); 
   
   const [form, setForm] = useState({ 
+    personTitle: (initial?.personTitle ?? null) as PersonTitle,
     firstName: initial?.firstName ?? '', 
     lastName: initial?.lastName ?? '', 
     type: initial?.type ?? 'TEACHER', 
@@ -167,6 +171,7 @@ function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: numbe
 
   return (
     <form onSubmit={save} className="space-y-5">
+      <PersonTitleField value={form.personTitle} onChange={personTitle => setForm({ ...form, personTitle })} />
       {!initial && (
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Employee number">
@@ -228,7 +233,7 @@ function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: numbe
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending}>{pending ? 'Saving…' : initial ? 'Save changes' : 'Add employee'}</Button>
       </div>
-      {(create.isError || update.isError) && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this record. Check the fields and try again.</p>}
+      {(create.isError || update.isError) && <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">{personSaveError(create.error ?? update.error)}</p>}
     </form>
   );
 }

@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { EmployeeUpdate4b96100Gender } from './employeeUpdate4b96100Gender';
+import type { PersonTitle4b96100 } from './personTitle4b96100';
 
 export interface EmployeeUpdate4b96100 {
+  personTitle?: PersonTitle4b96100 | null;
   /** @minLength 2 */
   firstName?: string;
   middleName?: string;

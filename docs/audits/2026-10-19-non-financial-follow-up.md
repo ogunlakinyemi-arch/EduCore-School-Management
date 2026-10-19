@@ -1,5 +1,9 @@
 # Bounded non-financial follow-up — 2026-10-19
 
+Subsequent follow-up: [staged person-title forms and safeguards](2026-10-19-person-titles.md).
+That report supersedes the title portion of the remaining-scope list below,
+subject to its unapplied migration and acceptance boundaries.
+
 ## Scope and repository reference
 
 Read both prior audit handoffs before changing code. The initial working tree

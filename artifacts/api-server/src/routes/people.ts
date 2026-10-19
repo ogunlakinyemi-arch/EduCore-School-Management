@@ -45,9 +45,12 @@ const asyncRoute =
   (req: Request, res: any, next: NextFunction) =>
     handler(req, res).catch((error) => handleAuthError(error, req, res, next));
 
+import { personTitleWrite } from "../lib/person-title";
+
 const employeeSelect = `
   e.id, e.school_id AS "schoolId", e.employee_no AS "employeeId",
   e.first_name AS "firstName", e.middle_name AS "middleName", e.last_name AS "lastName",
+  to_jsonb(e)->>'person_title' AS "personTitle",
   e.employee_type AS "type", e.phone, e.email, e.address, e.photo AS "photoUrl",
    e.gender, e.employment_status AS "status", e.date_employed::text AS "dateEmployed",
   e.department, e.qualification, e.user_id AS "userId",
@@ -56,6 +59,7 @@ const employeeSelect = `
 const employeeReturning = `
   id, school_id AS "schoolId", employee_no AS "employeeId",
   first_name AS "firstName", middle_name AS "middleName", last_name AS "lastName",
+  to_jsonb(employees)->>'person_title' AS "personTitle",
   employee_type AS "type", phone, email, address, photo AS "photoUrl",
    gender, employment_status AS "status", date_employed::text AS "dateEmployed",
   department, qualification, user_id AS "userId"`;
@@ -117,6 +121,7 @@ router.post("/employees", asyncRoute(async (req, res) => {
   const query = CreateEmployeeQueryParams.parse(req.query);
   assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
   const body = CreateEmployeeBody.parse(req.body);
+  const title = await personTitleWrite("employees", body.personTitle, 16);
   if (body.userId) {
     const user = await pool.query(`SELECT id FROM app_users WHERE id = $1`, [body.userId]);
     if (!user.rows[0]) throw new AuthError(404, "User not found");
@@ -124,12 +129,12 @@ router.post("/employees", asyncRoute(async (req, res) => {
   const result = await pool.query(
     `INSERT INTO employees
       (school_id, user_id, employee_no, first_name, middle_name, last_name, phone, email,
-       address, photo, gender, employee_type, date_employed, department, qualification)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       address, photo, gender, employee_type, date_employed, department, qualification${title.column})
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15${title.value})
      RETURNING ${employeeReturning}`,
     [query.schoolId, body.userId ?? null, generateEmployeeNumber(query.schoolId), body.firstName, body.middleName ?? null,
       body.lastName, body.phone ?? null, body.email ?? null, body.address ?? null, body.photoUrl ?? null,
-      body.gender ?? null, body.type, body.dateEmployed ?? null, body.department ?? null, body.qualification ?? null],
+      body.gender ?? null, body.type, body.dateEmployed ?? null, body.department ?? null, body.qualification ?? null, ...title.params],
   );
   await audit(req, query.schoolId, "Created employee", "EMPLOYEE_CREATED", result.rows[0].id);
   res.status(201).json(CreateEmployeeResponse.parse(result.rows[0]));
@@ -154,17 +159,18 @@ router.patch("/employees/:employeeId", asyncRoute(async (req, res) => {
   const current = await employee(req, params.employeeId);
   if (current.schoolId !== query.schoolId) throw new AuthError(404, "Employee not found");
   assertSchoolOperationalAccess(req, current.schoolId, ["SCHOOL_ADMIN"]);
+  const title = await personTitleWrite("employees", body.personTitle, 15);
   const result = await pool.query(
     `UPDATE employees SET first_name = COALESCE($1, first_name), middle_name = COALESCE($2, middle_name),
        last_name = COALESCE($3, last_name), phone = COALESCE($4, phone), email = COALESCE($5, email),
        address = COALESCE($6, address), photo = COALESCE($7, photo), gender = COALESCE($8, gender),
        date_employed = COALESCE($9, date_employed), department = COALESCE($10, department),
-       qualification = COALESCE($11, qualification), user_id = COALESCE($12, user_id), updated_at = NOW()
+       qualification = COALESCE($11, qualification), user_id = COALESCE($12, user_id)${title.assignment}, updated_at = NOW()
      WHERE id = $13 AND school_id = $14 RETURNING ${employeeReturning}`,
     [body.firstName ?? null, body.middleName ?? null, body.lastName ?? null, body.phone ?? null,
       body.email ?? null, body.address ?? null, body.photoUrl ?? null, body.gender ?? null,
       body.dateEmployed ?? null, body.department ?? null, body.qualification ?? null, body.userId ?? null,
-      params.employeeId, current.schoolId],
+      params.employeeId, current.schoolId, ...title.params],
   );
   await audit(req, current.schoolId, "Updated employee", "EMPLOYEE_UPDATED", params.employeeId);
   res.json(UpdateEmployeeResponse.parse(result.rows[0]));
@@ -189,6 +195,7 @@ router.patch("/employees/:employeeId/status", asyncRoute(async (req, res) => {
 async function parent(req: Request, id: number, schoolId: number) {
   const result = await pool.query(
     `SELECT p.id, p.school_id AS "schoolId", p.name, p.email, p.phone, p.address, p.status,
+       to_jsonb(p)->>'person_title' AS "personTitle",
        au.clerk_user_id AS "clerkUserId", p.default_relationship_type AS "relationshipType",
        p.emergency_contact_name AS "emergencyContactName", p.emergency_contact_phone AS "emergencyContactPhone",
        COUNT(psr.id)::int AS "childrenCount",
@@ -216,17 +223,18 @@ router.patch("/parents/:parentId", asyncRoute(async (req, res) => {
   const body = UpdateParentBody.parse(req.body);
   assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
   await parent(req, params.parentId, query.schoolId);
+  const title = await personTitleWrite("parents", body.personTitle, 11);
   await pool.query(
     `UPDATE parents SET name = COALESCE($1, name), email = COALESCE($2, email),
        phone = COALESCE($3, phone), address = COALESCE($4, address),
        status = COALESCE($5, status),
        default_relationship_type = COALESCE($8, default_relationship_type),
        emergency_contact_name = COALESCE($9, emergency_contact_name),
-       emergency_contact_phone = COALESCE($10, emergency_contact_phone), updated_at = NOW()
+       emergency_contact_phone = COALESCE($10, emergency_contact_phone)${title.assignment}, updated_at = NOW()
      WHERE id = $6 AND school_id = $7`,
     [body.name ?? null, body.email ?? null, body.phone ?? null, body.address ?? null,
        body.status ?? null, params.parentId, query.schoolId, body.relationshipType ?? null,
-       body.emergencyContactName ?? null, body.emergencyContactPhone ?? null],
+       body.emergencyContactName ?? null, body.emergencyContactPhone ?? null, ...title.params],
   );
   const updated = await parent(req, params.parentId, query.schoolId);
   await audit(req, query.schoolId, "Updated parent", "PARENT_UPDATED", params.parentId);
