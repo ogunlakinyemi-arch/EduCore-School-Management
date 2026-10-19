@@ -5,11 +5,18 @@ import path from "node:path";
 import express from "express";
 import { DatabasePool } from "@workspace/db/driver";
 import { afterAll, beforeAll, beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-const state = vi.hoisted(() => ({ pool: null as unknown as InstanceType<typeof DatabasePool> }));
+const state = vi.hoisted(() => ({
+  pool: null as unknown as InstanceType<typeof DatabasePool>,
+  requestRefund:vi.fn(),verifyRefund:vi.fn(),
+}));
 vi.mock("@workspace/db", () => ({
   pool: { query: (...args: any[]) => (state.pool.query as any)(...args), connect: () => state.pool.connect() },
 }));
 vi.mock("@clerk/express",()=>({clerkClient:{}}));
+vi.mock("./flutterwave-split-provider",async original=>({
+  ...await original<typeof import("./flutterwave-split-provider")>(),
+  splitProvider:()=>({requestRefund:state.requestRefund,verifyRefund:state.verifyRefund}),
+}));
 vi.mock("../middlewares/auth",async original=>{
   const actual=await original<typeof import("../middlewares/auth")>();
   return {...actual,requireAuthentication:()=> (req:any,res:any,next:any)=>{
@@ -28,6 +35,7 @@ import { updateManualPartnerPayout } from "./partner-payout-update";
 import { holdSignedDeferredAdverseEvent } from "./deferred-commission-adverse-events";
 import { studentSubscriptionFlutterwaveWebhookRouter } from "../routes/student-subscription-webhooks";
 import { FlutterwaveTestAdapter } from "../lib/fee-providers";
+import {requestSplitRefund,verifySplitRefund} from "./flutterwave-split-refunds";
 let directory: string, postgres: ChildProcess, migration: string;
 let server: ReturnType<express.Express["listen"]>,base:string;
 // Real PostgreSQL constraints/triggers and transactions. No application database,
@@ -52,7 +60,12 @@ CREATE TABLE flutterwave_split_payments(
  attribution_id integer,commission_rule_id integer,partner_amount_minor integer,platform_amount_minor integer,
  school_amount_minor integer,currency text,status text,provider_fee_minor integer,provider_additional_fee_minor integer,reconciliation_note text,
  CONSTRAINT flw_split_amounts_ck CHECK(school_amount_minor IN(190000,200000)));
-CREATE TABLE flutterwave_split_adjustments(payment_id integer,status text);
+CREATE TABLE flutterwave_split_adjustments(
+ id serial PRIMARY KEY,payment_id integer REFERENCES student_subscription_payments(id),
+ idempotency_key text UNIQUE,amount_minor integer,reason text,created_by integer,
+ provider_refund_id text,status text DEFAULT 'REQUESTING',recovery_status text DEFAULT 'UNCONFIRMED',
+ school_recovery_minor integer,partner_recovery_minor integer,platform_reversal_minor integer,
+ updated_at timestamptz DEFAULT now());
 CREATE TABLE partner_payouts(
  id serial PRIMARY KEY,partner_profile_id integer,amount numeric(12,2),currency text,status text,
  period_start timestamptz,period_end timestamptz,method text,notes text,payment_reference text,
@@ -107,6 +120,10 @@ beforeAll(async () => {
 },20000);
 beforeEach(async()=>{
   vi.stubEnv("NODE_ENV","development");vi.stubEnv("REPLIT_DEPLOYMENT","");
+  state.requestRefund.mockReset().mockImplementation(async input=>({
+    ...input,providerRefundId:String(1000+state.requestRefund.mock.calls.length),status:"pending",
+  }));
+  state.verifyRefund.mockReset();
   await state.pool.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   await state.pool.query(ddl);await state.pool.query(migration);
 });
@@ -206,7 +223,7 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
   });
   it("refund request/uncertain outcome holds immediately; failed refund is not silently reapproved",async()=>{
     await payment(1);
-    await state.pool.query("INSERT INTO flutterwave_split_adjustments VALUES(1,'OUTCOME_UNKNOWN')");
+    await state.pool.query("INSERT INTO flutterwave_split_adjustments(payment_id,status) VALUES(1,'OUTCOME_UNKNOWN')");
     expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("HELD");
     await state.pool.query("UPDATE flutterwave_split_adjustments SET status='FAILED'");
     await expect(approve([1])).rejects.toThrow("Every selected");
@@ -285,5 +302,109 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
     expect(await holdSignedDeferredAdverseEvent(Buffer.from(JSON.stringify({event:"transfer.completed",
       data:{flw_ref:"FLW-independent-1",status:"successful"}})))).toBe(false);
     expect((await deferredCommissionEvidence())[0].eligible).toBe(true);
+  });
+  it("returns500 on a failed adverse audit, rolls back the hold, then safely acknowledges a durable retry once",async()=>{
+    await payment(1);await approve([1]);
+    vi.stubEnv("FLUTTERWAVE_SECRET_Test_Key","FLWSECK_TEST-durable-ack-fixture");
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY","");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","synthetic-durable-ack-hash");
+    await state.pool.query(`CREATE FUNCTION reject_adverse_audit() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.action='Held deferred commission for adverse event' THEN RAISE EXCEPTION 'synthetic persistence failure'; END IF;
+      RETURN NEW; END $$;
+      CREATE TRIGGER reject_adverse_audit BEFORE INSERT ON audit_logs FOR EACH ROW EXECUTE FUNCTION reject_adverse_audit();`);
+    const post=()=>fetch(`${base}/webhook`,{method:"POST",headers:{"content-type":"application/json",
+      "verif-hash":"synthetic-durable-ack-hash"},body:JSON.stringify({event:"chargeback.initiated",
+        data:{flw_ref:"FLW-independent-1"}})});
+    expect((await post()).status).toBe(500);
+    expect((await state.pool.query("SELECT count(*)::int n FROM deferred_commission_adverse_events")).rows[0].n).toBe(0);
+    expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("APPROVED");
+    expect((await state.pool.query("SELECT status FROM partner_payout_batches")).rows[0].status).toBe("APPROVED");
+    expect((await state.pool.query("SELECT status FROM flutterwave_split_payments")).rows[0].status).toBe("COLLECTION_PAID");
+    await state.pool.query("DROP TRIGGER reject_adverse_audit ON audit_logs");
+    expect((await post()).status).toBe(200);expect((await post()).status).toBe(200);
+    expect((await state.pool.query("SELECT count(*)::int n FROM deferred_commission_adverse_events")).rows[0].n).toBe(1);
+    expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("HELD");
+    expect((await state.pool.query("SELECT count(*)::int n FROM audit_logs WHERE action='Held deferred commission for adverse event'")).rows[0].n).toBe(1);
+  });
+  it("does not accept alternate signature headers, a missing configured hash, or successful transfer events as Paid evidence",async()=>{
+    await payment(1);await approve([1]);
+    vi.stubEnv("FLUTTERWAVE_SECRET_Test_Key","FLWSECK_TEST-transfer-denial-fixture");
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY","");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","synthetic-transfer-denial-hash");
+    const post=(headers:Record<string,string>)=>fetch(`${base}/webhook`,{method:"POST",headers:{
+      "content-type":"application/json",...headers},body:JSON.stringify({event:"transfer.completed",
+        data:{flw_ref:"FLW-independent-1",reference:"invented-paid-proof",status:"SUCCESSFUL",amount:100,currency:"NGN"}})});
+    expect((await post({"flutterwave-signature":"synthetic-transfer-denial-hash"})).status).toBe(401);
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","");
+    expect((await post({"verif-hash":"synthetic-transfer-denial-hash"})).status).toBe(401);
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","synthetic-transfer-denial-hash");
+    expect((await post({"verif-hash":"synthetic-transfer-denial-hash"})).status).toBe(202);
+    await expect(updateManualPartnerPayout({params:{payoutId:"1"},body:{status:"PAID",paymentReference:"invented-paid-proof"}} as any,vi.fn()))
+      .rejects.toThrow("export only");
+    expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("APPROVED");
+    expect((await state.pool.query("SELECT status,paid_at FROM partner_payouts")).rows[0]).toMatchObject({status:"PENDING",paid_at:null});
+    expect(await ownDeferredCommissionTotals(1)).toMatchObject({approvedMinor:10000,paidMinor:0});
+  });
+  it("reserves a lost refund POST once, holds approved liability, and never resends or invents recovery on retry",async()=>{
+    await payment(1);const batch=await approve([1]);
+    state.requestRefund.mockRejectedValueOnce(new Error("Synthetic provider response lost"));
+    const input={amountMinor:100000,reason:"Synthetic partial refund",idempotencyKey:"lost-refund-fixture-1"};
+    const first=await requestSplitRefund(1,1,input);
+    expect(first).toMatchObject({status:"OUTCOME_UNKNOWN",providerRefundId:null,schoolRecoveryMinor:null,partnerRecoveryMinor:null});
+    expect(await requestSplitRefund(1,1,input)).toEqual(first);
+    expect(state.requestRefund).toHaveBeenCalledOnce();
+    await expect(requestSplitRefund(1,1,{...input,amountMinor:100001})).rejects.toThrow("bound to a different");
+    await expect(verifySplitRefund(first.id)).rejects.toThrow("without repeating");
+    expect(state.verifyRefund).not.toHaveBeenCalled();
+    expect((await state.pool.query("SELECT count(*)::int n FROM flutterwave_split_adjustments")).rows[0].n).toBe(1);
+    expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("HELD");
+    await expect(exportCommissionBatch(batch.id,1)).rejects.toThrow("exception");
+  });
+  it.each([1,2,3])("persists exact cumulative partial-refund recovery once and preserves policy version%s",async version=>{
+    const reference=version===1 ? "fee_legacy_refund_fixture" : `SCV${version}_refund_fixture`;
+    await payment(1,1,1,reference);
+    for(const [i,amountMinor] of [10001,489999].entries()) {
+      const row=await requestSplitRefund(1,1,{amountMinor,reason:"Synthetic rounding evidence",
+        idempotencyKey:`partial-refund-fixture-${i}`});
+      expect(row.status).toBe("PROCESSING");
+      state.verifyRefund.mockResolvedValue({providerRefundId:row.providerRefundId,
+        providerTransactionId:"transaction-1",amountMinor,status:"succeeded"});
+      const [a,b]=await Promise.all([verifySplitRefund(row.id),verifySplitRefund(row.id)]);
+      expect(a).toEqual(b);
+      expect(a).toMatchObject({status:"CONFIRMED",recoveryStatus:"RECIPIENT_RECOVERY_REVIEW"});
+      const calls=state.verifyRefund.mock.calls.length;
+      expect(await verifySplitRefund(row.id)).toEqual(a);
+      expect(state.verifyRefund.mock.calls.length).toBe(calls);
+    }
+    const total=(await state.pool.query(`SELECT sum(amount_minor)::int refund,sum(school_recovery_minor)::int school,
+      sum(partner_recovery_minor)::int partner,sum(platform_reversal_minor)::int merchant FROM flutterwave_split_adjustments`)).rows[0];
+    expect(total).toEqual({refund:500000,school:version===1 ? 200000:190000,
+      partner:version===3 ? 0:10000,merchant:version===1 ? 290000:version===2 ? 300000:310000});
+    expect((await state.pool.query("SELECT status FROM flutterwave_split_payments")).rows[0].status).toBe("REFUNDED");
+    expect((await state.pool.query("SELECT status FROM subscriptions")).rows[0].status).toBe("pending");
+    // Original collection history is not rewritten as an unverified payment.
+    expect((await state.pool.query("SELECT status,reference FROM student_subscription_payments")).rows[0]).toEqual({status:"PAID",reference});
+    if(version===3) expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("HELD");
+  });
+  it.each(["providerRefundId","providerTransactionId","amountMinor"])("rejects mismatched refund %s before confirming any recovery",async field=>{
+    await payment(1);
+    const row=await requestSplitRefund(1,1,{amountMinor:100000,reason:"Synthetic mismatch test",idempotencyKey:"mismatch-refund-fixture"});
+    state.verifyRefund.mockResolvedValue({providerRefundId:row.providerRefundId,providerTransactionId:"transaction-1",
+      amountMinor:100000,status:"succeeded",[field]:field==="amountMinor" ? 100001:"different-id"});
+    await expect(verifySplitRefund(row.id)).rejects.toThrow("does not match");
+    const saved=(await state.pool.query("SELECT status,school_recovery_minor,partner_recovery_minor FROM flutterwave_split_adjustments")).rows[0];
+    expect(saved).toEqual({status:"PROCESSING",school_recovery_minor:null,partner_recovery_minor:null});
+  });
+  it("pending or failed refund read-back never reinstates a held commission or asserts bank recovery",async()=>{
+    await payment(1);await approve([1]);
+    const row=await requestSplitRefund(1,1,{amountMinor:100000,reason:"Synthetic pending/failed",idempotencyKey:"failed-refund-fixture"});
+    for(const status of ["pending","failed"]) {
+      state.verifyRefund.mockResolvedValue({providerRefundId:row.providerRefundId,providerTransactionId:"transaction-1",amountMinor:100000,status});
+      expect(await verifySplitRefund(row.id)).toMatchObject({status:status==="failed" ? "FAILED":"PROCESSING",
+        schoolRecoveryMinor:null,partnerRecoveryMinor:null,platformReversalMinor:null});
+      expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("HELD");
+    }
+    await expect(approve([1],"failed-refund-reapproval")).rejects.toThrow("Every selected");
+    expect(await ownDeferredCommissionTotals(1)).toMatchObject({pendingMinor:0,approvedMinor:0,paidMinor:0});
   });
 });

@@ -198,6 +198,70 @@ migration, Production access, secret change or publishing is required.
   hardware/end-to-end sandbox acceptance result; no schema repair, hardware
   workflow restart or unrelated refactor was attempted in this review.
 
+## Focused TEST-mode acceptance pass — 2026-10-19
+
+**Result: local automated acceptance PASS; provider-backed TEST acceptance BLOCKED;
+live activation remains BLOCKED.** This pass adds tests and documentation only.
+It does not alter runtime payment code, application data/schema, secrets, provider
+settings, checkout guards, historical policy, or the unrelated NFC hardware export.
+All new provider responses are fictional mocks. Database evidence comes from an
+isolated disposable local PostgreSQL database, never the application's database.
+
+### Acceptance matrix
+
+| Requirement | Local result | External evidence still required |
+| --- | --- | --- |
+| School-only NGN 1,900 instruction; NGN 3,100 merchant gross | PASS — exact plan, Partner/no-Partner branches, cross-version rejection and before-transport checkout guard | BLOCKED — merchant-specific fixed-amount semantics and transaction-linked recipient allocation |
+| Fees/VAT and merchant remainder | PASS — NGN 65 + NGN 5 costs yield NGN 3,030; internal Partner liability never reduces merchant cash. Missing cost/payer fields remain unknown; arbitrary VAT, metadata and aggregate settled amounts are not settlement proof | BLOCKED — complete actual fee/tax breakdown and main-merchant bank credit for the same transaction |
+| Webhook authentication | PASS — missing/wrong hash, missing configured verifier and alternate signature header cannot change liabilities | BLOCKED — actual TEST account's selected V3 version and privately matching hash |
+| Durable adverse-event acknowledgement | PASS — forced audit failure returns500 and rolls back hold, event claim and batch invalidation; retry returns200 only after commit; duplicate retry retains one event/audit | BLOCKED — public HTTPS delivery and actual merchant retries into the approved isolated Development environment |
+| Failed/refunded/reversed event exclusion | PASS — authenticated adverse SCV3 charge notifications cannot finalize collection or erase a hold; successful collection notifications do not resolve disputes | BLOCKED — real account event payloads and enabled chargeback/refund delivery |
+| Transaction-linked school settlement | PASS — strict recipient account, currency, amount, transaction ID/reference and complete frozen recipient-set checks; empty/extra/contradictory evidence cannot complete reconciliation | BLOCKED — Flutterwave-issued transaction-linked school statement; local mocked reports do not prove receipt |
+| Refund recovery and replay | PASS — actual refund request/verification handlers tested against PostgreSQL with mocked provider responses. Lost POST is reserved once and never resent; mismatched IDs/amounts cannot confirm recovery; concurrent verification cannot apply partial refunds twice | BLOCKED — actual provider refund read-back, final customer disbursement and recipient recovery statements |
+| Historical refund policies | PASS — partial NGN 100.01 plus NGN 4,899.99 refunds conserve all kobo for legacy, SCV2 and SCV3. SCV3 full refund records NGN 1,900 school recovery target, zero Partner subaccount recovery and NGN 3,100 merchant reversal target | BLOCKED — these are recorded recovery targets, not evidence of bank clawback |
+| Held/refund-failed liabilities | PASS — pending/failed refund read-back does not assert recovery or restore commission eligibility; original collection references and history are preserved | BLOCKED — independent exception resolution; no automatic hold release supplied |
+| Partner Paid prevention | PASS — signed successful transfer notification and an invented payment reference cannot mark an approved export-only batch Paid; paid balance stays zero | BLOCKED — separately reviewed beneficiary/amount/currency/reference-bound transfer evidence reconciliation; no transfer is initiated here |
+| Dedicated TEST configuration isolation | PASS — synthetic configuration tests exercise dedicated aliases, conflicts/invalid values and no live-key substitution | BLOCKED — existing secret names/presence do not independently prove valid contents, merchant identity or dashboard correspondence |
+
+### Verification
+
+- **314 API tests across 14 files + 6 frontend tests passed (320 total).**
+  Fourteen new acceptance cases extend the prior coverage, principally in
+  `deferred-partner-commissions.postgres.test.ts` and `flutterwave-readiness.test.ts`.
+- Frontend/API typechecks and diff checks passed.
+- No runtime restart was required: this pass changes tests/documentation only.
+  No hardware workflow restart or schema-export repair was attempted.
+- No sandbox payment/refund, external provider account call, financial mutation
+  against the app database, actual-secret inspection or provider setting change
+  was performed. The local secret strings in tests are fictional fixtures.
+
+### Remaining TEST acceptance requiring user action
+
+**No user action or Secrets change is needed to run this automated suite.**
+Unblocking provider-backed TEST acceptance requires user/account-owner evidence:
+
+1. Privately confirm the intended TEST merchant identity, effective school-only
+   override/fee settings, V3 webhook mode, retries, refund custom URL and
+   chargeback notification delivery. Do not disclose secret values in chat.
+2. Confirm the existing `FLUTTERWAVE_SECRET_Test_Key` belongs to that TEST merchant
+   and `FLUTTERWAVE_WEBHOOK_VERIF_HASH` matches its selected V3 webhook verifier.
+   Presence alone is not validation; no value replacement is requested.
+3. Supply transaction-linked provider statements/read-backs for approved existing
+   TEST transactions, where available: payer NGN 5,000, exact school NGN 1,900,
+   complete fees/taxes, school recipient/account identity, and actual main-merchant
+   remainder. Partner/no-Partner branches must be represented. Never retroactively
+   attach an unrelated standalone checkout to a student payment.
+4. For refund/dispute acceptance, supply original transaction/refund IDs, exact
+   refunded amount, independent final-disbursement status, and school/merchant
+   recovery evidence. An initiated refund or chargeback notification is insufficient.
+5. If suitable existing evidence is unavailable, retain BLOCKED. Any new sandbox
+   transaction, refund, callback delivery test or provider setting change requires
+   separate bounded authorization and independently confirmed Development isolation;
+   it is not authorized by this no-payments/no-refunds acceptance pass.
+
+Live credentials, Production migrations, publishing and removing either checkout
+guard are not required to complete the local suite and remain explicitly prohibited.
+
 ## Provider references reviewed
 
 - https://developer.flutterwave.com/v3.0/docs/split-payments

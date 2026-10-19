@@ -29,6 +29,20 @@ describe("Development-only readiness service boundaries with mocked transport",(
       bankSettlementVerified:false,recipients:[{subaccountId:"RS_UNITSchool000001",amountMinor:190000,observedAmountMinor:null}],
     });
   });
+  it.each(["app_fee","merchant_fee","charged_amount"])("missing %s leaves reconciliation unconfirmed, never fills a tax/fee gap with zero",async field=>{
+    f.read.mockResolvedValue({id:9231836,tx_ref:f.payment.reference,status:"successful",currency:"NGN",
+      amount:5000,charged_amount:5000,app_fee:65,merchant_fee:5,[field]:null,vat:5,amount_settled:4930});
+    expect(await transactionSplitEvidence(1)).toMatchObject({status:"UNCONFIRMED",platformNetMinor:null,bankSettlementVerified:false});
+  });
+  it("unverified VAT fields, aggregate settled totals and echoed recipient instructions cannot establish merchant bank settlement",async()=>{
+    f.read.mockResolvedValue({id:9231836,tx_ref:f.payment.reference,status:"successful",currency:"NGN",
+      amount:5000,charged_amount:5000,app_fee:65,merchant_fee:5,vat:100,amount_settled:9999,
+      subaccounts:f.payment.instructions,recipients:f.payment.instructions,completeRecipientSet:true});
+    const result=await transactionSplitEvidence(1);
+    expect(result).toMatchObject({status:"UNCONFIRMED",evidenceLevel:"PARTIAL",platformNetMinor:303000,bankSettlementVerified:false});
+    expect(result).not.toHaveProperty("vatMinor");
+    expect(result.recipients[0].observedAmountMinor).toBeNull();
+  });
   it.each([[],[{id:9,provider_subaccount_id:"RS_UNITSchool000001",expected_amount_minor:200000}],
     [{id:9,provider_subaccount_id:"RS_UNITSchool000001",expected_amount_minor:190000},
      {id:8,provider_subaccount_id:"RS_UNITPartner00001",expected_amount_minor:10000}],
