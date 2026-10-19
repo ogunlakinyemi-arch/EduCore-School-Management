@@ -262,6 +262,96 @@ Unblocking provider-backed TEST acceptance requires user/account-owner evidence:
 Live credentials, Production migrations, publishing and removing either checkout
 guard are not required to complete the local suite and remain explicitly prohibited.
 
+## Existing TEST configuration and provider-backed read-only review — 2026-10-19
+
+**Result: configured TEST credential and existing collection read-back PASS;
+new-policy split/settlement, webhook delivery and recovery acceptance remain
+BLOCKED.** This supersedes the earlier absence of actual-secret/configuration
+inspection only to the limited extent described below. No secret value was
+displayed, requested, written, exported or changed.
+
+### Configuration presence and runtime selection
+
+| Check | Observed result |
+| --- | --- |
+| `FLUTTERWAVE_SECRET_Test_Key` | Present: **true** |
+| `FLUTTERWAVE_WEBHOOK_VERIF_HASH` | Present: **true** |
+| Optional alias `FLUTTERWAVE_TEST_SECRET_KEY` | Present: **false**; no alias conflict |
+| Existing Development credential selector | `CONFIGURED`, mode `TEST`; no generic/live credential fallback was used |
+| Existing student TEST adapter construction | Successful; configuration accepted without revealing values |
+| Webhook hash matches selected merchant/dashboard | **UNVERIFIED**; presence/constructor acceptance is not a matching-hash or delivery test |
+| Checkout or automatic split settlement enabled/verified | **false**; existing fail-closed guards remain unchanged |
+
+The actual adapter consumes the dedicated TEST key/optional TEST alias above and
+`FLUTTERWAVE_WEBHOOK_VERIF_HASH`. No public or encryption key is needed for these
+supported server-side GETs. A matching webhook hash cannot be established from
+transaction verification or subaccount listings.
+
+### Existing Development evidence
+
+Read-only application-pool access independently matched the Development database
+identity before inspecting records. All inspection queries ran in a READ ONLY
+transaction. No settlement/finalization/reconciliation service that updates
+application records was called.
+
+- Four existing Flutterwave SANDBOX subscription payment records: two PAID,
+  one FAILED and one RECONCILIATION_REQUIRED. Three have provider transaction IDs.
+- No SCV3 subscription payment records.
+- No frozen split payment plans, recipient settlement rows, refund adjustments
+  or signed deferred adverse events.
+- One generic fee-provider webhook record has status VERIFIED but
+  `signature_verified=false`. It is not proof of a signed student-subscription
+  delivery, selected dashboard version or matching configured hash.
+
+### Actual provider GET results
+
+The existing TEST adapters were used with an additional process-local transport
+allowlist denying every non-GET request, non-Flutterwave host and non-reviewed
+API path. No new permanent script or runtime setting was added.
+
+| Existing evidence | Provider-backed read result | Limitation |
+| --- | --- | --- |
+| Successful legacy collection | Exact original reference/transaction ID, NGN currency and NGN 5,000 amount matched; charged amount NGN 5,000; app fee NGN 70; additional fee NGN 0; aggregate `amount_settled` NGN 4,924.75 | No recipient bank statement. The NGN 5.25 difference from gross less reported fees is unexplained; **not classified as VAT** and not silently subtracted or written back. |
+| Successful SCV2 collection | Exact original reference/transaction ID, NGN currency and NGN 5,000 amount matched; charged amount NGN 5,000; app fee NGN 70; additional fee NGN 0; aggregate `amount_settled` NGN 4,930 | Historical policy only. This aggregate is not proof of school NGN 1,900, main-merchant credit, a complete split, or SCV3 deferred commission acceptance. |
+| Failed historical collection | Exact original reference/transaction ID, NGN currency and NGN 5,000 amount matched with failed provider status | Does not establish collection, fee expense, entitlement or settlement; no successful collection was created. |
+| Existing uncertain record without provider transaction ID | Supported reference lookup did not verify an existing collection; HTTP400 was observed | Remains unresolved. No new checkout, payment retry, database correction or reference reassignment was attempted. |
+| Subaccount listing, default and page-one reads | HTTP200/success, one existing entry reported by each read | Does not establish bank ownership, split settings, creation capability or disbursement. No bank/person/account data was disclosed. |
+| Supported settlement listing read | UNVERIFIED_ERROR; no usable response/status or statement obtained | Neither absence of settlements nor permission denial can be concluded from this result. No workaround changed settings or bypassed transport protections. |
+| Refund/chargeback/recovery | No bound refund IDs, signed adverse events or recipient recovery records were available locally | No refund verification was guessed from another transaction, and no chargeback-listing contract was invented. Existing statements or dashboard delivery/recovery evidence are still required. |
+
+### Remaining action
+
+**The TEST key is already configured and worked for the reads above; do not add
+it again. No Replit Secrets change is currently required.**
+`FLUTTERWAVE_WEBHOOK_VERIF_HASH` is also present; no mismatch was established,
+but correspondence with the dashboard remains unverified. If later matching
+evidence shows a missing or mismatched verifier, that exact secret name is the
+required configuration item; no automatic edit or secret value request is made.
+
+To continue without new transactions or provider mutations, the account owner
+must provide or privately inspect existing Flutterwave evidence:
+
+- V3 webhook selection, selected hash correspondence, enabled retries/refund
+  custom URL/chargeback delivery, and authenticated delivery logs for the approved
+  isolated Development destination.
+- Existing transaction-linked school/main-merchant statements proving the exact
+  school NGN 1,900, full fee/tax breakdown, and merchant remainder. Explain the
+  observed NGN 5.25 cost/aggregate discrepancy with provider evidence.
+- Existing independently bound refund/dispute and customer-disbursement/recipient
+  recovery evidence, if any.
+
+No suitable SCV3 transactions or statements currently exist in the inspected
+Development records. If the provider has no suitable existing evidence either,
+SCV3 provider-backed acceptance cannot be completed under the current no-new-
+transactions authorization and must remain BLOCKED.
+
+This pass changes this checklist only. No code changes were needed, so tests,
+typechecks, application restarts and the unrelated NFC hardware workflow were
+not rerun. The earlier 314 API + 6 frontend passing results remain the local
+automated evidence, not proof of actual bank settlement. No Production access,
+Publish configuration change, publishing, or payment/refund/payout/provider
+mutation was performed.
+
 ## Provider references reviewed
 
 - https://developer.flutterwave.com/v3.0/docs/split-payments
