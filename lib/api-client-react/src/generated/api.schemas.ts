@@ -2182,6 +2182,10 @@ export interface StudentStatusUpdate {
   status: StudentStatusUpdateStatus;
 }
 
+export interface EmployeePhotoResult {
+  photoUrl: string;
+}
+
 export type StudentPhotoUploadIntentContentType = typeof StudentPhotoUploadIntentContentType[keyof typeof StudentPhotoUploadIntentContentType];
 
 
@@ -15706,6 +15710,10 @@ export interface StudentStatusUpdate4b96100 {
   status: StudentStatusUpdate4b96100Status;
 }
 
+export interface EmployeePhotoResult4b96100 {
+  photoUrl: string;
+}
+
 export type StudentPhotoUploadIntent4b96100ContentType = typeof StudentPhotoUploadIntent4b96100ContentType[keyof typeof StudentPhotoUploadIntent4b96100ContentType];
 
 
@@ -22884,6 +22892,20 @@ schoolId: SchoolIdParameter;
 };
 
 export type UpdateStudentStatusParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetEmployeePhotoParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type DeleteEmployeePhotoParams = {
 /**
  * @minimum 1
  */

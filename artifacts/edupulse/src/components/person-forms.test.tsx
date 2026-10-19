@@ -20,6 +20,7 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
   };
 });
 vi.mock('@/components/directory-export', () => ({ DirectoryExport: () => null }));
+vi.mock('@/components/employee-photo-field', () => ({ EmployeePhotoField: () => <div>Private employee passport photo</div> }));
 vi.mock('@/components/shared', () => ({
   useTenant: () => ({ schoolId: 1 }),
   useSchoolAdminAccess: () => ({ canManageSchool: state.canManage }),

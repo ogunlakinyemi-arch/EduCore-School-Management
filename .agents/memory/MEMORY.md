@@ -75,3 +75,4 @@
 - [Pooled PostgreSQL sessions](pooled-postgres-session-state.md) — pin a client for session-local SQL state; expected query errors can replace pooled connections.
 - [Person titles withdrawn](person-title-policy.md) — keep plain-name forms; do not restore title controls or a migration prerequisite without a new user request.
 - [Approved promotion policy](promotion-policy-boundary.md) — third-term evidence and legacy heuristics do not establish school-approved promotion eligibility or authorize execution.
+- [Bulk onboarding photos](bulk-onboarding-photos.md) — existing/imported rosters need private per-person photo completion without blocking imports or re-creating records.

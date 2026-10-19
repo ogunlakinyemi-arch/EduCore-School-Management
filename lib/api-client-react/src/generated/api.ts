@@ -216,6 +216,7 @@ import type {
   CurriculumVersion,
   CurriculumVersionDetail,
   CurriculumVersionInput,
+  DeleteEmployeePhotoParams,
   DeleteStudentPhotoParams,
   DeviceActivationOfficerGrant,
   DeviceActivationOfficerGrantInput,
@@ -239,6 +240,7 @@ import type {
   EmployeeNfcDiscrepancy,
   EmployeeNfcError,
   EmployeeNfcProfile,
+  EmployeePhotoResult,
   EmployeeStatusUpdate,
   EmployeeUpdate,
   EmptyInput,
@@ -336,6 +338,7 @@ import type {
   GetDevelopmentPaymentDiagnosticParams,
   GetDriverTransportParams,
   GetEmployeeParams,
+  GetEmployeePhotoParams,
   GetFeePaymentReceiptParams,
   GetFinanceSettingsParams,
   GetFlutterwaveSplitDashboardParams,
@@ -25840,6 +25843,356 @@ export const useUpdateStudentStatus = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateStudentStatusMutationOptions(options));
+    }
+
+export const getRequestEmployeePhotoUploadUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/employees/${employeeId}/photo-upload-request`
+}
+
+/**
+ * @summary Request a private employee passport upload as School Admin
+ */
+export const requestEmployeePhotoUpload = async (employeeId: number,
+    studentPhotoUploadIntent: StudentPhotoUploadIntent, options?: Parameters<typeof customFetch>[1]): Promise<StudentPhotoUploadTarget> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StudentPhotoUploadTarget>(getRequestEmployeePhotoUploadUrl(employeeId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentPhotoUploadIntent)
+  }
+);}
+
+
+
+
+
+export const getRequestEmployeePhotoUploadMutationKey = () => ['requestEmployeePhotoUpload'] as const;
+
+export const getRequestEmployeePhotoUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestEmployeePhotoUpload>>, TError,RequestEmployeePhotoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestEmployeePhotoUpload>>, TError,RequestEmployeePhotoUploadMutationVariables, TContext> => {
+
+const mutationKey = getRequestEmployeePhotoUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestEmployeePhotoUpload>>, RequestEmployeePhotoUploadMutationVariables> = (props) => {
+          const {employeeId,data} = props ?? {};
+
+          return  requestEmployeePhotoUpload(employeeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestEmployeePhotoUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestEmployeePhotoUpload>>>
+    export type RequestEmployeePhotoUploadMutationBody = BodyType<StudentPhotoUploadIntent>
+    export type RequestEmployeePhotoUploadMutationError = ErrorType<unknown>
+    export type RequestEmployeePhotoUploadMutationVariables = {employeeId: number;data: BodyType<StudentPhotoUploadIntent>}
+
+    /**
+ * @summary Request a private employee passport upload as School Admin
+ */
+export const useRequestEmployeePhotoUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestEmployeePhotoUpload>>, TError,RequestEmployeePhotoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestEmployeePhotoUpload>>,
+        TError,
+        RequestEmployeePhotoUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestEmployeePhotoUploadMutationOptions(options));
+    }
+
+export const getConfirmEmployeePhotoUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/employees/${employeeId}/photo-confirm`
+}
+
+/**
+ * @summary Validate and persist an employee passport photo as School Admin
+ */
+export const confirmEmployeePhoto = async (employeeId: number,
+    studentPhotoConfirmation: StudentPhotoConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<EmployeePhotoResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EmployeePhotoResult>(getConfirmEmployeePhotoUrl(employeeId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentPhotoConfirmation)
+  }
+);}
+
+
+
+
+
+export const getConfirmEmployeePhotoMutationKey = () => ['confirmEmployeePhoto'] as const;
+
+export const getConfirmEmployeePhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmEmployeePhoto>>, TError,ConfirmEmployeePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmEmployeePhoto>>, TError,ConfirmEmployeePhotoMutationVariables, TContext> => {
+
+const mutationKey = getConfirmEmployeePhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmEmployeePhoto>>, ConfirmEmployeePhotoMutationVariables> = (props) => {
+          const {employeeId,data} = props ?? {};
+
+          return  confirmEmployeePhoto(employeeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmEmployeePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof confirmEmployeePhoto>>>
+    export type ConfirmEmployeePhotoMutationBody = BodyType<StudentPhotoConfirmation>
+    export type ConfirmEmployeePhotoMutationError = ErrorType<unknown>
+    export type ConfirmEmployeePhotoMutationVariables = {employeeId: number;data: BodyType<StudentPhotoConfirmation>}
+
+    /**
+ * @summary Validate and persist an employee passport photo as School Admin
+ */
+export const useConfirmEmployeePhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmEmployeePhoto>>, TError,ConfirmEmployeePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmEmployeePhoto>>,
+        TError,
+        ConfirmEmployeePhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmEmployeePhotoMutationOptions(options));
+    }
+
+export const getGetEmployeePhotoUrl = (employeeId: number,
+    params: GetEmployeePhotoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/employees/${employeeId}/photo?${stringifiedParams}` : `/api/employees/${employeeId}/photo`
+}
+
+/**
+ * @summary Serve a private employee passport photo to Owner, same-school Admin or the employee
+ */
+export const getEmployeePhoto = async (employeeId: number,
+    params: GetEmployeePhotoParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetEmployeePhotoUrl(employeeId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmployeePhotoQueryKey = (employeeId: number,
+    params?: GetEmployeePhotoParams,) => {
+    return [
+    `/api/employees/${employeeId}/photo`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEmployeePhotoQueryOptions = <TData = Awaited<ReturnType<typeof getEmployeePhoto>>, TError = ErrorType<unknown>>(employeeId: number,
+    params: GetEmployeePhotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmployeePhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmployeePhotoQueryKey(employeeId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmployeePhoto>>> = ({ signal }) => getEmployeePhoto(employeeId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: employeeId !== null && employeeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmployeePhoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmployeePhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getEmployeePhoto>>>
+export type GetEmployeePhotoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Serve a private employee passport photo to Owner, same-school Admin or the employee
+ */
+
+export function useGetEmployeePhoto<TData = Awaited<ReturnType<typeof getEmployeePhoto>>, TError = ErrorType<unknown>>(
+ employeeId: number,
+    params: GetEmployeePhotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmployeePhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmployeePhotoQueryOptions(employeeId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteEmployeePhotoUrl = (employeeId: number,
+    params: DeleteEmployeePhotoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/employees/${employeeId}/photo?${stringifiedParams}` : `/api/employees/${employeeId}/photo`
+}
+
+/**
+ * @summary Remove an employee passport photo as School Admin
+ */
+export const deleteEmployeePhoto = async (employeeId: number,
+    params: DeleteEmployeePhotoParams, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteEmployeePhotoUrl(employeeId,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteEmployeePhotoMutationKey = () => ['deleteEmployeePhoto'] as const;
+
+export const getDeleteEmployeePhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEmployeePhoto>>, TError,DeleteEmployeePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteEmployeePhoto>>, TError,DeleteEmployeePhotoMutationVariables, TContext> => {
+
+const mutationKey = getDeleteEmployeePhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEmployeePhoto>>, DeleteEmployeePhotoMutationVariables> = (props) => {
+          const {employeeId,params} = props ?? {};
+
+          return  deleteEmployeePhoto(employeeId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteEmployeePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEmployeePhoto>>>
+
+    export type DeleteEmployeePhotoMutationError = ErrorType<unknown>
+    export type DeleteEmployeePhotoMutationVariables = {employeeId: number;params: DeleteEmployeePhotoParams}
+
+    /**
+ * @summary Remove an employee passport photo as School Admin
+ */
+export const useDeleteEmployeePhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEmployeePhoto>>, TError,DeleteEmployeePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteEmployeePhoto>>,
+        TError,
+        DeleteEmployeePhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteEmployeePhotoMutationOptions(options));
     }
 
 export const getRequestStudentPhotoUploadUrl = (studentId: number,) => {

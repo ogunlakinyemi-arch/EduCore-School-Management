@@ -3210,6 +3210,70 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Student" }
+  /employees/{employeeId}/photo-upload-request:
+    post:
+      operationId: requestEmployeePhotoUpload
+      tags: [employees]
+      summary: Request a private employee passport upload as School Admin
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentPhotoUploadIntent" }
+      responses:
+        "200":
+          description: Short-lived private upload target
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPhotoUploadTarget" }
+  /employees/{employeeId}/photo-confirm:
+    post:
+      operationId: confirmEmployeePhoto
+      tags: [employees]
+      summary: Validate and persist an employee passport photo as School Admin
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentPhotoConfirmation" }
+      responses:
+        "200":
+          description: Protected employee photo endpoint
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmployeePhotoResult" }
+  /employees/{employeeId}/photo:
+    get:
+      operationId: getEmployeePhoto
+      tags: [employees]
+      summary: Serve a private employee passport photo to Owner, same-school Admin or the employee
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Private validated image
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+    delete:
+      operationId: deleteEmployeePhoto
+      tags: [employees]
+      summary: Remove an employee passport photo as School Admin
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "204":
+          description: Employee photo removed
   /students/{studentId}/photo-upload-request:
     post:
       operationId: requestStudentPhotoUpload
@@ -6665,6 +6729,11 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [ACTIVE, INACTIVE, GRADUATED, TRANSFERRED, WITHDRAWN] }
+    EmployeePhotoResult:
+      type: object
+      required: [photoUrl]
+      properties:
+        photoUrl: { type: string }
     StudentPhotoUploadIntent:
       type: object
       required: [schoolId, contentType, size]

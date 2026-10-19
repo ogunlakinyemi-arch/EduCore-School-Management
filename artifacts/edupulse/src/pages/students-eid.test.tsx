@@ -67,7 +67,7 @@ const student = (overrides: Record<string, unknown> = {}) => ({
   className: 'Year 6',
   section: 'B',
   status: 'ACTIVE',
-  passportUrl: '/objects/student-photos/3/12/uuid',
+  passportUrl: '/objects/student-photos/3/12/11111111-1111-4111-8111-111111111111',
   ...overrides,
 });
 
@@ -77,7 +77,7 @@ const openEId = async () => {
   await act(async () => {
     root.render(<StudentsPage />);
   });
-  const button = [...host.querySelectorAll('button')].find(item => item.textContent === 'e-ID card');
+  const button = [...host.querySelectorAll('button')].find(item => item.textContent === 'View details / e-ID card');
   expect(button).toBeTruthy();
   await act(async () => {
     button!.click();
@@ -191,8 +191,8 @@ describe('Student Directory e-ID freshness', () => {
     expect(host.textContent).toContain('Updated School');
     expect(host.querySelector('.student-eid-card')?.textContent).not.toContain('Year 7');
     expect(host.textContent).toContain('LATEST-CARD');
-    expect(host.querySelector('img[alt="Updated Student passport photo"]')?.getAttribute('src'))
-      .toBe('https://legacy.example/photo.jpg?eidRefresh=2');
+    expect(host.querySelector('img[alt="Updated Student passport photo"]')).toBeNull();
+    expect(host.textContent).toContain('No photo');
     expect(host.querySelector('img[alt="Updated School logo"]')?.getAttribute('src'))
       .toBe('/new-logo.png?eidRefresh=2');
     expect(window.print).toHaveBeenCalledTimes(1);

@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Plus, Search, Pencil } from 'lucide-react';
 import { DirectoryExport } from '@/components/directory-export';
+import { EmployeePhotoField } from '@/components/employee-photo-field';
+import { personPhotoSource } from '@/lib/person-photo-source';
 import { 
   useListEmployees, useCreateEmployee, useUpdateEmployee, useUpdateEmployeeStatus, getListEmployeesQueryKey
 } from '@workspace/api-client-react';
@@ -17,11 +19,17 @@ export function EmployeesPage() {
   const [status, setStatus] = useState('ACTIVE'); 
   const [modal, setModal] = useState<any>(null);
   const [statusEmployee, setStatusEmployee] = useState<any>(null);
+  const [photoEmployee, setPhotoEmployee] = useState<any>(null);
+  const [photoMissing, setPhotoMissing] = useState(() => new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search).get('photo') === 'missing');
   const qc = useQueryClient();
-  useEffect(() => { setModal(null); setStatusEmployee(null); }, [schoolId]);
+  useEffect(() => { setModal(null); setStatusEmployee(null); setPhotoEmployee(null); }, [schoolId]);
   
-  const query = useListEmployees({ schoolId, search: search || undefined, status: status as any }, { query: { enabled: !!schoolId, queryKey: getListEmployeesQueryKey({ schoolId, search: search || undefined, status: status as any }) } }); 
-  const employees: any[] = query.data ?? [];
+  const params = { schoolId, search: search || undefined, status: photoMissing ? undefined : status as any };
+  const query = useListEmployees(params, { query: { enabled: !!schoolId, queryKey: getListEmployeesQueryKey(params) } });
+  const employees: any[] = (query.data ?? []).filter(emp => !photoMissing || !personPhotoSource('employee', schoolId, emp.id, emp.photoUrl));
+  const refreshPhotos = () => {
+    void qc.invalidateQueries({ predicate: q => /employees|employee-nfc|cards/.test(String(q.queryKey[0])) });
+  };
   
   const done = () => { 
     setModal(null); 
@@ -48,6 +56,7 @@ export function EmployeesPage() {
         <DirectoryExport key={`staff-${schoolId}`} kind="staff" />
         <DirectoryExport key={`teachers-${schoolId}`} kind="teachers" />
       </div>
+      <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={photoMissing} onChange={e => setPhotoMissing(e.target.checked)} />Photo missing / needs private upload (all statuses)</label>
       {!schoolId ? (
         <EmptyState 
           icon={Briefcase} 
@@ -120,6 +129,7 @@ export function EmployeesPage() {
                 {canManageSchool && <div className="flex flex-wrap gap-2"><Button variant="quiet" onClick={() => setModal(emp)} testId={`button-edit-employee-${emp.id}`}>
                   <Pencil size={15} />Edit
                 </Button>
+                  <Button variant="quiet" onClick={() => setPhotoEmployee(emp)} testId={`button-employee-photo-${emp.id}`}>Passport photo</Button>
                   {['ACTIVE', 'INACTIVE'].includes(emp.status) && <Button variant="outline" onClick={() => setStatusEmployee(emp)} testId={`button-status-employee-${emp.id}`}>
                     {emp.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
                   </Button>}
@@ -140,6 +150,9 @@ export function EmployeesPage() {
               <EmployeeStatusConfirmation key={`${schoolId}-${statusEmployee.id}`} schoolId={schoolId} employee={statusEmployee} onCancel={() => setStatusEmployee(null)} onDone={() => { setStatusEmployee(null); done(); }} />
             </Modal>
           )}
+          {photoEmployee && canManageSchool && <Modal title={`Passport photo — ${photoEmployee.firstName} ${photoEmployee.lastName}`} eyebrow="Employee record" onClose={() => setPhotoEmployee(null)}>
+            <EmployeePhotoField key={`${schoolId}-${photoEmployee.id}`} schoolId={schoolId} employeeId={photoEmployee.id} photoUrl={photoEmployee.photoUrl} onUpdated={refreshPhotos} />
+          </Modal>}
           {modal && (
             <Modal title={modal.create ? 'Hire new employee' : 'Edit employee profile'} eyebrow="HR Records" onClose={() => setModal(null)}>
               <EmployeeForm key={`${schoolId}-${modal.id ?? 'new'}`} schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
@@ -170,6 +183,7 @@ export function EmployeeStatusConfirmation({ schoolId, employee, onDone, onCance
 }
 
 export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {
+  const qc = useQueryClient();
   const create = useCreateEmployee(); 
   const update = useUpdateEmployee(); 
   
@@ -196,6 +210,7 @@ export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId
 
   return (
     <form onSubmit={save} className="space-y-5">
+      {initial && <EmployeePhotoField schoolId={schoolId} employeeId={initial.id} photoUrl={initial.photoUrl} onUpdated={() => { void qc.invalidateQueries({ predicate: q => /employees|employee-nfc|cards/.test(String(q.queryKey[0])) }); }} />}
       {!initial && (
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Employee number">

@@ -1,4 +1,5 @@
 import express from "express";
+import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
@@ -38,6 +39,7 @@ vi.mock("../lib/nfc-printable-images", () => ({
 
 import printableRouter from "./nfc-printable";
 import { buildNfcPrintablePdfSample } from "../lib/nfc-printable-pdf";
+import { loadPrintablePhoto } from "../lib/nfc-printable-images";
 vi.mock("../lib/nfc-card-preview", () => ({
   rasterOfficialCard: async () => ({frontImage:"data:image/png;base64,Zm9udA==",backImage:"data:image/png;base64,YmFjaw=="}),
 }));
@@ -104,6 +106,23 @@ beforeEach(() => {
 });
 
 describe("GET /cards/:cardId/printable", () => {
+  it.each(["student", "TEACHER", "STAFF"])("embeds the matched %s saved photo in the actual printable PDF renderer", async kind => {
+    const employee = kind !== "student";
+    const personId = employee ? 202 : 101;
+    const path = `/objects/${employee ? "employee" : "student"}-photos/9/${personId}/11111111-1111-4111-8111-111111111111`;
+    state.snapshot = employee ? { ...studentCard(), studentId: null, studentStatus: null, studentName: null, admissionNo: null,
+      employeeBindingCount: 1, employeeId: personId, employeeType: kind, employeeStatus: "ACTIVE",
+      employeeName: "Matched Employee", employeeNo: "EMP-202", employeeBindingStatus: "ACTIVE", employeePhoto: path,
+    } : { ...studentCard(), studentPhoto: path };
+    const bytes = await sharp({ create: { width: 20, height: 30, channels: 3, background: "#123456" } }).jpeg().toBuffer();
+    vi.mocked(loadPrintablePhoto).mockResolvedValueOnce({ bytes, width: 20, height: 30 });
+    const response = await fetch(`${baseUrl}/cards/41/printable?schoolId=9`);
+    expect(response.status).toBe(200);
+    const pdf = Buffer.from(await response.arrayBuffer()).toString("latin1");
+    expect(loadPrintablePhoto).toHaveBeenCalledWith(9, personId, path, employee ? "employee" : "student");
+    expect(pdf).toContain("/PersonPhoto");
+    expect(pdf).toContain("/Subtype /Image");
+  });
   it("exports an image-rich actual-renderer sample PDF fixture with Yoruba Unicode mapping", async () => {
     const pdf = (await buildNfcPrintablePdfSample()).toString("latin1");
     expect(pdf).toContain("/Count 2");

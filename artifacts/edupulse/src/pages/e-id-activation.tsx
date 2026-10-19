@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { personPhotoSource } from '@/lib/person-photo-source';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, FileClock, GraduationCap, Printer, Radio, ShieldCheck } from 'lucide-react';
 import { Button, EmptyState, Field, PageHeading, SkeletonPage } from '@/components/shared';
@@ -174,9 +175,7 @@ export function extractEidCardDetails(record: EidRecord) {
   const photoStudentId = field(student, 'id', 'studentId') || field(record, 'studentId');
   const photoSchoolId = field(school, 'id', 'schoolId') || field(record, 'schoolId');
   const version = typeof record.__photoVersion === 'number' ? record.__photoVersion : 0;
-  const currentPhotoUrl = photo.startsWith('/objects/student-photos/') && photoStudentId && photoSchoolId
-    ? `/api/students/${encodeURIComponent(photoStudentId)}/photo?schoolId=${encodeURIComponent(photoSchoolId)}`
-    : photo;
+  const currentPhotoUrl = personPhotoSource('student', Number(photoSchoolId), Number(photoStudentId), photo) ?? '';
   const currentLogoUrl = field(school, 'logoUrl', 'logo', 'schoolLogoUrl') || field(record, 'schoolLogo');
   const freshUrl = (url: string) => url && version
     ? `${url}${url.includes('?') ? '&' : '?'}v=${version}`

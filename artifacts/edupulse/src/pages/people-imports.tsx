@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { Link } from "wouter";
 import { ArrowDownToLine, ArrowRight, Check, FileSpreadsheet, FileText, RotateCcw, ShieldCheck, Upload } from "lucide-react";
 import { PageHeading, Button, Field, TenantPicker, useTenant } from "@/components/shared";
 import {
@@ -489,6 +490,11 @@ export function PeopleImportsPage() {
 
           {result && (
             <ImportSection title="4. Import result" description="Download a row-level report for every skipped or failed record.">
+              {kind !== "parents" && <div className="mb-5 rounded-xl border p-4 text-sm">
+                <p>Passport photos are completed after import. Spreadsheet photo columns and public photo links are not imported. Missing photos do not block importing records.</p>
+                <Link className="mt-2 inline-block font-bold underline" href={kind === "students" ? "/students?photo=missing" : "/employees?photo=missing"}>Complete missing passport photos</Link>
+                <p className="mt-1">Open Passport photo on each matching person, then upload or replace JPEG, PNG or WebP (up to 3 MB). These saved private photos are used for Owner-produced NFC cards.</p>
+              </div>}
               <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <ImportSummaryCard label="Detected" count={result.detected} />
                 <ImportSummaryCard label="Imported" count={result.imported} tone="good" />

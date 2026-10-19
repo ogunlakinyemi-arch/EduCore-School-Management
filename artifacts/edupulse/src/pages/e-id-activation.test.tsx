@@ -31,7 +31,7 @@ describe('NFC activation response contracts', () => {
     });
     expect(extractEidCardDetails(record)).toMatchObject({
       fullName: 'Amina Okafor',
-      photo: '/private/photo-new.webp',
+      photo: '',
       schoolName: 'North School',
       logo: '/school/logo.svg',
       cardNumber: 'CARD-0099',

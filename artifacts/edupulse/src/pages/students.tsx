@@ -18,6 +18,7 @@ import {
   Modal, Field, Info, TenantPicker, useTenant, cx, date, useSchoolAdminAccess
 } from '@/components/shared';
 import { StudentPhotoField } from '@/components/student-photo-field';
+import { personPhotoSource } from '@/lib/person-photo-source';
 import { DirectoryExport } from '@/components/directory-export';
 
 export function StudentsPage() {
@@ -29,14 +30,17 @@ export function StudentsPage() {
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'TRANSFERRED'>('ACTIVE');
   const [modal, setModal] = useState<any>(null); 
   const [idCardStudent, setIdCardStudent] = useState<any>(null);
-  useEffect(() => { setModal(null); setIdCardStudent(null); }, [schoolId]);
+  const [photoStudent, setPhotoStudent] = useState<any>(null);
+  const [photoMissing, setPhotoMissing] = useState(() => new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search).get('photo') === 'missing');
+  useEffect(() => { setModal(null); setIdCardStudent(null); setPhotoStudent(null); }, [schoolId]);
   const qc = useQueryClient();
   const { canManageSchool } = useSchoolAdminAccess();
   const schoolQuery = useGetSchool(schoolId, { query: { enabled: !!schoolId, queryKey: getGetSchoolQueryKey(schoolId) } });
   const school = schoolQuery.data;
   
-  const query = useListStudents({ schoolId, search: search || undefined, status }, { query: { enabled: !!schoolId, queryKey: getListStudentsQueryKey({ schoolId, search: search || undefined, status }) } });
-  const students: any[] = query.data ?? [];
+  const listParams = { schoolId, search: search || undefined, status: photoMissing ? undefined : status };
+  const query = useListStudents(listParams, { query: { enabled: !!schoolId, queryKey: getListStudentsQueryKey(listParams) } });
+  const students: any[] = (query.data ?? []).filter(student => !photoMissing || !personPhotoSource('student', schoolId, student.id, student.passportUrl));
   
   const done = () => { 
     setModal(null); 
@@ -60,6 +64,7 @@ export function StudentsPage() {
       />
       
       <div className="mb-4"><DirectoryExport key={schoolId} kind="students" /></div>
+      <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={photoMissing} onChange={e => setPhotoMissing(e.target.checked)} />Photo missing / needs private upload (all statuses)</label>
       {!schoolId ? (
         <EmptyState 
           icon={GraduationCap} 
@@ -139,6 +144,7 @@ export function StudentsPage() {
                   <div className="mt-1"><StatusPill value={student.subscriptionStatus} /></div>
                 </div>
                 <div className="flex items-center justify-end gap-1">
+                  {canManageSchool && <Button variant="quiet" onClick={() => setPhotoStudent(student)} testId={`button-student-photo-${student.id}`}>Passport photo</Button>}
                   {canPreviewCards && <Button variant="quiet" onClick={() => setIdCardStudent(student)} testId={`button-student-id-card-${student.id}`}>View details / e-ID card</Button>}
                   {canManageSchool && <Button variant="quiet" onClick={() => setModal(student)} testId={`button-edit-student-${student.id}`}>
                     <Pencil size={15} />Edit
@@ -160,6 +166,9 @@ export function StudentsPage() {
               <StudentForm key={`${schoolId}-${modal.id ?? 'new'}`} schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}
+          {canManageSchool && photoStudent && <Modal title={`Passport photo — ${photoStudent.firstName} ${photoStudent.lastName}`} eyebrow="Student record" onClose={() => setPhotoStudent(null)}>
+            <StudentPhotoField key={`${schoolId}-${photoStudent.id}`} schoolId={schoolId} studentId={photoStudent.id} passportUrl={photoStudent.passportUrl} onUpdated={() => { void qc.invalidateQueries({ queryKey: getListStudentsQueryKey() }); }} />
+          </Modal>}
           {canPreviewCards && idCardStudent && (
             <Modal title="Student details / e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
               <StudentEIdCard studentId={idCardStudent.id} schoolId={schoolId} onClose={() => setIdCardStudent(null)} />
@@ -187,12 +196,8 @@ function withEIdRefreshToken(src: string, token: number): string {
 }
 
 function getPassportSource(student: any, schoolId: number, token: number): string | null {
-  const passportUrl = student.passportUrl;
-  if (!passportUrl) return null;
-  const source = passportUrl.startsWith('/objects/student-photos/')
-    ? `/api/students/${student.id}/photo?schoolId=${schoolId}`
-    : passportUrl;
-  return withEIdRefreshToken(source, token);
+  const source = personPhotoSource('student', schoolId, student.id, student.passportUrl);
+  return source ? withEIdRefreshToken(source, token) : null;
 }
 
 async function waitForImage(image: HTMLImageElement | null): Promise<void> {

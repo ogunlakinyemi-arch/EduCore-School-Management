@@ -17,6 +17,7 @@ import {
   TenantPicker, cx, date, time, useTenant,
 } from '@/components/shared';
 import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
+import { personPhotoSource } from '@/lib/person-photo-source';
 
 const FRESH = { staleTime: 15_000, refetchOnMount: 'always' as const, refetchOnWindowFocus: true };
 
@@ -81,6 +82,7 @@ function useRefreshNfc() {
 /* ------------------------------ ID card ------------------------------ */
 
 function EmployeeIdCard({ p }: { p: EmployeeNfcProfile }) {
+  const photo = personPhotoSource('employee', p.schoolId, p.employeeId, p.photo);
   return (
     <div className="panel relative overflow-hidden p-0" data-testid="employee-id-card">
       <div className="flex items-center justify-between bg-[hsl(var(--primary))] px-5 py-3 text-[hsl(var(--primary-foreground))]">
@@ -95,7 +97,7 @@ function EmployeeIdCard({ p }: { p: EmployeeNfcProfile }) {
       </div>
       <div className="grid gap-5 p-5 sm:grid-cols-[120px_1fr]">
         <div className="grid h-36 w-28 place-items-center overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
-          {p.photo ? <img src={p.photo} alt={p.employeeName} className="h-full w-full object-cover" /> : <UserRound size={36} className="text-[hsl(var(--muted-foreground))]" />}
+          {photo ? <img src={photo} alt={p.employeeName} className="h-full w-full object-cover" /> : <UserRound size={36} className="text-[hsl(var(--muted-foreground))]" />}
         </div>
         <div className="space-y-3">
           <div>

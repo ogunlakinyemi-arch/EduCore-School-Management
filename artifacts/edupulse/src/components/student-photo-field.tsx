@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { ImagePlus, LoaderCircle, Trash2, Upload } from "lucide-react";
 import { useGetAuthorizedContext } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { personPhotoSource } from "@/lib/person-photo-source";
 
 type StudentPhotoFieldProps = {
   schoolId: number;
   studentId: number;
   passportUrl: string | null | undefined;
   onUpdated: () => void;
+  kind?: "student" | "employee";
 };
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -23,14 +25,9 @@ async function errorMessage(response: Response): Promise<string> {
   return `Photo request failed (${response.status})`;
 }
 
-function photoSource(passportUrl: string | null | undefined, schoolId: number, studentId: number, version: number) {
-  if (!passportUrl) return null;
-  const managedPhotoPath = passportUrl.startsWith("/objects/student-photos/");
-  const protectedEndpoint = passportUrl.startsWith("/api/students/") && passportUrl.includes("/photo?");
-  if (managedPhotoPath || protectedEndpoint) {
-    return `/api/students/${studentId}/photo?schoolId=${schoolId}&v=${version}`;
-  }
-  return passportUrl;
+function photoSource(passportUrl: string | null | undefined, schoolId: number, studentId: number, version: number, kind: "student" | "employee") {
+  const source = personPhotoSource(kind, schoolId, studentId, passportUrl);
+  return source ? `${source}&v=${version}` : null;
 }
 
 export function StudentPhotoField({
@@ -38,19 +35,22 @@ export function StudentPhotoField({
   studentId,
   passportUrl,
   onUpdated,
+  kind = "student",
 }: StudentPhotoFieldProps) {
+  const collection = kind === "student" ? "students" : "employees";
+  const endpoint = `/api/${collection}/${studentId}`;
   const contextQuery = useGetAuthorizedContext();
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [photoVersion, setPhotoVersion] = useState(0);
   const [photoOverride, setPhotoOverride] = useState<string | null | undefined>(undefined);
-  const canManage = contextQuery.data?.roles?.some((role: any) =>
+  const canManage = !contextQuery.data?.isPlatformOwner && contextQuery.data?.roles?.some((role: any) =>
     role.role === "SCHOOL_ADMIN" && role.schoolId === schoolId && role.status === "ACTIVE"
   ) === true;
   const source = photoOverride === null
     ? null
-    : photoSource(photoOverride ?? passportUrl, schoolId, studentId, photoVersion);
+    : photoSource(photoOverride ?? passportUrl, schoolId, studentId, photoVersion, kind);
 
   useEffect(() => {
     setPhotoVersion((current) => current + 1);
@@ -70,7 +70,7 @@ export function StudentPhotoField({
 
     setBusy(true);
     try {
-      const request = await fetch(`/api/students/${studentId}/photo-upload-request`, {
+      const request = await fetch(`${endpoint}/photo-upload-request`, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -89,7 +89,7 @@ export function StudentPhotoField({
       });
       if (!upload.ok) throw new Error(`Photo upload failed (${upload.status}). Please try again.`);
 
-      const confirmation = await fetch(`/api/students/${studentId}/photo-confirm`, {
+      const confirmation = await fetch(`${endpoint}/photo-confirm`, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -97,10 +97,10 @@ export function StudentPhotoField({
       });
       if (!confirmation.ok) throw new Error(await errorMessage(confirmation));
       setPhotoVersion((current) => current + 1);
-      setPhotoOverride(`/api/students/${studentId}/photo?schoolId=${schoolId}`);
+      setPhotoOverride(`${endpoint}/photo?schoolId=${schoolId}`);
       onUpdated();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not upload the student photo.");
+      setError(cause instanceof Error ? cause.message : "Could not upload the passport photo.");
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = "";
@@ -112,7 +112,7 @@ export function StudentPhotoField({
     setError(null);
     try {
       const response = await fetch(
-        `/api/students/${studentId}/photo?schoolId=${schoolId}`,
+        `${endpoint}/photo?schoolId=${schoolId}`,
         { method: "DELETE", credentials: "same-origin" },
       );
       if (!response.ok) throw new Error(await errorMessage(response));
@@ -120,7 +120,7 @@ export function StudentPhotoField({
       setPhotoOverride(null);
       onUpdated();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not remove the student photo.");
+      setError(cause instanceof Error ? cause.message : "Could not remove the passport photo.");
     } finally {
       setBusy(false);
     }
@@ -146,7 +146,7 @@ export function StudentPhotoField({
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
-                aria-label="Choose student passport photo"
+                aria-label={`Choose ${kind} passport photo`}
                 disabled={busy}
                 onChange={(event) => {
                   const file = event.currentTarget.files?.[0];
@@ -170,7 +170,7 @@ export function StudentPhotoField({
                   variant="ghost"
                   disabled={busy}
                   onClick={() => void removePhoto()}
-                  aria-label="Remove student photo"
+                  aria-label={`Remove ${kind} photo`}
                 >
                   {busy ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
                   Remove

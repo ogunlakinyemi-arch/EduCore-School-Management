@@ -38,6 +38,14 @@ vi.mock("@workspace/db", () => ({
   pool: {
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
+      if (sql.includes("SELECT id FROM employees")) {
+        return { rows: Number(values[0]) === 10 && Number(values[1]) === 1 &&
+          (values.length < 3 || state.employeeMembership) ? [{ id: 10 }] : [] };
+      }
+      if (sql.includes("SELECT photo FROM employees WHERE id = $1 AND school_id = $2")) {
+        return { rows: Number(values[0]) === 10 && Number(values[1]) === 1 ? [{ photo: state.photo }] : [] };
+      }
+      if (sql.includes("UPDATE employees")) return { rows: [{ previousPhoto: null }] };
       if (sql.includes("FROM students") && sql.includes("SELECT id")) {
         return { rows: [{ id: 10 }] };
       }
@@ -93,11 +101,12 @@ vi.mock("../middlewares/auth", () => {
   };
 });
 
-import studentPhotosRouter from "./student-photos";
+import studentPhotosRouter, { createPersonPhotosRouter } from "./student-photos";
 
 const app = express();
 app.use(express.json());
 app.use(studentPhotosRouter);
+app.use(createPersonPhotosRouter("employee"));
 let server: ReturnType<typeof app.listen>;
 let baseUrl = "";
 let validPngBytes: Buffer;
@@ -322,5 +331,89 @@ describe("student photo endpoints", () => {
     expect(deletion.status).toBe(404);
     expect(fileMock.getMetadata).not.toHaveBeenCalled();
     expect(state.fileAccesses).toEqual([]);
+  });
+});
+
+describe("employee passport photo endpoints reuse the student security boundary", () => {
+  const path = "/objects/employee-photos/1/10/11111111-1111-4111-8111-111111111111";
+  const confirm = (role = "SCHOOL_ADMIN", objectPath = path) =>
+    fetch(`${baseUrl}/employees/10/photo-confirm`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-test-role": role },
+      body: JSON.stringify({ schoolId: 1, objectPath }),
+    });
+  it("validates image bytes and persists the existing employee photo field with school scope", async () => {
+    const response = await confirm();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ photoUrl: "/api/employees/10/photo?schoolId=1" });
+    const update = state.queries.find(({ sql }) => sql.includes("UPDATE employees"));
+    expect(update?.values).toEqual([path, 10, 1]);
+    expect(update?.sql).toContain("WHERE id = $2 AND school_id = $3");
+    expect(fileMock.download).toHaveBeenCalled();
+  });
+  it.each(["PLATFORM_OWNER", "TEACHER", "STAFF", "PARENT"])("denies %s upload confirmation without storage or database writes", async role => {
+    expect((await confirm(role)).status).toBe(404);
+    expect(fileMock.download).not.toHaveBeenCalled();
+    expect(state.queries.some(({ sql }) => sql.includes("UPDATE employees"))).toBe(false);
+  });
+  it.each([path.replace("/1/10/", "/2/10/"), path.replace("/1/10/", "/1/11/"), path.replace("employee-photos", "student-photos"), "https://example.test/photo.png"])("rejects mismatched or public object paths: %s", async objectPath => {
+    expect((await confirm("SCHOOL_ADMIN", objectPath)).status).toBe(400);
+    expect(fileMock.download).not.toHaveBeenCalled();
+  });
+  it("rejects corrupt bytes without replacing the saved photo", async () => {
+    state.bytes = Buffer.from("not an image");
+    state.metadata.size = String(state.bytes.length);
+    expect((await confirm()).status).toBe(400);
+    expect(state.queries.some(({ sql }) => sql.includes("UPDATE employees"))).toBe(false);
+  });
+  it("serves a private image to Owner and same-school Admin, but not another-school request", async () => {
+    state.photo = path;
+    for (const role of ["PLATFORM_OWNER", "SCHOOL_ADMIN"]) {
+      const response = await fetch(`${baseUrl}/employees/10/photo?schoolId=1`, { headers: { "x-test-role": role } });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(response.headers.get("content-type")).toContain("image/png");
+    }
+    expect((await fetch(`${baseUrl}/employees/10/photo?schoolId=2`)).status).toBe(404);
+  });
+  it("does not allow another employee or Parent to retrieve the photo", async () => {
+    state.photo = path;
+    state.employeeMembership = false;
+    for (const role of ["TEACHER", "STAFF", "PARENT"]) {
+      expect((await fetch(`${baseUrl}/employees/10/photo?schoolId=1`, { headers: { "x-test-role": role } })).status).toBe(404);
+    }
+    expect(fileMock.download).not.toHaveBeenCalled();
+  });
+  it("validates request type and size before issuing a signed URL", async () => {
+    for (const [contentType, size] of [["image/gif", 200], ["image/png", 3145729]]) {
+      expect((await fetch(`${baseUrl}/employees/10/photo-upload-request`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolId: 1, contentType, size }),
+      })).status).toBe(400);
+    }
+    expect(state.fileAccesses).toHaveLength(0);
+  });
+  it("issues only a short-lived, privately scoped upload target for an existing employee", async () => {
+    const originalFetch = globalThis.fetch;
+    let signedBody: Record<string, unknown> | undefined;
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input) === "http://127.0.0.1:1106/object-storage/signed-object-url") {
+        signedBody = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({ signed_url: "https://signed-upload.example/unit" }), { status: 200 });
+      }
+      return originalFetch(input, init);
+    });
+    try {
+      const response = await originalFetch(`${baseUrl}/employees/10/photo-upload-request`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolId: 1, contentType: "image/png", size: 100 }),
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        uploadURL: "https://signed-upload.example/unit",
+        objectPath: expect.stringMatching(/^\/objects\/employee-photos\/1\/10\/[0-9a-f-]+$/),
+      });
+      expect(signedBody).toMatchObject({ method: "PUT", object_name: expect.stringMatching(/^private\/employee-photos\/1\/10\//) });
+      expect(Date.parse(String(signedBody?.expires_at)) - Date.now()).toBeLessThanOrEqual(180000);
+      expect(Date.parse(String(signedBody?.expires_at)) - Date.now()).toBeGreaterThan(0);
+    } finally { spy.mockRestore(); }
   });
 });

@@ -11,6 +11,12 @@ import {
   requireAuthentication,
 } from "../middlewares/auth";
 
+/** The two existing photo columns share validation/storage, never a public route. */
+export function createPersonPhotosRouter(kind: "student" | "employee" = "student") {
+const table = kind === "student" ? "students" : "employees";
+const collection = `${kind}-photos`;
+const idParam = `${kind}Id`;
+const base = `/${table}/:${idParam}`;
 const router = Router();
 router.use(requireAuthentication());
 
@@ -77,7 +83,7 @@ function assertSchoolAdmin(req: Request, schoolId: number) {
   return context;
 }
 
-async function assertPhotoReader(req: Request, schoolId: number) {
+async function assertPhotoReader(req: Request, schoolId: number, personId: number) {
   const context = getUserContext(req);
   if (context.roles.some((role) =>
     role.role === "PLATFORM_OWNER" && role.schoolId === null && role.status === "ACTIVE"
@@ -86,6 +92,14 @@ async function assertPhotoReader(req: Request, schoolId: number) {
   const schoolRoles = context.roles.filter((role) =>
     role.schoolId === schoolId && role.status === "ACTIVE"
   );
+  if (kind === "employee") {
+    if (schoolRoles.some(role => role.role === "SCHOOL_ADMIN")) return;
+    if (schoolRoles.some(role => ["TEACHER", "STAFF", "ACCOUNTANT", "DRIVER"].includes(role.role))) {
+      const own = await pool.query("SELECT id FROM employees WHERE id=$1 AND school_id=$2 AND user_id=$3", [personId, schoolId, context.user.id]);
+      if (own.rows[0]) return;
+    }
+    throw new AuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
+  }
   if (schoolRoles.some((role) =>
     ["SCHOOL_ADMIN", "TEACHER", "STAFF"].includes(role.role)
   )) return;
@@ -99,7 +113,7 @@ async function assertPhotoReader(req: Request, schoolId: number) {
 
 function managedObjectPath(schoolId: number, studentId: number, value: unknown): string {
   if (typeof value !== "string" ||
-    !new RegExp(`^/objects/student-photos/${schoolId}/${studentId}/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, "i").test(value)) {
+    !new RegExp(`^/objects/${collection}/${schoolId}/${studentId}/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, "i").test(value)) {
     throw new AuthError(400, "A valid student photo objectPath is required");
   }
   return value;
@@ -107,7 +121,7 @@ function managedObjectPath(schoolId: number, studentId: number, value: unknown):
 
 function managedPathForStoredPhoto(schoolId: number, studentId: number, photo: unknown): string | null {
   if (typeof photo !== "string") return null;
-  const match = photo.match(/^\/objects\/student-photos\/(\d+)\/(\d+)\/([0-9a-f-]+)$/i);
+  const match = photo.match(new RegExp(`^/objects/${collection}/(\\d+)/(\\d+)/([0-9a-f-]+)$`, "i"));
   if (!match || Number(match[1]) !== schoolId || Number(match[2]) !== studentId) return null;
   try {
     return managedObjectPath(schoolId, studentId, photo);
@@ -245,8 +259,8 @@ async function deleteManagedPhoto(req: Request, schoolId: number, studentId: num
   }
 }
 
-router.post("/students/:studentId/photo-upload-request", run(async (req, res) => {
-  const studentId = positiveId(req.params.studentId, "studentId");
+router.post(`${base}/photo-upload-request`, run(async (req, res) => {
+  const studentId = positiveId(req.params[idParam], idParam);
   const schoolId = bodySchoolId(req);
   assertSchoolAdmin(req, schoolId);
   const contentType = typeof req.body?.contentType === "string"
@@ -260,18 +274,18 @@ router.post("/students/:studentId/photo-upload-request", run(async (req, res) =>
     throw new AuthError(400, "Student photos must be between 1 byte and 3 MB");
   }
   const student = await pool.query(
-    `SELECT id FROM students WHERE id = $1 AND school_id = $2`,
+    `SELECT id FROM ${table} WHERE id = $1 AND school_id = $2`,
     [studentId, schoolId],
   );
   if (!student.rows[0]) throw new AuthError(404, "Student not found in this school");
 
-  const objectPath = `/objects/student-photos/${schoolId}/${studentId}/${randomUUID()}`;
+  const objectPath = `/objects/${collection}/${schoolId}/${studentId}/${randomUUID()}`;
   const uploadURL = await signedPutUrl(fileForObjectPath(objectPath));
   res.json({ uploadURL, objectPath });
 }));
 
-router.post("/students/:studentId/photo-confirm", run(async (req, res) => {
-  const studentId = positiveId(req.params.studentId, "studentId");
+router.post(`${base}/photo-confirm`, run(async (req, res) => {
+  const studentId = positiveId(req.params[idParam], idParam);
   const schoolId = bodySchoolId(req);
   assertSchoolAdmin(req, schoolId);
   const objectPath = managedObjectPath(schoolId, studentId, req.body?.objectPath);
@@ -279,9 +293,9 @@ router.post("/students/:studentId/photo-confirm", run(async (req, res) => {
   await validatedPhoto(file);
   const update = await pool.query(
     `WITH prior AS (
-       SELECT photo FROM students WHERE id = $2 AND school_id = $3 FOR UPDATE
+       SELECT photo FROM ${table} WHERE id = $2 AND school_id = $3 FOR UPDATE
      )
-     UPDATE students SET photo = $1, updated_at = NOW()
+     UPDATE ${table} SET photo = $1, updated_at = NOW()
      WHERE id = $2 AND school_id = $3
      RETURNING (SELECT photo FROM prior) AS "previousPhoto"`,
     [objectPath, studentId, schoolId],
@@ -290,18 +304,18 @@ router.post("/students/:studentId/photo-confirm", run(async (req, res) => {
   if (update.rows[0].previousPhoto !== objectPath) {
     await deleteManagedPhoto(req, schoolId, studentId, update.rows[0].previousPhoto);
   }
-  res.json({ passportUrl: `/api/students/${studentId}/photo?schoolId=${schoolId}` });
+  res.json({ [kind === "student" ? "passportUrl" : "photoUrl"]: `/api/${table}/${studentId}/photo?schoolId=${schoolId}` });
 }));
 
-router.delete("/students/:studentId/photo", run(async (req, res) => {
-  const studentId = positiveId(req.params.studentId, "studentId");
+router.delete(`${base}/photo`, run(async (req, res) => {
+  const studentId = positiveId(req.params[idParam], idParam);
   const schoolId = querySchoolId(req);
   assertSchoolAdmin(req, schoolId);
   const result = await pool.query(
     `WITH prior AS (
-       SELECT photo FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE
+       SELECT photo FROM ${table} WHERE id = $1 AND school_id = $2 FOR UPDATE
      )
-     UPDATE students SET photo = NULL, updated_at = NOW()
+     UPDATE ${table} SET photo = NULL, updated_at = NOW()
      WHERE id = $1 AND school_id = $2
      RETURNING (SELECT photo FROM prior) AS photo`,
     [studentId, schoolId],
@@ -311,12 +325,12 @@ router.delete("/students/:studentId/photo", run(async (req, res) => {
   res.status(204).end();
 }));
 
-router.get("/students/:studentId/photo", run(async (req, res) => {
-  const studentId = positiveId(req.params.studentId, "studentId");
+router.get(`${base}/photo`, run(async (req, res) => {
+  const studentId = positiveId(req.params[idParam], idParam);
   const schoolId = querySchoolId(req);
-  await assertPhotoReader(req, schoolId);
+  await assertPhotoReader(req, schoolId, studentId);
   const result = await pool.query(
-    `SELECT photo FROM students WHERE id = $1 AND school_id = $2`,
+    `SELECT photo FROM ${table} WHERE id = $1 AND school_id = $2`,
     [studentId, schoolId],
   );
   const objectPath = managedPathForStoredPhoto(schoolId, studentId, result.rows[0]?.photo);
@@ -330,4 +344,7 @@ router.get("/students/:studentId/photo", run(async (req, res) => {
   res.status(200).send(validated.bytes);
 }));
 
-export default router;
+return router;
+}
+
+export default createPersonPhotosRouter();

@@ -11482,6 +11482,96 @@ export const UpdateStudentStatusResponse = zod.object({
 
 
 /**
+ * @summary Request a private employee passport upload as School Admin
+ */
+
+
+
+export const RequestEmployeePhotoUploadParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+export const requestEmployeePhotoUploadBodySizeMax = 3145728;
+
+
+
+export const RequestEmployeePhotoUploadBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "contentType": zod.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']),
+  "size": zod.number().int().min(1).max(requestEmployeePhotoUploadBodySizeMax)
+})
+
+export const RequestEmployeePhotoUploadResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * @summary Validate and persist an employee passport photo as School Admin
+ */
+
+
+
+export const ConfirmEmployeePhotoParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ConfirmEmployeePhotoBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "objectPath": zod.string()
+})
+
+export const ConfirmEmployeePhotoResponse = zod.object({
+  "photoUrl": zod.string()
+})
+
+
+/**
+ * @summary Serve a private employee passport photo to Owner, same-school Admin or the employee
+ */
+
+
+
+export const GetEmployeePhotoParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetEmployeePhotoQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetEmployeePhotoResponse = zod.unknown()
+
+
+/**
+ * @summary Remove an employee passport photo as School Admin
+ */
+
+
+
+export const DeleteEmployeePhotoParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const DeleteEmployeePhotoQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const DeleteEmployeePhotoResponse = zod.void()
+
+
+/**
  * @summary Request a private student photo upload URL
  */
 
