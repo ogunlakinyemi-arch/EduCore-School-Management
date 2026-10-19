@@ -1,5 +1,6 @@
 import { useGetPlatformDashboard, useGetSchoolDashboard, useGetAuthorizedContext, useGetStudentSelfProfile, useGetOwnAttendance } from '@workspace/api-client-react';
 import { useQuery } from '@tanstack/react-query';
+import { lazy, Suspense } from 'react';
 import { Link } from 'wouter';
 import { StudentNfcObligationsPanel } from '@/components/student-nfc-obligations';
 import { TeacherAssignedWork, isOwnTeacherView } from '@/components/teacher-assigned-work';
@@ -151,6 +152,8 @@ type PlatformSchoolSummary = {
   partnerReferral: null | { partnerName: string };
 };
 
+const AccountApplicationsPanel = lazy(() => import('@/components/account-applications-panel'));
+
 function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
   const { setSchoolId } = useTenant();
   const query = useGetPlatformDashboard();
@@ -235,6 +238,8 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
         </Link>
       </div>
       
+      <Suspense fallback={<div role="status" className="mt-8 text-sm">Loading applications…</div>}><AccountApplicationsPanel /></Suspense>
+
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="panel p-6 md:p-8">
           <div className="mb-6 flex items-start justify-between">

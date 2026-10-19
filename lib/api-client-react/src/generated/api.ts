@@ -54,6 +54,10 @@ import type {
   AcceptInternalEmployeeInvitation200,
   AcceptInternalEmployeeInvitationBody,
   AcceptPartnerInvitationParams,
+  AccountApplication,
+  AccountApplicationDecision,
+  AccountApplicationInput,
+  AccountApplicationResult,
   ActivationAssignment,
   ActivationAssignmentInput,
   ActivationDevice,
@@ -881,6 +885,313 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetMyAccountApplicationUrl = () => {
+
+
+
+
+  return `/api/account-application`
+}
+
+export const getMyAccountApplication = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountApplicationResult> => {
+
+  return customFetch<AccountApplicationResult>(getGetMyAccountApplicationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyAccountApplicationQueryKey = () => {
+    return [
+    `/api/account-application`
+    ] as const;
+    }
+
+
+export const getGetMyAccountApplicationQueryOptions = <TData = Awaited<ReturnType<typeof getMyAccountApplication>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyAccountApplication>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyAccountApplicationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyAccountApplication>>> = ({ signal }) => getMyAccountApplication({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyAccountApplication>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyAccountApplicationQueryResult = NonNullable<Awaited<ReturnType<typeof getMyAccountApplication>>>
+export type GetMyAccountApplicationQueryError = ErrorType<unknown>
+
+
+
+export function useGetMyAccountApplication<TData = Awaited<ReturnType<typeof getMyAccountApplication>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyAccountApplication>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyAccountApplicationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitAccountApplicationUrl = () => {
+
+
+
+
+  return `/api/account-application`
+}
+
+export const submitAccountApplication = async (accountApplicationInput: AccountApplicationInput, options?: Parameters<typeof customFetch>[1]): Promise<AccountApplication> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AccountApplication>(getSubmitAccountApplicationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(accountApplicationInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitAccountApplicationMutationKey = () => ['submitAccountApplication'] as const;
+
+export const getSubmitAccountApplicationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitAccountApplication>>, TError,SubmitAccountApplicationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitAccountApplication>>, TError,SubmitAccountApplicationMutationVariables, TContext> => {
+
+const mutationKey = getSubmitAccountApplicationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitAccountApplication>>, SubmitAccountApplicationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitAccountApplication(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitAccountApplicationMutationResult = NonNullable<Awaited<ReturnType<typeof submitAccountApplication>>>
+    export type SubmitAccountApplicationMutationBody = BodyType<AccountApplicationInput>
+    export type SubmitAccountApplicationMutationError = ErrorType<unknown>
+    export type SubmitAccountApplicationMutationVariables = {data: BodyType<AccountApplicationInput>}
+
+    export const useSubmitAccountApplication = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitAccountApplication>>, TError,SubmitAccountApplicationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitAccountApplication>>,
+        TError,
+        SubmitAccountApplicationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitAccountApplicationMutationOptions(options));
+    }
+
+export const getGetAccountApplicationsUrl = () => {
+
+
+
+
+  return `/api/platform/account-applications`
+}
+
+export const getAccountApplications = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountApplication[]> => {
+
+  return customFetch<AccountApplication[]>(getGetAccountApplicationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountApplicationsQueryKey = () => {
+    return [
+    `/api/platform/account-applications`
+    ] as const;
+    }
+
+
+export const getGetAccountApplicationsQueryOptions = <TData = Awaited<ReturnType<typeof getAccountApplications>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountApplications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountApplicationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountApplications>>> = ({ signal }) => getAccountApplications({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountApplications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountApplicationsQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountApplications>>>
+export type GetAccountApplicationsQueryError = ErrorType<unknown>
+
+
+
+export function useGetAccountApplications<TData = Awaited<ReturnType<typeof getAccountApplications>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountApplications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountApplicationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDecideAccountApplicationUrl = (applicationId: number,) => {
+
+
+
+
+  return `/api/platform/account-applications/${applicationId}/decision`
+}
+
+export const decideAccountApplication = async (applicationId: number,
+    accountApplicationDecision: AccountApplicationDecision, options?: Parameters<typeof customFetch>[1]): Promise<AccountApplication> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AccountApplication>(getDecideAccountApplicationUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(accountApplicationDecision)
+  }
+);}
+
+
+
+
+
+export const getDecideAccountApplicationMutationKey = () => ['decideAccountApplication'] as const;
+
+export const getDecideAccountApplicationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAccountApplication>>, TError,DecideAccountApplicationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideAccountApplication>>, TError,DecideAccountApplicationMutationVariables, TContext> => {
+
+const mutationKey = getDecideAccountApplicationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideAccountApplication>>, DecideAccountApplicationMutationVariables> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  decideAccountApplication(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideAccountApplicationMutationResult = NonNullable<Awaited<ReturnType<typeof decideAccountApplication>>>
+    export type DecideAccountApplicationMutationBody = BodyType<AccountApplicationDecision>
+    export type DecideAccountApplicationMutationError = ErrorType<unknown>
+    export type DecideAccountApplicationMutationVariables = {applicationId: number;data: BodyType<AccountApplicationDecision>}
+
+    export const useDecideAccountApplication = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAccountApplication>>, TError,DecideAccountApplicationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideAccountApplication>>,
+        TError,
+        DecideAccountApplicationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideAccountApplicationMutationOptions(options));
+    }
 
 export const getGetDevelopmentPaymentDiagnosticUrl = (params?: GetDevelopmentPaymentDiagnosticParams,) => {
   const normalizedParams = new URLSearchParams();

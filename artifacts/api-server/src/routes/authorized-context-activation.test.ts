@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   roles: [] as Array<{ id: number; role: string; schoolId: number; status: string }>,
   activate: vi.fn(), internal: vi.fn(),
+  applicationStatus: undefined as "PENDING" | "REJECTED" | undefined,
 }));
 vi.mock("@workspace/db", () => ({ pool: { query: vi.fn(async () => ({ rows: state.roles })) } }));
 vi.mock("../middlewares/auth", async importOriginal => {
@@ -12,6 +13,7 @@ vi.mock("../middlewares/auth", async importOriginal => {
     getUserContext: () => ({
       user: { id: 7, clerkUserId: "synthetic-user", email: "recipient@example.test", status: "ACTIVE" },
       roles: state.roles,
+      applicationStatus: state.applicationStatus,
     }),
   };
 });
@@ -35,8 +37,18 @@ beforeAll(async () => {
 afterAll(() => new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve())));
 beforeEach(() => {
   state.roles = [];
+  state.applicationStatus = undefined;
   state.internal.mockReset().mockResolvedValue(false);
   state.activate.mockReset().mockResolvedValue(false);
+});
+it.each(["PENDING","REJECTED"] as const)("never activates invitations or exposes roles for a %s application", async status => {
+  state.applicationStatus=status;
+  state.roles=[{id:1,role:"SCHOOL_ADMIN",schoolId:101,status:"ACTIVE"}];
+  const response=await fetch(`${base}/me/authorized-context`);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({schoolInvitationActivated:false,isPlatformOwner:false,roles:[]});
+  expect(state.activate).not.toHaveBeenCalled();
+  expect(state.internal).not.toHaveBeenCalled();
 });
 it.each(["new application profile", "existing Clerk account"])("reports first-read activation for a %s only after server confirmation", async () => {
   state.activate.mockImplementation(async () => {

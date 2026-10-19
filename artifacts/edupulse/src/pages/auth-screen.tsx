@@ -7,6 +7,7 @@ import {
   invitationReturnUrl,
   readInvitationContext,
 } from '@/pages/invitations/acceptance-context';
+import { parseApplicantType, saveApplicationIntent, readApplicationIntent, type ApplicantType } from '@/lib/application-intent';
 import { shouldEndPreviousSignInSession } from '@/lib/sign-in-session-policy';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -89,10 +90,29 @@ function SignInSessionGate({
   );
 }
 
+function ApplicantChooser({ onChoose }: { onChoose: (t: ApplicantType) => void }) {
+  return (
+    <div className="w-full max-w-sm" data-testid="applicant-chooser">
+      <h2 className="display-font text-2xl font-bold">Apply for an account</h2>
+      <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Choose how you want to use Yetenia EduCore. Applications are reviewed before access is granted.</p>
+      <div className="mt-5 grid gap-3">
+        <button type="button" data-testid="choose-school-admin" onClick={() => onChoose('SCHOOL_ADMIN')} className="rounded-xl border border-[hsl(var(--border))] p-4 text-left text-sm font-bold hover:border-[hsl(var(--primary)/.5)]">School Admin</button>
+        <button type="button" data-testid="choose-partner" onClick={() => onChoose('PARTNER')} className="rounded-xl border border-[hsl(var(--border))] p-4 text-left text-sm font-bold hover:border-[hsl(var(--primary)/.5)]">Partner</button>
+      </div>
+    </div>
+  );
+}
+
 export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [, navigate] = useLocation();
   const isSignIn = mode === 'sign-in';
   const [accountType, setAccountType] = useState('');
+  const [chosen, setChosen] = useState<ApplicantType | null>(() => {
+    const q = new URLSearchParams(window.location.search);
+    const t = parseApplicantType(q.get('applicantType'));
+    if (t) { saveApplicationIntent(t, q.get('ref')); return t; }
+    return readApplicationIntent().type;
+  });
   const invitationContext = readInvitationContext(window.location.search);
   const invitationRedirectUrl = invitationContext.ticket
     ? invitationReturnUrl(invitationContext, base)
@@ -102,6 +122,8 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     : '';
   const signInUrl = `${base}/sign-in${invitationQuery}`;
   const signUpUrl = `${base}/sign-up${invitationQuery}`;
+  const isPublicApplication = !isSignIn && !invitationContext.ticket;
+  const signUpRedirect = invitationRedirectUrl ?? (isPublicApplication ? `${base}/apply` : undefined);
 
   useEffect(() => {
     if (invitationContext.ticket) {
@@ -164,15 +186,28 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           )}
           {isSignIn ? (
             <SignInSessionGate invitationRedirectUrl={invitationRedirectUrl} signUpUrl={signUpUrl} />
+          ) : isPublicApplication && !chosen ? (
+            <ApplicantChooser onChoose={t => { saveApplicationIntent(t, readApplicationIntent().referralToken); setChosen(t); }} />
           ) : (
+            <>
+            {isPublicApplication && (
+              <div className="mb-5 w-full min-w-0 max-w-sm rounded-xl border border-[hsl(var(--border))] p-3 text-sm" data-testid="application-approval-notice">
+                <h2 className="font-bold">{chosen === 'PARTNER' ? 'Partner' : 'School Admin'} application</h2>
+                <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
+                  Create your sign-in account, then complete your application. Platform Owner approval is required before you can access a dashboard.
+                </p>
+                <button type="button" className="mt-2 text-xs font-bold underline" onClick={() => setChosen(null)}>Change applicant type</button>
+              </div>
+            )}
             <SignUp
               routing="path"
               path={`${base}/sign-up`}
               signInUrl={signInUrl}
-              forceRedirectUrl={invitationRedirectUrl ?? undefined}
+              forceRedirectUrl={signUpRedirect}
               fallbackRedirectUrl={invitationRedirectUrl ?? `${base}/`}
               appearance={{ elements: { rootBox: 'w-full', cardBox: 'w-full shadow-none', card: 'shadow-none border-0' } }}
             />
+            </>
           )}
           <p className="mt-5 text-center text-xs text-[hsl(var(--muted-foreground))]">
             {isSignIn ? 'Need an account?' : 'Already registered?'}{' '}

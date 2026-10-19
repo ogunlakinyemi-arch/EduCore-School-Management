@@ -439,7 +439,7 @@ describe("Partner invitation dispatch and activation", () => {
           expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "INVITED",
         }] };
       }
-      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::text")) {
+      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::integer::text")) {
         return { rows: [{ action: "Created partner invitation", permission: null, role: null }] };
       }
       if (sql.includes("UPDATE partner_profiles SET user_id=$1")) return { rows: [{ id: 4 }] };
@@ -508,7 +508,7 @@ describe("Partner invitation dispatch and activation", () => {
             expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "ACTIVE",
           }] };
         }
-        if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::text")) {
+        if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::integer::text")) {
           return { rows: [{
             action: "Recovered partner staff invitation",
             permission,
@@ -536,7 +536,7 @@ describe("Partner invitation dispatch and activation", () => {
       expect(membershipWrites).toContainEqual([4, 21, expectedRole]);
       expect(state.queries.some(({ sql }) => sql.includes("UPDATE partner_profiles SET user_id=$1"))).toBe(false);
       const claimQuery = state.queries.find(({ sql }) =>
-        sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::text"));
+        sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::integer::text"));
       expect(claimQuery?.values.slice(0, 3)).toEqual([invitationId, "4", email]);
       expect(claimQuery?.values[3]).toContain("Recovered partner staff invitation");
     },
@@ -563,7 +563,7 @@ describe("Partner invitation dispatch and activation", () => {
           expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "ACTIVE",
         }] };
       }
-      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::text")) {
+      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::integer::text")) {
         return { rows: [{
           action: "Started partner staff invitation",
           permission: "ADMIN",
@@ -1606,7 +1606,7 @@ describe("Partner invitation dispatch and activation", () => {
     const selectedPermission = state.queries.find(({ sql }) =>
       sql.includes("SELECT metadata->>'permission' AS permission"));
     expect(selectedPermission?.sql).toContain("action=ANY($4::text[])");
-    expect(selectedPermission?.sql).toContain("metadata->>'partnerId'=$2::text");
+    expect(selectedPermission?.sql).toContain("metadata->>'partnerId'=$2::integer::text");
     expect(selectedPermission?.values).toEqual([9, 4, "staff@example.test", expect.arrayContaining([
       "Created partner staff invitation", "Resent partner staff invitation",
     ])]);
@@ -1849,7 +1849,7 @@ describe("Partner invitation dispatch and activation", () => {
         id: 10, partner_profile_id: 4, invited_email: "partner@example.test",
         expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "INVITED",
       }] };
-      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::text")) {
+      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::integer::text")) {
         return { rows: [{ action: "Created partner invitation", permission: null, role: null }] };
       }
       if (sql.includes("UPDATE partner_profiles SET user_id=$1")) return { rows: [{ id: 4 }] };
@@ -2081,7 +2081,7 @@ describe("Partner invitation dispatch and activation", () => {
         id: 12, partner_profile_id: 4, invited_email: "staff@example.test",
         expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "ACTIVE",
       }] };
-      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::text")) {
+      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::integer::text")) {
         return { rows: [{
           action: "Recovered partner staff invitation", permission,
           role, attemptKind: "CREATE",
@@ -2122,7 +2122,7 @@ describe("Partner invitation dispatch and activation", () => {
         id: 12, partner_profile_id: 4, invited_email: "staff@example.test",
         expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "ACTIVE",
       }] };
-      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::text")) {
+      if (sql.includes("FROM audit_logs") && sql.includes("metadata->>'partnerId'=$2::integer::text")) {
         return { rows: [{
           action: "Recovered partner staff invitation",
           permission: "PLATFORM_OWNER",
@@ -2160,6 +2160,18 @@ describe("Partner invitation dispatch and activation", () => {
     expect(created.status).toBe(403);
     expect(resent.status).toBe(403);
     expect(state.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("requires Owner authorization for legacy referral onboarding before any invitation or school write", async () => {
+    state.context.roles = [];
+    const response = await post("/partner/onboarding", {
+      referralToken: "x".repeat(48),
+      school: { code: "PUBLIC", name: "Public School", city: "Lagos", state: "Lagos" },
+      administrator: { fullName: "Public Applicant", email: "public@example.test" },
+    });
+    expect(response.status).toBe(403);
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(state.queries.some(({sql})=>sql.includes("INSERT INTO schools"))).toBe(false);
   });
 
   it("rejects Partner-to-School-Admin onboarding for a revoked referral without dispatching", async () => {

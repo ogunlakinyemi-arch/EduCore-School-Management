@@ -1,5 +1,10 @@
 # Authentication layout and application workflow boundary
 
+Historical boundary report: the user subsequently authorized Development-only
+additive storage. See
+[the completed workflow report](2026-10-19-account-application-approval.md)
+for the implemented scope, exact schema change and current verification.
+
 ## Delivered in Development
 
 - Authentication shell has zero-minimum responsive grid tracks and constrained

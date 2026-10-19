@@ -13,6 +13,12 @@ SQL comparisons against nullable values can return NULL rather than false, break
 
 Native parameter inference and driver types need evidence too: destination-column types do not reliably propagate into CASE branches or boolean expressions. Explicitly prepare timestamp-bearing worker updates in PostgreSQL; mocks can hide text-versus-timestamp inference failures. PostgreSQL bigint identifiers arrive as strings.
 
+For a parameter shared between numeric relational predicates and JSON-text comparisons, explicitly retain its numeric type before converting to text. A LATERAL subquery may establish the parameter as text before PostgreSQL reaches the outer numeric predicate; even an empty-result query then fails.
+
+**Why:** Statement-matching invitation mocks concealed this inference-order failure in both Owner and Partner staff recovery queries.
+
+**How to apply:** Exercise the exact complete parameterized statement in PostgreSQL, including no-match and recovery branches; do not infer safety from the textual cast or from the mock returning no rows.
+
 Parameters used both as assignment values and inside variadic JSON builders should carry explicit SQL types. Exercise actual execution in a disposable schema, not just mocked queries or an EXPLAIN plan.
 
 **Why:** A Partner registration passed query-mock tests and a Development EXPLAIN check but failed during real execution of its audit update on a schema clone. An explicit integer cast removed the inference failure, and a genuine browser registration subsequently succeeded.

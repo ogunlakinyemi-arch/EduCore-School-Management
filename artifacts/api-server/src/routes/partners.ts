@@ -32,6 +32,8 @@ export const publicPartnersRouter = Router();
 const router = Router();
 const hash = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 const normalizedEmail = (value: string) => value.trim().toLowerCase();
+// Numeric IDs compared with JSON text must be typed before converting to text:
+// a LATERAL subquery can otherwise infer the parameter as text before its int FK comparison.
 const ownerPartnerInvitationActions = [
   "Created partner invitation",
   "Started partner invitation resend",
@@ -326,7 +328,7 @@ async function finalizePartnerInvitationResend(
       WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
         AND i.status='ACTIVE'
         AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
           AND lower(trim(a.metadata->>'invitedEmail'))=$3)
       FOR UPDATE`,
       [details.selectedInvitationId, details.partnerId, details.email, ownerPartnerInvitationActions]);
@@ -448,7 +450,7 @@ async function finalizePartnerEmailCorrection(
       WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
         AND i.status='ACTIVE'
         AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
           AND lower(trim(a.metadata->>'invitedEmail'))=$3)
       FOR UPDATE`,
       [details.selectedInvitationId, details.partnerId, details.oldEmail, ownerPartnerInvitationActions]);
@@ -467,7 +469,7 @@ async function finalizePartnerEmailCorrection(
       WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
         AND i.status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')
         AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
           AND a.metadata->>'attemptId'=$5 AND a.metadata->>'selectedInvitationId'=$6
           AND lower(trim(a.metadata->>'oldEmail'))=$7
           AND lower(trim(a.metadata->>'invitedEmail'))=$3)
@@ -607,7 +609,7 @@ async function supersedePartnerInvitations(
      WHERE partner_profile_id=$1 AND lower(trim(invited_email))=$2 AND status='ACTIVE'
        AND EXISTS (SELECT 1 FROM audit_logs a
          WHERE a.module='Partners' AND a.record_id=partner_invitations.id
-           AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::text
+           AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::integer::text
            AND lower(trim(a.metadata->>'invitedEmail'))=$2)
      FOR UPDATE`,
     [partnerId, normalizedEmail(email), ownerPartnerInvitationActions],
@@ -648,7 +650,10 @@ publicPartnersRouter.post("/partner/referrals/validate", run(async (req, res) =>
   res.json({ valid, status: valid ? "VALID" : row?.status === "REVOKED" ? "REVOKED" : "INVALID",
     partnerCode: valid ? row.partnerCode : null, referralLinkId: valid ? row.id : null });
 }));
-publicPartnersRouter.post("/partner/onboarding", run(async (req, res) => {
+// Existing Owner-led creation remains available, but a public referral must now
+// use the verified application flow. A referral token is never approval.
+publicPartnersRouter.post("/partner/onboarding", requireAuthentication(), run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
   const token = req.body?.referralToken, s = req.body?.school, administrator = req.body?.administrator;
   const administratorName = typeof administrator?.fullName === "string" ? administrator.fullName.trim() : "";
   const administratorEmail = typeof administrator?.email === "string" ? normalizedEmail(administrator.email) : "";
@@ -983,7 +988,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
         AND i.status='ACTIVE'
         AND EXISTS (SELECT 1 FROM audit_logs a
           WHERE a.module='Partners' AND a.record_id=i.id
-            AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+            AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
             AND lower(trim(a.metadata->>'invitedEmail'))=$3)
       FOR UPDATE`,
       [requestedInvitationId, partnerId, normalizedEmail(snapshot.email), ownerPartnerInvitationActions]);
@@ -993,7 +998,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
         FROM partner_invitations i
         JOIN LATERAL (SELECT metadata FROM audit_logs
           WHERE module='Partners' AND record_id=i.id
-            AND action=ANY($4::text[]) AND metadata->>'partnerId'=$2::text
+            AND action=ANY($4::text[]) AND metadata->>'partnerId'=$2::integer::text
             AND lower(trim(metadata->>'invitedEmail'))=$3
           ORDER BY timestamp DESC LIMIT 1) a ON true
         WHERE i.id=$1 AND i.partner_profile_id=$2
@@ -1009,7 +1014,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
             AND i.status='ACTIVE'
             AND EXISTS (SELECT 1 FROM audit_logs a
               WHERE a.module='Partners' AND a.record_id=i.id
-                AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+                AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
                 AND lower(trim(a.metadata->>'invitedEmail'))=$3)
           FOR UPDATE`,
           [sourceId, partnerId, normalizedEmail(snapshot.email), ownerPartnerInvitationActions]);
@@ -1038,7 +1043,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       FROM partner_invitations i
       JOIN LATERAL (SELECT metadata FROM audit_logs
         WHERE module='Partners' AND record_id=i.id
-          AND action=ANY($4::text[]) AND metadata->>'partnerId'=$1::text
+          AND action=ANY($4::text[]) AND metadata->>'partnerId'=$1::integer::text
           AND metadata->>'selectedInvitationId'=$2
           AND lower(trim(metadata->>'oldEmail'))=$3
         ORDER BY timestamp DESC LIMIT 1) a ON true
@@ -1092,7 +1097,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
         AND lower(trim(i.invited_email))=$2 AND i.status='RATE_LIMITED' AND i.expires_at>NOW()
         AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
           AND a.action='Partner invitation resend rejected by provider'
-          AND a.metadata->>'partnerId'=$1::text AND lower(trim(a.metadata->>'invitedEmail'))=$2)
+          AND a.metadata->>'partnerId'=$1::integer::text AND lower(trim(a.metadata->>'invitedEmail'))=$2)
       ORDER BY i.created_at DESC LIMIT 1`, [partnerId, email]);
     if (rateLimited.rows[0]) {
       const retrySeconds = Number(rateLimited.rows[0].retryAfterSeconds) || 1;
@@ -1107,7 +1112,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       FROM partner_invitations i
       JOIN LATERAL (SELECT metadata FROM audit_logs
         WHERE module='Partners' AND record_id=i.id
-          AND action=ANY($3::text[]) AND metadata->>'partnerId'=$1::text
+          AND action=ANY($3::text[]) AND metadata->>'partnerId'=$1::integer::text
           AND lower(trim(metadata->>'invitedEmail'))=$2
         ORDER BY timestamp DESC LIMIT 1) a ON true
       WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
@@ -1161,7 +1166,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
         WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
           AND i.status IN ('ACTIVE','REVOKED')
           AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-            AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::text
+            AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::integer::text
             AND lower(trim(a.metadata->>'invitedEmail'))=$2)
         FOR UPDATE OF i`, [partnerId, email, ownerPartnerInvitationActions]);
       const historicalIds = historical.rows.map((item: any) => Number(item.id)).filter(Number.isInteger);
@@ -1273,7 +1278,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
         AND i.status IN ('ACTIVE','REVOKED')
         AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-          AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::text
+          AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::integer::text
           AND lower(trim(a.metadata->>'invitedEmail'))=$2)`,
       [partnerId, email, ownerPartnerInvitationActions]);
     oldClerkInvitationIds = await knownClerkInvitationIds(pool, partnerId, email,
@@ -1346,7 +1351,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
         AND i.status='ACTIVE'
         AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
           AND lower(trim(a.metadata->>'invitedEmail'))=$3)
       FOR UPDATE`,
       [selectedInvitationId, partnerId, email, ownerPartnerInvitationActions]);
@@ -1504,7 +1509,7 @@ router.patch("/platform/partners/:partnerId", run(async(req,res)=>{
             AND i.status='ACTIVE'
             AND EXISTS (SELECT 1 FROM audit_logs a
               WHERE a.module='Partners' AND a.record_id=i.id
-                AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+                AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
                 AND lower(trim(a.metadata->>'invitedEmail'))=$3)
           FOR UPDATE`,
           [requestedInvitationId,id,oldEmail,ownerPartnerInvitationActions]);
@@ -1518,7 +1523,7 @@ router.patch("/platform/partners/:partnerId", run(async(req,res)=>{
           FROM partner_invitations i
           JOIN LATERAL (SELECT action,metadata FROM audit_logs
             WHERE module='Partners' AND record_id=i.id
-              AND action=ANY($3::text[]) AND metadata->>'partnerId'=$1::text
+              AND action=ANY($3::text[]) AND metadata->>'partnerId'=$1::integer::text
               AND metadata->>'selectedInvitationId'=$2
             ORDER BY timestamp DESC LIMIT 1) a ON true
           WHERE i.partner_profile_id=$1
@@ -1567,7 +1572,7 @@ router.patch("/platform/partners/:partnerId", run(async(req,res)=>{
           FROM partner_invitations i
           JOIN LATERAL (SELECT metadata FROM audit_logs
             WHERE module='Partners' AND record_id=i.id
-              AND action=ANY($3::text[]) AND metadata->>'partnerId'=$1::text
+              AND action=ANY($3::text[]) AND metadata->>'partnerId'=$1::integer::text
               AND lower(trim(metadata->>'invitedEmail'))=$2
             ORDER BY timestamp DESC LIMIT 1) a ON true
           WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
@@ -2024,7 +2029,7 @@ router.post(["/partner/invitations/accept", "/partner/invitations/:invitationTok
         metadata->>'role' AS role
       FROM audit_logs WHERE module='Partners' AND record_id=$1
         AND action=ANY($4::text[])
-        AND metadata->>'partnerId'=$2::text
+        AND metadata->>'partnerId'=$2::integer::text
         AND lower(trim(metadata->>'invitedEmail'))=$3
       ORDER BY timestamp DESC`,
       [row.id, String(row.partner_profile_id), verifiedEmail, acceptanceActions]);
@@ -2256,7 +2261,7 @@ router.get("/partner/staff/invitations", run(async (req, res) => {
     JOIN LATERAL (
       SELECT metadata FROM audit_logs
       WHERE module='Partners' AND record_id=i.id
-        AND action=ANY($2::text[]) AND metadata->>'partnerId'=$1::text
+        AND action=ANY($2::text[]) AND metadata->>'partnerId'=$1::integer::text
         AND lower(trim(metadata->>'invitedEmail'))=lower(trim(i.invited_email))
       ORDER BY timestamp DESC LIMIT 1
     ) a ON true
@@ -2268,7 +2273,7 @@ router.get("/partner/staff/invitations", run(async (req, res) => {
       JOIN LATERAL (SELECT metadata FROM audit_logs
         WHERE module='Partners' AND record_id=attempt.id AND action=ANY($2::text[])
           AND metadata->>'attemptKind'='RESEND'
-          AND metadata->>'partnerId'=$1::text
+          AND metadata->>'partnerId'=$1::integer::text
           AND metadata->>'selectedInvitationId'=i.id::text
           AND lower(trim(metadata->>'invitedEmail'))=lower(trim(i.invited_email))
         ORDER BY timestamp DESC LIMIT 1) attempt_audit ON true
@@ -2321,7 +2326,7 @@ async function findPartnerStaffUnresolvedAttempt(
     FROM partner_invitations i
     JOIN LATERAL (SELECT metadata FROM audit_logs
       WHERE module='Partners' AND record_id=i.id AND action=ANY($3::text[])
-        AND metadata->>'partnerId'=$1::text
+        AND metadata->>'partnerId'=$1::integer::text
         AND lower(trim(metadata->>'invitedEmail'))=$2
         AND metadata ? 'attemptId'
       ORDER BY timestamp DESC LIMIT 1) a ON true
@@ -2417,7 +2422,7 @@ async function finalizePartnerStaffAttempt(
       WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
         AND i.status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')
         AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
           AND a.metadata->>'attemptId'=$5 AND a.metadata->>'attemptKind'=$6
           AND a.metadata->>'permission'=$7
           AND a.metadata->>'selectedInvitationId' IS NOT DISTINCT FROM $8
@@ -2437,7 +2442,7 @@ async function finalizePartnerStaffAttempt(
         WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
           AND i.status='ACTIVE'
           AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
-            AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+            AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::integer::text
             AND upper(a.metadata->>'permission')=$5
             AND lower(trim(a.metadata->>'invitedEmail'))=$3)
         FOR UPDATE`,
@@ -2792,7 +2797,7 @@ router.post("/partner/staff-invitations/:invitationId/resend", run(async (req, r
       }
       const auditRecord = await client.query(`SELECT metadata->>'permission' AS permission
         FROM audit_logs WHERE module='Partners' AND record_id=$1
-          AND action=ANY($4::text[]) AND metadata->>'partnerId'=$2::text
+          AND action=ANY($4::text[]) AND metadata->>'partnerId'=$2::integer::text
           AND lower(trim(metadata->>'invitedEmail'))=lower(trim($3))
         ORDER BY timestamp DESC LIMIT 1`,
         [invitationId, partner.id, email, staffPartnerInvitationActions]);

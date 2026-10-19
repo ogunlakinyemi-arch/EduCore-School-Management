@@ -19,6 +19,7 @@ export type Role = (typeof ROLES)[number] | "DEVICE_ACTIVATION_OFFICER" | "COMPA
 export type UserStatus = "ACTIVE" | "INACTIVE";
 
 export type UserContext = {
+  applicationStatus?: "PENDING" | "REJECTED";
   user: {
     id: number;
     clerkUserId: string;
@@ -98,6 +99,13 @@ export async function provisionCurrentUser(clerkUserId: string) {
 export async function loadUserContext(clerkUserId: string): Promise<UserContext> {
   const user = await provisionCurrentUser(clerkUserId);
   assertUserActive(user.status);
+  const application = await pool.query(
+    `SELECT status FROM account_applications WHERE user_id=$1 AND status<>'APPROVED'`,
+    [user.id],
+  );
+  if (application.rows[0]) {
+    return { user, roles: [], applicationStatus: application.rows[0].status };
+  }
   const roles = await pool.query(
     `SELECT id, role, school_id AS "schoolId", status
      FROM school_memberships sm
@@ -219,6 +227,12 @@ export function requireAuthentication(): RequestHandler {
     return void loadUserContext(userId)
       .then(async (context) => {
         (req as Request & { edupulseUser?: UserContext }).edupulseUser = context;
+        if (context.applicationStatus && !(
+          req.path === "/account-application" ||
+          req.method === "GET" && ["/me", "/me/roles", "/me/authorized-context"].includes(req.path)
+        )) {
+          throw new AuthError(403, "Platform Owner approval is required before portal access", "APPLICATION_NOT_APPROVED");
+        }
         try {
           await enforceRequestSubscription(req, context);
         } catch (error) {

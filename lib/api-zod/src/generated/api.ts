@@ -8,6 +8,148 @@
 import * as zod from 'zod';
 
 
+export const GetMyAccountApplicationResponse = zod.object({
+  "application": zod.union([zod.object({
+  "id": zod.number().int(),
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "schoolName": zod.string().nullish(),
+  "businessName": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.string(),
+  "reviewedAt": zod.string().nullish(),
+  "reviewerName": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish(),
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+}),zod.null()]),
+  "eligible": zod.boolean()
+})
+
+
+export const submitAccountApplicationBodyFirstNameMax = 100;
+
+export const submitAccountApplicationBodyLastNameMax = 100;
+
+export const submitAccountApplicationBodyPhoneMin = 7;
+export const submitAccountApplicationBodyPhoneMax = 32;
+
+export const submitAccountApplicationBodyCityMin = 2;
+export const submitAccountApplicationBodyCityMax = 100;
+
+export const submitAccountApplicationBodyStateMin = 2;
+export const submitAccountApplicationBodyStateMax = 100;
+
+export const submitAccountApplicationBodySchoolNameMin = 2;
+export const submitAccountApplicationBodySchoolNameMax = 200;
+
+export const submitAccountApplicationBodyBusinessNameMax = 200;
+
+export const submitAccountApplicationBodyAddressMax = 500;
+
+export const submitAccountApplicationBodyReferralTokenMin = 16;
+export const submitAccountApplicationBodyReferralTokenMax = 256;
+
+
+
+export const SubmitAccountApplicationBody = zod.object({
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "firstName": zod.string().min(1).max(submitAccountApplicationBodyFirstNameMax),
+  "lastName": zod.string().min(1).max(submitAccountApplicationBodyLastNameMax),
+  "phone": zod.string().min(submitAccountApplicationBodyPhoneMin).max(submitAccountApplicationBodyPhoneMax),
+  "city": zod.string().min(submitAccountApplicationBodyCityMin).max(submitAccountApplicationBodyCityMax),
+  "state": zod.string().min(submitAccountApplicationBodyStateMin).max(submitAccountApplicationBodyStateMax),
+  "schoolName": zod.string().min(submitAccountApplicationBodySchoolNameMin).max(submitAccountApplicationBodySchoolNameMax).optional(),
+  "businessName": zod.string().max(submitAccountApplicationBodyBusinessNameMax).optional(),
+  "address": zod.string().max(submitAccountApplicationBodyAddressMax).optional(),
+  "referralToken": zod.string().min(submitAccountApplicationBodyReferralTokenMin).max(submitAccountApplicationBodyReferralTokenMax).optional()
+})
+
+export const SubmitAccountApplicationResponse = zod.object({
+  "id": zod.number().int(),
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "schoolName": zod.string().nullish(),
+  "businessName": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.string(),
+  "reviewedAt": zod.string().nullish(),
+  "reviewerName": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish(),
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+})
+
+
+export const GetAccountApplicationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "schoolName": zod.string().nullish(),
+  "businessName": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.string(),
+  "reviewedAt": zod.string().nullish(),
+  "reviewerName": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish(),
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+})
+export const GetAccountApplicationsResponse = zod.array(GetAccountApplicationsResponseItem)
+
+
+
+
+
+export const DecideAccountApplicationParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+export const decideAccountApplicationBodyReasonMax = 1000;
+
+
+
+export const DecideAccountApplicationBody = zod.object({
+  "status": zod.enum(['APPROVED', 'REJECTED']),
+  "reason": zod.string().max(decideAccountApplicationBodyReasonMax).optional()
+})
+
+export const DecideAccountApplicationResponse = zod.object({
+  "id": zod.number().int(),
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "schoolName": zod.string().nullish(),
+  "businessName": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.string(),
+  "reviewedAt": zod.string().nullish(),
+  "reviewerName": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish(),
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE'])
+})
+
+
 /**
  * Development-only active global Platform Owner diagnostic. Exactly one
  * selector is required. No identity provisioning or provider requests.

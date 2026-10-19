@@ -21,7 +21,8 @@ import ParentPortal from '@/pages/parent-portal';
 import { ThreadLinkPage } from '@/pages/parent-communication/threads';
 import PartnerPortal from '@/pages/partner/portal';
 import PartnerManagement from '@/pages/partner/management';
-import RegisterSchool from '@/pages/partner/register-school';
+import ApplyPage, { ApplicationPortal } from '@/pages/apply';
+import { SchoolRegisterRedirect } from '@/pages/school-register-redirect';
 import { Dashboard } from '@/pages/dashboard';
 import { SchoolsPage, SchoolOverview } from '@/pages/schools';
 import { StudentsPage } from '@/pages/students';
@@ -163,14 +164,7 @@ export function ProtectedRoutes() {
   }
   if (!context?.isPlatformOwner && (!context?.roles || context.roles.length === 0)) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center p-8 text-center bg-[hsl(var(--background))]">
-        <div className="panel p-8 max-w-md shadow-xl fade-up">
-          <h1 className="display-font text-2xl font-bold">Access Pending</h1>
-          <p className="mt-3 text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">
-            Your account has not been assigned any roles yet. Please contact your administrator.
-          </p>
-        </div>
-      </div>
+      <ApplicationPortal pendingAccess />
     );
   }
 
@@ -494,7 +488,8 @@ export default function App() {
               <Route path="/accept-invitation"><InvitationAcceptance /></Route>
               <Route path="/partner/accept-invitation"><InvitationAcceptance /></Route>
               <Route path="/partner/invitations/:invitationToken/accept"><InvitationAcceptance /></Route>
-              <Route path="/school/register"><RegisterSchool /></Route>
+              <Route path="/school/register"><SchoolRegisterRedirect /></Route>
+              <Route path="/apply"><ApplyPage /></Route>
               <Route>
                 <AuthGuard>
                   <Switch>

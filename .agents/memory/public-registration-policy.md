@@ -19,5 +19,21 @@ referral invitations are not evidence of Owner approval.
 memberships and student admissions. Enforce activation server-side, including
 referral/invitation paths, rather than trusting a public role selector or hiding
 portals. Do not reinterpret the policy as authorization to demote existing users.
-The user required reporting and stopping before applying any necessary schema
-change; obtain explicit approval before an additive application migration.
+Keep all existing roles available for login: the two-type restriction concerns
+public applications, not sign-in or genuine invitation acceptance.
+
+The user explicitly authorized additive application storage in Development on
+2026-10-19, not Production migration or publishing. Report exact schema changes
+and verification before seeking any separate Production/publishing approval.
+
+Registration must collect the applicant's appropriate profile during signup,
+not merely tell them to complete it later. School applicants require school name,
+Admin full name and Admin phone, with school address optional. Partner applicants
+require full name, email, phone and a supported Partner type, with business name
+optional. Keep the pending gate and transfer submitted profile details on approval.
+
+**Why:** The user explicitly requested these registration fields while retaining
+the existing authentication provider and approval/notification workflow.
+
+**How to apply:** Use the existing application store, validate on both sides, and
+explain any strictly necessary additive schema change before applying it.

@@ -5,6 +5,131 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+export type AccountApplicationInputApplicantType = typeof AccountApplicationInputApplicantType[keyof typeof AccountApplicationInputApplicantType];
+
+
+export const AccountApplicationInputApplicantType = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  PARTNER: 'PARTNER',
+} as const;
+
+export interface AccountApplicationInput {
+  applicantType: AccountApplicationInputApplicantType;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  firstName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  lastName: string;
+  /**
+     * @minLength 7
+     * @maxLength 32
+     */
+  phone: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  city: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  state: string;
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  schoolName?: string;
+  /** @maxLength 200 */
+  businessName?: string;
+  /** @maxLength 500 */
+  address?: string;
+  /**
+     * @minLength 16
+     * @maxLength 256
+     */
+  referralToken?: string;
+}
+
+export type AccountApplicationDecisionStatus = typeof AccountApplicationDecisionStatus[keyof typeof AccountApplicationDecisionStatus];
+
+
+export const AccountApplicationDecisionStatus = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface AccountApplicationDecision {
+  status: AccountApplicationDecisionStatus;
+  /** @maxLength 1000 */
+  reason?: string;
+}
+
+export type AccountApplicationApplicantType = typeof AccountApplicationApplicantType[keyof typeof AccountApplicationApplicantType];
+
+
+export const AccountApplicationApplicantType = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  PARTNER: 'PARTNER',
+} as const;
+
+export type AccountApplicationStatus = typeof AccountApplicationStatus[keyof typeof AccountApplicationStatus];
+
+
+export const AccountApplicationStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type AccountApplicationNotificationStatus = typeof AccountApplicationNotificationStatus[keyof typeof AccountApplicationNotificationStatus];
+
+
+export const AccountApplicationNotificationStatus = {
+  NOT_REQUESTED: 'NOT_REQUESTED',
+  SENDING: 'SENDING',
+  ACCEPTED: 'ACCEPTED',
+  FAILED: 'FAILED',
+  UNKNOWN: 'UNKNOWN',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface AccountApplication {
+  id: number;
+  applicantType: AccountApplicationApplicantType;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  /** @nullable */
+  schoolName?: string | null;
+  /** @nullable */
+  businessName?: string | null;
+  /** @nullable */
+  address?: string | null;
+  status: AccountApplicationStatus;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt?: string | null;
+  /** @nullable */
+  reviewerName?: string | null;
+  /** @nullable */
+  rejectionReason?: string | null;
+  notificationStatus: AccountApplicationNotificationStatus;
+}
+
+export interface AccountApplicationResult {
+  application: AccountApplication | null;
+  eligible: boolean;
+}
+
 export type TerminalDirectionInputDirection = typeof TerminalDirectionInputDirection[keyof typeof TerminalDirectionInputDirection];
 
 
@@ -14465,6 +14590,131 @@ export interface SchoolCurriculumTopicsResponse {
   topics: CurriculumTopic[];
   progress: CurriculumProgress[];
   curriculumVersion: CurriculumVersion;
+}
+
+export type AccountApplicationInput4b96100ApplicantType = typeof AccountApplicationInput4b96100ApplicantType[keyof typeof AccountApplicationInput4b96100ApplicantType];
+
+
+export const AccountApplicationInput4b96100ApplicantType = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  PARTNER: 'PARTNER',
+} as const;
+
+export interface AccountApplicationInput4b96100 {
+  applicantType: AccountApplicationInput4b96100ApplicantType;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  firstName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  lastName: string;
+  /**
+     * @minLength 7
+     * @maxLength 32
+     */
+  phone: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  city: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  state: string;
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  schoolName?: string;
+  /** @maxLength 200 */
+  businessName?: string;
+  /** @maxLength 500 */
+  address?: string;
+  /**
+     * @minLength 16
+     * @maxLength 256
+     */
+  referralToken?: string;
+}
+
+export type AccountApplicationDecision4b96100Status = typeof AccountApplicationDecision4b96100Status[keyof typeof AccountApplicationDecision4b96100Status];
+
+
+export const AccountApplicationDecision4b96100Status = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface AccountApplicationDecision4b96100 {
+  status: AccountApplicationDecision4b96100Status;
+  /** @maxLength 1000 */
+  reason?: string;
+}
+
+export type AccountApplication4b96100ApplicantType = typeof AccountApplication4b96100ApplicantType[keyof typeof AccountApplication4b96100ApplicantType];
+
+
+export const AccountApplication4b96100ApplicantType = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  PARTNER: 'PARTNER',
+} as const;
+
+export type AccountApplication4b96100Status = typeof AccountApplication4b96100Status[keyof typeof AccountApplication4b96100Status];
+
+
+export const AccountApplication4b96100Status = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type AccountApplication4b96100NotificationStatus = typeof AccountApplication4b96100NotificationStatus[keyof typeof AccountApplication4b96100NotificationStatus];
+
+
+export const AccountApplication4b96100NotificationStatus = {
+  NOT_REQUESTED: 'NOT_REQUESTED',
+  SENDING: 'SENDING',
+  ACCEPTED: 'ACCEPTED',
+  FAILED: 'FAILED',
+  UNKNOWN: 'UNKNOWN',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface AccountApplication4b96100 {
+  id: number;
+  applicantType: AccountApplication4b96100ApplicantType;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  /** @nullable */
+  schoolName?: string | null;
+  /** @nullable */
+  businessName?: string | null;
+  /** @nullable */
+  address?: string | null;
+  status: AccountApplication4b96100Status;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt?: string | null;
+  /** @nullable */
+  reviewerName?: string | null;
+  /** @nullable */
+  rejectionReason?: string | null;
+  notificationStatus: AccountApplication4b96100NotificationStatus;
+}
+
+export interface AccountApplicationResult4b96100 {
+  application: AccountApplication4b96100 | null;
+  eligible: boolean;
 }
 
 export type TerminalDirectionInput4b96100Direction = typeof TerminalDirectionInput4b96100Direction[keyof typeof TerminalDirectionInput4b96100Direction];

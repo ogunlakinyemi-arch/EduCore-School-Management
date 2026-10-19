@@ -25,7 +25,12 @@ describe('responsive authentication shell', () => {
     expect(html).toContain('grid-cols-[minmax(0,1fr)]');
     expect(html).toContain('md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)]');
     expect(html).toContain('flex min-w-0 flex-col');
-    expect(html).toContain(mode === 'sign-in' ? 'Sign in control' : 'Sign up control');
+    expect(html).toContain(mode === 'sign-in' ? 'Sign in control' : 'Apply for an account');
+    if (mode === 'sign-up') {
+      expect(html).not.toContain('Sign up control');
+      expect(html).toContain('choose-school-admin');
+      expect(html).toContain('choose-partner');
+    }
     if (mode === 'sign-in') {
       for (const role of ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT', 'PARTNER']) {
         expect(html).toContain(`value="${role}"`);
@@ -41,5 +46,12 @@ describe('responsive authentication shell', () => {
     expect(css).toContain('flex-wrap: wrap');
     expect(css).toContain('overflow-wrap: anywhere');
     expect(css).not.toContain('overflow-x: hidden');
+  });
+  it.each(['SCHOOL_ADMIN', 'PARTNER'])('keeps the selected %s application and approval requirement above account creation', (type) => {
+    vi.stubGlobal('window', { location: { search: `?applicantType=${type}`, origin: 'https://example.com' } });
+    const html = renderToStaticMarkup(<AuthScreen mode="sign-up" />);
+    expect(html).toContain('Sign up control');
+    expect(html).toContain(type === 'PARTNER' ? 'Partner application' : 'School Admin application');
+    expect(html).toContain('Platform Owner approval is required');
   });
 });

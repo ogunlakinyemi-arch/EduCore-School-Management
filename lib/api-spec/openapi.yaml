@@ -34,6 +34,68 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /account-application:
+    get:
+      operationId: getMyAccountApplication
+      tags: [identity]
+      responses:
+        "200":
+          description: Current applicant status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountApplicationResult"
+    post:
+      operationId: submitAccountApplication
+      tags: [identity]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountApplicationInput"
+      responses:
+        "201":
+          description: Pending application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountApplication"
+  /platform/account-applications:
+    get:
+      operationId: getAccountApplications
+      tags: [platform]
+      responses:
+        "200":
+          description: Owner application directory
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountApplication"
+  /platform/account-applications/{applicationId}/decision:
+    post:
+      operationId: decideAccountApplication
+      tags: [platform]
+      parameters:
+        - in: path
+          name: applicationId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountApplicationDecision"
+      responses:
+        "200":
+          description: Committed decision and notification status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountApplication"
   /dev/payment-diagnostic:
     $ref: "./development-payment-diagnostic.yaml#/paymentDiagnostic"
   /reports/{reportId}/filter-options:
@@ -6045,6 +6107,58 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    AccountApplicationInput:
+      type: object
+      additionalProperties: false
+      required: [applicantType, firstName, lastName, phone, city, state]
+      properties:
+        applicantType: { type: string, enum: [SCHOOL_ADMIN, PARTNER] }
+        firstName: { type: string, minLength: 1, maxLength: 100 }
+        lastName: { type: string, minLength: 1, maxLength: 100 }
+        phone: { type: string, minLength: 7, maxLength: 32 }
+        city: { type: string, minLength: 2, maxLength: 100 }
+        state: { type: string, minLength: 2, maxLength: 100 }
+        schoolName: { type: string, minLength: 2, maxLength: 200 }
+        businessName: { type: string, maxLength: 200 }
+        address: { type: string, maxLength: 500 }
+        referralToken: { type: string, minLength: 16, maxLength: 256 }
+    AccountApplicationDecision:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [APPROVED, REJECTED] }
+        reason: { type: string, maxLength: 1000 }
+    AccountApplication:
+      type: object
+      required: [id, applicantType, firstName, lastName, email, phone, city, state, status, createdAt, notificationStatus]
+      properties:
+        id: { type: integer }
+        applicantType: { type: string, enum: [SCHOOL_ADMIN, PARTNER] }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        city: { type: string }
+        state: { type: string }
+        schoolName: { type: [string, "null"] }
+        businessName: { type: [string, "null"] }
+        address: { type: [string, "null"] }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        createdAt: { type: string }
+        reviewedAt: { type: [string, "null"] }
+        reviewerName: { type: [string, "null"] }
+        rejectionReason: { type: [string, "null"] }
+        notificationStatus: { type: string, enum: [NOT_REQUESTED, SENDING, ACCEPTED, FAILED, UNKNOWN, UNAVAILABLE] }
+    AccountApplicationResult:
+      type: object
+      required: [application, eligible]
+      properties:
+        application:
+          oneOf:
+            - $ref: "#/components/schemas/AccountApplication"
+            - type: "null"
+        eligible: { type: boolean }
     TerminalDirectionInput:
       type: object
       additionalProperties: false

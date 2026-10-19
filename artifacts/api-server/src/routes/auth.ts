@@ -175,6 +175,15 @@ router.get(
   asyncRoute(async (req, res) => {
     const initialContext = getUserContext(req);
     let schoolInvitationActivated = false;
+    if (initialContext.applicationStatus) {
+      res.json({
+        schoolInvitationActivated: false,
+        user: { id: initialContext.user.id, name: userName(initialContext.user),
+          email: initialContext.user.email, status: initialContext.user.status },
+        isPlatformOwner: false, roles: [],
+      });
+      return;
+    }
     if (!initialContext.roles.length) {
       const internalActivated=await activateAcceptedInternalEmployeeInvitation(
         initialContext.user.id,
