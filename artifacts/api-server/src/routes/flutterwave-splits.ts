@@ -9,6 +9,7 @@ import { transactionSplitEvidence } from "../services/flutterwave-split-evidence
 import { recipientView, submitSplitRecipient, reviewSplitRecipient } from "../services/flutterwave-split-recipients";
 import { splitPaymentView, reconcileSplitPayment } from "../services/flutterwave-split-reporting";
 import { requestSplitRefund, verifySplitRefund } from "../services/flutterwave-split-refunds";
+import { currentStudentAllocationPolicy } from "../lib/student-allocation-policy";
 
 const router = Router();
 const id = (value: unknown) => z.coerce.number().int().positive().parse(value);
@@ -52,14 +53,17 @@ router.get("/flutterwave/split-dashboard",run(async(req,res) => {
     `SELECT school_id AS "schoolId",enabled,automatic_settlement_confirmed AS "testSplitVerificationAuthorized"
      FROM flutterwave_split_settings WHERE $1::boolean OR school_id=ANY($2::int[])`, [scope.owner,scope.schoolIds],
   )).rows;
-  const payments = (await pool.query(
+  // Complete transaction allocations and provider costs are Owner-only.
+  // Non-Owners retain their scoped recipient submission/review status.
+  const payments = scope.owner ? (await pool.query(
     `SELECT payment_id FROM flutterwave_split_payments
      WHERE ($1::boolean OR school_id=ANY($2::int[]) OR partner_profile_id=ANY($3::int[]))
       AND ($4::int IS NULL OR school_id=$4) ORDER BY created_at DESC LIMIT 50`,
     [scope.owner,scope.schoolIds,scope.partnerIds,schoolId],
-  )).rows;
+  )).rows : [];
   res.set("Cache-Control","no-store").json({
     developmentOnly:true,mode:"TEST",currency:"NGN",feeBearer:"PLATFORM",isOwner:scope.owner,
+    currentAllocationPolicy:scope.owner ? currentStudentAllocationPolicy() : null,
     testCredentialConfigured:!!developmentFlutterwaveCredential().secret,scopes:scope.items,recipients,
     schools:scope.schoolIds.map(s => settings.find(r => r.schoolId === s) ?? {schoolId:s,enabled:false,testSplitVerificationAuthorized:false}),
     payments:await Promise.all(payments.map(p => splitPaymentView(p.payment_id))),
@@ -113,12 +117,14 @@ router.patch("/flutterwave/split-schools/:schoolId/configuration",run(async(req,
   res.json({schoolId,...input});
 }));
 router.get("/flutterwave/split-payments/:paymentId/transaction-evidence",run(async(req,res) => {
+  requireSplitDevelopment(); assertRoles(req,["PLATFORM_OWNER"]);
   const scope = await scopes(req), paymentId = id(req.params.paymentId);
   const p = (await pool.query("SELECT school_id FROM flutterwave_split_payments WHERE payment_id=$1",[paymentId])).rows[0];
   if (!p || (!scope.owner && !scope.schoolIds.includes(p.school_id))) throw new AuthError(404,"Split payment not found");
   res.set("Cache-Control","no-store").json(await transactionSplitEvidence(paymentId));
 }));
 router.post("/flutterwave/split-payments/:paymentId/reconcile",run(async(req,res) => {
+  requireSplitDevelopment(); assertRoles(req,["PLATFORM_OWNER"]);
   const scope = await scopes(req),paymentId = id(req.params.paymentId);
   const p = (await pool.query("SELECT school_id FROM flutterwave_split_payments WHERE payment_id=$1",[paymentId])).rows[0];
   if (!p || (!scope.owner && !scope.schoolIds.includes(p.school_id))) throw new AuthError(404,"Split payment not found");

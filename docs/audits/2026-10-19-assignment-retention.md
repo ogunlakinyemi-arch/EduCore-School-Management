@@ -1,5 +1,7 @@
 # Narrow School Admin retention follow-up — 2026-10-19
 
+Next handoff: [Owner split-dashboard current-policy correction](2026-10-19-split-dashboard-policy.md).
+
 Previous handoff: [photo blocker and promotion preview](2026-10-19-photo-blocker-promotion-preview.md).
 
 ## Scope and repository reference

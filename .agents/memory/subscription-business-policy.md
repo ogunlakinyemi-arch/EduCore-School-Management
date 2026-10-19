@@ -11,6 +11,8 @@ be recalculated to the new policy.
 
 Only the Owner may see the full split. Other parties may receive their own
 authorized information, not the other recipients' allocations.
+Development TEST diagnostic pages and transaction evidence are not exemptions
+from this disclosure rule.
 
 **Why:** The user explicitly specified this replacement business policy and
 historical-preservation boundary. An older allocation in the code is not

@@ -13524,6 +13524,24 @@ export interface FlutterwaveSplitScope {
   name: string;
 }
 
+export type FlutterwaveCurrentAllocationPolicyVersion = typeof FlutterwaveCurrentAllocationPolicyVersion[keyof typeof FlutterwaveCurrentAllocationPolicyVersion];
+
+
+export const FlutterwaveCurrentAllocationPolicyVersion = {
+  NUMBER_2: 2,
+} as const;
+
+/**
+ * Current student subscription policy, not a recalculation of historical payments. Provider processing fees are separate Owner expenses.
+ */
+export interface FlutterwaveCurrentAllocationPolicy {
+  version: FlutterwaveCurrentAllocationPolicyVersion;
+  schoolMinor: number;
+  platformWithPartnerMinor: number;
+  platformWithoutPartnerMinor: number;
+  partnerMinor: number;
+}
+
 export type FlutterwaveSplitDashboardMode = typeof FlutterwaveSplitDashboardMode[keyof typeof FlutterwaveSplitDashboardMode];
 
 
@@ -13551,6 +13569,8 @@ export interface FlutterwaveSplitDashboard {
   currency: FlutterwaveSplitDashboardCurrency;
   feeBearer: FlutterwaveSplitDashboardFeeBearer;
   isOwner: boolean;
+  /** Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only. */
+  currentAllocationPolicy: FlutterwaveCurrentAllocationPolicy | null;
   testCredentialConfigured: boolean;
   scopes: FlutterwaveSplitScope[];
   recipients: FlutterwaveRecipient[];

@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { FlutterwaveCurrentAllocationPolicy } from './flutterwaveCurrentAllocationPolicy';
 import type { FlutterwaveRecipient } from './flutterwaveRecipient';
 import type { FlutterwaveSchoolSplitConfiguration } from './flutterwaveSchoolSplitConfiguration';
 import type { FlutterwaveSplitDashboardCurrency } from './flutterwaveSplitDashboardCurrency';
@@ -19,6 +20,8 @@ export interface FlutterwaveSplitDashboard {
   currency: FlutterwaveSplitDashboardCurrency;
   feeBearer: FlutterwaveSplitDashboardFeeBearer;
   isOwner: boolean;
+  /** Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only. */
+  currentAllocationPolicy: FlutterwaveCurrentAllocationPolicy | null;
   testCredentialConfigured: boolean;
   scopes: FlutterwaveSplitScope[];
   recipients: FlutterwaveRecipient[];

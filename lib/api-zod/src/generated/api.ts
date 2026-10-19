@@ -186,6 +186,13 @@ export const GetFlutterwaveSplitDashboardResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "feeBearer": zod.enum(['PLATFORM']),
   "isOwner": zod.boolean(),
+  "currentAllocationPolicy": zod.union([zod.object({
+  "version": zod.literal(2),
+  "schoolMinor": zod.number().int(),
+  "platformWithPartnerMinor": zod.number().int(),
+  "platformWithoutPartnerMinor": zod.number().int(),
+  "partnerMinor": zod.number().int()
+}).describe('Current student subscription policy, not a recalculation of historical payments. Provider processing fees are separate Owner expenses.'),zod.null()]).describe('Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only.'),
   "testCredentialConfigured": zod.boolean(),
   "scopes": zod.array(zod.object({
   "kind": zod.enum(['SCHOOL', 'PARTNER']),

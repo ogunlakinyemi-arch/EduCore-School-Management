@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { newStudentPaymentReference, studentAllocationPolicy } from "./student-allocation-policy";
+import { currentStudentAllocationPolicy, newStudentPaymentReference, studentAllocationPolicy } from "./student-allocation-policy";
 import { calculateStudentSubscriptionAllocations } from "./student-subscription-billing";
 import { cumulativeRefundShares, fixedSplitInstructions } from "./flutterwave-split-policy";
 
 describe("versioned student subscription allocations", () => {
+  it("keeps current summaries on the new-reference policy without changing legacy defaults", () => {
+    expect(currentStudentAllocationPolicy()).toEqual(studentAllocationPolicy(newStudentPaymentReference("SUMMARY_CHECK")));
+    expect(currentStudentAllocationPolicy()).toMatchObject({version:2,schoolMinor:190000,
+      platformWithPartnerMinor:300000,platformWithoutPartnerMinor:310000,partnerMinor:10000});
+    expect(studentAllocationPolicy()).toMatchObject({version:1,schoolMinor:200000,platformWithPartnerMinor:290000});
+    expect(studentAllocationPolicy("SC_original")).toEqual(studentAllocationPolicy());
+  });
   const rule = { id: 1, allocationTotal: 5000, schoolAmount: 1900, edupulseAmount: 3000, partnerAmount: 100, currency: "NGN" };
   it("selects the new policy only for newly generated references", () => {
     expect(studentAllocationPolicy(newStudentPaymentReference("FLW_existing_generator")).version).toBe(2);

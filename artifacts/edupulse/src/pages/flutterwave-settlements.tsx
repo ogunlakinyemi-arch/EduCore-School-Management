@@ -279,7 +279,7 @@ export function FlutterwaveSettlementsPage() {
   const { schoolId } = useTenant();
   const params = schoolId ? { schoolId } : undefined;
   const q = useGetFlutterwaveSplitDashboard(params, { query: {
-    queryKey: [...getGetFlutterwaveSplitDashboardQueryKey(params),userId],
+    queryKey: [...getGetFlutterwaveSplitDashboardQueryKey(params),'owner-policy-v2',userId],
     enabled:isLoaded && !!userId,
     refetchOnMount: 'always', refetchInterval: 30_000, retry: false,
   } });
@@ -295,7 +295,8 @@ export function FlutterwaveSettlementsPage() {
   if (q.isError || !d) return <div className="fade-up">{heading}<ErrorState retry={() => void q.refetch()} message={errText(q.error)} /></div>;
   if (!d.developmentOnly || d.mode !== 'TEST') return <div>{heading}<EmptyState icon={FlaskConical} title="Not available in this environment" description="Only Development TEST split verification is supported." /></div>;
   const nonOwnerScopes = d.isOwner ? [] : d.scopes;
-  const canReconcile = true;
+  const canReconcile = d.isOwner;
+  const policy = d.isOwner ? d.currentAllocationPolicy : null;
   return (
     <div className="fade-up" key={userId}>
       {heading}
@@ -303,9 +304,13 @@ export function FlutterwaveSettlementsPage() {
       <Banner tone="warn">TEST mode, {d.currency}, provider fees borne by the {d.feeBearer.toLowerCase()}. No real transfers are made. Existing paid receipts are never changed. Fees and applicable VAT are platform expenses. Only provider-reported costs appear below; confirm VAT inclusion against provider statements.</Banner>
       {!d.testCredentialConfigured && <Banner tone="error">The TEST credential format is not configured. Recipient creation will fail until it is. This reflects configuration format, not permissions.</Banner>}
       {msg && <Banner tone={msg.tone}>{msg.text}</Banner>}
-      <div className="panel mb-6 p-5 text-xs leading-6" data-testid="text-split-rules">
-        Rules: payer pays NGN 5,000; school receives NGN 2,000; an eligible partner receives NGN 100; platform gross is NGN 2,900 with a partner, otherwise NGN 3,000. Amounts are computed by the server only.
-      </div>
+      {d.isOwner && <div className="panel mb-6 p-5 text-xs leading-6" data-testid="text-split-rules">
+        {policy ? <>Current student subscription policy v{policy.version}: payer pays {naira(policy.schoolMinor + policy.platformWithPartnerMinor + policy.partnerMinor)};
+          {' '}school receives {naira(policy.schoolMinor)}; with an eligible Partner, Platform Owner receives {naira(policy.platformWithPartnerMinor)} and Partner receives {naira(policy.partnerMinor)}.
+          {' '}Without an eligible Partner, school receives {naira(policy.schoolMinor)} and Platform Owner receives {naira(policy.platformWithoutPartnerMinor)}.
+          {' '}Provider processing fees are separate Owner expenses, not deductions from School or Partner allocations. Saved payment references below retain their original allocation policy.</>
+          : <span role="alert">Current allocation policy is unavailable. Refresh the dashboard; historical payment amounts are not a current-policy summary.</span>}
+      </div>}
       {nonOwnerScopes.length > 0 && <BankForm scopes={nonOwnerScopes} onDone={setMsg} />}
       {d.isOwner && <Banner tone="warn">The Platform Owner reviews submissions but cannot submit school or partner bank details.</Banner>}
       <h2 className="display-font mb-3 text-lg font-bold">Recipients</h2>
@@ -318,11 +323,11 @@ export function FlutterwaveSettlementsPage() {
         <p className={`${note} mb-3`}>Controls appear for the selected school or schools that submitted their own recipient details. Split mode stays off until ownership review and TEST provider read-back succeed.</p>
         <div className="panel mb-6 overflow-hidden">{d.schools.filter(s => s.schoolId === schoolId || d.recipients.some(r => r.kind === 'SCHOOL' && r.entityId === s.schoolId)).map(s => <SchoolToggle key={s.schoolId} schoolId={s.schoolId} name={d.scopes.find(x => x.kind === 'SCHOOL' && x.id === s.schoolId)?.name ?? d.recipients.find(r => r.kind === 'SCHOOL' && r.entityId === s.schoolId)?.entityName ?? `School #${s.schoolId}`} enabled={s.enabled} confirmed={s.testSplitVerificationAuthorized} onMsg={setMsg} />)}</div>
       </>)}
-      <h2 className="display-font mb-3 text-lg font-bold">Split payments</h2>
+      {d.isOwner && <><h2 className="display-font mb-3 text-lg font-bold">Saved split payment references — original allocations</h2>
       <div className="space-y-4">
-        {d.payments.length ? d.payments.map(p => <PaymentCard key={p.paymentId} p={p} d={d} canReconcile={canReconcile && (d.isOwner || !!schoolId)} onMsg={setMsg} />)
+        {d.payments.length ? d.payments.map(p => <PaymentCard key={p.paymentId} p={p} d={d} canReconcile={canReconcile} onMsg={setMsg} />)
           : <EmptyState icon={FlaskConical} title="No split payments yet" description="Payments appear here only after the server creates a split checkout." />}
-      </div>
+      </div></>}
     </div>
   );
 }

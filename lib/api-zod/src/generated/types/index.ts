@@ -871,6 +871,8 @@ export * from './financeSettingsUpdate';
 export * from './financeSettingsUpdate4b96100';
 export * from './financeSummary';
 export * from './financeSummary4b96100';
+export * from './flutterwaveCurrentAllocationPolicy';
+export * from './flutterwaveCurrentAllocationPolicyVersion';
 export * from './flutterwaveRecipient';
 export * from './flutterwaveRecipientInput';
 export * from './flutterwaveRecipientInputKind';

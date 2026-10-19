@@ -61,6 +61,7 @@ const dashboard = () => ({
   testCredentialConfigured: true, scopes: [{ kind: 'SCHOOL', id: 1, name: 'UNIT SCHOOL' }],
   recipients: [{ ...recipient }], schools: [{ schoolId: 1, enabled: false, testSplitVerificationAuthorized: false }],
   payments: [{ ...payment }],
+  currentAllocationPolicy: { version: 2, schoolMinor: 190000, platformWithPartnerMinor: 300000, platformWithoutPartnerMinor: 310000, partnerMinor: 10000 },
 });
 const partialEvidence = () => ({
   status: 'UNCONFIRMED', evidenceLevel: 'PARTIAL', reason: 'Matching collection only; allocation unavailable.',
@@ -110,13 +111,21 @@ afterEach(async () => {
 });
 
 describe('Offline signed-in TEST verification screen (mock identity/API, real React/query behavior)', () => {
-  it('shows Owner controls, masked contact and unchanged split amounts without reading provider evidence automatically', async () => {
+  it('shows canonical current policy separately from unchanged historical splits without automatic provider reads', async () => {
     await render();
     expect(node('button-review-10')).not.toBeNull();
     expect(host.textContent).toContain('f•••@school.edu.ng');
     expect(host.textContent).toContain('NGN 2,000');
     expect(host.textContent).toContain('NGN 100');
     expect(host.textContent).toContain('NGN 2,900');
+    const rules = node('text-split-rules').textContent!;
+    expect(rules).toContain('school receives NGN 1,900');
+    expect(rules).toContain('Platform Owner receives NGN 3,000');
+    expect(rules).toContain('Partner receives NGN 100');
+    expect(rules).toContain('Without an eligible Partner, school receives NGN 1,900 and Platform Owner receives NGN 3,100');
+    expect(rules).toContain('Provider processing fees are separate Owner expenses');
+    expect(rules).not.toMatch(/NGN 2,000|NGN 2,900/);
+    expect(f.dashboardOptions.queryKey).toContain('owner-policy-v2');
     expect(f.evidence).not.toHaveBeenCalled();
     expect(f.evidenceOptions.enabled).toBe(false);
     expect(f.evidenceOptions.queryKey.at(-1)).toBe('unit-owner');
@@ -126,6 +135,14 @@ describe('Offline signed-in TEST verification screen (mock identity/API, real Re
     await render();
     expect(node('button-review-10')).toBeNull();
     expect(f.dashboard).not.toHaveBeenCalled(); expect(f.evidence).not.toHaveBeenCalled();
+  });
+  it('never substitutes historical amounts when current policy metadata is unavailable', async () => {
+    f.dashboard.mockResolvedValue({ ...dashboard(), currentAllocationPolicy: null });
+    await render();
+    const rules = node('text-split-rules').textContent!;
+    expect(rules).toContain('Current allocation policy is unavailable');
+    expect(rules).not.toMatch(/NGN 2,000|NGN 2,900/);
+    expect(host.textContent).toContain('NGN 2,000');
   });
   it('shows loading without controls while the dashboard is pending', async () => {
     f.dashboard.mockReturnValue(new Promise(() => {}));
@@ -154,6 +171,10 @@ describe('Offline signed-in TEST verification screen (mock identity/API, real Re
     f.dashboard.mockResolvedValue({ ...dashboard(), isOwner: false });
     await render(); expect(node('button-review-10')).toBeNull();
     expect(node('form-flutterwave-recipient')).not.toBeNull();
+    expect(node('text-split-rules')).toBeNull();
+    expect(host.textContent).not.toContain('NGN 2,900');
+    expect(host.textContent).not.toContain('NGN 3,100');
+    expect(node('button-transaction-evidence-40')).toBeNull();
     if (role === 'PARTNER') expect(node('button-transaction-evidence-40')).toBeNull();
   });
   it('requires a note and both attestations, then submits only the exact reviewed reference', async () => {

@@ -329,15 +329,30 @@ components:
         kind: { type: string, enum: [SCHOOL, PARTNER] }
         id: { type: integer }
         name: { type: string }
+    FlutterwaveCurrentAllocationPolicy:
+      description: Current student subscription policy, not a recalculation of historical payments. Provider processing fees are separate Owner expenses.
+      type: object
+      required: [version, schoolMinor, platformWithPartnerMinor, platformWithoutPartnerMinor, partnerMinor]
+      properties:
+        version: { type: integer, enum: [2] }
+        schoolMinor: { type: integer }
+        platformWithPartnerMinor: { type: integer }
+        platformWithoutPartnerMinor: { type: integer }
+        partnerMinor: { type: integer }
     FlutterwaveSplitDashboard:
       type: object
-      required: [developmentOnly, mode, currency, feeBearer, isOwner, testCredentialConfigured, scopes, recipients, schools, payments]
+      required: [developmentOnly, mode, currency, feeBearer, isOwner, currentAllocationPolicy, testCredentialConfigured, scopes, recipients, schools, payments]
       properties:
         developmentOnly: { type: boolean }
         mode: { type: string, enum: [TEST] }
         currency: { type: string, enum: [NGN] }
         feeBearer: { type: string, enum: [PLATFORM] }
         isOwner: { type: boolean }
+        currentAllocationPolicy:
+          description: Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only.
+          anyOf:
+            - { $ref: "#/components/schemas/FlutterwaveCurrentAllocationPolicy" }
+            - { type: "null" }
         testCredentialConfigured: { type: boolean }
         scopes:
           type: array
