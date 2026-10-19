@@ -3,6 +3,61 @@
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
 
+/* Clerk's intrinsic card width must not determine the mobile grid width.
+   Keep this scoped to auth pages; no overflow hiding or global input changes. */
+.auth-screen .cl-rootBox,
+.auth-screen .cl-cardBox,
+.auth-screen .cl-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .auth-screen .cl-rootBox {
+    max-width: 24rem;
+  }
+
+  .auth-screen .cl-card {
+    padding: 1.25rem 1rem;
+  }
+
+  .auth-screen .cl-main,
+  .auth-screen .cl-form,
+  .auth-screen .cl-formField,
+  .auth-screen .cl-formFieldInput,
+  .auth-screen .cl-socialButtons,
+  .auth-screen .cl-socialButtonsBlockButton,
+  .auth-screen .cl-formButtonPrimary {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .auth-screen .cl-socialButtons {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-screen .cl-footer {
+    padding-inline: 1rem;
+  }
+
+  .auth-screen .cl-footerAction {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .25rem;
+  }
+
+  .auth-screen .cl-headerTitle,
+  .auth-screen .cl-headerSubtitle,
+  .auth-screen .cl-socialButtonsBlockButtonText,
+  .auth-screen .cl-footerActionText,
+  .auth-screen .cl-footerActionLink,
+  .auth-screen .cl-formFieldErrorText {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

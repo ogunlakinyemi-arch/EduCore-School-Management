@@ -110,8 +110,8 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   }, [invitationContext.ticket, isSignIn]);
 
   return (
-    <main className="min-h-[100dvh] bg-[hsl(var(--background))] p-4 md:p-8">
-      <div className="mx-auto grid min-h-[calc(100dvh-2rem)] max-w-[1180px] overflow-hidden rounded-[28px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl md:min-h-[calc(100dvh-4rem)] md:grid-cols-[1.05fr_.95fr]">
+    <main className="auth-screen min-h-[100dvh] w-full min-w-0 bg-[hsl(var(--background))] p-3 sm:p-4 md:p-8">
+      <div className="mx-auto grid min-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-[1180px] grid-cols-[minmax(0,1fr)] overflow-hidden rounded-[28px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:min-h-[calc(100dvh-2rem)] md:min-h-[calc(100dvh-4rem)] md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)]">
         <section className="relative hidden overflow-hidden bg-[hsl(var(--sidebar))] p-10 text-[hsl(var(--sidebar-foreground))] md:flex md:flex-col">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[hsl(var(--sidebar-primary)/.3)] blur-3xl" />
           <div className="relative flex items-center gap-3">
@@ -125,7 +125,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           </div>
           <div className="relative flex items-center gap-2 text-xs text-[hsl(var(--sidebar-foreground)/.62)]"><ShieldCheck size={16} />Tenant isolation and authenticated audit trails</div>
         </section>
-        <section className="flex flex-col items-center justify-center p-5 sm:p-10">
+        <section className="flex min-w-0 flex-col items-center justify-center px-3 py-5 sm:p-10">
           <button onClick={() => navigate('/')} className="mb-7 flex items-center gap-2 md:hidden">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))]"><Zap size={17} /></span>
             <span className="display-font text-lg font-bold">Yetenia EduCore</span>
@@ -135,7 +135,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               <label htmlFor="account-type" className="mb-2 block text-sm font-semibold">Select account type</label>
               <select
                 id="account-type"
-                className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 text-sm"
+                className="min-w-0 max-w-full w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 text-sm"
                 value={accountType}
                 onChange={(event) => {
                   const selected = event.target.value;
