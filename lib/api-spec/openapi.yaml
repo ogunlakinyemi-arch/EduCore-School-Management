@@ -480,6 +480,22 @@ paths:
     $ref: "./student-care-expansion.yaml#/paths/~1parent~1children~1{studentId}~1care-summary"
   /student/care-summary:
     $ref: "./student-care-expansion.yaml#/paths/~1student~1care-summary"
+  /school/academics/promotions/readiness:
+    get:
+      operationId: getPromotionReadiness
+      tags: [academics]
+      summary: Read-only published third-term evidence validation; never authorizes promotion
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: sourceSessionId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Validation only; school-approved pass and completeness policies remain required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromotionReadiness" }
+        "403": { description: Not authorized to operate this school }
+        "404": { description: Session not found in the authorized school }
   /school/academics/promotions/batches:
     $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches"
   /school/academics/promotions/batches/{batchId}:
@@ -6671,6 +6687,22 @@ components:
       required: [passportUrl]
       properties:
         passportUrl: { type: string }
+    PromotionReadiness:
+      type: object
+      required: [schoolId, sourceSessionId, thirdTermId, cohortCount, placementConflictCount, studentsWithPublishedResults, missingPublishedResults, publishedResultCount, executionEnabled, policyStatus, blockers, warnings]
+      properties:
+        schoolId: { type: integer }
+        sourceSessionId: { type: integer }
+        thirdTermId: { type: ["integer", "null"] }
+        cohortCount: { type: integer, minimum: 0 }
+        placementConflictCount: { type: integer, minimum: 0 }
+        studentsWithPublishedResults: { type: integer, minimum: 0 }
+        missingPublishedResults: { type: integer, minimum: 0 }
+        publishedResultCount: { type: integer, minimum: 0 }
+        executionEnabled: { type: boolean, enum: [false] }
+        policyStatus: { type: string, enum: [REQUIRES_APPROVED_POLICY] }
+        blockers: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
     PersonTitle:
       type: ["string", "null"]
       enum: [Mr, Mrs, Ms, Miss, Dr, Prof, Rev, Pastor, Imam, Alhaji, Alhaja, Chief, Engr, Barr, Hon, null]

@@ -1,5 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
+import { GetPromotionReadinessQueryParams, GetPromotionReadinessResponse } from "@workspace/api-zod";
+import { promotionReadiness } from "../services/promotion-readiness";
 import {
   assertSchoolOperationalAccess,
   getUserContext,
@@ -63,6 +65,14 @@ function requireSchoolAdmin(req: Request, rawSchoolId: unknown) {
 function requireKey(req: Request) {
   return parse(idempotencyKeySchema, req.get("Idempotency-Key"), "A valid Idempotency-Key header is required");
 }
+
+router.get("/school/academics/promotions/readiness", wrap(async (req, res) => {
+  const query = parse(GetPromotionReadinessQueryParams, req.query, "Valid schoolId and sourceSessionId are required");
+  assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
+  const result = await promotionReadiness(query.schoolId, query.sourceSessionId);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(GetPromotionReadinessResponse.parse(result));
+}));
 
 router.post("/school/academics/promotions/batches", wrap(async (req, res) => {
   const schoolId = requireSchoolAdmin(req, req.query.schoolId);

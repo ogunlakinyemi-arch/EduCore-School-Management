@@ -1,5 +1,8 @@
 # Bounded person-title follow-up — 2026-10-19
 
+Next handoff: [photo blocker and read-only promotion preview](2026-10-19-photo-blocker-promotion-preview.md).
+The title migration boundary in this report remains unchanged.
+
 ## Scope
 
 Read the non-financial handoff and inspected the clean working tree before

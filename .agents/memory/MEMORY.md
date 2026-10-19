@@ -73,3 +73,4 @@
 - [Employee deactivation boundary](employee-deactivation-boundary.md) — deny school employment permissions without globally disabling independent family or other-tenant access.
 - [Pooled PostgreSQL sessions](pooled-postgres-session-state.md) — pin a client for session-local SQL state; expected query errors can replace pooled connections.
 - [Separate person honorifics](person-title-policy.md) — titles must not rewrite identity names or historical records, or expand Owner school-operation permissions.
+- [Approved promotion policy](promotion-policy-boundary.md) — third-term evidence and legacy heuristics do not establish school-approved promotion eligibility or authorize execution.

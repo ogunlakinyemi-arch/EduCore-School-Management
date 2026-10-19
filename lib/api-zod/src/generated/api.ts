@@ -6056,6 +6056,46 @@ export const GetStudentCareSummaryResponse = zod.object({
 
 
 /**
+ * @summary Read-only published third-term evidence validation; never authorizes promotion
+ */
+
+
+
+
+export const GetPromotionReadinessQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sourceSessionId": zod.coerce.number().int().min(1)
+})
+
+export const getPromotionReadinessResponseCohortCountMin = 0;
+
+export const getPromotionReadinessResponsePlacementConflictCountMin = 0;
+
+export const getPromotionReadinessResponseStudentsWithPublishedResultsMin = 0;
+
+export const getPromotionReadinessResponseMissingPublishedResultsMin = 0;
+
+export const getPromotionReadinessResponsePublishedResultCountMin = 0;
+
+
+
+export const GetPromotionReadinessResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "sourceSessionId": zod.number().int(),
+  "thirdTermId": zod.number().int().nullable(),
+  "cohortCount": zod.number().int().min(getPromotionReadinessResponseCohortCountMin),
+  "placementConflictCount": zod.number().int().min(getPromotionReadinessResponsePlacementConflictCountMin),
+  "studentsWithPublishedResults": zod.number().int().min(getPromotionReadinessResponseStudentsWithPublishedResultsMin),
+  "missingPublishedResults": zod.number().int().min(getPromotionReadinessResponseMissingPublishedResultsMin),
+  "publishedResultCount": zod.number().int().min(getPromotionReadinessResponsePublishedResultCountMin),
+  "executionEnabled": zod.literal(false),
+  "policyStatus": zod.enum(['REQUIRES_APPROVED_POLICY']),
+  "blockers": zod.array(zod.string()),
+  "warnings": zod.array(zod.string())
+})
+
+
+/**
  * Preparation snapshots currently placed students and real published-results and successful school-entry attendance summaries. Recommendation is advisory only: it is Eligible when there is at least one published result with at least 50% average and at least one recorded attendance day with at least 75% present/late; otherwise it is Pending. Schools must independently review and decide. Preparation does not move students or alter NFC identity. Target session must follow source session. If it is not the school's currently active calendar session, finalization is rejected; this endpoint never switches the school's global active session. Only an active school-scoped School Admin may operate; Platform Owner is excluded even on dual-role identities.
  * @summary Prepare a review-only promotion batch from a source and target session
  */

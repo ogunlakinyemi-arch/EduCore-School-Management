@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PromotionReadinessPreview } from './readiness-preview';
 import { Link } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, GraduationCap, ShieldAlert } from 'lucide-react';
@@ -76,7 +77,8 @@ function BatchHome({ schoolId, onOpen }: { schoolId: number; onOpen: (id: number
           <Field label="Target session"><select value={target} onChange={e => { setTarget(Number(e.target.value)); }}><option value={0}>Select…</option>{sessions.map(s => <option key={s.id} value={s.id}>{s.name}{s.isCurrent ? ' (current)' : ''}</option>)}</select></Field>
           <div className="rounded-xl bg-[hsl(var(--muted))] p-3 text-xs">Placement terms are chosen per student during review. The effective date is the backend finalization date; it is not set here.{target ? ` ${(termsQ.data ?? []).filter(t => t.isCurrent).length ? 'A current term exists in the target session.' : 'The target session has no current term yet.'}` : ''}</div>
         </div>
-        <p className="text-xs text-[hsl(var(--muted-foreground))]">Nothing takes effect until the batch is finalized.</p>
+        <PromotionReadinessPreview key={`${schoolId}:${source}`} schoolId={schoolId} sourceSessionId={source} />
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">Nothing takes effect until the batch is finalized. The validation preview above does not authorize this existing batch workflow.</p>
         {sessionsQ.isError && <Notice tone="error">Sessions could not be loaded.</Notice>}
         {bad && (source || target) && <Notice tone="info">{bad}</Notice>}
         {fail && <div role="alert"><Notice tone="error">{fail.message}</Notice></div>}

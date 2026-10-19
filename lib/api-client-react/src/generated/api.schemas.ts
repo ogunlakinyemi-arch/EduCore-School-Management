@@ -2218,6 +2218,34 @@ export interface StudentPhotoResult {
   passportUrl: string;
 }
 
+export type PromotionReadinessPolicyStatus = typeof PromotionReadinessPolicyStatus[keyof typeof PromotionReadinessPolicyStatus];
+
+
+export const PromotionReadinessPolicyStatus = {
+  REQUIRES_APPROVED_POLICY: 'REQUIRES_APPROVED_POLICY',
+} as const;
+
+export interface PromotionReadiness {
+  schoolId: number;
+  sourceSessionId: number;
+  /** @nullable */
+  thirdTermId: number | null;
+  /** @minimum 0 */
+  cohortCount: number;
+  /** @minimum 0 */
+  placementConflictCount: number;
+  /** @minimum 0 */
+  studentsWithPublishedResults: number;
+  /** @minimum 0 */
+  missingPublishedResults: number;
+  /** @minimum 0 */
+  publishedResultCount: number;
+  executionEnabled: false;
+  policyStatus: PromotionReadinessPolicyStatus;
+  blockers: string[];
+  warnings: string[];
+}
+
 /**
  * Optional honorific, stored separately from the person's name. Null clears it.
  * @nullable
@@ -15725,6 +15753,34 @@ export interface StudentPhotoResult4b96100 {
   passportUrl: string;
 }
 
+export type PromotionReadiness4b96100PolicyStatus = typeof PromotionReadiness4b96100PolicyStatus[keyof typeof PromotionReadiness4b96100PolicyStatus];
+
+
+export const PromotionReadiness4b96100PolicyStatus = {
+  REQUIRES_APPROVED_POLICY: 'REQUIRES_APPROVED_POLICY',
+} as const;
+
+export interface PromotionReadiness4b96100 {
+  schoolId: number;
+  sourceSessionId: number;
+  /** @nullable */
+  thirdTermId: number | null;
+  /** @minimum 0 */
+  cohortCount: number;
+  /** @minimum 0 */
+  placementConflictCount: number;
+  /** @minimum 0 */
+  studentsWithPublishedResults: number;
+  /** @minimum 0 */
+  missingPublishedResults: number;
+  /** @minimum 0 */
+  publishedResultCount: number;
+  executionEnabled: false;
+  policyStatus: PromotionReadiness4b96100PolicyStatus;
+  blockers: string[];
+  warnings: string[];
+}
+
 /**
  * Optional honorific, stored separately from the person's name. Null clears it.
  * @nullable
@@ -22126,6 +22182,17 @@ export type ConvertAcceptedAdmissionApplicationParams = {
  * @minimum 1
  */
 schoolId: number;
+};
+
+export type GetPromotionReadinessParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+sourceSessionId: number;
 };
 
 export type PreparePromotionBatchParams = {

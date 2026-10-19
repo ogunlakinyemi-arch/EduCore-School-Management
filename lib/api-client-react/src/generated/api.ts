@@ -354,6 +354,7 @@ import type {
   GetParentParams,
   GetPlatformTransportOverviewParams,
   GetPromotionBatchParams,
+  GetPromotionReadinessParams,
   GetSchoolAttendanceTodayParams,
   GetSchoolDashboardParams,
   GetSchoolEmployeeNfcAttendanceDailyParams,
@@ -630,6 +631,7 @@ import type {
   PromotionBatch,
   PromotionBatchDetail,
   PromotionHistoryEntry,
+  PromotionReadiness,
   PromotionReviewInput,
   PromotionStudent,
   PublicAdmissionApplicationReceipt,
@@ -12887,6 +12889,90 @@ export function useGetStudentCareSummary<TData = Awaited<ReturnType<typeof getSt
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStudentCareSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPromotionReadinessUrl = (params: GetPromotionReadinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/academics/promotions/readiness?${stringifiedParams}` : `/api/school/academics/promotions/readiness`
+}
+
+/**
+ * @summary Read-only published third-term evidence validation; never authorizes promotion
+ */
+export const getPromotionReadiness = async (params: GetPromotionReadinessParams, options?: Parameters<typeof customFetch>[1]): Promise<PromotionReadiness> => {
+
+  return customFetch<PromotionReadiness>(getGetPromotionReadinessUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPromotionReadinessQueryKey = (params?: GetPromotionReadinessParams,) => {
+    return [
+    `/api/school/academics/promotions/readiness`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPromotionReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getPromotionReadiness>>, TError = ErrorType<void>>(params: GetPromotionReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPromotionReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPromotionReadinessQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPromotionReadiness>>> = ({ signal }) => getPromotionReadiness(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPromotionReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPromotionReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getPromotionReadiness>>>
+export type GetPromotionReadinessQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read-only published third-term evidence validation; never authorizes promotion
+ */
+
+export function useGetPromotionReadiness<TData = Awaited<ReturnType<typeof getPromotionReadiness>>, TError = ErrorType<void>>(
+ params: GetPromotionReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPromotionReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPromotionReadinessQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

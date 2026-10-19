@@ -3,6 +3,7 @@
 Subsequent follow-up: [staged person-title forms and safeguards](2026-10-19-person-titles.md).
 That report supersedes the title portion of the remaining-scope list below,
 subject to its unapplied migration and acceptance boundaries.
+Latest follow-up: [photo blocker and promotion validation preview](2026-10-19-photo-blocker-promotion-preview.md).
 
 ## Scope and repository reference
 
