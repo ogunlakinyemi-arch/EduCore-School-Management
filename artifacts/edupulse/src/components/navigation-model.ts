@@ -3,6 +3,7 @@ export type NavGroupDef = { id: string; label: string; hrefs: string[] };
 export type NavSection = { id: string; label: string; hrefs: string[] };
 
 export const adminGroups: NavGroupDef[] = [
+  { id: 'records', label: 'Records', hrefs: ['/records'] },
   { id: 'students-parents', label: 'Students & Parents', hrefs: ['/students', '/parents', '/student-care', '/behaviour'] },
   { id: 'employees-staff', label: 'Employees & Staff', hrefs: ['/employees', '/teacher-assignments', '/teacher-duty', '/employee-nfc'] },
   { id: 'classes-subjects', label: 'Classes & Subjects', hrefs: ['/classes', '/subjects', '/curriculum', '/lesson-notes'] },

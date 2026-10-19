@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Plus, Search, Pencil } from 'lucide-react';
 import { DirectoryExport } from '@/components/directory-export';
 import { 
-  useListEmployees, useCreateEmployee, useUpdateEmployee, getListEmployeesQueryKey 
+  useListEmployees, useCreateEmployee, useUpdateEmployee, useUpdateEmployeeStatus, getListEmployeesQueryKey
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
@@ -15,8 +15,10 @@ export function EmployeesPage() {
   const { canManageSchool } = useSchoolAdminAccess();
   const [search, setSearch] = useState(''); 
   const [status, setStatus] = useState('ACTIVE'); 
-  const [modal, setModal] = useState<any>(null); 
+  const [modal, setModal] = useState<any>(null);
+  const [statusEmployee, setStatusEmployee] = useState<any>(null);
   const qc = useQueryClient();
+  useEffect(() => { setModal(null); setStatusEmployee(null); }, [schoolId]);
   
   const query = useListEmployees({ schoolId, search: search || undefined, status: status as any }, { query: { enabled: !!schoolId, queryKey: getListEmployeesQueryKey({ schoolId, search: search || undefined, status: status as any }) } }); 
   const employees: any[] = query.data ?? [];
@@ -115,9 +117,13 @@ export function EmployeesPage() {
                 <div>
                   <StatusPill value={emp.status} />
                 </div>
-                {canManageSchool && <Button variant="quiet" onClick={() => setModal(emp)} testId={`button-edit-employee-${emp.id}`}>
+                {canManageSchool && <div className="flex flex-wrap gap-2"><Button variant="quiet" onClick={() => setModal(emp)} testId={`button-edit-employee-${emp.id}`}>
                   <Pencil size={15} />Edit
-                </Button>}
+                </Button>
+                  {['ACTIVE', 'INACTIVE'].includes(emp.status) && <Button variant="outline" onClick={() => setStatusEmployee(emp)} testId={`button-status-employee-${emp.id}`}>
+                    {emp.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
+                  </Button>}
+                </div>}
               </div>
             )) : (
               <EmptyState 
@@ -129,15 +135,38 @@ export function EmployeesPage() {
             )}
           </div>
           
+          {statusEmployee && canManageSchool && (
+            <Modal title={statusEmployee.status === 'ACTIVE' ? 'Deactivate employee' : 'Reactivate employee'} eyebrow="Employment access" onClose={() => setStatusEmployee(null)}>
+              <EmployeeStatusConfirmation key={`${schoolId}-${statusEmployee.id}`} schoolId={schoolId} employee={statusEmployee} onCancel={() => setStatusEmployee(null)} onDone={() => { setStatusEmployee(null); done(); }} />
+            </Modal>
+          )}
           {modal && (
             <Modal title={modal.create ? 'Hire new employee' : 'Edit employee profile'} eyebrow="HR Records" onClose={() => setModal(null)}>
-              <EmployeeForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
+              <EmployeeForm key={`${schoolId}-${modal.id ?? 'new'}`} schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}
         </>
       )}
     </div>
   );
+}
+
+export function EmployeeStatusConfirmation({ schoolId, employee, onDone, onCancel }: { schoolId: number; employee: any; onDone: () => void; onCancel: () => void }) {
+  const mutation = useUpdateEmployeeStatus();
+  const deactivate = employee.status === 'ACTIVE';
+  return <div className="space-y-5">
+    <p>{deactivate ? 'Deactivate' : 'Reactivate'} <strong>{employee.firstName} {employee.lastName}</strong>?</p>
+    <p className="text-sm">{deactivate
+      ? 'Their matching Teacher/Staff access to this school will be denied on subsequent requests. Historical records, parent access and other-school roles are preserved.'
+      : 'Their existing matching Teacher/Staff membership can regain access to this school. No new membership is created.'}</p>
+    {mutation.isError && <p role="alert">Could not change employment status. Please retry.</p>}
+    <div className="flex justify-end gap-3">
+      <Button variant="outline" disabled={mutation.isPending} onClick={onCancel}>Cancel</Button>
+      <Button disabled={mutation.isPending} onClick={() => mutation.mutate({ employeeId: employee.id, params: { schoolId }, data: { status: deactivate ? 'INACTIVE' : 'ACTIVE' } }, { onSuccess: onDone })}>
+        {mutation.isPending ? 'Saving…' : deactivate ? 'Confirm deactivation' : 'Confirm reactivation'}
+      </Button>
+    </div>
+  </div>;
 }
 
 export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {
@@ -151,8 +180,7 @@ export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId
     email: initial?.email ?? '',
     phone: initial?.phone ?? '',
     department: initial?.department ?? '',
-    qualification: initial?.qualification ?? '',
-    status: initial?.status ?? 'ACTIVE'
+    qualification: initial?.qualification ?? ''
   });
   
   const save = (e: FormEvent) => { 
@@ -215,13 +243,7 @@ export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId
 
       {initial && (
         <Field label="Employment Status">
-          <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="SUSPENDED">Suspended</option>
-            <option value="RESIGNED">Resigned</option>
-            <option value="TERMINATED">Terminated</option>
-          </select>
+          <p>{initial.status}. Use the directory's Deactivate or Reactivate action to change active employment access.</p>
         </Field>
       )}
 

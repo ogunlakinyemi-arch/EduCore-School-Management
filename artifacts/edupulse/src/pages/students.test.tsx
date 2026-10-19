@@ -35,7 +35,11 @@ vi.mock('@/components/shared', () => ({
 }));
 
 import { getListStudentsUrl } from '@workspace/api-client-react';
-import { StudentsPage } from './students';
+import { StudentsPage, StudentAdmissionPhotoStep } from './students';
+
+vi.mock('@/components/student-photo-field', () => ({
+  StudentPhotoField: ({ schoolId, studentId }: any) => <input type="file" data-school={schoolId} data-student={studentId} />,
+}));
 
 describe('Student Directory default request', () => {
   beforeEach(() => {
@@ -62,4 +66,12 @@ describe('Student Directory default request', () => {
     expect(html).toContain('selected school or student filters were rejected');
     expect(html).not.toContain('operations feed');
   });
+});
+it('offers the existing private photo control after a persisted admission, without another create form', () => {
+  const html = renderToStaticMarkup(<StudentAdmissionPhotoStep schoolId={2} student={{ id: 12 }} onUpdated={vi.fn()} onDone={vi.fn()} />);
+  expect(html).toContain('Student admitted');
+  expect(html).toContain('type="file"');
+  expect(html).toContain('data-school="2"');
+  expect(html).toContain('data-student="12"');
+  expect(html).not.toContain('<form');
 });

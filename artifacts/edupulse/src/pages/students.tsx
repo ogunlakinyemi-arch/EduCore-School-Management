@@ -29,6 +29,7 @@ export function StudentsPage() {
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'TRANSFERRED'>('ACTIVE');
   const [modal, setModal] = useState<any>(null); 
   const [idCardStudent, setIdCardStudent] = useState<any>(null);
+  useEffect(() => { setModal(null); setIdCardStudent(null); }, [schoolId]);
   const qc = useQueryClient();
   const { canManageSchool } = useSchoolAdminAccess();
   const schoolQuery = useGetSchool(schoolId, { query: { enabled: !!schoolId, queryKey: getGetSchoolQueryKey(schoolId) } });
@@ -118,7 +119,7 @@ export function StudentsPage() {
               <div key={student.id} className="grid gap-3 border-b border-[hsl(var(--border)/.6)] px-5 py-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] last:border-0 md:grid-cols-[1.5fr_1fr_1fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div>
                   <div className="font-bold text-sm text-[hsl(var(--foreground))]">
-                    {student.firstName} {student.lastName}
+                    {canPreviewCards ? <button type="button" className="text-left hover:underline" onClick={() => setIdCardStudent(student)} aria-label={`View details for ${student.firstName} ${student.lastName}`}>{student.firstName} {student.lastName}</button> : <>{student.firstName} {student.lastName}</>}
                   </div>
                   <div className="mt-1.5 flex items-center gap-2.5 text-[11px] text-[hsl(var(--muted-foreground))]">
                     <span className="font-mono bg-[hsl(var(--secondary))] px-1.5 py-0.5 rounded text-[10px]">{student.admissionNo}</span>
@@ -138,7 +139,7 @@ export function StudentsPage() {
                   <div className="mt-1"><StatusPill value={student.subscriptionStatus} /></div>
                 </div>
                 <div className="flex items-center justify-end gap-1">
-                  {canPreviewCards && <Button variant="quiet" onClick={() => setIdCardStudent(student)} testId={`button-student-id-card-${student.id}`}>e-ID card</Button>}
+                  {canPreviewCards && <Button variant="quiet" onClick={() => setIdCardStudent(student)} testId={`button-student-id-card-${student.id}`}>View details / e-ID card</Button>}
                   {canManageSchool && <Button variant="quiet" onClick={() => setModal(student)} testId={`button-edit-student-${student.id}`}>
                     <Pencil size={15} />Edit
                   </Button>}
@@ -156,11 +157,11 @@ export function StudentsPage() {
           
           {canManageSchool && modal && (
             <Modal title={modal.create ? 'Admit new student' : 'Edit student profile'} eyebrow="Student Records" onClose={() => setModal(null)}>
-              <StudentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
+              <StudentForm key={`${schoolId}-${modal.id ?? 'new'}`} schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}
           {canPreviewCards && idCardStudent && (
-            <Modal title="Student e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
+            <Modal title="Student details / e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
               <StudentEIdCard studentId={idCardStudent.id} schoolId={schoolId} onClose={() => setIdCardStudent(null)} />
             </Modal>
           )}
@@ -311,6 +312,7 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
   const queryClient = useQueryClient();
   const [contactPending, setContactPending] = useState(false);
   const [contactError, setContactError] = useState('');
+  const [createdStudent, setCreatedStudent] = useState<any>(null);
   const registrationKey = useRef<string>(crypto.randomUUID()).current;
   const classesQuery = useListClasses({ schoolId }, { query: { queryKey: getListClassesQueryKey({ schoolId }) } });
   const parentsQuery = useListParents({ schoolId }, { query: { queryKey: getListParentsQueryKey({ schoolId }) } });
@@ -379,15 +381,18 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
         registrationKey,
         admissionNo: form.admissionNo.trim() || undefined,
         email: form.email.trim() || null,
-      } as any }, { onSuccess: saved });
+      } as any }, { onSuccess: student => { invalidateAfterSave(); setCreatedStudent(student); } });
     }
   };
   
   const pending = create.isPending || update.isPending || contactPending;
   const blocked = classesQuery.isError || classesQuery.isLoading || !classes.length || (!!initial && assignmentsQuery.isLoading) || !selectedClass;
 
+  if (createdStudent) return <StudentAdmissionPhotoStep schoolId={schoolId} student={createdStudent} onUpdated={invalidateAfterSave} onDone={onDone} />;
+
   return (
     <form onSubmit={save} className="space-y-5">
+      {!initial && <p className="text-sm">Passport photo: save the admission first, then upload JPEG, PNG or WebP (up to 3 MB) in the next step.</p>}
       {!initial && (
         <Field label="Admission Number">
           <input minLength={2} value={form.admissionNo} onChange={e => setForm({ ...form, admissionNo: e.target.value })} placeholder="Leave blank to generate automatically" className="font-mono" />
@@ -477,4 +482,12 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
       {(create.isError || update.isError) && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this record. Check the fields and try again.</p>}
     </form>
   );
+}
+
+export function StudentAdmissionPhotoStep({ schoolId, student, onUpdated, onDone }: { schoolId: number; student: { id: number; passportUrl?: string | null }; onUpdated: () => void; onDone: () => void }) {
+  return <div className="space-y-5">
+    <p role="status">Student admitted. You can now add their passport photo securely, or finish and add it later through Edit.</p>
+    <StudentPhotoField schoolId={schoolId} studentId={student.id} passportUrl={student.passportUrl} onUpdated={onUpdated} />
+    <Button onClick={onDone}>Done</Button>
+  </div>;
 }

@@ -86,6 +86,7 @@ app.use(peopleRouter);
 app.use(edupulseRouter);
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof AuthError) return res.status(error.statusCode).json({ error: error.message });
+  if (error instanceof Error && error.name === "ZodError") return res.status(400).json({ error: error.message });
   return res.status(500).json({ error: String(error) });
 });
 
@@ -159,5 +160,30 @@ describe("ordinary person create/edit routes without title storage", () => {
       expect([403, 404]).toContain((await send(path, method, base, role)).status);
     }
     expect(state.queries.some(({ sql }) => /(?:INSERT INTO|UPDATE) (parents|employees)\b/.test(sql))).toBe(false);
+  });
+});
+
+describe("school employee status changes", () => {
+  const sendStatus = (role: string, status: string, schoolId = 1) =>
+    fetch(`${baseUrl}/employees/50/status?schoolId=${schoolId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json", "x-test-role": role },
+      body: JSON.stringify({ status }),
+    });
+  it.each(["INACTIVE", "ACTIVE"])("updates %s with school scoping and an audit, without deleting history", async status => {
+    expect((await sendStatus("ADMIN", status)).status).toBe(200);
+    const write = state.queries.find(({ sql }) => sql.includes("UPDATE employees"));
+    expect(write?.sql).toContain("WHERE id = $2 AND school_id = $3");
+    expect(write?.values).toEqual([status, 50, 1]);
+    expect(state.queries.some(({ sql, values }) => sql.includes("INSERT INTO audit_logs") && values.includes("EMPLOYEE_STATUS_CHANGED"))).toBe(true);
+    expect(state.queries.some(({ sql }) => /DELETE|UPDATE (school_memberships|app_users)/.test(sql))).toBe(false);
+  });
+  it.each(["OWNER", "MIXED", "TEACHER"])("denies %s status changes without writing", async role => {
+    expect([403, 404]).toContain((await sendStatus(role, "INACTIVE")).status);
+    expect(state.queries.some(({ sql }) => sql.includes("UPDATE employees"))).toBe(false);
+  });
+  it("rejects a forged school and invalid status", async () => {
+    expect((await sendStatus("ADMIN", "INACTIVE", 2)).status).toBe(404);
+    expect((await sendStatus("ADMIN", "REMOVED")).status).toBe(400);
+    expect(state.queries.some(({ sql }) => sql.includes("UPDATE employees"))).toBe(false);
   });
 });

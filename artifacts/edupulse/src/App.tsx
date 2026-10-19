@@ -27,6 +27,7 @@ import { SchoolsPage, SchoolOverview } from '@/pages/schools';
 import { StudentsPage } from '@/pages/students';
 import { ParentsPage } from '@/pages/parents';
 import { EmployeesPage } from '@/pages/employees';
+import { RecordsPage } from '@/pages/records';
 import { PlatformCompanyEmployeesPage } from '@/pages/platform-company-employees';
 import { CompanyAccountantPage } from '@/pages/company-accountant';
 import { AcademicsPage } from '@/pages/academics';
@@ -323,8 +324,11 @@ export function ProtectedRoutes() {
           <Route path="/parents">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView ownerReadOnly><ParentsPage /></RoleGuard>
           </Route>
+          <Route path="/records">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView ownerReadOnly><RecordsPage /></RoleGuard>
+          </Route>
           <Route path="/employees">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><EmployeesPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView ownerReadOnly><EmployeesPage /></RoleGuard>
           </Route>
           <Route path="/academics">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView ownerReadOnly><AcademicsPage /></RoleGuard>
