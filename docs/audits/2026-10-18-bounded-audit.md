@@ -1,6 +1,7 @@
 # Yetenia EduCore bounded audit — 2026-10-18
 
 Follow-up: [versioned subscription policy and disclosure verification](2026-10-18-subscription-policy.md).
+Further follow-up: [bounded non-financial directory exports](2026-10-19-non-financial-follow-up.md).
 That follow-up supersedes the allocation and TypeScript status below; this report
 otherwise describes the original bounded pass.
 

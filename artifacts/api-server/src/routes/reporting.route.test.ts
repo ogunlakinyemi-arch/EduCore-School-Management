@@ -96,6 +96,54 @@ const reportResult = {
   total: 1,
 };
 
+describe("directory export authorization and delivery", () => {
+  const kinds = ["students", "classes", "parents", "staff", "teachers"];
+  it.each(kinds)("exports %s as an audited bounded Excel file for School Admin", async kind => {
+    const response = await fetch(`${baseUrl}/api/reports/directory-${kind}/export?schoolId=10&format=xlsx&limit=200&offset=200`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("spreadsheetml.sheet");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-report-rows")).toBe("1");
+    expect(response.headers.get("x-report-total")).toBe("450");
+    expect(Buffer.from(await response.arrayBuffer()).subarray(0, 2).toString()).toBe("PK");
+    expect(state.query.mock.calls.some(([sql, values]) =>
+      sql.includes("INSERT INTO audit_logs") && values[7].includes(`directory-${kind}`),
+    )).toBe(true);
+  });
+  it.each(kinds)("denies another tenant's %s before querying its directory", async kind => {
+    const response = await fetch(`${baseUrl}/api/reports/directory-${kind}/export?schoolId=20&format=xlsx`);
+    expect(response.status).toBe(404);
+    expect(state.query.mock.calls.some(([sql]) => sql.includes("COUNT(*)"))).toBe(false);
+  });
+  it.each(["TEACHER", "STAFF", "ACCOUNTANT", "PARENT", "STUDENT", "PARTNER"])("denies %s directory exports", async role => {
+    setRole(role);
+    for (const kind of kinds) {
+      const response = await fetch(`${baseUrl}/api/reports/directory-${kind}/export?schoolId=10&format=xlsx`);
+      expect([403, 404]).toContain(response.status);
+    }
+    expect(state.query.mock.calls.some(([sql]) => sql.includes("COUNT(*)"))).toBe(false);
+  });
+  it("allows Owner read exports but rejects an implicit all-school directory", async () => {
+    setRole("PLATFORM_OWNER", null);
+    expect((await fetch(`${baseUrl}/api/reports/directory-parents/export?format=xlsx`)).status).toBe(400);
+    expect((await fetch(`${baseUrl}/api/reports/directory-parents/export?schoolId=10&format=xlsx`)).status).toBe(200);
+  });
+  it("retains pagination bounds, rejects ignored filters and unauthenticated access", async () => {
+    for (const query of ["limit=201", "offset=1000001", "search=someone", "status=ACTIVE"]) {
+      expect((await fetch(`${baseUrl}/api/reports/directory-students/export?schoolId=10&format=xlsx&${query}`)).status).toBe(400);
+    }
+    state.authenticated = false;
+    expect((await fetch(`${baseUrl}/api/reports/directory-students/export?schoolId=10&format=xlsx`)).status).toBe(401);
+  });
+  it("exports only fixed columns and neutralizes formulas in CSV", async () => {
+    const response = await fetch(`${baseUrl}/api/reports/directory-parents/export?schoolId=10&format=csv`);
+    const csv = await response.text();
+    expect(response.status).toBe(200);
+    expect(csv).toContain("'=1+1");
+    expect(csv).not.toContain("hidden-private-value");
+  });
+});
+
 beforeAll(async () => {
   server = app.listen(0);
   await new Promise<void>(resolve => server.once("listening", resolve));
@@ -134,6 +182,11 @@ beforeEach(() => {
   state.run.mockReset().mockImplementation(async () => reportResult);
   state.query.mockReset().mockImplementation(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
+    if (/\bFROM (students|school_classes|parents|employees)\s+WHERE school_id=\$1/.test(sql)) {
+      return { rows: sql.includes("COUNT(*)") ? [{ total: 450 }] : [{
+        name: "=1+1", first_name: "Example", salary: "hidden-private-value",
+      }] };
+    }
     if (sql.includes("LEFT JOIN school_branding_logos")) {
       return {
         rows: [{

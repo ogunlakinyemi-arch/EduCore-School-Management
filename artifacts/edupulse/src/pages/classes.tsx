@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { Library, Plus, Search, Pencil } from 'lucide-react';
+import { DirectoryExport } from '@/components/directory-export';
 import { useListClasses, useCreateClass, getListClassesQueryKey } from '@workspace/api-client-react';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx, useSchoolAdminAccess } from '@/components/shared';
 
@@ -36,6 +37,7 @@ export function ClassesPage() {
         } 
       />
       
+      <div className="mb-4"><DirectoryExport key={schoolId} kind="classes" /></div>
       {!schoolId ? (
         <EmptyState icon={Library} title="Select a school context" description="You must select a school to manage its classes." />
       ) : query.isLoading ? (

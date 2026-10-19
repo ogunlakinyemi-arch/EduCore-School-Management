@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { UsersRound, Plus, Search, Pencil, ArrowRight } from 'lucide-react';
+import { DirectoryExport } from '@/components/directory-export';
 import { 
   useListParents, useCreateParent, useUpdateParent, getListParentsQueryKey,
   useListStudents, getListStudentsQueryKey,
@@ -41,6 +42,7 @@ export function ParentsPage() {
         } 
       />
       
+      <div className="mb-4"><DirectoryExport key={schoolId} kind="parents" /></div>
       {!schoolId ? (
         <EmptyState 
           icon={UsersRound} 

@@ -18,6 +18,7 @@ import {
   Modal, Field, Info, TenantPicker, useTenant, cx, date, useSchoolAdminAccess
 } from '@/components/shared';
 import { StudentPhotoField } from '@/components/student-photo-field';
+import { DirectoryExport } from '@/components/directory-export';
 
 export function StudentsPage() {
   const authorized = useGetAuthorizedContext();
@@ -57,6 +58,7 @@ export function StudentsPage() {
         } 
       />
       
+      <div className="mb-4"><DirectoryExport key={schoolId} kind="students" /></div>
       {!schoolId ? (
         <EmptyState 
           icon={GraduationCap} 

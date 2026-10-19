@@ -5,6 +5,7 @@ import { activitiesReports } from "./reporting/activities";
 import { businessReports } from "./reporting/business";
 import { learningReports } from "./reporting/learning";
 import { organizationReports } from "./reporting/organization";
+import { directoryReports } from "./reporting/directories";
 import {
   parseReportFilters,
   resolveReportContext,
@@ -25,6 +26,7 @@ const router = Router();
 router.use("/reports", requireAuthentication());
 
 const reports: Record<string, ReportDefinition> = {
+  ...directoryReports,
   ...organizationReports,
   ...learningReports,
   ...businessReports,
@@ -147,6 +149,8 @@ router.get("/reports/:reportId/export", asyncRoute(async (req, res) => {
   res.setHeader("Content-Type", file.contentType);
   res.setHeader("Content-Disposition", file.contentDisposition);
   res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Report-Total", String(result.total));
+  res.setHeader("X-Report-Rows", String(result.rows.length));
   res.send(file.body);
 }));
 

@@ -73,3 +73,7 @@ observed Production communication-worker errors are not resolved by this pass.
 Person titles, wider protected CRUD/deactivation, complete promotion acceptance,
 timetable import, guardian-photo completion and additional exports remain open.
 The original audit's remaining-scope list still applies to those areas.
+
+Subsequent work: [bounded non-financial follow-up](2026-10-19-non-financial-follow-up.md)
+adds school-scoped directory exports; its verification limits and remaining
+non-financial scope supersede the exports portion of this remaining-scope note.

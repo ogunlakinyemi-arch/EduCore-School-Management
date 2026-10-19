@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Plus, Search, Pencil } from 'lucide-react';
+import { DirectoryExport } from '@/components/directory-export';
 import { 
   useListEmployees, useCreateEmployee, useUpdateEmployee, getListEmployeesQueryKey 
 } from '@workspace/api-client-react';
@@ -40,6 +41,10 @@ export function EmployeesPage() {
         } 
       />
       
+      <div className="mb-4 grid gap-2">
+        <DirectoryExport key={`staff-${schoolId}`} kind="staff" />
+        <DirectoryExport key={`teachers-${schoolId}`} kind="teachers" />
+      </div>
       {!schoolId ? (
         <EmptyState 
           icon={Briefcase} 
