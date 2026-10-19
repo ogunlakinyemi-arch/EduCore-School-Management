@@ -8,10 +8,8 @@
 import type { Employee4b96100Gender } from './employee4b96100Gender';
 import type { EmployeeStatus4b96100 } from './employeeStatus4b96100';
 import type { EmployeeType4b96100 } from './employeeType4b96100';
-import type { PersonTitle4b96100 } from './personTitle4b96100';
 
 export interface Employee4b96100 {
-  personTitle?: PersonTitle4b96100 | null;
   /**
      * Linked login account state
      * @nullable

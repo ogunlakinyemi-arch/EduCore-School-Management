@@ -1593,8 +1593,6 @@ export * from './peopleImportUpload';
 export * from './peopleImportUpload4b96100';
 export * from './peopleImportUpload4b96100Kind';
 export * from './peopleImportUploadKind';
-export * from './personTitle';
-export * from './personTitle4b96100';
 export * from './pickupCancelInput';
 export * from './pickupCancelInput4b96100';
 export * from './pickupCompletionInput';

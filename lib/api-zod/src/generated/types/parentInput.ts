@@ -6,10 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ParentInputRelationshipType } from './parentInputRelationshipType';
-import type { PersonTitle } from './personTitle';
 
 export interface ParentInput {
-  personTitle?: PersonTitle | null;
   /** @minLength 2 */
   name: string;
   email: string;

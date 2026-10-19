@@ -1,7 +1,6 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
 import { visibleSubscription } from "../lib/subscription-visibility";
-import { personTitleWrite } from "../lib/person-title";
 import { newStudentPaymentReference } from "../lib/student-allocation-policy";
 import { splitAttribution } from "../services/flutterwave-split-checkout";
 import { resolveRegistrationClass, saveRegistrationAssignment, registrationParent } from "../lib/student-registration-assignment";
@@ -777,7 +776,6 @@ router.get("/parents", async (req, res) => {
     if (query.search) values.push(`%${query.search}%`);
     const result = await pool.query(`
       SELECT p.id, p.school_id AS "schoolId", p.name, p.email, p.phone, p.address, p.status,
-        to_jsonb(p)->>'person_title' AS "personTitle",
         p.default_relationship_type AS "relationshipType", au.clerk_user_id AS "clerkUserId",
         p.emergency_contact_name AS "emergencyContactName", p.emergency_contact_phone AS "emergencyContactPhone",
         (SELECT COUNT(*)::int FROM parent_student_relationships psr WHERE psr.parent_id=p.id) AS "childrenCount",
@@ -912,17 +910,15 @@ router.post("/parents", async (req, res) => {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN"]);
     assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const body = CreateParentBody.parse(req.body);
-    const title = await personTitleWrite("parents", body.personTitle, 9);
     const result = await pool.query(`
       INSERT INTO parents (school_id, name, email, phone, address,
-        default_relationship_type, emergency_contact_name, emergency_contact_phone${title.column})
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8${title.value})
+        default_relationship_type, emergency_contact_name, emergency_contact_phone)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id, school_id AS "schoolId", name, email, phone, address, status,
-        to_jsonb(parents)->>'person_title' AS "personTitle",
         default_relationship_type AS "relationshipType",
         emergency_contact_name AS "emergencyContactName", emergency_contact_phone AS "emergencyContactPhone"
     `, [schoolId, body.name, body.email, body.phone, body.address ?? null,
-      body.relationshipType ?? null, body.emergencyContactName ?? null, body.emergencyContactPhone ?? null, ...title.params]);
+      body.relationshipType ?? null, body.emergencyContactName ?? null, body.emergencyContactPhone ?? null]);
     const parent = { ...result.rows[0],
       clerkUserId: null, childrenCount: 0, activeChildren: 0 };
     await audit(req, schoolId, "Created parent", "Parents", result.rows[0].id, "info", "USER_CREATED");

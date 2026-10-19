@@ -197,7 +197,6 @@ export const parents = pgTable(
     schoolId: integer("school_id").notNull().references(() => schools.id),
     userId: integer("user_id").references(() => appUsers.id),
     name: text("name").notNull(),
-    personTitle: text("person_title"),
     email: text("email").notNull(),
     phone: text("phone").notNull(),
     address: text("address"),
@@ -212,7 +211,6 @@ export const parents = pgTable(
     uniqueIndex("parents_user_unique").on(table.userId),
     unique("parents_id_school_unique").on(table.id, table.schoolId),
     index("parents_school_idx").on(table.schoolId),
-    check("parents_person_title_ck", sql`${table.personTitle} IS NULL OR ${table.personTitle} IN ('Mr','Mrs','Ms','Miss','Dr','Prof','Rev','Pastor','Imam','Alhaji','Alhaja','Chief','Engr','Barr','Hon')`),
   ],
 );
 
@@ -668,7 +666,6 @@ export const employees = pgTable(
     userId: integer("user_id").references(() => appUsers.id),
     employeeNo: text("employee_no").notNull(),
     firstName: text("first_name").notNull(),
-    personTitle: text("person_title"),
     middleName: text("middle_name"),
     lastName: text("last_name").notNull(),
     phone: text("phone"),
@@ -689,7 +686,6 @@ export const employees = pgTable(
     uniqueIndex("employees_id_school_unique").on(table.id, table.schoolId),
     unique("employees_id_school_tenant_key").on(table.id, table.schoolId),
     index("employees_school_type_status_idx").on(table.schoolId, table.employeeType, table.employmentStatus),
-    check("employees_person_title_ck", sql`${table.personTitle} IS NULL OR ${table.personTitle} IN ('Mr','Mrs','Ms','Miss','Dr','Prof','Rev','Pastor','Imam','Alhaji','Alhaja','Chief','Engr','Barr','Hon')`),
   ],
 );
 

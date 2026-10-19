@@ -2,8 +2,6 @@ import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Plus, Search, Pencil } from 'lucide-react';
 import { DirectoryExport } from '@/components/directory-export';
-import { PersonTitleField, personDisplayName, personSaveError } from '@/components/person-title';
-import type { PersonTitle } from '@workspace/api-client-react';
 import { 
   useListEmployees, useCreateEmployee, useUpdateEmployee, getListEmployeesQueryKey 
 } from '@workspace/api-client-react';
@@ -100,7 +98,7 @@ export function EmployeesPage() {
               <div key={emp.id} className="grid gap-3 border-b border-[hsl(var(--border)/.6)] px-5 py-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] last:border-0 md:grid-cols-[1.5fr_1fr_1.5fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div>
                   <div className="font-bold text-sm text-[hsl(var(--foreground))]">
-                    {personDisplayName(emp.personTitle, emp.firstName, emp.lastName)}
+                    {[emp.firstName, emp.lastName].filter(Boolean).join(' ')}
                   </div>
                   <div className="mt-1.5 flex items-center gap-2.5 text-[11px] text-[hsl(var(--muted-foreground))]">
                     <span className="font-mono bg-[hsl(var(--secondary))] px-1.5 py-0.5 rounded text-[10px]">{emp.employeeId}</span>
@@ -147,7 +145,6 @@ export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId
   const update = useUpdateEmployee(); 
   
   const [form, setForm] = useState({ 
-    personTitle: (initial?.personTitle ?? null) as PersonTitle,
     firstName: initial?.firstName ?? '', 
     lastName: initial?.lastName ?? '', 
     type: initial?.type ?? 'TEACHER', 
@@ -171,7 +168,6 @@ export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId
 
   return (
     <form onSubmit={save} className="space-y-5">
-      <PersonTitleField value={form.personTitle} onChange={personTitle => setForm({ ...form, personTitle })} />
       {!initial && (
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Employee number">
@@ -233,7 +229,7 @@ export function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending}>{pending ? 'Saving…' : initial ? 'Save changes' : 'Add employee'}</Button>
       </div>
-      {(create.isError || update.isError) && <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">{personSaveError(create.error ?? update.error)}</p>}
+      {(create.isError || update.isError) && <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this record. Check the fields and try again.</p>}
     </form>
   );
 }

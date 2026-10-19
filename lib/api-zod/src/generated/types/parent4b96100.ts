@@ -7,10 +7,8 @@
  */
 import type { Parent4b96100RelationshipType } from './parent4b96100RelationshipType';
 import type { Parent4b96100Status } from './parent4b96100Status';
-import type { PersonTitle4b96100 } from './personTitle4b96100';
 
 export interface Parent4b96100 {
-  personTitle?: PersonTitle4b96100 | null;
   id: number;
   schoolId: number;
   name: string;

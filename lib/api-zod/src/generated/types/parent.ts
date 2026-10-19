@@ -7,10 +7,8 @@
  */
 import type { ParentRelationshipType } from './parentRelationshipType';
 import type { ParentStatus } from './parentStatus';
-import type { PersonTitle } from './personTitle';
 
 export interface Parent {
-  personTitle?: PersonTitle | null;
   id: number;
   schoolId: number;
   name: string;

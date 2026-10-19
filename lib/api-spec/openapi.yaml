@@ -6707,15 +6707,10 @@ components:
         policyStatus: { type: string, enum: [REQUIRES_APPROVED_POLICY] }
         blockers: { type: array, items: { type: string } }
         warnings: { type: array, items: { type: string } }
-    PersonTitle:
-      type: ["string", "null"]
-      enum: [Mr, Mrs, Ms, Miss, Dr, Prof, Rev, Pastor, Imam, Alhaji, Alhaja, Chief, Engr, Barr, Hon, null]
-      description: Optional honorific, stored separately from the person's name. Null clears it.
     Parent:
       type: object
       required: [id, schoolId, name, email, phone, childrenCount, activeChildren]
       properties:
-        personTitle: { $ref: "#/components/schemas/PersonTitle" }
         id: { type: integer }
         schoolId: { type: integer }
         name: { type: string }
@@ -7207,7 +7202,6 @@ components:
       type: object
       required: [name, email, phone]
       properties:
-        personTitle: { $ref: "#/components/schemas/PersonTitle" }
         name: { type: string, minLength: 2 }
         email: { type: string, format: email }
         phone: { type: string, minLength: 7 }
@@ -7218,7 +7212,6 @@ components:
     ParentUpdate:
       type: object
       properties:
-        personTitle: { $ref: "#/components/schemas/PersonTitle" }
         relationshipType: { type: string, enum: [Father, Mother, Guardian, Grandparent, Other], description: Default for new child links; does not change existing relationships }
         name: { type: string, minLength: 2 }
         email: { type: string, format: email }
@@ -7237,7 +7230,6 @@ components:
       type: object
       required: [id, schoolId, employeeId, firstName, lastName, type, status]
       properties:
-        personTitle: { $ref: "#/components/schemas/PersonTitle" }
         accountStatus: { type: ["string", "null"], description: Linked login account state, not employment status }
         id: { type: integer }
         schoolId: { type: integer }
@@ -7260,7 +7252,6 @@ components:
       type: object
       required: [firstName, lastName, type]
       properties:
-        personTitle: { $ref: "#/components/schemas/PersonTitle" }
         employeeId: { type: string, description: Legacy input ignored on creation; the server generates a permanent number }
         firstName: { type: string, minLength: 2 }
         middleName: { type: string }
@@ -7278,7 +7269,6 @@ components:
     EmployeeUpdate:
       type: object
       properties:
-        personTitle: { $ref: "#/components/schemas/PersonTitle" }
         firstName: { type: string, minLength: 2 }
         middleName: { type: string }
         lastName: { type: string, minLength: 2 }

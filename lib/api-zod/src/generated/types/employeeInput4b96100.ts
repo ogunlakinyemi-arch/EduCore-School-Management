@@ -7,10 +7,8 @@
  */
 import type { EmployeeInput4b96100Gender } from './employeeInput4b96100Gender';
 import type { EmployeeType4b96100 } from './employeeType4b96100';
-import type { PersonTitle4b96100 } from './personTitle4b96100';
 
 export interface EmployeeInput4b96100 {
-  personTitle?: PersonTitle4b96100 | null;
   /** Legacy input ignored on creation; the server generates a permanent number */
   employeeId?: string;
   /** @minLength 2 */

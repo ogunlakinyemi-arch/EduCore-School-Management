@@ -1,5 +1,17 @@
 # Development title storage and Reporting Library
 
+## Superseded: title feature withdrawn
+
+The user subsequently requested removal, not rollout, of person titles.
+Parent/Teacher/Staff forms, API contracts, SQL read/write paths, schema
+declarations and generated types no longer use titles or require 0168.
+The reporting corrections below remain unchanged. The remaining rollout
+description is historical, not a current execution instruction.
+0168 is retained as an inert SQL file: no local journal reference was found,
+but its absence from applied database ledgers cannot be verified without a
+prohibited database query. No migration was applied, rolled back or deleted,
+and existing names/records were not rewritten.
+
 ## Migration disposition: NOT APPLIED
 
 Only the existing backup execution-environment guard was invoked. It refused this

@@ -73,5 +73,5 @@
 - [Subscription business policy](subscription-business-policy.md) — requested future 1,900/3,000/100 split, separate Owner provider fees, immutable history and Owner-only full disclosure.
 - [Employee deactivation boundary](employee-deactivation-boundary.md) — deny school employment permissions without globally disabling independent family or other-tenant access.
 - [Pooled PostgreSQL sessions](pooled-postgres-session-state.md) — pin a client for session-local SQL state; expected query errors can replace pooled connections.
-- [Separate person honorifics](person-title-policy.md) — titles must not rewrite identity names or historical records, or expand Owner school-operation permissions.
+- [Person titles withdrawn](person-title-policy.md) — keep plain-name forms; do not restore title controls or a migration prerequisite without a new user request.
 - [Approved promotion policy](promotion-policy-boundary.md) — third-term evidence and legacy heuristics do not establish school-approved promotion eligibility or authorize execution.

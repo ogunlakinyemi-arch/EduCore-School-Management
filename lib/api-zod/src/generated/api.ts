@@ -11664,7 +11664,6 @@ export const ListParentsQueryParams = zod.object({
 })
 
 export const ListParentsResponseItem = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "name": zod.string(),
@@ -11699,7 +11698,6 @@ export const createParentBodyPhoneMin = 7;
 
 
 export const CreateParentBody = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "name": zod.string().min(createParentBodyNameMin),
   "email": zod.string().email(),
   "phone": zod.string().min(createParentBodyPhoneMin),
@@ -11710,7 +11708,6 @@ export const CreateParentBody = zod.object({
 })
 
 export const CreateParentResponse = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "name": zod.string(),
@@ -11745,7 +11742,6 @@ export const GetParentQueryParams = zod.object({
 })
 
 export const GetParentResponse = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "name": zod.string(),
@@ -11786,7 +11782,6 @@ export const updateParentBodyPhoneMin = 7;
 
 
 export const UpdateParentBody = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "relationshipType": zod.enum(['Father', 'Mother', 'Guardian', 'Grandparent', 'Other']).optional().describe('Default for new child links; does not change existing relationships'),
   "name": zod.string().min(updateParentBodyNameMin).optional(),
   "email": zod.string().email().optional(),
@@ -11798,7 +11793,6 @@ export const UpdateParentBody = zod.object({
 })
 
 export const UpdateParentResponse = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "name": zod.string(),
@@ -11831,7 +11825,6 @@ export const ListEmployeesQueryParams = zod.object({
 })
 
 export const ListEmployeesResponseItem = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "accountStatus": zod.string().nullish().describe('Linked login account state'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -11872,7 +11865,6 @@ export const createEmployeeBodyLastNameMin = 2;
 
 
 export const CreateEmployeeBody = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "employeeId": zod.string().optional().describe('Legacy input ignored on creation; the server generates a permanent number'),
   "firstName": zod.string().min(createEmployeeBodyFirstNameMin),
   "middleName": zod.string().optional(),
@@ -11890,7 +11882,6 @@ export const CreateEmployeeBody = zod.object({
 })
 
 export const CreateEmployeeResponse = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "accountStatus": zod.string().nullish().describe('Linked login account state'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -11930,7 +11921,6 @@ export const GetEmployeeQueryParams = zod.object({
 })
 
 export const GetEmployeeResponse = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "accountStatus": zod.string().nullish().describe('Linked login account state'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -11977,7 +11967,6 @@ export const updateEmployeeBodyLastNameMin = 2;
 
 
 export const UpdateEmployeeBody = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "firstName": zod.string().min(updateEmployeeBodyFirstNameMin).optional(),
   "middleName": zod.string().optional(),
   "lastName": zod.string().min(updateEmployeeBodyLastNameMin).optional(),
@@ -11993,7 +11982,6 @@ export const UpdateEmployeeBody = zod.object({
 })
 
 export const UpdateEmployeeResponse = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "accountStatus": zod.string().nullish().describe('Linked login account state'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -12037,7 +12025,6 @@ export const UpdateEmployeeStatusBody = zod.object({
 })
 
 export const UpdateEmployeeStatusResponse = zod.object({
-  "personTitle": zod.union([zod.literal('Mr'),zod.literal('Mrs'),zod.literal('Ms'),zod.literal('Miss'),zod.literal('Dr'),zod.literal('Prof'),zod.literal('Rev'),zod.literal('Pastor'),zod.literal('Imam'),zod.literal('Alhaji'),zod.literal('Alhaja'),zod.literal('Chief'),zod.literal('Engr'),zod.literal('Barr'),zod.literal('Hon'),zod.literal(null)]).nullish().describe('Optional honorific, stored separately from the person\'s name. Null clears it.'),
   "accountStatus": zod.string().nullish().describe('Linked login account state'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
