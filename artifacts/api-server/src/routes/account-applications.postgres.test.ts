@@ -34,7 +34,7 @@ import { decideApplication } from "../services/account-applications";
 describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
   let server: Server, url: string;
   const payload = (applicantType = "PARTNER") => ({
-    applicantType,fullName:"Application Tester",phone:"0800 000 0000",
+    applicantType,fullName:"Application Tester",phone:"0800 000 0000",email:state.clerkEmail,
     ...(applicantType === "SCHOOL_ADMIN" ? {schoolName:"Application QA School",address:"1 School Road"}
       : {email:state.clerkEmail,partnerType:"BUSINESS",businessName:"Application QA Business"}),
   });
@@ -91,16 +91,38 @@ describe.skipIf(!enabled)("account applications on isolated PostgreSQL", () => {
   it.each([
     ["SCHOOL_ADMIN","APPROVED"],["PARTNER","APPROVED"],["SCHOOL_ADMIN","REJECTED"],["PARTNER","REJECTED"],
   ])("lists a new %s signup for the Owner and reflects its %s decision",async(type,status)=>{
+    const applicantEmail=state.clerkEmail;
     const a=await submit(type);
     state.userId=state.ownerId;
     const pending=await call("/platform/account-applications");
     expect(pending.status).toBe(200);
-    expect((await pending.json() as any[]).find(row=>row.id===a.id)).toMatchObject({applicantType:type,status:"PENDING"});
+    expect((await pending.json() as any[]).find(row=>row.id===a.id)).toMatchObject({applicantType:type,status:"PENDING",email:applicantEmail});
     const decision=await call(`/platform/account-applications/${a.id}/decision`,
       status==="REJECTED"?{status,reason:"Details not verified"}:{status});
     expect(decision.status).toBe(200);
     const listed=await call("/platform/account-applications");
-    expect((await listed.json() as any[]).find(row=>row.id===a.id)).toMatchObject({applicantType:type,status});
+    expect((await listed.json() as any[]).find(row=>row.id===a.id)).toMatchObject({applicantType:type,status,email:applicantEmail});
+  });
+  it.each(["SCHOOL_ADMIN","PARTNER"])("requires an explicit valid matching email for %s without creating records on failure",async(type)=>{
+    for(const email of [undefined,"","invalid-email"]){
+      expect((await call("/account-application",{...payload(type),email})).status).toBe(400);
+    }
+    expect((await call("/account-application",{...payload(type),email:"another@example.test"})).status).toBe(409);
+    expect((await pool.query("SELECT id FROM account_applications WHERE user_id=$1",[state.userId])).rows).toHaveLength(0);
+    expect((await pool.query("SELECT id FROM school_memberships WHERE user_id=$1",[state.userId])).rows).toHaveLength(0);
+  });
+  it("stores the explicitly entered normalized School Admin email with the submitting account and exposes it to Owner review",async()=>{
+    const userId=state.userId,email=state.clerkEmail;
+    const response=await call("/account-application",{...payload("SCHOOL_ADMIN"),email:`  ${email.toUpperCase()}  `});
+    expect(response.status).toBe(201);
+    const a=await response.json() as {id:number;email:string;status:string};
+    expect(a).toMatchObject({email,status:"PENDING"});
+    expect((await pool.query("SELECT user_id,email FROM account_applications WHERE id=$1",[a.id])).rows[0]).toEqual({user_id:userId,email});
+    state.userId=state.ownerId;
+    const listed=await call("/platform/account-applications");
+    expect((await listed.json() as any[]).find(row=>row.id===a.id)).toMatchObject({email,status:"PENDING"});
+    expect((await call(`/platform/account-applications/${a.id}/decision`,{status:"APPROVED"})).status).toBe(200);
+    expect((await pool.query(`SELECT s.email FROM schools s JOIN school_memberships m ON m.school_id=s.id WHERE m.user_id=$1 AND m.role='SCHOOL_ADMIN'`,[userId])).rows[0]).toMatchObject({email});
   });
   it.each(["TEACHER","STAFF","PARENT","STUDENT","PLATFORM_OWNER"])("rejects public %s applications",async(type)=>{
     expect((await call("/account-application",payload(type))).status).toBe(400);

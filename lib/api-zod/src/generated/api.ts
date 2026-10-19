@@ -61,7 +61,7 @@ export const submitAccountApplicationBodyReferralTokenMax = 256;
 export const SubmitAccountApplicationBody = zod.object({
   "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
   "fullName": zod.string().min(submitAccountApplicationBodyFullNameMin).max(submitAccountApplicationBodyFullNameMax),
-  "email": zod.string().email().max(submitAccountApplicationBodyEmailMax).optional().describe('Required for Partner; must match the verified account email.'),
+  "email": zod.string().email().max(submitAccountApplicationBodyEmailMax).describe('Required applicant-provided email for School Admin and Partner; must match the verified sign-in account email.'),
   "partnerType": zod.enum(['BUSINESS', 'INDIVIDUAL']).optional().describe('Required for Partner; omitted for School Admin.'),
   "phone": zod.string().min(submitAccountApplicationBodyPhoneMin).max(submitAccountApplicationBodyPhoneMax),
   "city": zod.string().max(submitAccountApplicationBodyCityMax).optional(),

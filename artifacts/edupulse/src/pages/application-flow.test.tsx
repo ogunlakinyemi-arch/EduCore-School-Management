@@ -8,7 +8,7 @@ const state=vi.hoisted(()=>({
 }));
 vi.mock('@clerk/react',()=>({
   useAuth:()=>({isLoaded:true,isSignedIn:true}), useClerk:()=>({signOut:vi.fn()}),
-  SignIn:()=> <div>Clerk sign in</div>, SignUp:()=> <div data-testid="clerk-signup">Clerk sign up</div>,
+  SignIn:()=> <div>Clerk sign in</div>, SignUp:({initialValues}:any)=> <div data-testid="clerk-signup" data-email={initialValues?.emailAddress}>Clerk sign up</div>,
 }));
 vi.mock('wouter',()=>({useLocation:()=>['/',state.navigate],Redirect:()=>null,
   Link:({children,href}:any)=><a href={href}>{children}</a>}));
@@ -45,6 +45,31 @@ const input=(id:string,value:string)=>{
   });
 };
 describe('public application UI behavior',()=>{
+  it('requires School Admin email before Clerk, validates it and retains it when editing',()=>{
+    render(<AuthScreen mode="sign-up"/>);
+    expect(host.textContent).toContain('School Admin Email (required)');
+    expect((host.querySelector('[data-testid="input-email"]') as HTMLInputElement).required).toBe(true);
+    input('input-school-name','Hill School');input('input-full-name','Ada Obi');input('input-phone','08031234567');
+    click('button-submit-application');
+    expect(host.querySelector('[data-testid="error-email"]')?.textContent).toContain('required');
+    expect(host.querySelector('[data-testid="clerk-signup"]')).toBeNull();
+    input('input-email','not-an-email');click('button-submit-application');
+    expect(host.querySelector('[data-testid="error-email"]')?.textContent).toContain('valid email');
+    input('input-email','ada@example.test');click('button-submit-application');
+    expect(host.querySelector('[data-testid="clerk-signup"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="clerk-signup"]')?.getAttribute('data-email')).toBe('ada@example.test');
+    expect(JSON.parse(sessionStorage.getItem('edupulse:application-draft')!).v.email).toBe('ada@example.test');
+    click('button-edit-application');
+    expect((host.querySelector('[data-testid="input-email"]') as HTMLInputElement).value).toBe('ada@example.test');
+  });
+  it('does not infer an email or auto-submit a legacy School draft without one',()=>{
+    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{
+      applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'08031234567',schoolName:'Hill School',
+    }}));
+    render(<ApplicationPortal autoSubmit/>);
+    expect(state.submit).not.toHaveBeenCalled();
+    expect((host.querySelector('[data-testid="input-email"]') as HTMLInputElement).value).toBe('');
+  });
   it('filters new School Admin and Partner applications and moves a decided row after refresh',()=>{
     state.rows=[
       {id:81,applicantType:'SCHOOL_ADMIN',fullName:'School Applicant',status:'PENDING',createdAt:'2026-10-19T00:00:00Z'},
@@ -72,7 +97,7 @@ describe('public application UI behavior',()=>{
       window.history.replaceState(null,'','/sign-up?applicantType=SCHOOL_ADMIN');
       sessionStorage.setItem('edupulse:application-intent',JSON.stringify({type:'SCHOOL_ADMIN',referralToken:'current-referral-token'}));
       sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{
-        applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'08031234567',schoolName:'Hill School',referralToken:'older-referral-token',
+        applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',email:'ada@example.test',phone:'08031234567',schoolName:'Hill School',referralToken:'older-referral-token',
       }}));
       render(<AuthScreen mode="sign-up"/>);
       click('button-submit-application');
@@ -85,7 +110,7 @@ describe('public application UI behavior',()=>{
     click('button-submit-application');
     expect(host.querySelector('[data-testid="error-schoolName"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="clerk-signup"]')).toBeNull();
-    input('input-school-name','Hill School');input('input-full-name','  Ada   Obi ');input('input-phone','0803 123 4567');
+    input('input-school-name','Hill School');input('input-full-name','  Ada   Obi ');input('input-phone','0803 123 4567');input('input-email','  ADA@example.test  ');
     click('button-submit-application');
     expect(host.querySelector('[data-testid="clerk-signup"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="footer-sign-in"]')).toBeNull();
@@ -105,17 +130,17 @@ describe('public application UI behavior',()=>{
     expect(host.querySelector('[data-testid="input-school-name"]')).toBeNull();
   });
   it('auto-submits a valid draft once and clears it on success',()=>{
-    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'+2348031234567',schoolName:'Hill School'}}));
+    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',email:'ada@example.test',phone:'+2348031234567',schoolName:'Hill School'}}));
     render(<ApplicationPortal autoSubmit/>);
     render(<ApplicationPortal autoSubmit/>);
     expect(state.submit).toHaveBeenCalledTimes(1);
-    expect(state.submit.mock.calls[0][0]).toEqual({data:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'+2348031234567',schoolName:'Hill School'}});
+    expect(state.submit.mock.calls[0][0]).toEqual({data:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',email:'ada@example.test',phone:'+2348031234567',schoolName:'Hill School'}});
     act(()=>state.submit.mock.calls[0][1].onSuccess());
     expect(sessionStorage.getItem('edupulse:application-draft')).toBeNull();
     expect(state.invalidate).toHaveBeenCalledWith({queryKey:['my-application']});
   });
   it('keeps the form editable and refetches after a submit error',()=>{
-    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'08031234567',schoolName:'Hill School'}}));
+    sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',email:'ada@example.test',phone:'08031234567',schoolName:'Hill School'}}));
     render(<ApplicationPortal autoSubmit/>);
     act(()=>state.submit.mock.calls[0][1].onError({data:{error:'Lost response'}}));
     expect(host.querySelector('[data-testid="text-apply-error"]')?.textContent).toBe('Lost response');
@@ -130,9 +155,9 @@ describe('public application UI behavior',()=>{
   });
   it('direct apply submits the reusable form with normalized fields',()=>{
     render(<ApplicationPortal/>);
-    input('input-school-name','Application School');input('input-full-name','First Last');input('input-phone','0803 123 4567');
+    input('input-school-name','Application School');input('input-full-name','First Last');input('input-phone','0803 123 4567');input('input-email',' FIRST@example.test ');
     act(()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
-    expect(state.submit.mock.calls[0][0]).toEqual({data:{applicantType:'SCHOOL_ADMIN',fullName:'First Last',phone:'+2348031234567',schoolName:'Application School'}});
+    expect(state.submit.mock.calls[0][0]).toEqual({data:{applicantType:'SCHOOL_ADMIN',fullName:'First Last',email:'first@example.test',phone:'+2348031234567',schoolName:'Application School'}});
   });
   it.each(['PENDING','REJECTED'])('shows %s without a portal access action',(status)=>{
     state.my={application:{id:3,status,rejectionReason:'Not verified'},eligible:false};

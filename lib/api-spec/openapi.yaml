@@ -6110,11 +6110,11 @@ components:
     AccountApplicationInput:
       type: object
       additionalProperties: false
-      required: [applicantType, fullName, phone]
+      required: [applicantType, fullName, phone, email]
       properties:
         applicantType: { type: string, enum: [SCHOOL_ADMIN, PARTNER] }
         fullName: { type: string, minLength: 2, maxLength: 200 }
-        email: { type: string, format: email, maxLength: 254, description: Required for Partner; must match the verified account email. }
+        email: { type: string, format: email, maxLength: 254, description: Required applicant-provided email for School Admin and Partner; must match the verified sign-in account email. }
         partnerType: { type: string, enum: [BUSINESS, INDIVIDUAL], description: Required for Partner; omitted for School Admin. }
         phone: { type: string, minLength: 7, maxLength: 32 }
         city: { type: string, maxLength: 100 }

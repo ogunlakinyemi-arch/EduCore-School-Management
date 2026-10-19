@@ -41,13 +41,13 @@ export function validateApplication(v: ApplicationValues): { errors: FieldErrors
   if (school && (v.schoolName.trim().length < 2 || v.schoolName.trim().length > 200)) errors.schoolName = 'Enter a School Name (2–200 characters).';
   if (v.address.trim().length > 500) errors.address = 'Address must be at most 500 characters.';
   if (v.businessName.trim().length > 200) errors.businessName = 'Business Name must be at most 200 characters.';
+  if (!email) errors.email = 'Email is required.';
+  else if (email.length > 254 || !z.string().email().safeParse(email).success) errors.email = 'Enter a valid email address.';
   if (!school) {
-    if (!email) errors.email = 'Email is required.';
-    else if (email.length > 254 || !z.string().email().safeParse(email).success) errors.email = 'Enter a valid email address.';
     if (v.partnerType !== 'BUSINESS' && v.partnerType !== 'INDIVIDUAL') errors.partnerType = 'Choose a Partner Type.';
   }
   if (Object.keys(errors).length) return { errors, data: null };
-  const data: AccountApplicationInput = { applicantType: v.applicantType, fullName, phone };
+  const data: AccountApplicationInput = { applicantType: v.applicantType, fullName, phone, email };
   if (school) {
     data.schoolName = normalizeName(v.schoolName);
     if (v.address.trim()) data.address = normalizeName(v.address);

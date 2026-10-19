@@ -28,9 +28,16 @@ and verification before seeking any separate Production/publishing approval.
 
 Registration must collect the applicant's appropriate profile during signup,
 not merely tell them to complete it later. School applicants require school name,
-Admin full name and Admin phone, with school address optional. Partner applicants
+Admin full name, explicitly entered Admin email and Admin phone, with school address optional. Partner applicants
 require full name, email, phone and a supported Partner type, with business name
 optional. Keep the pending gate and transfer submitted profile details on approval.
+
+Both applicant types must enter their own email before authentication. Do not
+infer School Admin email from an account name or silently fill it from the signed-in
+identity; require a valid email matching the verified primary sign-in email at submission.
+
+**Why:** The user corrected the missing School Admin email field on 2026-10-19;
+the original School profile field list must not be treated as excluding email.
 
 **Why:** The user explicitly requested these registration fields while retaining
 the existing authentication provider and approval/notification workflow.

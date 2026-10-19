@@ -1,5 +1,10 @@
 # Development integrated registration profiles
 
+Later same-day correction: School Admin applicants must explicitly enter a
+required email before authentication. The email-origin description below records
+the earlier implementation; see `2026-10-19-school-admin-application-email.md`
+for the corrected validation, persistence and verification.
+
 ## Delivered
 
 Public signup now collects the requested profile before the existing Clerk

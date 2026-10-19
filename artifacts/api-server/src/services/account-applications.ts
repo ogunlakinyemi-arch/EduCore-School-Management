@@ -17,7 +17,7 @@ export function normalizeApplicationPhone(value: string) {
 export const applicationInput = z.object({
   applicantType: z.enum(["SCHOOL_ADMIN", "PARTNER"]),
   fullName: text(200, 2).transform(v => v.replace(/\s+/g, " ")),
-  email: z.string().trim().toLowerCase().email("Enter a valid email address").max(254).optional(),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address").max(254),
   partnerType: z.enum(["BUSINESS", "INDIVIDUAL"]).optional(),
   phone: text(32, 7).transform(normalizeApplicationPhone).refine(v => /^\+[1-9]\d{7,14}$/.test(v),
     "Enter a valid international phone number or Nigerian mobile number"),
@@ -27,7 +27,6 @@ export const applicationInput = z.object({
 }).strict().superRefine((v, ctx) => {
   if (v.applicantType === "SCHOOL_ADMIN" && !v.schoolName) ctx.addIssue({ code: "custom", path: ["schoolName"], message: "School name is required" });
   if (v.applicantType !== "SCHOOL_ADMIN" && v.referralToken) ctx.addIssue({ code: "custom", path: ["referralToken"], message: "School referrals apply only to school applicants" });
-  if (v.applicantType === "PARTNER" && !v.email) ctx.addIssue({ code: "custom", path: ["email"], message: "Email is required" });
   if (v.applicantType === "PARTNER" && !v.partnerType) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "Select a Partner type" });
   if (v.applicantType === "SCHOOL_ADMIN" && (v.partnerType || v.businessName)) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "Partner details cannot be submitted for a school application" });
 });
@@ -69,7 +68,7 @@ export async function assertNewApplicant(client: PoolClient, userId: number) {
 }
 
 export async function submitApplication(actor: UserContext, input: z.infer<typeof applicationInput>, verifiedEmail: string) {
-  if (input.email && input.email !== verifiedEmail) {
+  if (input.email !== verifiedEmail) {
     throw new AuthError(409, "Application email must match your verified sign-in email. Update the form or sign in with the intended account.");
   }
   const [firstName, ...surname] = input.fullName.split(" ");
@@ -96,7 +95,7 @@ export async function submitApplication(actor: UserContext, input: z.infer<typeo
     const result = await client.query(`INSERT INTO account_applications
       (user_id,applicant_type,first_name,last_name,email,phone,city,state,school_name,business_name,address,referral_link_id,partner_type)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
-    [actor.user.id,input.applicantType,firstName,lastName,verifiedEmail,input.phone,input.city ?? "",input.state ?? "",
+    [actor.user.id,input.applicantType,firstName,lastName,input.email,input.phone,input.city ?? "",input.state ?? "",
       input.schoolName ?? null,input.businessName ?? null,input.address ?? null,referralId,input.partnerType ?? null]);
     await audit(client, actor, result.rows[0].id, "Submitted account application", { applicantType: input.applicantType, status: "PENDING" });
     await client.query("COMMIT");

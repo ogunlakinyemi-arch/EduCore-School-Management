@@ -32,10 +32,10 @@ export interface AccountApplicationInput {
      */
   fullName: string;
   /**
-     * Required for Partner; must match the verified account email.
+     * Required applicant-provided email for School Admin and Partner; must match the verified sign-in account email.
      * @maxLength 254
      */
-  email?: string;
+  email: string;
   /** Required for Partner; omitted for School Admin. */
   partnerType?: AccountApplicationInputPartnerType;
   /**
@@ -14640,10 +14640,10 @@ export interface AccountApplicationInput4b96100 {
      */
   fullName: string;
   /**
-     * Required for Partner; must match the verified account email.
+     * Required applicant-provided email for School Admin and Partner; must match the verified sign-in account email.
      * @maxLength 254
      */
-  email?: string;
+  email: string;
   /** Required for Partner; omitted for School Admin. */
   partnerType?: AccountApplicationInput4b96100PartnerType;
   /**

@@ -15,6 +15,11 @@ import AccountApplicationsPanel from './account-applications-panel';
 import { notificationCopy } from '@/lib/application-intent';
 
 describe('account applications panel', () => {
+  it('shows the submitted School Admin email to the Owner', () => {
+    const html=renderToStaticMarkup(<AccountApplicationsPanel/>);
+    expect(html).toContain('Hill School');
+    expect(html).toContain('a@x.ng');
+  });
   it.each(['loading','error'])('shows an explicit %s state instead of hiding review', mode => {
     flags.isLoading=mode==='loading';flags.isError=mode==='error';
     try {

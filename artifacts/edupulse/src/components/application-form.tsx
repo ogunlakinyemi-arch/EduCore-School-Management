@@ -25,6 +25,7 @@ export function ApplicationForm({ values, onChange, errors, formError, pending, 
           <label className="block text-sm font-semibold">School Name<input className={inputCls} data-testid="input-school-name" value={values.schoolName} onChange={set('schoolName')} />{err('schoolName')}</label>
           <label className="block text-sm font-semibold">School Address (optional)<input className={inputCls} data-testid="input-address" value={values.address} onChange={set('address')} />{err('address')}</label>
           <label className="block text-sm font-semibold">School Admin Full Name<input className={inputCls} autoComplete="name" data-testid="input-full-name" value={values.fullName} onChange={set('fullName')} />{err('fullName')}</label>
+          <label className="block text-sm font-semibold">School Admin Email (required)<input className={inputCls} type="email" autoComplete="email" required aria-invalid={!!errors.email} data-testid="input-email" value={values.email} onChange={set('email')} />{err('email')}</label>
           <label className="block text-sm font-semibold">School Admin Phone Number<input className={inputCls} type="tel" autoComplete="tel" data-testid="input-phone" value={values.phone} onChange={set('phone')} />{err('phone')}</label>
         </>
       ) : (
