@@ -96,6 +96,33 @@ const reportResult = {
   total: 1,
 };
 
+describe("report filter-option authorization", () => {
+  it("returns read-only choices for an authorized report without calling its report runner", async () => {
+    const response = await fetch(`${baseUrl}/api/reports/overview/filter-options?schoolId=10`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    const payload = await response.json() as { truncated: string[] };
+    expect(payload.truncated).toEqual([]);
+    expect(state.run).not.toHaveBeenCalled();
+  });
+  it("denies a forged school before any catalog lookup", async () => {
+    const response = await fetch(`${baseUrl}/api/reports/overview/filter-options?schoolId=20`);
+    expect(response.status).toBe(404);
+    expect(state.query.mock.calls.some(([query]) => query.includes("WITH selector_types"))).toBe(false);
+  });
+  it("does not accept filters absent from the report definition", async () => {
+    const response = await fetch(`${baseUrl}/api/reports/overview/filter-options?schoolId=10&classId=1`);
+    expect(response.status).toBe(400);
+  });
+  it("requires authentication and the report's role authorization", async () => {
+    state.authenticated=false;
+    expect((await fetch(`${baseUrl}/api/reports/overview/filter-options?schoolId=10`)).status).toBe(401);
+    state.authenticated=true;
+    setRole("TEACHER");
+    expect((await fetch(`${baseUrl}/api/reports/overview/filter-options?schoolId=10`)).status).toBe(404);
+  });
+});
+
 describe("directory export authorization and delivery", () => {
   const kinds = ["students", "classes", "parents", "staff", "teachers"];
   it.each(kinds)("exports %s as an audited bounded Excel file for School Admin", async kind => {

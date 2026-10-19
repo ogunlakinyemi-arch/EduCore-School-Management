@@ -4,6 +4,7 @@ const fake = vi.hoisted(() => ({
   row: {} as any, query: vi.fn(), release: vi.fn(), initialize: vi.fn(),
   verify: vi.fn(), finalize: vi.fn(), canonical: vi.fn(), conflict: vi.fn(),
   current: true, configured: true,
+  prepare: vi.fn(),
 }));
 vi.mock("@workspace/db", () => ({
   pool: { query: (...args: any[]) => fake.query(...args),
@@ -30,7 +31,7 @@ vi.mock("../lib/student-subscription-billing", async original => ({
 vi.mock("../lib/schoolLogoStorage", () => ({ canonicalSchoolLogoVersionUrl: vi.fn() }));
 // This suite covers the existing unsplit flow; split policy/database cases have their own suite.
 vi.mock("./flutterwave-split-checkout", async original => ({
-  ...await original<any>(),prepareSplitCheckout:vi.fn(async() => undefined),
+  ...await original<any>(),prepareSplitCheckout:(...args: any[]) => fake.prepare(...args),
 }));
 import { createGuestNfcCheckout, verifyGuestNfcCheckout, initializeStudentNfcHostedCheckout, reserveGuestNfcPayment } from "./nfc-guest-checkout";
 
@@ -40,6 +41,7 @@ beforeEach(() => {
   vi.stubEnv("REPLIT_DEPLOYMENT", "");
   vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "mock-webhook-hash-only");
   fake.configured = true; fake.current = true;
+  fake.prepare.mockReset().mockResolvedValue(undefined);
   fake.row = { id: 6, subscription_id: 9, school_id: 44, student_id: 7, academic_term_id: 3,
     academic_session_id: 2, created_by: 10, reference: "NFC_guest_test_reference",
     mode: "FLUTTERWAVE_SANDBOX", status: "PENDING", expires_at: new Date(Date.now() + 86_400_000),
@@ -80,6 +82,35 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe("Guest NFC TEST checkout and server verification", () => {
+  it("blocks SCV2_fee platform-only fallback before any provider initialization", async () => {
+    await expect(initializeStudentNfcHostedCheckout({
+      paymentId:17,reference:"SCV2_fee_0123456789abcdef",grossAmountMinor:500000,currency:"NGN",
+    },"payer@example.test","https://guest-test.replit.dev/return"))
+      .rejects.toThrow("No provider checkout was created");
+    expect(fake.initialize).not.toHaveBeenCalled();
+  });
+  it.each([true,false])("passes the frozen SCV2_fee school/Partner plan unchanged, Partner=%s", async hasPartner => {
+    const reference="SCV2_fee_0123456789abcdef";
+    const subaccounts=[
+      {id:"RS_UNITSchool000001",transaction_charge_type:"flat_subaccount",transaction_charge:1900},
+      ...(hasPartner?[{id:"RS_UNITPartner00001",transaction_charge_type:"flat_subaccount",transaction_charge:100}]:[]),
+    ];
+    fake.prepare.mockResolvedValue(subaccounts);
+    fake.initialize.mockResolvedValue({reference,checkoutUrl:"https://checkout.flutterwave.com/v3/hosting/test"});
+    const result=await initializeStudentNfcHostedCheckout({
+      paymentId:17,reference,grossAmountMinor:500000,currency:"NGN",
+    },"payer@example.test","https://guest-test.replit.dev/return",false);
+    expect(result?.reference).toBe(reference);
+    expect(fake.initialize).toHaveBeenCalledWith(expect.objectContaining({reference,amountMinor:500000,subaccounts}));
+  });
+  it("propagates missing-migration guards without contacting the provider", async () => {
+    fake.prepare.mockRejectedValue(new Error("TEST split database policy upgrade is required"));
+    await expect(initializeStudentNfcHostedCheckout({
+      paymentId:17,reference:"SCV2_fee_0123456789abcdef",grossAmountMinor:500000,currency:"NGN",
+    },"payer@example.test","https://guest-test.replit.dev/return"))
+      .rejects.toThrow("database policy upgrade is required");
+    expect(fake.initialize).not.toHaveBeenCalled();
+  });
   it("does not repeat the provider POST while another guest initialization is in progress", async () => {
     let resolve!: (result: any) => void;
     let started!: () => void;
@@ -119,7 +150,8 @@ describe("Guest NFC TEST checkout and server verification", () => {
     const result = await createGuestNfcCheckout(token, "guest@example.test");
     expect(result.status).toBe("PENDING"); expect(result.subscriptionActivated).toBe(false);
     expect(result.receiptReference).toBeNull(); expect(result.amountMinor).toBe(500000);
-    expect(result.expectedAllocations).toEqual(fake.row.expected_allocations);
+    // Public guest responses must not disclose the Owner's full allocation.
+    expect(result.expectedAllocations).toEqual([]);
     expect(fake.initialize).toHaveBeenCalledWith({
       reference: "student_guest_123456", amountMinor: 500000, currency: "NGN", email: "guest@example.test",
       returnUrl: `https://guest-test.replit.dev/edupulse/nfc/pay#${token}`,

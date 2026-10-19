@@ -33,6 +33,15 @@ beforeEach(() => { state.canManage = true; state.error = null; });
 const props = { schoolId: 1, onDone: vi.fn(), onCancel: vi.fn() };
 
 describe('person titles in school profiles', () => {
+  it('explains the migration requirement before a save and preserves the no-title option', () => {
+    for (const Form of [ParentForm, EmployeeForm]) {
+      const html = renderToStaticMarkup(<Form {...props} />);
+      expect(html).toContain('0168_person_titles.sql');
+      expect(html).toContain('choose <strong>No title</strong> to save other details');
+      expect(html).toContain('server rejects the save without changing the record');
+      expect(html).toMatch(/value="" selected/);
+    }
+  });
   it('has an explicit no-title option and sends null when cleared', () => {
     const onChange = vi.fn();
     const element = PersonTitleField({ value: 'Dr', onChange });

@@ -9,6 +9,40 @@ import * as zod from 'zod';
 
 
 /**
+ * Report-authorized, tenant-scoped dropdown choices. Family and teacher catalogs remain relationship scoped. Choices do not authorize report access or replace server validation.
+ */
+export const GetReportFilterOptionsParams = zod.object({
+  "reportId": zod.coerce.string()
+})
+
+
+
+
+export const getReportFilterOptionsQueryLimitMax = 200;
+
+export const getReportFilterOptionsQueryOffsetMin = 0;
+
+
+
+export const GetReportFilterOptionsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getReportFilterOptionsQueryLimitMax).optional(),
+  "offset": zod.coerce.number().int().min(getReportFilterOptionsQueryOffsetMin).optional()
+})
+
+export const GetReportFilterOptionsResponse = zod.object({
+  "options": zod.record(zod.string(), zod.array(zod.object({
+  "value": zod.string(),
+  "label": zod.string()
+}))),
+  "truncated": zod.array(zod.string()),
+  "requiresSchool": zod.boolean()
+})
+
+
+/**
  * Fixed terminal direction; Lagos default timezone; -366 days/+5 minutes. 16 KiB JSON limit. Identical event IDs replay; conflicting reuse returns 409.
  * @summary Ingest a school-bound NFC terminal CARD_SCAN
  */

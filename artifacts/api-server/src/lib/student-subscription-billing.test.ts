@@ -11,7 +11,7 @@ import {
 import type { ExpectedPayment, VerifiedPayment } from "./fee-providers";
 
 const expected: ExpectedPayment = {
-  reference: "student_123456789",
+  reference: "fee_0123456789abcdef0123456789abcdef",
   amountMinor: 500_000,
   currency: "NGN",
 };
@@ -218,14 +218,18 @@ describe("student subscription trusted billing policy", () => {
 
   it.each([true, false])("finalizes new-policy allocations, fees and replay without reducing recipients, Partner=%s", async attributed => {
     const database = new FinalizationMemoryPool(attributed, 2);
-    const payment = { ...verified, reference: `SCV2_${expected.reference}`, providerFeeMinor: 1500, providerSettlementAmountMinor: 498500 };
+    const payment = { ...verified, reference: `SCV2_${expected.reference}`, providerFeeMinor: 7000, providerSettlementAmountMinor: 493000 };
     const first = await finalizeVerifiedStudentSubscriptionPayment(database, 17, payment);
     expect(first.status).toBe("PAID");
     expect(database.allocations.filter(x => x.entryType === "CREDIT").map(x => x.amountMinor))
       .toEqual(attributed ? [190000, 300000, 10000] : [190000, 310000]);
     expect(database.allocations).toContainEqual({
-      entryType: "EXPENSE", recipientType: "PLATFORM_PROVIDER_FEE", recipientId: null, amountMinor: 1500,
+      entryType: "EXPENSE", recipientType: "PLATFORM_PROVIDER_FEE", recipientId: null, amountMinor: 7000,
     });
+    const credits = database.allocations.filter(x => x.entryType === "CREDIT");
+    expect(credits.reduce((sum,x) => sum+x.amountMinor,0)).toBe(500000);
+    expect(credits.find(x => x.recipientType === "PLATFORM")!.amountMinor - 7000)
+      .toBe(attributed ? 293000 : 303000);
     const before = structuredClone(database.allocations);
     await finalizeVerifiedStudentSubscriptionPayment(database, 17, payment);
     expect(database.allocations).toEqual(before);

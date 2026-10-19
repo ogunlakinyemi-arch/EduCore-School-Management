@@ -10,6 +10,11 @@ export type ReportResult = {
   summary?: Record<string, unknown>;
 };
 export type ReportFilters = Record<string, string>;
+export type ReportFilterOptions = {
+  options: Record<string, { value: string; label: string }[]>;
+  truncated: string[];
+  requiresSchool: boolean;
+};
 export type ReportScope = { userId: number | string; roleScope: string; tenantId: number; tenantSchoolId: number };
 export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
 export const REPORT_PAGE_SIZE = 50;
@@ -69,6 +74,27 @@ export function useReportResult(scope: ReportScope, id: string, filters: ReportF
     enabled: enabled && isKnownReport(id),
     staleTime: 15_000,
   });
+}
+
+export function useReportFilterOptions(scope: ReportScope, id: string, filters: ReportFilters) {
+  // Only hierarchical selectors affect the option catalog, not dates/status.
+  const parents = Object.fromEntries(Object.entries(filters).filter(([key]) => ['schoolId', 'sessionId', 'classId'].includes(key)));
+  const search = reportSearch(reportParams(scope, parents, 0));
+  return useQuery({
+    queryKey: ['reporting-options', scope.userId, scope.roleScope, scope.tenantId, id, search],
+    queryFn: () => reportRequest<ReportFilterOptions>(`${encodeURIComponent(id)}/filter-options?${search}`),
+    enabled: isKnownReport(id), staleTime: 30_000,
+  });
+}
+
+export function changeReportFilter(previous: ReportFilters, key: string, value: string): ReportFilters {
+  const next = { ...previous, [key]: value };
+  const children = key === 'schoolId' ? Object.keys(previous).filter(k => k !== 'schoolId')
+    : key === 'sessionId' ? ['termId', 'classId', 'section', 'subjectId', 'studentId']
+      : key === 'classId' ? ['section', 'subjectId', 'studentId']
+        : key === 'termId' ? ['studentId'] : [];
+  for (const child of children) delete next[child];
+  return next;
 }
 
 function filenameFromDisposition(disposition: string | null, fallback: string): string {

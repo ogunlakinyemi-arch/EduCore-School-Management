@@ -26,3 +26,9 @@ Provider verification of a standalone TEST checkout is not evidence of an EduCor
 **Why:** Genuine successful and declined sandbox transactions were independently verified, but the checkout links had been initialized outside EduCore's payment reservation flow and had no bound application records. Native database settlement tests with mocked transport established different evidence.
 
 **How to apply:** Use a designated synthetic student and the normal authorized in-app checkout reservation for provider-to-application acceptance. Report standalone provider results, native database tests and in-app end-to-end evidence separately. Missing binding is not permission to fabricate financial history.
+
+Allocation-version acceptance must include the real provider adapter under injected transport, not just arithmetic, planner tests or an initializer with a mocked adapter.
+
+**Why:** A correct new-policy planner was rejected by an adapter retaining the legacy school amount. A separate platform-only fallback could still collect funds, while gross/net fee screenshots could not establish recipient allocation.
+
+**How to apply:** Exercise reference-selected instructions through the adapter, preserve cross-version rejection, test every unavailable-plan fallback before provider transport, and distinguish internal credits from provider recipient settlement.

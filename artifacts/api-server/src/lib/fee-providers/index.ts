@@ -1,6 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { isFlutterwaveTestCheckoutUrl } from "../flutterwave-checkout-url";
 import { assertNoLocalSplitSimulation } from "../local-split-simulation-barrier";
+import { studentAllocationPolicy } from "../student-allocation-policy";
 
 export type FeePaymentStatus = "pending" | "succeeded" | "failed";
 
@@ -412,7 +413,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
         || new Set(input.subaccounts.map(s => s.id)).size !== input.subaccounts.length
         || input.subaccounts.some((s, i) => !/^RS_[A-Za-z0-9]{12,80}$/.test(s.id)
           || s.transaction_charge_type !== "flat_subaccount"
-          || s.transaction_charge !== (i === 0 ? 2000 : 100)))) {
+          || s.transaction_charge !== (i === 0 ? studentAllocationPolicy(input.reference).schoolMinor / 100 : 100)))) {
       throw new PaymentProviderError("Invalid Development split instructions");
     }
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {

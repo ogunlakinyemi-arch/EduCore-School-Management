@@ -21,6 +21,7 @@ import {
   type SerializedReportExport,
 } from "./reporting/exports";
 import { readValidatedSchoolLogo } from "../lib/schoolLogoStorage";
+import { reportFilterOptions } from "./reporting/filter-options";
 
 const router = Router();
 router.use("/reports", requireAuthentication());
@@ -105,6 +106,14 @@ router.get("/reports/catalog", asyncRoute(async (req, res) => {
   }
   res.setHeader("Cache-Control", "private, no-store");
   res.json({ items });
+}));
+
+router.get("/reports/:reportId/filter-options", asyncRoute(async (req, res) => {
+  const definition = getDefinition(req.params.reportId as string);
+  const filters = authorizedFilters(req, definition);
+  const context = await resolveReportContext(req, definition.roles, filters);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(await reportFilterOptions(context, filters, req.params.reportId as string, definition.filters ?? []));
 }));
 
 router.get("/reports/:reportId/export", asyncRoute(async (req, res) => {

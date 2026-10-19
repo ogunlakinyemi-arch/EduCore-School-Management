@@ -419,8 +419,7 @@ describe("public student subscription Flutterwave webhook", () => {
     });
     expect(schoolJson.subscription).not.toHaveProperty("edupulseShare");
     expect(schoolJson.subscription).not.toHaveProperty("partnerShare");
-    expect(schoolJson.subscription.allocationSnapshot).not.toHaveProperty("platformAmountMinor");
-    expect(schoolJson.subscription.allocationSnapshot).not.toHaveProperty("partnerAmountMinor");
+    expect(schoolJson.subscription).not.toHaveProperty("allocationSnapshot");
 
     fake.isPlatformOwner = true;
     const ownerResponse = await httpFetch(`${baseUrl}/api/subscriptions/12/payments/17`);

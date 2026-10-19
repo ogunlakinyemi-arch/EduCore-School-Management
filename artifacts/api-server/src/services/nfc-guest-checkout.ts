@@ -1,4 +1,4 @@
-import { newStudentPaymentReference } from "../lib/student-allocation-policy";
+import { newStudentPaymentReference, studentAllocationPolicy } from "../lib/student-allocation-policy";
 import { splitAttribution } from "./flutterwave-split-checkout";
 import { pool } from "@workspace/db";
 import { nfcPayableTermPredicate } from "../lib/nfc-payable-term";
@@ -113,8 +113,16 @@ export async function initializeStudentNfcHostedCheckout(
 ) {
   const adapter = configuredStudentNfcTestAdapter();
   if (!adapter) throw new PaymentProviderError("Flutterwave TEST configuration is unavailable");
-  let subaccounts;
-  try { subaccounts = await prepareSplitCheckout(Number(payment.paymentId)); }
+  let subaccounts: Awaited<ReturnType<typeof prepareSplitCheckout>> = undefined;
+  try {
+    subaccounts = await prepareSplitCheckout(Number(payment.paymentId));
+    // New-policy charges must never silently fall back to platform-only collection.
+    // Legacy checkouts keep their original behavior; already-paid records are not rewritten.
+    if (studentAllocationPolicy(String(payment.reference)).version === 2 && !subaccounts?.length) {
+      throw new AuthError(409,
+        "Current-policy TEST checkout requires an approved, migration-ready frozen school/Partner split. No provider checkout was created. Ask the Owner to review TEST split setup; do not pay again for an existing charge.");
+    }
+  }
   catch (error) {
     // No provider POST has occurred: guest setup can be retried after configuration is corrected.
     await pool.query(

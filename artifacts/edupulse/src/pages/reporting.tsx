@@ -9,7 +9,7 @@ import {
   Button, EmptyState, ErrorState, PageHeading, SkeletonPage, TenantPicker, cx, useTenant,
 } from '@/components/shared';
 import {
-  catalogReports, exportReport, REPORT_PAGE_SIZE, useReportCatalog, useReportResult,
+  catalogReports, exportReport, REPORT_PAGE_SIZE, useReportCatalog, useReportResult, useReportFilterOptions, changeReportFilter,
   type ExportFormat, type ReportCatalogItem, type ReportFilters, type ReportScope,
 } from '@/hooks/use-reporting-api';
 
@@ -38,7 +38,7 @@ const reportFamilies: Record<string, string> = {
 
 const filterLabels: Record<string, string> = {
   schoolId: 'School', sessionId: 'Academic session', academicSessionId: 'Academic session',
-  termId: 'Term', classId: 'Class', sectionId: 'Section', subjectId: 'Subject',
+  termId: 'Term', classId: 'Class', sectionId: 'Section', section: 'Section', subjectId: 'Subject', method: 'Method',
   studentId: 'Student', parentId: 'Parent', teacherId: 'Teacher',
   assessmentId: 'Assessment', dateFrom: 'From date', dateTo: 'To date',
   startDate: 'From date', endDate: 'To date', fromDate: 'From date', toDate: 'To date',
@@ -50,7 +50,7 @@ const filterLabels: Record<string, string> = {
 const dateKeys = new Set(['dateFrom', 'dateTo', 'startDate', 'endDate', 'fromDate', 'toDate', 'from', 'to', 'date']);
 const startKeys = ['dateFrom', 'startDate', 'fromDate', 'from'];
 const endKeys = ['dateTo', 'endDate', 'toDate', 'to'];
-const selectInput = 'w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none transition-colors focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--primary)/.12)]';
+const selectInput = 'w-full min-w-0 max-w-full min-h-11 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3.5 py-2.5 text-base sm:text-sm text-[hsl(var(--foreground))] outline-none transition-colors focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--primary)/.12)]';
 const readable = (key: string) => filterLabels[key] ?? key.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase());
 
 function displayValue(value: unknown): string {
@@ -72,7 +72,7 @@ function dateError(filters: ReportFilters): string {
   return '';
 }
 
-function ReportingWorkspace({ item, owner, scope, schools }: {
+export function ReportingWorkspace({ item, owner, scope, schools }: {
   item: ReportCatalogItem; owner: boolean;
   scope: ReportScope;
   schools: { id: number; name: string }[];
@@ -88,9 +88,10 @@ function ReportingWorkspace({ item, owner, scope, schools }: {
   const serialized = JSON.stringify(applied);
   const valid = !dateError(applied);
   const query = useReportResult(scope, item.id, applied, offset, valid);
+  const choices = useReportFilterOptions(scope, item.id, applied);
   const hasFilters = allowedFilters.length > 0;
   const changeFilter = (key: string, value: string) => {
-    setFilters(previous => ({ ...previous, [key]: value }));
+    setFilters(previous => changeReportFilter(previous, key, value));
     setOffset(0);
   };
   const clearFilters = () => { setFilters({}); setOffset(0); };
@@ -119,13 +120,21 @@ function ReportingWorkspace({ item, owner, scope, schools }: {
       </div>
       {hasFilters && <div className="border-b border-[hsl(var(--border))] p-5 md:p-7">
         <div className="mb-4 flex items-center gap-2 text-sm font-bold"><ListFilter size={16} className="text-[hsl(var(--primary))]" /> Refine this report</div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {allowedFilters.map(key => <label key={key} className="block">
+        {choices.isError && <p role="alert" className="mb-3 text-sm">Filter choices could not be loaded. <button type="button" className="underline" onClick={() => void choices.refetch()}>Retry choices</button></p>}
+        {choices.data?.requiresSchool && <p className="mb-3 text-sm">Select a school to load its academic choices.</p>}
+        {!!choices.data?.truncated.length && <p role="status" className="mb-3 text-sm">Some choices exceed 1,000 records. Select an academic session or class to narrow the list.</p>}
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {allowedFilters.map(key => <label key={key} className="block min-w-0">
             <span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">{readable(key)}</span>
             {key === 'schoolId' ? <select className={selectInput} value={filters[key] ?? ''} onChange={event => changeFilter(key, event.target.value)} data-testid="select-report-school">
               <option value="">All authorized schools</option>
               {schools.map(school => <option key={school.id} value={school.id}>{school.name}</option>)}
-            </select> : <input className={selectInput} type={dateKeys.has(key) ? 'date' : 'text'} inputMode={key.endsWith('Id') ? 'numeric' : undefined} min={key.endsWith('Id') ? '1' : undefined} placeholder={dateKeys.has(key) ? undefined : `Any ${readable(key).toLowerCase()}`} value={filters[key] ?? ''} onChange={event => changeFilter(key, event.target.value)} data-testid={`input-report-${key}`} />}
+            </select> : dateKeys.has(key) ? <input className={`${selectInput} min-w-0 min-h-11 max-w-full text-base`} type="date" value={filters[key] ?? ''} onChange={event => changeFilter(key, event.target.value)} data-testid={`input-report-${key}`} />
+              : <select className={`${selectInput} min-h-11 text-base`} value={filters[key] ?? ''} disabled={choices.isLoading || choices.isError}
+                onChange={event => changeFilter(key, event.target.value)} data-testid={`select-report-${key}`}>
+                <option value="">Any {readable(key).toLowerCase()}</option>
+                {(choices.data?.options[key] ?? []).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>}
           </label>)}
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -146,7 +155,7 @@ function ReportingWorkspace({ item, owner, scope, schools }: {
             </select>
             <ChevronDown size={15} className="pointer-events-none absolute right-3 top-3 text-[hsl(var(--muted-foreground))]" />
           </label>
-          <Button onClick={() => void exportCurrent()} disabled={exporting || !valid || query.isLoading || query.isError} testId="button-export-report"><ArrowDownToLine size={16} />{exporting ? 'Preparing…' : 'Download'}</Button>
+          <Button onClick={() => void exportCurrent()} disabled={exporting || !valid || query.isLoading || query.isFetching || query.isError || !query.data} testId="button-export-report"><ArrowDownToLine size={16} />{exporting ? 'Preparing…' : 'Download'}</Button>
         </div>
       </div>
       {(exportError || exportSuccess) && <div role={exportError ? 'alert' : 'status'} className={cx('border-t border-[hsl(var(--border))] px-5 py-3 text-sm md:px-7', exportError ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--primary))]')} data-testid="status-report-export">{exportError || exportSuccess}</div>}

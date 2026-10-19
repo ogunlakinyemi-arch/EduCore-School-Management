@@ -21671,6 +21671,43 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type GetReportFilterOptionsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetReportFilterOptions200OptionsItem = {
+  value: string;
+  label: string;
+};
+
+export type GetReportFilterOptions200Options = {[key: string]: GetReportFilterOptions200OptionsItem[]};
+
+export type GetReportFilterOptions200 = {
+  options: GetReportFilterOptions200Options;
+  truncated: string[];
+  requiresSchool: boolean;
+};
+
 export type GetFlutterwaveSplitDashboardParams = {
 /**
  * @minimum 1

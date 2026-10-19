@@ -1,0 +1,38 @@
+paths:
+  /reports/{reportId}/filter-options:
+    get:
+      operationId: getReportFilterOptions
+      tags: [reports]
+      description: Report-authorized, tenant-scoped dropdown choices. Family and teacher catalogs remain relationship scoped. Choices do not authorize report access or replace server validation.
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string } }
+        - { name: schoolId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Authorized options from scoped source records and existing computed report enums. Select a school for academic catalogs. Oversized choice lists are explicitly marked truncated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [options, truncated, requiresSchool]
+                properties:
+                  options:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        required: [value, label]
+                        properties:
+                          value: { type: string }
+                          label: { type: string }
+                  truncated: { type: array, items: { type: string } }
+                  requiresSchool: { type: boolean }
+        "400": { description: Invalid or unsupported report filters }
+        "401": { description: Authentication required }
+        "403": { description: Report is not authorized }
+        "404": { description: Report or scoped resource not found }

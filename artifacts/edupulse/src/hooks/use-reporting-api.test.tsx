@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { catalogReports, isKnownReport, reportParams, reportSearch } from './use-reporting-api';
+import { catalogReports, isKnownReport, reportParams, reportSearch, changeReportFilter } from './use-reporting-api';
 
 describe('reporting request contract', () => {
+  it('clears dependent choices rather than sending stale IDs to another school/session/class', () => {
+    const previous = { schoolId:'1', sessionId:'2', termId:'3', classId:'4', section:'Blue', subjectId:'5', studentId:'6', status:'PUBLISHED', from:'2026-01-01' };
+    expect(changeReportFilter(previous,'schoolId','9')).toEqual({schoolId:'9'});
+    expect(changeReportFilter(previous,'sessionId','8')).toEqual({schoolId:'1',sessionId:'8',status:'PUBLISHED',from:'2026-01-01'});
+    expect(changeReportFilter(previous,'classId','7')).toEqual({schoolId:'1',sessionId:'2',termId:'3',classId:'7',status:'PUBLISHED',from:'2026-01-01'});
+    expect(changeReportFilter(previous,'classId','').classId).toBe('');
+    expect(previous.classId).toBe('4');
+  });
   it('retains only supplied filter values and safely encodes them', () => {
     expect(reportSearch({ status: ' verified & paid ', classId: '', dateFrom: '2026-03-01' }))
       .toBe('dateFrom=2026-03-01&status=verified+%26+paid');

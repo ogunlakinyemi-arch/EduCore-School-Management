@@ -355,6 +355,8 @@ import type {
   GetPlatformTransportOverviewParams,
   GetPromotionBatchParams,
   GetPromotionReadinessParams,
+  GetReportFilterOptions200,
+  GetReportFilterOptionsParams,
   GetSchoolAttendanceTodayParams,
   GetSchoolDashboardParams,
   GetSchoolEmployeeNfcAttendanceDailyParams,
@@ -874,6 +876,92 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetReportFilterOptionsUrl = (reportId: string,
+    params?: GetReportFilterOptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/${reportId}/filter-options?${stringifiedParams}` : `/api/reports/${reportId}/filter-options`
+}
+
+/**
+ * Report-authorized, tenant-scoped dropdown choices. Family and teacher catalogs remain relationship scoped. Choices do not authorize report access or replace server validation.
+ */
+export const getReportFilterOptions = async (reportId: string,
+    params?: GetReportFilterOptionsParams, options?: Parameters<typeof customFetch>[1]): Promise<GetReportFilterOptions200> => {
+
+  return customFetch<GetReportFilterOptions200>(getGetReportFilterOptionsUrl(reportId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReportFilterOptionsQueryKey = (reportId: string,
+    params?: GetReportFilterOptionsParams,) => {
+    return [
+    `/api/reports/${reportId}/filter-options`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetReportFilterOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getReportFilterOptions>>, TError = ErrorType<void>>(reportId: string,
+    params?: GetReportFilterOptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReportFilterOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReportFilterOptionsQueryKey(reportId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReportFilterOptions>>> = ({ signal }) => getReportFilterOptions(reportId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: reportId !== null && reportId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReportFilterOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReportFilterOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getReportFilterOptions>>>
+export type GetReportFilterOptionsQueryError = ErrorType<void>
+
+
+
+export function useGetReportFilterOptions<TData = Awaited<ReturnType<typeof getReportFilterOptions>>, TError = ErrorType<void>>(
+ reportId: string,
+    params?: GetReportFilterOptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReportFilterOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReportFilterOptionsQueryOptions(reportId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getIngestVendorTerminalEventUrl = () => {
 
