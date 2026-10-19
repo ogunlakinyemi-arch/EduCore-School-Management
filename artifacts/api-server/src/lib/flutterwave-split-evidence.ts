@@ -1,4 +1,5 @@
 import { ngnMinor } from "./flutterwave-split-policy";
+import { studentAllocationPolicy } from "./student-allocation-policy";
 
 export type ExpectedTransactionSplit = {
   transactionId: string; reference: string; currency: string;
@@ -32,11 +33,17 @@ export function compareTransactionSplits(
     })),
   };
   const mismatch = (reason: string) => ({ ...base, status: "MISMATCH" as const, evidenceLevel: "MISMATCH" as const, reason });
+  const policy = studentAllocationPolicy(expected.reference);
+  // Deferred Partner entitlement is not a checkout recipient or a reduction in
+  // merchant settlement. Historical references keep their original allocation.
+  const expectedMerchantGross = 500000 - policy.schoolMinor
+    - (!policy.deferredPartner && expected.recipients.length === 2 ? 10000 : 0);
   if (new Set(expected.recipients.map(r => r.subaccountId)).size !== expected.recipients.length
-      || ![1,2].includes(expected.recipients.length)
-      || expected.recipients[0]?.amountMinor !== 200000
+      || !(policy.deferredPartner ? [1] : [1,2]).includes(expected.recipients.length)
+      || expected.recipients.some(r => !/^RS_[A-Za-z0-9]{12,80}$/.test(r.subaccountId))
+      || expected.recipients[0]?.amountMinor !== policy.schoolMinor
       || (expected.recipients.length === 2 && expected.recipients[1].amountMinor !== 10000)
-      || expected.platformGrossMinor !== (expected.recipients.length === 2 ? 290000 : 300000)
+      || expected.platformGrossMinor !== expectedMerchantGross
       || expected.grossAmountMinor !== 500000 || expected.currency !== "NGN"
       || expected.recipients.reduce((sum, r) => sum + r.amountMinor, expected.platformGrossMinor) !== 500000) {
     return mismatch("Frozen expected plan is inconsistent");

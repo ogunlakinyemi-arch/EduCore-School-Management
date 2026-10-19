@@ -115,9 +115,15 @@ studentSubscriptionFlutterwaveWebhookRouter.post(
       });
     } catch (error) {
       if (error instanceof PaymentProviderError && error.signatureVerified) {
-        try { await holdSignedDeferredAdverseEvent(rawBody); }
+        let held = false;
+        try { held = await holdSignedDeferredAdverseEvent(rawBody); }
         catch {
           res.status(500).json({error:"Adverse webhook hold could not be persisted"});return;
+        }
+        if (held) {
+          // Flutterwave acknowledges only HTTP 200, not 202. The hold and audit
+          // are durable; do not request retries for an already persisted event.
+          res.status(200).json({received:true,outcome:"held_for_reconciliation"});return;
         }
         const reference = signedReference(rawBody);
         if (reference) {

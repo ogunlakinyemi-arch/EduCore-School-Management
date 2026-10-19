@@ -26,6 +26,8 @@ import {
 } from "./deferred-partner-commissions";
 import { updateManualPartnerPayout } from "./partner-payout-update";
 import { holdSignedDeferredAdverseEvent } from "./deferred-commission-adverse-events";
+import { studentSubscriptionFlutterwaveWebhookRouter } from "../routes/student-subscription-webhooks";
+import { FlutterwaveTestAdapter } from "../lib/fee-providers";
 let directory: string, postgres: ChildProcess, migration: string;
 let server: ReturnType<express.Express["listen"]>,base:string;
 // Real PostgreSQL constraints/triggers and transactions. No application database,
@@ -95,7 +97,9 @@ beforeAll(async () => {
   }
   if(!ready) throw new Error("Disposable PostgreSQL unavailable; no fallback database allowed");
   migration=await readFile(new URL("../../../../lib/db/drizzle/0171_deferred_partner_commissions.sql",import.meta.url),"utf8");
-  const app=express();app.use(express.json());app.use(partnersRouter);
+  const app=express();
+  app.use("/webhook",express.raw({type:"application/json"}),studentSubscriptionFlutterwaveWebhookRouter);
+  app.use(express.json());app.use(partnersRouter);
   await new Promise<void>(r=>{server=app.listen(0,"127.0.0.1",()=>r());});
   const address=server.address();
   if(!address||typeof address==="string")throw new Error("Test listener unavailable");
@@ -106,7 +110,7 @@ beforeEach(async()=>{
   await state.pool.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   await state.pool.query(ddl);await state.pool.query(migration);
 });
-afterEach(()=>vi.unstubAllEnvs());
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllEnvs();});
 afterAll(async()=>{
   if(server) await new Promise<void>(r=>server.close(()=>r()));
   await state.pool?.end();
@@ -230,6 +234,49 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
     // A later collection webhook never releases a dispute hold.
     expect(await holdSignedDeferredAdverseEvent(Buffer.from(JSON.stringify({event:"charge.completed",
       data:{tx_ref:"SCV3_fixture_payment_1",status:"successful"}})))).toBe(false);
+  });
+  it("authenticates documented standalone refund callbacks, durably holds once and acknowledges with HTTP200",async()=>{
+    const verify=vi.spyOn(FlutterwaveTestAdapter.prototype,"verifyPayment").mockRejectedValue(new Error("Provider transport forbidden"));
+    await payment(1);const batch=await approve([1]);
+    await state.pool.query("UPDATE student_subscription_payments SET provider_transaction_id='9231836' WHERE id=1");
+    vi.stubEnv("FLUTTERWAVE_SECRET_Test_Key","FLWSECK_TEST-synthetic-refund-fixture");
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY","");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","synthetic-refund-webhook-hash");
+    const raw=JSON.stringify({id:99025,AmountRefunded:100,status:"completed",FlwRef:"FLW-independent-1",
+      TransactionId:9231836,meta:'{"disburse_status":"failed"}'});
+    const post=(hash?:string,body=raw)=>fetch(`${base}/webhook`,{method:"POST",
+      headers:{"content-type":"application/json",...(hash ? {"verif-hash":hash}:{})},body});
+    for(const hash of [undefined,"wrong"]) {
+      expect((await post(hash)).status).toBe(401);
+      expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("APPROVED");
+    }
+    // Every supplied identifier must agree with one independently verified payment.
+    expect((await post("synthetic-refund-webhook-hash",raw.replace("9231836","9231837"))).status).toBe(202);
+    expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("APPROVED");
+    for(let i=0;i<2;i++) {
+      const response=await post("synthetic-refund-webhook-hash");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({received:true,outcome:"held_for_reconciliation"});
+    }
+    expect((await state.pool.query("SELECT count(*)::int n FROM deferred_commission_adverse_events")).rows[0].n).toBe(1);
+    expect((await state.pool.query("SELECT status,amount FROM commission_ledger")).rows[0]).toMatchObject({status:"HELD",amount:"100.00"});
+    expect((await state.pool.query("SELECT count(*)::int n FROM flutterwave_split_adjustments")).rows[0].n).toBe(0);
+    await expect(exportCommissionBatch(batch.id,1)).rejects.toThrow("exception");
+    expect(verify).not.toHaveBeenCalled();
+  });
+  it.each(["reversed","refunded","failed"])("signed adverse charge %s cannot finalize again or clear approved liability",async status=>{
+    const verify=vi.spyOn(FlutterwaveTestAdapter.prototype,"verifyPayment").mockRejectedValue(new Error("Provider transport forbidden"));
+    await payment(1);await approve([1]);
+    vi.stubEnv("FLUTTERWAVE_SECRET_Test_Key","FLWSECK_TEST-synthetic-refund-fixture");
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY","");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","synthetic-refund-webhook-hash");
+    const response=await fetch(`${base}/webhook`,{method:"POST",
+      headers:{"content-type":"application/json","verif-hash":"synthetic-refund-webhook-hash"},
+      body:JSON.stringify({event:"charge.completed",data:{id:9231836,tx_ref:"SCV3_fixture_payment_1",status}})});
+    expect(response.status).toBe(200);
+    expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("HELD");
+    expect((await state.pool.query("SELECT status FROM student_subscription_payments")).rows[0].status).toBe("PAID");
+    expect(verify).not.toHaveBeenCalled();
   });
   it("cannot attach mismatched adverse-event identifiers to another payment or treat transfer events as Paid",async()=>{
     await payment(1);

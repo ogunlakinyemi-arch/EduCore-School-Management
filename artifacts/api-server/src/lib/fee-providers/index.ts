@@ -424,7 +424,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     // Do not guess percentages, fall back to platform-only, or retry an old charge.
     if (studentAllocationPolicy(input.reference).version >= 2) {
       throw new PaymentProviderError(
-        "Current-policy TEST checkout is blocked: exact post-fee School/Partner payouts and a nonzero merchant remainder are not independently established. Review Flutterwave TEST split configuration; do not pay again for an existing charge.",
+        "Current-policy TEST checkout is blocked: exact post-fee recipient payouts and a nonzero merchant remainder are not independently established. SCV3 requires only the school checkout recipient, not a Partner subaccount. Review Flutterwave TEST split configuration; do not pay again for an existing charge.",
       );
     }
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {
@@ -546,6 +546,13 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
       const id = data && data.id;
       if (!txRef || !REFERENCE_PATTERN.test(txRef) || !data) {
         throw new PaymentProviderError("Flutterwave webhook transaction details are invalid");
+      }
+      if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
+          && studentAllocationPolicy(txRef).deferredPartner
+          && ["reversed","refunded","failed"].includes(String(data.status).toLowerCase())) {
+        // Authenticated adverse notifications are holds, not fresh collection
+        // confirmations. A still-successful GET must not erase a dispute.
+        throw new PaymentProviderError("Flutterwave adverse charge requires reconciliation");
       }
       const webhookTransactionId = normalizeProviderTransactionId(id, "Flutterwave");
       const expected = await input.resolveExpectedPayment(txRef);

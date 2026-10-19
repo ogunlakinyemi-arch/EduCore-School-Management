@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FlutterwaveSplitProvider } from "./flutterwave-split-provider";
 import { FlutterwaveTestAdapter } from "../lib/fee-providers";
 import { fixedSplitInstructions, ngnMinor, cumulativeRefundShares, requireSplitDevelopment } from "../lib/flutterwave-split-policy";
-import { inspectRecipientSettlement } from "./flutterwave-split-reporting";
+import { inspectRecipientSettlement, settlementRecipientsMatchPlan } from "./flutterwave-split-reporting";
 import { decryptSplitBank, encryptSplitBank, splitBankFingerprint } from "./flutterwave-split-crypto";
 
 const school = "RS_UNITSchool000001", partner = "RS_UNITPartner00001";
@@ -172,6 +172,27 @@ describe("Mocked provider contracts — not genuine sandbox evidence",() => {
   });
 });
 describe("Mocked settlement evidence",() => {
+  it("requires the entire frozen recipient set, never vacuous completion or a Partner checkout transfer for SCV3",()=>{
+    const p={reference:"SCV3_settlement_fixture",school_recipient_id:9,partner_recipient_id:null,
+      instructions:fixedSplitInstructions(school,null,3)};
+    const r={id:9,provider_subaccount_id:school,expected_amount_minor:190000};
+    expect(settlementRecipientsMatchPlan(p,[r])).toBe(true);
+    for(const rows of [[],[r,r],[{...r,expected_amount_minor:200000}],[{...r,id:8}],
+      [r,{id:8,provider_subaccount_id:partner,expected_amount_minor:10000}]]) {
+      expect(settlementRecipientsMatchPlan(p,rows)).toBe(false);
+    }
+    expect(settlementRecipientsMatchPlan({...p,partner_recipient_id:8},[r])).toBe(false);
+    expect(settlementRecipientsMatchPlan({...p,instructions:[...p.instructions,
+      {id:partner,transaction_charge_type:"flat_subaccount",transaction_charge:100}]},[r])).toBe(false);
+    for(const version of [1,2] as const) {
+      const legacy={reference:version===1 ? "fee_settlement_fixture" : "SCV2_settlement_fixture",
+        school_recipient_id:9,partner_recipient_id:8,instructions:fixedSplitInstructions(school,partner,version)};
+      expect(settlementRecipientsMatchPlan(legacy,[
+        {...r,expected_amount_minor:version===1 ? 200000:190000},
+        {id:8,provider_subaccount_id:partner,expected_amount_minor:10000},
+      ])).toBe(true);
+    }
+  });
   const report = {currency:"NGN",bank_code:"044",settlement_account:bank.accountNumber,status:"completed",
     disburse_ref:"UNIT-DISBURSE",processed_date:"2026-10-11T08:00:00Z",refund:0,chargeback:0};
   const tx = {id:77,tx_ref:"fee_unit_split_checkout",currency:"NGN",status:"successful",settlement_amount:2000};

@@ -1,6 +1,7 @@
 import { pool } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
-import { requireSplitDevelopment, ngnMinor } from "../lib/flutterwave-split-policy";
+import { requireSplitDevelopment, ngnMinor, fixedSplitInstructions } from "../lib/flutterwave-split-policy";
+import { studentAllocationPolicy } from "../lib/student-allocation-policy";
 import { decryptSplitBank } from "./flutterwave-split-crypto";
 import { splitProvider } from "./flutterwave-split-provider";
 import { adjustmentView } from "./flutterwave-split-refunds";
@@ -54,6 +55,25 @@ export function inspectRecipientSettlement(report: any, transaction: any, bank: 
   }
   return { status:"TEST_PROVIDER_REPORTED_COMPLETE",amount,exception:null };
 }
+/** Empty, extra or cross-policy recipients can never prove disbursement. */
+export function settlementRecipientsMatchPlan(payment: any, recipients: any[]): boolean {
+  try {
+    const instructions = payment.instructions;
+    if (!Array.isArray(instructions)) return false;
+    const policy = studentAllocationPolicy(payment.reference);
+    if (policy.deferredPartner && payment.partner_recipient_id != null) return false;
+    const canonical = fixedSplitInstructions(instructions[0]?.id,instructions[1]?.id ?? null,policy.version);
+    if (instructions.length !== canonical.length
+        || JSON.stringify(instructions.map(s => [s.id,s.transaction_charge_type,s.transaction_charge]))
+          !== JSON.stringify(canonical.map(s => [s.id,s.transaction_charge_type,s.transaction_charge]))) return false;
+    const ids = [payment.school_recipient_id,...(payment.partner_recipient_id != null ? [payment.partner_recipient_id] : [])];
+    if (recipients.length !== canonical.length || ids.length !== canonical.length
+        || new Set(ids).size !== ids.length || new Set(recipients.map(r=>r.id)).size !== recipients.length) return false;
+    return canonical.every((item,i) => recipients.some(r => r.id === ids[i]
+      && r.provider_subaccount_id === item.id && r.expected_amount_minor === item.transaction_charge*100));
+  } catch { return false; }
+}
+
 export async function reconcileSplitPayment(paymentId: number) {
   requireSplitDevelopment();
   const p = (await pool.query(
@@ -69,6 +89,12 @@ export async function reconcileSplitPayment(paymentId: number) {
     `SELECT r.*,s.expected_amount_minor FROM flutterwave_split_settlements s
      JOIN flutterwave_split_recipients r ON r.id=s.recipient_id WHERE s.payment_id=$1 ORDER BY s.id`, [paymentId],
   )).rows;
+  if (!settlementRecipientsMatchPlan(p,recipients)) {
+    await pool.query(`UPDATE flutterwave_split_payments SET status='REPORT_EXCEPTION',
+      reconciliation_note='Frozen recipient evidence is missing or inconsistent; no settlement completion established'
+      WHERE payment_id=$1 AND status NOT IN ('REFUND_REVIEW','REFUNDED','COLLECTION_EXCEPTION')`,[paymentId]);
+    throw new AuthError(409,"Frozen recipient evidence is missing or inconsistent");
+  }
   let hasException = false, complete = true;
   const provider = splitProvider();
   for (const r of recipients) {

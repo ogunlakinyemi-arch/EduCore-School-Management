@@ -19,6 +19,30 @@ beforeEach(() => { vi.stubEnv("NODE_ENV","development");vi.stubEnv("REPLIT_DEPLO
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Independent transaction split comparison",() => {
+  it.each([true,false])("SCV3 compares school1900 and merchant3100 before actual fees; internal Partner=%s",hasPartner=>{
+    // Entitlement does not alter what is settled to the merchant.
+    const e={...expected,reference:`SCV3_fixture_${hasPartner}`,platformGrossMinor:310000,
+      recipients:[{subaccountId:school,amountMinor:190000}]};
+    const tx={...transaction,tx_ref:e.reference,app_fee:65,merchant_fee:5};
+    expect(compareVerificationResponse(e,tx)).toMatchObject({
+      status:"UNCONFIRMED",evidenceLevel:"PARTIAL",platformGrossMinor:310000,platformNetMinor:303000,bankSettlementVerified:false,
+    });
+    expect(compareTransactionSplits(e,tx,{recipients:e.recipients,completeRecipientSet:true}).status).toBe("CONFIRMED");
+    for(const invalid of [
+      {...e,platformGrossMinor:300000},
+      {...e,recipients:[{subaccountId:school,amountMinor:200000}]},
+      {...e,platformGrossMinor:300000,recipients:[...e.recipients,{subaccountId:partner,amountMinor:10000}]},
+    ]) expect(compareVerificationResponse(invalid,tx).status).toBe("MISMATCH");
+    expect(compareVerificationResponse(e,{...tx,subaccounts:e.recipients,completeRecipientSet:true}).status).toBe("UNCONFIRMED");
+  });
+  it.each([true,false])("SCV2 retains its original multi-recipient policy, Partner=%s",hasPartner=>{
+    const e={...expected,reference:"SCV2_historical_fixture",platformGrossMinor:hasPartner ? 300000 : 310000,
+      recipients:[{subaccountId:school,amountMinor:190000},...(hasPartner ? [{subaccountId:partner,amountMinor:10000}]:[])]};
+    expect(compareTransactionSplits(e,{...transaction,tx_ref:e.reference},
+      {recipients:e.recipients,completeRecipientSet:true})).toMatchObject({
+        status:"CONFIRMED",platformNetMinor:e.platformGrossMinor-7000,bankSettlementVerified:false,
+      });
+  });
   it("compares the partner allocation and separate platform expenses, never bank settlement",() => {
     const result = compareTransactionSplits(expected,transaction,complete);
     expect(result.status).toBe("CONFIRMED");
