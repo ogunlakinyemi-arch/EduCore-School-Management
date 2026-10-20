@@ -9,6 +9,11 @@ import { studentAllocationPolicy, studentPostFeePayouts } from "./student-alloca
 import { studentSubscriptionLiveWebhookRouter } from "../routes/student-subscription-live-webhooks";
 import { configuredPayrollProviderCapability } from "./flutterwave-payroll-v3";
 
+// This configuration-only suite must never reach an application database.
+vi.mock("../services/flutterwave-live-webhook-inbox", () => ({
+  persistAuthenticatedLiveWebhookReceipt: vi.fn().mockRejectedValue(new Error("Synthetic receipt storage unavailable")),
+}));
+
 // Entirely fictional inputs. No inherited credentials, application DB or provider calls.
 function live(): NodeJS.ProcessEnv {
   return {

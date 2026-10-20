@@ -595,6 +595,140 @@ Merchant-specific split semantics, school/main-merchant bank settlement,
 fees/VAT, refund/recovery and dashboard/version evidence remain separate gates.
 No user secret or dashboard change is requested now.
 
+## Development LIVE receipt persistence — 2026-10-20
+
+**Result: isolated durable receipt preparation PASS; end-to-end LIVE payment
+persistence, verification, finalization and refund/hold processing remain BLOCKED.**
+This supersedes the earlier description of the callback as having no database
+path. It does not supersede any activation guard or merchant-evidence gate.
+
+### Inspection and implementation boundary
+
+Reviewed the payment schema, finalizer, TEST callback/reconciliation flow,
+split-provider/refund and adverse-event boundaries, deferred commission SQL,
+migration conventions and existing disposable-PostgreSQL tests. The financial
+schema/finalizer and adverse-event matching remain explicitly SANDBOX-bound.
+The existing finalizer also performs shared subscription activation, receipt,
+allocation and commission work; replacing its mode check alone is unsafe.
+The shared transaction-ID and business-term conflict rules need an explicit
+environment-isolation design before LIVE payments can be reserved/finalized.
+The commission evidence view is likewise SANDBOX-only.
+
+Independent LIVE GET verification is prohibited by this request and remains
+hard-blocked. There is therefore no safe operational path from an incoming
+LIVE claim to a verified payment, durable finalization or matched financial
+hold. No existing financial CHECK, index, resolver, historical policy, refund
+workflow or Partner evidence view was widened or bypassed.
+
+### Additive, review-only SQL — NOT applied to either application database
+
+- `lib/db/dev-reconciliation/flutterwave-live-webhook-inbox.up.sql` creates
+  **only** `flutterwave_live_webhook_receipts`. Fixed provider/LIVE constraints,
+  a unique provider/environment/body-fingerprint namespace and a
+  `BLOCKED_PENDING_REVIEW`-only state prevent confusing receipt records with
+  SANDBOX events or processed/paid financial records.
+- The matching `.down.sql` reverses an **empty** inbox. It takes an exclusive
+  lock and refuses to drop retained evidence. A populated rollback needs a
+  separately reviewed preservation plan; there is no destructive automatic
+  downgrade or cascade.
+- These drafts are **not** registered in the migration journal or ORM schema
+  export, and no migration ledger entry was changed. No normal startup applies
+  them. The only execution was against fresh disposable native PostgreSQL.
+  Actual Development application requires target identity/catalog/ledger review
+  and explicit application approval; Production application is not authorized.
+
+### Callback behavior and receipt safety
+
+The existing LIVE-bound adapter authentication must succeed before acquiring a
+database client. Disabled/mismatched configuration still returns503 without
+storage; missing/wrong/TEST authentication with synthetic ready configuration
+returns401 without storage.
+
+Authenticated delivery can attempt an isolated transaction containing a SHA-256
+fingerprint, bounded allowlisted **unverified claims**, byte count and delivery
+timestamps/count. It stores no headers, raw body, customer/card/bank data or
+arbitrary metadata. Local SQL lock/statement timeouts bound database work.
+The unique namespace handles concurrent byte-identical delivery retries; retries
+only increment the count and do not overwrite original claims.
+
+After COMMIT, the callback may report `receiptRecorded:true`, but **still
+returns503 and `processed:false`**. Failed or uncertain COMMIT and missing schema
+also return503 without claiming a recorded receipt or leaking database errors.
+No provider transaction verification, payment finalizer, hold, refund, commission,
+receipt issuance, settlement resolver or automatic replay worker is called.
+
+**This is not financial or semantic event idempotency.** Re-encoded/changed bodies
+may create separate receipt fingerprints. Raw payloads are deliberately not
+retained for replay; these diagnostic records alone are insufficient for later
+financial processing. Actual provider redelivery or separately authorized
+evidence ingestion and a reviewed retention design would be required. The
+endpoint never returns200 just because a receipt exists. Do not configure/save
+it in Flutterwave or rely on provider retries as an operational recovery system.
+
+### Verification for this increment
+
+- **137 targeted tests passed across six executed files**:
+  - LIVE inbox PostgreSQL/actual HTTP handler: **12** new tests.
+  - Existing LIVE configuration/transport guard tests: **34**.
+  - Student subscription billing: **42**.
+  - Existing student webhook route: **6**.
+  - Readiness/allocation acceptance: **10**.
+  - Existing PostgreSQL commission/refund handlers: **33**.
+- The 12 new tests execute the real draft up/down SQL and actual LIVE HTTP
+  router against an isolated Unix-socket PostgreSQL cluster, using fictional
+  authentication and no provider network. They cover committed receipt before
+  reporting it, concurrent deduplication, changed-body separation, authentication
+  and runtime/scope denials before DB access, failed-commit rollback, response
+  loss after successful COMMIT, missing-schema refusal/retry, adverse/refund then
+  success ordering, malformed/mismatched/unknown claims, SQL environment/status
+  constraints, empty rollback/reapply, and populated rollback refusal.
+- The isolated preservation check retains an independent SANDBOX-history sentinel;
+  it is **not** a full clone or upgrade rehearsal of an application database.
+  Existing 33 PostgreSQL tests separately retain real TEST hold/refund/approval
+  regressions. No test result is claimed as LIVE financial finalization evidence.
+- API and frontend typechecks passed. Initial API typecheck found a test listener
+  callback typing issue; it was corrected and both checks then passed.
+  Diff whitespace checks passed.
+- Development API built/restarted successfully with existing subscription and
+  notification workers paused. An actual proxied callback POST returned503 with
+  disabled/mismatched configuration. No application receipt was created by that
+  refusal. A public-page screenshot was inconclusive (bootstrap shell only);
+  no frontend change or signed-in/browser financial acceptance is claimed.
+- Fresh GitHub main was compared with current Replit source; local work was
+  preserved. No application DB read/write or migration, actual-secret inspection,
+  provider request, transaction/refund/transfer, secret/flag change, dashboard
+  change, Production operation, Publish-setting change, push or publishing was
+  performed. The unrelated NFC hardware workflow was not restarted.
+
+### Explicit remaining blockers
+
+1. Review the actual target schema/ledger before any application of the staged
+   inbox SQL; agree evidence retention and nonempty rollback/preservation.
+2. Design and review LIVE payment reservation/provenance, environment-scoped
+   transaction and semantic event keys, cross-environment business-term conflict
+   rules, frozen recipient snapshots and all dependent foreign keys/financial
+   consumers. Preserve every historical allocation and original-school record.
+3. Implement independently verified successful transaction binding (exact
+   reference/transaction ID, NGN and NGN5,000, exact payer charge/known fees and
+   frozen school recipient), then atomic durable finalization and event completion.
+   Only a separately reviewed release could permit verification transport.
+4. Implement matched, durable adverse/refund/reversal holds, unresolved-event
+   reconciliation, export invalidation, safe partial-refund/recovery handling and
+   out-of-order protection. A payload's success or refund `completed` claim cannot
+   establish collection, disbursement, bank recovery or release a hold.
+5. Require crash/race/duplicate/replay and financial-invariant tests through the
+   complete LIVE path with mocked transport/disposable PostgreSQL before any
+   separately authorized external acceptance. Receipt-only tests are insufficient.
+6. Obtain the outstanding merchant-specific school split, transaction-linked
+   school/main-merchant settlement, actual costs/VAT, version/hash delivery and
+   refund/recovery evidence and a separate release/operational approval.
+
+All LIVE checkout, verification/status/refund transport and LIVE flags remain
+disabled. The unchanged policy is NGN5,000 per student/term, exactly NGN1,900
+school, NGN3,100 merchant gross before actual costs/taxes, and eligible NGN100
+internal Partner liability for term-end approval/export only. No Partner checkout
+subaccount and no new Paid/transfer capability were added.
+
 ## Provider references reviewed
 
 - https://developer.flutterwave.com/v3.0/docs/split-payments

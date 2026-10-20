@@ -37,3 +37,16 @@ movement or a successful acknowledgement without durable processing.
 credential/verifier fallback, and keep merchant-specific evidence and durable
 LIVE event processing as separate release gates. Do not relabel historical
 SANDBOX payments as LIVE to avoid a future persistence review.
+
+Receipt persistence and financial acceptance are separate decisions. Metadata-only
+delivery fingerprints must not be promoted into replayable financial events or
+used as semantic transaction idempotency.
+
+**Why:** The Development LIVE preparation deliberately avoided retaining raw
+customer/card/bank payloads before a retention review. That privacy boundary
+means a recorded delivery alone cannot supply all evidence for future processing.
+
+**How to apply:** Continue refusing financial acknowledgement until independent
+verification and durable financial processing exist. Review payload retention,
+semantic keys and recovery evidence before adding replay, and preserve populated
+receipt evidence rather than silently dropping it during rollback.
