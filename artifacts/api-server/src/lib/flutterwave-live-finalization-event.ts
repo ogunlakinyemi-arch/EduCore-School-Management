@@ -5,7 +5,7 @@ function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return fail();
   return value as Record<string, unknown>;
 }
-function minor(value: unknown): number {
+export function liveAmountMinor(value: unknown): number {
   if (typeof value !== "string" && typeof value !== "number") return fail();
   const parts = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(String(value));
   if (!parts) return fail();
@@ -41,12 +41,12 @@ export function parseLiveFinalizationEvent(rawBody: Buffer) {
   const providerReferences = [data.flw_ref, data.FlwRef].filter(value => value !== undefined);
   if (providerReferences.some(value => typeof value !== "string" || value.length < 1 || value.length > 200)
     || providerReferences.some(value => value !== providerReferences[0])) return fail();
-  if (successful && (data.currency !== "NGN" || minor(data.amount) !== 500000)) return fail();
+  if (successful && (data.currency !== "NGN" || liveAmountMinor(data.amount) !== 500000)) return fail();
   if (adverse) {
     if (data.currency !== undefined && data.currency !== "NGN") return fail();
-    if (type === "charge.completed" && data.amount !== undefined && minor(data.amount) !== 500000) return fail();
+    if (type === "charge.completed" && data.amount !== undefined && liveAmountMinor(data.amount) !== 500000) return fail();
     if (standalone || type === "refund.completed") {
-      const amount = minor(data.AmountRefunded ?? data.amount);
+      const amount = liveAmountMinor(data.AmountRefunded ?? data.amount);
       if (amount <= 0 || amount > 500000) return fail();
     }
   }

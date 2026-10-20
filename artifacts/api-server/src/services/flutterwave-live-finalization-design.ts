@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { StudentSubscriptionSqlPool } from "../lib/student-subscription-billing";
+import type { StudentSubscriptionSqlPool, StudentSubscriptionSqlClient } from "../lib/student-subscription-billing";
 import { parseLiveFinalizationEvent } from "../lib/flutterwave-live-finalization-event";
 import {
   blockedLiveCollectionVerifier, LiveFinalizationBlocked,
@@ -54,6 +54,10 @@ export async function finalizeLiveSubscriptionDesign(
   receiptId: number,
   rawBody: Buffer,
   verifier: LiveCollectionVerifier = blockedLiveCollectionVerifier,
+  lifecycle?: {
+    collection(client: StudentSubscriptionSqlClient, intent: any, receiptId: number): Promise<void>;
+    hold(client: StudentSubscriptionSqlClient, intent: any, receiptId: number): Promise<void>;
+  },
 ) {
   if (!verifier.enabled || verifier.environment !== "LIVE"
     || !/^[A-Za-z0-9_-]{8,80}$/.test(verifier.merchantScope)) blocked("LIVE_VERIFICATION_TRANSPORT_DISABLED");
@@ -124,6 +128,7 @@ export async function finalizeLiveSubscriptionDesign(
         `UPDATE flutterwave_live_partner_accruals SET state='HELD' WHERE intent_id=$1 AND environment='LIVE'`,
         [intent.id],
       );
+      await lifecycle?.hold(client,intent,receiptId);
     } else if (!intent.on_hold) {
       const existing = (await client.query(
         `SELECT * FROM flutterwave_live_collection_evidence WHERE intent_id=$1 AND environment='LIVE'`,
@@ -153,6 +158,7 @@ export async function finalizeLiveSubscriptionDesign(
         `UPDATE flutterwave_live_subscription_intents SET state='COLLECTION_VERIFIED' WHERE id=$1 AND environment='LIVE'`,
         [intent.id],
       );
+      await lifecycle?.collection(client,intent,receiptId);
     }
     await client.query(
       `INSERT INTO flutterwave_live_receipt_results (receipt_id,environment,event_id)

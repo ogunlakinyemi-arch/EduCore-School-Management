@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
+import { approveLiveCommissionBatch,exportLiveCommissionBatch } from "./flutterwave-live-commissions";
+import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
 import { requireSplitDevelopment } from "../lib/flutterwave-split-policy";
 import { ApprovePartnerPayoutBatchBody } from "@workspace/api-zod";
 
@@ -56,6 +58,16 @@ export function batchView(row: any) {
 }
 
 export async function approveCommissionBatch(input: unknown, actorId: number) {
+  if(input && typeof input==="object" && "environment" in input && input.environment!=="SANDBOX"){
+    if(input.environment!=="LIVE") throw new AuthError(400,"Explicit approval environment is invalid");
+    const live=input as Record<string,unknown>;
+    if(typeof live.merchantScope!=="string" || typeof live.idempotencyKey!=="string"
+      || !Array.isArray(live.commissionIds) || live.commissionIds.some(id=>typeof id!=="number"))
+      throw new AuthError(400,"LIVE approval requires explicit merchant scope, commission IDs and key");
+    try{return await approveLiveCommissionBatch(pool,{actorId,merchantScope:live.merchantScope,
+      intentIds:live.commissionIds,idempotencyKey:live.idempotencyKey});}
+    catch(error){if(error instanceof LiveFinalizationBlocked) throw new AuthError(503,"LIVE commission approval remains disabled");throw error;}
+  }
   requireSplitDevelopment();
   const parsed = ApprovePartnerPayoutBatchBody.safeParse(input);
   if (!parsed.success) throw new AuthError(400, "Select 1–5000 commission IDs and provide a valid idempotency key");
@@ -121,7 +133,13 @@ export async function listCommissionBatches() {
   requireSplitDevelopment();
   return (await pool.query("SELECT * FROM partner_payout_batches ORDER BY id DESC")).rows.map(batchView);
 }
-export async function exportCommissionBatch(id: number, actorId: number) {
+export async function exportCommissionBatch(id: number, actorId: number,
+  scope?: {environment:string;merchantScope:string}) {
+  if(scope && scope.environment!=="SANDBOX"){
+    if(scope.environment!=="LIVE") throw new AuthError(400,"Explicit export environment is invalid");
+    try{return await exportLiveCommissionBatch(pool,{actorId,batchId:id,merchantScope:scope.merchantScope});}
+    catch(error){if(error instanceof LiveFinalizationBlocked) throw new AuthError(503,"LIVE commission export remains disabled");throw error;}
+  }
   requireSplitDevelopment();
   const client = await pool.connect();
   try {

@@ -1947,7 +1947,10 @@ router.post("/platform/partner-payout-batches", run(async(req,res)=>{
 }));
 router.get("/platform/partner-payout-batches/:batchId", run(async(req,res)=>{
   const context=assertRoles(req,["PLATFORM_OWNER"]);
-  res.json(await exportCommissionBatch(idOf(req.params.batchId,"Batch"),context.user.id));
+  const scope=req.query.environment===undefined ? undefined : {
+    environment:String(req.query.environment),merchantScope:String(req.query.merchantScope??""),
+  };
+  res.json(await exportCommissionBatch(idOf(req.params.batchId,"Batch"),context.user.id,scope));
 }));
 router.get("/partner/deferred-commissions", run(async(req,res)=>{
   const p=await self(req); requirePartnerFinanceAccess(p);

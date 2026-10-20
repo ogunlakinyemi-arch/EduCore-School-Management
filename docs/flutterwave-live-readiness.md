@@ -2,6 +2,11 @@
 
 ## Status: NOT authorized or ready for live activation
 
+**Latest coordinated Development-only review:** see
+[LIVE workflow implementation and release blockers](flutterwave-live-workflow-review.md).
+Earlier dated increments below remain historical evidence, not the current
+implementation inventory or permission to enable LIVE operations.
+
 No live checkout, live transfer, Production migration, Publish configuration,
 key change or publishing is part of this implementation. Both SCV2 and SCV3
 checkout remain blocked before provider transport. Adding credentials does not

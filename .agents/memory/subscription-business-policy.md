@@ -31,3 +31,20 @@ unexecuted batches and retain audit/recovery history. Keep live checkout disable
 until exact split semantics, verification, refunds, reconciliation and a controlled
 readiness review are proven. Development implementation does not authorize
 Production migration, publishing, live keys or live transactions.
+
+## LIVE preparation authorization
+
+Use additive, reviewable migration drafts and disposable PostgreSQL only.
+Development implementation permission does not authorize applying even those
+drafts to the Development application database; Production requires its own
+separate approval too. Do not inspect actual secret values, make actual LIVE
+provider requests, change LIVE flags/dashboard settings or publish.
+
+**Why:** The user explicitly limited the coordinated LIVE workflow request to
+safe code/tests/docs and required remaining operational blockers to be reported,
+not treated as completed acceptance.
+
+**How to apply:** Keep fixture capability injection separate from release gates.
+Do not mix LIVE financial records into historically unscoped shared/SANDBOX
+records merely to demonstrate activation or commission approval. Review explicit
+environment-aware app and UI consumption before any operational connection.

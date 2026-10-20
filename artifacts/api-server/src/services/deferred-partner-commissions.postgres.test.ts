@@ -136,6 +136,16 @@ afterAll(async()=>{
 });
 const approve=(ids:number[],key="commission-bulk-fixture-1")=>approveCommissionBatch({commissionIds:ids,idempotencyKey:key},1);
 describe("deferred commission native SQL evidence and atomic batch approval",()=>{
+  it("explicit LIVE approval/export never falls back to SANDBOX batch IDs",async()=>{
+    await expect(approveCommissionBatch({environment:"LIVE",merchantScope:"merchant_fixture_live",
+      commissionIds:[1],idempotencyKey:"live-approval-disabled-fixture"},1)).rejects.toThrow("LIVE commission approval remains disabled");
+    await expect(exportCommissionBatch(1,1,{environment:"LIVE",merchantScope:"merchant_fixture_live"}))
+      .rejects.toThrow("LIVE commission export remains disabled");
+    await expect(approveCommissionBatch({environment:"invalid"},1)).rejects.toThrow("environment is invalid");
+    expect((await fetch(`${base}/platform/partner-payout-batches/1?environment=LIVE&merchantScope=merchant_fixture_live`)).status).toBe(503);
+    expect((await fetch(`${base}/platform/partner-payout-batches/1?environment=invalid`)).status).toBe(400);
+    expect((await state.pool.query("SELECT count(*) n FROM partner_payout_batches")).rows[0].n).toBe("0");
+  });
   it("only an authorized Owner can read financial evidence or approve a batch via the real route",async()=>{
     await payment(1);
     for(const role of ["SCHOOL_ADMIN","PARTNER","ANONYMOUS"]) {
