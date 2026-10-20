@@ -50,3 +50,14 @@ means a recorded delivery alone cannot supply all evidence for future processing
 verification and durable financial processing exist. Review payload retention,
 semantic keys and recovery evidence before adding replay, and preserve populated
 receipt evidence rather than silently dropping it during rollback.
+
+A matched signed adverse event on an already independently verified collection
+must not require a fresh *successful* collection read before placing a hold.
+
+**Why:** A provider outage or a current reversed/refunded status can otherwise
+prevent the protective hold precisely when the original liability is unsafe.
+
+**How to apply:** Bind all supplied identifiers to immutable original verified
+evidence and reuse it only to hold, never to create another collection, prove
+refund recovery or clear a hold. Unverified original payments still require
+independent evidence; this rule is not permission to bypass disabled LIVE gates.

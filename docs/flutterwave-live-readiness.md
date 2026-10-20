@@ -729,6 +729,141 @@ school, NGN3,100 merchant gross before actual costs/taxes, and eligible NGN100
 internal Partner liability for term-end approval/export only. No Partner checkout
 subaccount and no new Paid/transfer capability were added.
 
+## Offline LIVE finalization design — 2026-10-20
+
+**Result: isolated design implemented and tested; NOT operational LIVE billing.**
+No credential isolation or inbox work was repeated. This extends the preceding
+receipt-only preparation with a separate, dependency-injected financial design.
+The HTTP callback is intentionally unchanged and still returns503.
+
+### Isolation and disabled verification
+
+- `flutterwave-live-verification.ts` defines a normalized independent verification
+  interface. Its frozen default implementation is disabled and always refuses.
+  No flag, key, adapter factory or environment setting can enable it; no LIVE
+  HTTP transport was added or invoked.
+- `flutterwave-live-finalization-design.ts` is not imported by any route, worker,
+  checkout or provider factory. Only isolated tests inject an enabled fictional
+  verifier and disposable SQL pool. The default rejects **before DB access**.
+  Even a committed design outcome reports `operationallyProcessed:false`, never
+  operational activation or HTTP200 eligibility.
+- The design queries only the LIVE receipt inbox and new LIVE-prefixed tables.
+  Each table has a fixed LIVE constraint. Merchant scope, original-school/student/
+  session/term scope, immutable recipient/Partner snapshots and provider-ID
+  uniqueness are explicit. Shared academic, SANDBOX payment, receipt, allocation,
+  commission, refund and approval/export records are never read or written.
+- The caller must supply the original bounded body matching a signature-verified
+  LIVE receipt's SHA-256. Diagnostic receipt claims are not processing authority.
+  Every supported supplied transaction/application/provider-reference identifier
+  must agree. Missing original bytes, unsupported/malformed event shapes and
+  unmatched or contradictory identifiers refuse processing.
+
+### Review-only additive migration drafts
+
+`lib/db/dev-reconciliation/flutterwave-live-finalization.up.sql` creates separate:
+
+1. Frozen LIVE subscription intent snapshots and one-time verified identity binding.
+2. Immutable independently verified collection evidence.
+3. Semantic collection/whole-liability-hold events.
+4. Immutable receipt-to-event results.
+5. Internal LIVE Partner accrual projections (`ACCRUED` or `HELD`, never Paid).
+
+It depends on the LIVE inbox draft. It does not widen any existing schema CHECK
+or reference shared/SANDBOX tables. Composite foreign keys bind collection and
+Partner projection values to the frozen LIVE intent; unique keys prevent a
+provider identity or business term from being assigned twice in that namespace.
+The `.down.sql` reverses empty design tables but refuses to erase retained intents
+or evidence. It leaves the prior inbox intact.
+
+**Neither draft was registered in the migration journal/ORM export or applied to
+an application database.** Only fresh disposable Unix-socket PostgreSQL executed
+them. No ledger adoption, existing-target upgrade rehearsal or Production
+compatibility is claimed.
+
+### Finalization and adverse-event guarantees tested
+
+- Fresh collection evidence requires exact LIVE environment/merchant, reference,
+  transaction ID, successful normalized status, NGN currency, NGN5,000 principal
+  **and payer charge**, bounded integer fee components and independently
+  transaction-bound evidence of exactly one reviewed school subaccount at
+  NGN1,900. Echoed checkout metadata, wrong/extra recipients and Partner checkout
+  subaccounts fail. Unsupported/missing provider evidence stays blocked.
+- The school remains NGN1,900 and merchant gross NGN3,100 before costs, with
+  eligible NGN100 accrued internally. Fictional NGN65 + NGN5 costs produce NGN3,030
+  calculated merchant remainder, and NGN2,930 Owner economic net with a Partner
+  versus NGN3,030 without. Additional fees are not called VAT, and these
+  calculations are not bank settlement or complete tax/cost evidence.
+- Row locks, unique semantic events and an atomic SQL transaction bind collection,
+  internal accrual and receipt result together. Re-encoded successful notifications
+  do not accrue twice. Failed COMMIT rolls back; a lost successful COMMIT response
+  is safely replayed without rewriting immutable amounts or another payable.
+  SQL work and injected verification have bounded timeouts.
+- Matched authenticated refund/reversal/chargeback notifications conservatively
+  hold the whole internal liability. If original independently verified collection
+  evidence already exists, it is reused **for the hold only**: an unavailable or
+  now-reversed provider read must not prevent protection of that original record.
+  Before such evidence exists, the fictional verification boundary must still
+  prove the original transaction; otherwise the design refuses processing.
+- Partial, pending/failed refund or chargeback-won claims never prove customer
+  disbursement or recovery, reduce historical gross, pay a Partner, or release a
+  hold. Reversal before collection prevents a later success creating a payable.
+  The generic whole-liability-hold event deduplicates protective actions; it is
+  **not** per-refund/cumulative-refund accounting.
+
+### Exact verification results
+
+- **157 distinct focused tests across seven files passed**:
+  20 new finalization PostgreSQL tests; 12 LIVE inbox PostgreSQL/HTTP tests;
+  34 LIVE configuration/transport guard tests; 42 subscription billing tests;
+  6 existing student webhook tests; 10 readiness/allocation tests; and 33
+  existing PostgreSQL commission/refund tests.
+- Execution detail: the initial seven-file run passed156 tests. After adding
+  the hold-only original-evidence case, the changed finalization file alone was
+  rerun and all20 passed. The other137 tests were unaffected and not rerun.
+- New native tests exercise the actual draft DDL and design function, not just SQL
+  mocks, including Partner/no-Partner, 19 independent-proof mismatch variants,
+  cross-merchant denial/namespace separation, original-body binding, concurrent
+  duplicates, changed encoding, failed/lost commits, atomic adverse holds,
+  pre-collection reversal, contradictory refunds, unavailable verification,
+  verification timeout, immutability, Paid prevention and safe rollback/reapply.
+- API/frontend typechecks passed. Initial typecheck found a synthetic timeout
+  Promise missing its generic evidence type; this test-only annotation was fixed.
+  Tracked and new-file whitespace checks passed.
+- Development API built/restarted successfully; existing subscription/notification
+  workers remain paused. Actual proxied LIVE callback returned503 with disabled/
+  mismatched configuration, not a financial acknowledgement. No UI or browser
+  financial flow changed; prior visual capture was not treated as acceptance.
+- Fresh GitHub main was compared with the relevant Replit source. No application
+  database access/migration, actual-secret inspection/change, provider request,
+  transaction/refund/transfer, LIVE flag or delivery configuration, dashboard
+  change, Production/Publish operation, push or publishing occurred.
+
+### Remaining blockers — do not wire the callback to this design
+
+- Independently verify target Development identity/catalog/ledger and rehearse the
+  drafts against its existing schema before any separately approved application.
+  Establish retention/preservation and nonempty rollback procedures.
+- Implement an authorized LIVE intent producer with authoritative original-school,
+  student/term, recipient ownership and eligible Partner attribution/rule evidence.
+  The test snapshots are fictional, not proof of real eligibility or onboarding.
+- Supply a separately authorized LIVE-safe independent verification transport and
+  transaction-bound recipient normalizer. There is intentionally no such adapter
+  here. Written effective split semantics, actual school/merchant bank statements,
+  complete fee/VAT and recovery evidence remain mandatory release gates.
+- Review shared subscription activation, official receipt issuance and cross-
+  environment business-term conflicts. These separate collection projections
+  neither activate an actual student nor replace the SANDBOX finalizer.
+- Integrate LIVE-only term-end Owner approval/export and hold invalidation without
+  mixing TEST evidence. There is no approval/export/Paid/transfer path for the new
+  LIVE accruals; operational integration must enforce the existing policy.
+- Review durable adverse-event/reconciliation and refund recovery accounting,
+  full-event retention/redelivery, crash recovery and final acknowledgement before
+  making any event operational. Unmatched/missing evidence remains unresolved;
+  no hold release, refund completion or bank recovery is inferred.
+- Only a separate reviewed release can connect the callback and enable anything.
+  All LIVE flags, checkout, verification/refund transport and delivery remain
+  disabled. Do not save a LIVE dashboard callback or initiate a transaction.
+
 ## Provider references reviewed
 
 - https://developer.flutterwave.com/v3.0/docs/split-payments
