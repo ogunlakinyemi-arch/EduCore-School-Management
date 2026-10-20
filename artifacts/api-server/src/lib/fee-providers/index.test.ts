@@ -367,12 +367,12 @@ describe("fee payment provider adapters", () => {
     }
   });
 
-  it("uses FLUTTERWAVE_SECRET_KEY as a strictly validated test key", () => {
+  it("never uses the LIVE-only FLUTTERWAVE_SECRET_KEY as a TEST alias", () => {
     vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
     vi.stubEnv("FLUTTERWAVE_SECRET_KEY", flutterwaveSecret);
     vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
     try {
-      expect(configuredTestAdapter("FLUTTERWAVE")?.provider).toBe("flutterwave");
+      expect(configuredTestAdapter("FLUTTERWAVE")).toBeNull();
     } finally {
       vi.unstubAllEnvs();
     }
@@ -389,12 +389,12 @@ describe("fee payment provider adapters", () => {
     }
   });
 
-  it("fails closed when Flutterwave secret aliases conflict", () => {
+  it("keeps the dedicated TEST alias independent of the LIVE-only credential", () => {
     vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
     vi.stubEnv("FLUTTERWAVE_SECRET_KEY", `${flutterwaveSecret}_different`);
     vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
     try {
-      expect(configuredTestAdapter("FLUTTERWAVE")).toBeNull();
+      expect(configuredTestAdapter("FLUTTERWAVE")?.provider).toBe("flutterwave");
     } finally {
       vi.unstubAllEnvs();
     }
@@ -403,8 +403,8 @@ describe("fee payment provider adapters", () => {
   it.each(["FLWSECK_LIVE-1234567890abcdef", "not-a-test-secret"])(
     "rejects malformed or live Flutterwave keys configured through the test alias",
     (secretKey) => {
-      vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
-      vi.stubEnv("FLUTTERWAVE_SECRET_KEY", secretKey);
+      vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", secretKey);
+      vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
       vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
       try {
         expect(() => configuredTestAdapter("FLUTTERWAVE")).toThrow(PaymentProviderError);
@@ -415,8 +415,8 @@ describe("fee payment provider adapters", () => {
   );
 
   it("allows test payments without a webhook hash and never substitutes public or encryption keys", async () => {
-    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
-    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
     vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "");
     vi.stubEnv("FLUTTERWAVE_PUBLIC_KEY", "FLWPUBK_TEST-1234567890abcdef");
     vi.stubEnv("FLUTTERWAVE_ENCRYPTION_KEY", "FLWSECK_TEST-1234567890abcdef");

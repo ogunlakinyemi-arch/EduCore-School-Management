@@ -2,6 +2,8 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { isFlutterwaveTestCheckoutUrl } from "../flutterwave-checkout-url";
 import { assertNoLocalSplitSimulation } from "../local-split-simulation-barrier";
 import { studentAllocationPolicy } from "../student-allocation-policy";
+import { newStudentPaymentReference } from "../student-allocation-policy";
+import { flutterwaveLiveStatus } from "../flutterwave-live-config";
 
 export type FeePaymentStatus = "pending" | "succeeded" | "failed";
 
@@ -384,18 +386,21 @@ export interface FlutterwaveAdapterConfig {
   webhookSecret?: string;
 }
 
-export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
+abstract class FlutterwaveV3Adapter extends HttpPaymentAdapter {
   readonly provider = "flutterwave" as const;
   protected readonly baseUrl = "https://api.flutterwave.com/v3/";
   private readonly secretKey: string;
   private readonly webhookSecret: string | null;
 
-  constructor(config: FlutterwaveAdapterConfig, options: AdapterHttpOptions = {}) {
+  protected constructor(config: FlutterwaveAdapterConfig, options: AdapterHttpOptions, mode: "TEST" | "LIVE") {
     super(options);
     if (!config || typeof config.secretKey !== "string") {
-      throw new PaymentProviderError("Flutterwave test-mode configuration is required");
+      throw new PaymentProviderError("Flutterwave configuration is required");
     }
-    assertTestSecret(config.secretKey, "flutterwave");
+    if (mode === "TEST") assertTestSecret(config.secretKey, "flutterwave");
+    else if (!/^FLWSECK-(?!TEST-)[A-Za-z0-9_-]{8,}$/.test(config.secretKey)) {
+      throw new PaymentProviderError("Flutterwave LIVE credential is invalid");
+    }
     if (config.webhookSecret !== undefined && config.webhookSecret !== ""
         && (typeof config.webhookSecret !== "string" || config.webhookSecret.length < 16)) {
       throw new PaymentProviderError("Flutterwave webhook verification hash is required");
@@ -531,11 +536,15 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     return this.verifyPayment({ ...input, providerTransactionId: transactionId });
   }
 
-  async handleWebhook(input: WebhookInput): Promise<WebhookResult> {
-    const signature = headerValue(input.headers, "verif-hash");
+  authenticateWebhook(headers: WebhookInput["headers"]): void {
+    const signature = headerValue(headers, "verif-hash");
     if (!this.webhookSecret || !signature || !compareTextConstantTime(signature, this.webhookSecret)) {
       throw new PaymentProviderError("Flutterwave webhook verification hash is invalid");
     }
+  }
+
+  async handleWebhook(input: WebhookInput): Promise<WebhookResult> {
+    this.authenticateWebhook(input.headers);
     try {
       const event = parseBody(input.rawBody);
       if (event.event !== "charge.completed") {
@@ -615,6 +624,45 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
 
   protected authHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${this.secretKey}`, "Content-Type": "application/json" };
+  }
+}
+
+/** Existing TEST semantics remain unchanged; a LIVE key is never accepted here. */
+export class FlutterwaveTestAdapter extends FlutterwaveV3Adapter {
+  constructor(config: FlutterwaveAdapterConfig, options: AdapterHttpOptions = {}) {
+    super(config, options, "TEST");
+  }
+}
+
+/**
+ * Separately configured LIVE V3 adapter. No transport is permitted in this release:
+ * enabling configuration cannot bypass split/settlement or LIVE persistence review.
+ */
+export class FlutterwaveLiveAdapter extends FlutterwaveV3Adapter {
+  readonly mode = "LIVE" as const;
+  constructor(env: NodeJS.ProcessEnv = process.env, options: AdapterHttpOptions = {}) {
+    if (!flutterwaveLiveStatus(env).configurationReady) {
+      throw new PaymentProviderError("Flutterwave LIVE configuration is disabled, missing or mismatched");
+    }
+    super({ secretKey: env.FLUTTERWAVE_SECRET_KEY!, webhookSecret: env.FLUTTERWAVE_WEBHOOK_VERIF_HASH! }, options, "LIVE");
+  }
+
+  override generateReference(): string {
+    return newStudentPaymentReference(super.generateReference());
+  }
+
+  override async initializePayment(_input: InitializePaymentInput): Promise<InitializePaymentResult> {
+    throw new PaymentProviderError("Flutterwave LIVE checkout remains blocked pending merchant evidence and release review");
+  }
+
+  override async handleWebhook(input: WebhookInput): Promise<WebhookResult> {
+    this.authenticateWebhook(input.headers);
+    // No resolver, provider call, financial writes or successful acknowledgement.
+    throw new PaymentProviderError("Flutterwave LIVE event persistence remains blocked pending release review");
+  }
+
+  protected override async request(_path: string, _init: RequestInit, _retrySafeRead = false): Promise<JsonObject> {
+    throw new PaymentProviderError("Flutterwave LIVE provider transport remains blocked pending release review");
   }
 }
 

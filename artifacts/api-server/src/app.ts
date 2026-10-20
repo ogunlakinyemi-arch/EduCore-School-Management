@@ -18,6 +18,7 @@ import feeProviderWebhookRouter from "./routes/fee-provider-webhooks";
 import communicationReceiptRouter from "./routes/communication-receipts";
 import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
 import { studentSubscriptionFlutterwaveWebhookRouter } from "./routes/student-subscription-webhooks";
+import { studentSubscriptionLiveWebhookRouter } from "./routes/student-subscription-live-webhooks";
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 import { rejectSimulationWebhook } from "./middlewares/local-split-simulation";
@@ -109,6 +110,12 @@ app.use(
   express.raw({ type: "application/json", limit: "64kb" }),
   rejectSimulationWebhook,
   studentSubscriptionFlutterwaveWebhookRouter,
+);
+app.use(
+  "/api/webhooks/flutterwave/live/student-subscription",
+  express.raw({ type: "application/json", limit: "64kb" }),
+  rejectSimulationWebhook,
+  studentSubscriptionLiveWebhookRouter,
 );
 app.use(
   clerkMiddleware((req) => ({

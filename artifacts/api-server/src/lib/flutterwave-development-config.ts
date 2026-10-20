@@ -1,6 +1,14 @@
+import { flutterwaveTestWebhookVerifier } from "./flutterwave-live-config";
+
 /** Dedicated TEST aliases only. Never use or compare a potentially live generic key. */
 export function developmentFlutterwaveCredential(env: NodeJS.ProcessEnv = process.env) {
   if (env.NODE_ENV !== "development" || env.REPLIT_DEPLOYMENT)
+    return { state: "BLOCKED" as const, secret: null };
+  return dedicatedFlutterwaveTestCredential(env);
+}
+
+export function dedicatedFlutterwaveTestCredential(env: NodeJS.ProcessEnv = process.env) {
+  if (env.EDUCORE_FLUTTERWAVE_MODE !== undefined && env.EDUCORE_FLUTTERWAVE_MODE !== "TEST")
     return { state: "BLOCKED" as const, secret: null };
   const values = [env.FLUTTERWAVE_SECRET_Test_Key?.trim(), env.FLUTTERWAVE_TEST_SECRET_KEY?.trim()].filter(Boolean) as string[];
   if (!values.length) return { state: "MISSING" as const, secret: null };
@@ -14,7 +22,7 @@ export function developmentFlutterwaveCredential(env: NodeJS.ProcessEnv = proces
 export function developmentFlutterwaveCollectionStatus(env: NodeJS.ProcessEnv = process.env) {
   const credential = developmentFlutterwaveCredential(env);
   const configured = credential.state === "CONFIGURED";
-  const webhookConfigured = !!env.FLUTTERWAVE_WEBHOOK_VERIF_HASH?.trim();
+  const webhookConfigured = !!flutterwaveTestWebhookVerifier(env)?.trim();
   return {
     mode: configured ? "TEST" as const : "NOT_CONFIGURED" as const,
     credentialState: credential.state,

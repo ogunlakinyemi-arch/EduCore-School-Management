@@ -704,8 +704,8 @@ describe("public fee-provider webhook settlement", () => {
   });
 
   it("rejects unsigned Flutterwave webhooks when the dedicated hash is absent", async () => {
-    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
-    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
     vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "");
     const transport = vi.fn();
     vi.stubGlobal("fetch", transport);

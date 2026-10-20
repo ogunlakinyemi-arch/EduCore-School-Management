@@ -65,12 +65,7 @@ export function configuredPayrollProviderCapability(
   const testKey = env.FLUTTERWAVE_TEST_SECRET_KEY?.trim();
   const explicitlyTestCredential =
     !!testKey && /^FLWSECK_TEST-[A-Za-z0-9_-]{8,}$/.test(testKey);
-  const existingSecret = env.FLUTTERWAVE_SECRET_KEY?.trim();
-  const sameExistingTestCredential =
-    !!existingSecret &&
-    /^FLWSECK_TEST-[A-Za-z0-9_-]{8,}$/.test(existingSecret) &&
-    (!testKey || existingSecret === testKey);
-  const safeTestKey = explicitlyTestCredential ? testKey : sameExistingTestCredential ? existingSecret : null;
+  const safeTestKey = explicitlyTestCredential ? testKey : null;
   const developmentCredential = developmentFlutterwaveCredential(env);
   const resolvedTestKey = env.NODE_ENV === "development" && developmentCredential.state !== "MISSING"
     ? developmentCredential.secret : safeTestKey;
@@ -162,7 +157,6 @@ function providerKey(
       ? developmentFlutterwaveCredential(env).secret
       : null) ??
     env.FLUTTERWAVE_TEST_SECRET_KEY?.trim() ??
-    env.FLUTTERWAVE_SECRET_KEY?.trim() ??
     ""
   ) : (
     env.FLUTTERWAVE_LIVE_SECRET_KEY?.trim() ?? ""

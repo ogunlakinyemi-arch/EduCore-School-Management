@@ -1,10 +1,18 @@
 import {
   FlutterwaveTestAdapter,
+  FlutterwaveLiveAdapter,
   PaymentProviderError,
   PaystackTestAdapter,
   type PaymentProviderAdapter,
 } from "./index";
 import { developmentFlutterwaveCredential } from "../flutterwave-development-config";
+import { flutterwaveLiveStatus, flutterwaveTestWebhookVerifier } from "../flutterwave-live-config";
+
+/** Never auto-select LIVE based on credentials, and never fall back to TEST. */
+export function configuredLiveStudentSubscriptionAdapter(env: NodeJS.ProcessEnv = process.env) {
+  if (!flutterwaveLiveStatus(env).configurationReady) return null;
+  return new FlutterwaveLiveAdapter(env);
+}
 
 export type ConfigurableFeeProvider = "PAYSTACK" | "FLUTTERWAVE";
 
@@ -21,6 +29,7 @@ export function configuredTestAdapter(
     if (!secretKey) return null;
     return new PaystackTestAdapter({ secretKey });
   }
+  if (env.EDUCORE_FLUTTERWAVE_MODE !== undefined && env.EDUCORE_FLUTTERWAVE_MODE !== "TEST") return null;
   if (env.NODE_ENV === "development" && !env.REPLIT_DEPLOYMENT) {
     const credential = developmentFlutterwaveCredential(env);
     if (credential.state === "INVALID" || credential.state === "CONFLICT") {
@@ -29,18 +38,13 @@ export function configuredTestAdapter(
     if (!credential.secret) return null;
     return new FlutterwaveTestAdapter({
       secretKey: credential.secret,
-      webhookSecret: env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || undefined,
+      webhookSecret: flutterwaveTestWebhookVerifier(env),
     });
   }
-  const legacyTestSecret = env.FLUTTERWAVE_TEST_SECRET_KEY;
-  const configuredSecret = env.FLUTTERWAVE_SECRET_KEY;
-  const webhookSecret = env.FLUTTERWAVE_WEBHOOK_VERIF_HASH;
-  const configuredSecrets = [legacyTestSecret, configuredSecret]
-    .filter((value): value is string => Boolean(value));
-  if (new Set(configuredSecrets).size > 1) return null;
-  const secretKey = configuredSecrets[0];
+  // The mixed-case alias remains Development-only; deployed TEST uses its explicit alias.
+  const secretKey = env.FLUTTERWAVE_TEST_SECRET_KEY;
   if (!secretKey) return null;
-  return new FlutterwaveTestAdapter({ secretKey, webhookSecret: webhookSecret || undefined });
+  return new FlutterwaveTestAdapter({ secretKey, webhookSecret: flutterwaveTestWebhookVerifier(env) });
 }
 
 export function configuredCheckoutReturnUrl(): string | null {
@@ -61,13 +65,14 @@ export function configuredCheckoutReturnUrl(): string | null {
  * Deployed configuration stays unchanged.
  */
 export function configuredStudentNfcTestAdapter(): PaymentProviderAdapter | null {
+  if (process.env.EDUCORE_FLUTTERWAVE_MODE !== undefined && process.env.EDUCORE_FLUTTERWAVE_MODE !== "TEST") return null;
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
     const credential = developmentFlutterwaveCredential();
     if (credential.state === "CONFLICT") return null;
     if (credential.state === "INVALID") throw new Error("Invalid dedicated Flutterwave TEST credential configuration");
     if (credential.secret) return new FlutterwaveTestAdapter({
       secretKey: credential.secret,
-      webhookSecret: process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || undefined,
+      webhookSecret: flutterwaveTestWebhookVerifier(),
     });
   }
   return configuredTestAdapter("FLUTTERWAVE");

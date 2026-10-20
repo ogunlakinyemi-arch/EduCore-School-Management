@@ -24,6 +24,6 @@ describe("NFC-isolated Development TEST credential", () => {
   it.each(["production", "deployment"])("never enables the new alias in %s", target => {
     if (target === "production") vi.stubEnv("NODE_ENV", "production");
     else vi.stubEnv("REPLIT_DEPLOYMENT", "1");
-    expect(() => configuredStudentNfcTestAdapter()).toThrow();
+    expect(configuredStudentNfcTestAdapter()).toBeNull();
   });
 });

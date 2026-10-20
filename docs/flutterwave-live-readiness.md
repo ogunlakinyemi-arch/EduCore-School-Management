@@ -5,7 +5,8 @@
 No live checkout, live transfer, Production migration, Publish configuration,
 key change or publishing is part of this implementation. Both SCV2 and SCV3
 checkout remain blocked before provider transport. Adding credentials does not
-remove these guards. The existing adapter remains TEST-only.
+remove these guards. Existing collection paths remain TEST-only; the separate
+LIVE adapter described below is prepared but all its provider transport is blocked.
 
 ## New-payment policy
 
@@ -352,6 +353,149 @@ automated evidence, not proof of actual bank settlement. No Production access,
 Publish configuration change, publishing, or payment/refund/payout/provider
 mutation was performed.
 
+## Separate LIVE preparation wiring — 2026-10-20
+
+**Wired, but NOT activated.** No secret values were inspected, requested, printed
+or changed. No merchant API was called. No migration, Production operation,
+Publish-settings change or publishing is part of this work.
+
+### Implemented boundaries
+
+- Separate `FlutterwaveLiveAdapter` and explicit LIVE factory. Presence of a key
+  never selects LIVE. The shared V3 parsing/authentication implementation retains
+  the existing TEST constructor's TEST-key validation.
+- LIVE requires production runtime, exact server-side mode/enablement, a valid
+  LIVE-formatted `FLUTTERWAVE_SECRET_KEY`, and a valid verifier explicitly labelled
+  for the LIVE dashboard. TEST credentials never substitute for any missing LIVE
+  configuration. Format checks are not authentication or merchant identity proof.
+- TEST factories no longer read `FLUTTERWAVE_SECRET_KEY`, even if it contains a
+  TEST-looking value. Use dedicated TEST names. The mixed-case
+  `FLUTTERWAVE_SECRET_Test_Key` remains Development-only; deployed TEST uses
+  `FLUTTERWAVE_TEST_SECRET_KEY`. The payroll TEST selector's generic-key fallback
+  was also removed; independent payroll LIVE authorization is not changed.
+- TEST webhook authentication uses `FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH` when
+  supplied. Legacy shared `FLUTTERWAVE_WEBHOOK_VERIF_HASH` remains a TEST fallback
+  only when not explicitly bound to LIVE. Identical dedicated TEST/LIVE verifiers
+  are rejected while LIVE-bound; invalid scope never silently falls back.
+- New callback path: **`/api/webhooks/flutterwave/live/student-subscription`**,
+  mounted with bounded raw-body parsing before Clerk/JSON parsing, separately
+  from existing TEST callbacks. Missing configuration returns503; an incorrect,
+  missing or TEST `verif-hash` returns401 when LIVE configuration is ready.
+- Even with complete configuration and a correct LIVE hash, the new endpoint
+  returns503 / `processed:false`. It does not resolve payments, write financial
+  data or return a false successful acknowledgement.
+- LIVE checkout, verification/status/refund transport and collection webhook
+  processing remain blocked in code. There is no environment-variable override
+  for the merchant-evidence/release gate and no new payout/transfer method.
+- New LIVE-generated subscription references use SCV3. Existing legacy/SCV2/SCV3
+  allocation policy, stored histories and deferred term-end approval/export
+  semantics are not migrated or reinterpreted.
+
+### Exact private setup steps — preparation only
+
+**No configuration change is required or recommended now to make checkout work:
+this release intentionally cannot process LIVE transactions.**
+The following is the preparation checklist for a separately authorized rollout,
+not permission to modify Production or activate delivery in this pass:
+
+1. In Replit open **Tools → Secrets**. Privately verify whether
+   `FLUTTERWAVE_SECRET_KEY` already contains the intended merchant's LIVE server
+   secret. If missing, an authorized operator can later add it there from the
+   matching LIVE Flutterwave account. Do not overwrite a correct existing value,
+   use chat/source/client-side variables, or substitute a TEST/public/encryption key.
+   Public/encryption credentials are not required by this server wiring.
+2. Preserve the existing isolated TEST environment and its credentials. Before
+   assigning the generic verifier slot to LIVE, prepare the TEST-specific
+   `FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH` in the TEST runtime to match its own
+   TEST dashboard, with a verifier different from LIVE. This pass changes neither.
+   Run TEST and LIVE in separately configured runtimes; switching mode disables
+   TEST factories rather than rerouting historical TEST callbacks through LIVE.
+3. In the intended merchant's Flutterwave dashboard, explicitly select **Live**
+   and open webhook settings. Confirm the V3 `verif-hash` contract for that account,
+   configure/privately compare the dashboard secret hash with
+   `FLUTTERWAVE_WEBHOOK_VERIF_HASH`, and confirm retries and relevant
+   refund/chargeback notification settings. Prior TEST hash confirmation is not
+   LIVE correspondence. If the account uses a different signature scheme, stop:
+   this code does not auto-detect or accept another scheme.
+4. Prepare the HTTPS callback as the separately verified published API origin
+   plus `/api/webhooks/flutterwave/live/student-subscription`. Obtain the actual
+   origin through an authorized release review; none is invented here. Do not use
+   a Development preview, the TEST callback, or a URL on another deployment.
+   **Do not activate/save this as an operational LIVE delivery destination yet**:
+   it deliberately returns503 and cannot durably consume LIVE events. Confirm
+   the refund custom-URL contract before directing standalone callbacks there.
+5. Only after separate approval, scope these **server-only, non-secret**
+   configuration values to the intended LIVE runtime. Leave them unset/disabled
+   now; none was added or changed:
+
+   | Setting | Future explicit value | Current/default behavior |
+   | --- | --- | --- |
+   | `NODE_ENV` | `production` | Development/test runtimes cannot construct LIVE |
+   | `EDUCORE_FLUTTERWAVE_MODE` | `LIVE` | Unset preserves TEST selection; invalid/LIVE never falls back to TEST |
+   | `EDUCORE_FLUTTERWAVE_LIVE_ENABLED` | `true` (exact lowercase) | Unset/false disables LIVE configuration |
+   | `EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT` | `LIVE` | Must be attested only after confirming the matching LIVE dashboard hash |
+
+   **Even all these values plus valid credentials do not enable checkout or
+   provider transport in this release.** They prepare configuration/authentication
+   only. Future production-secret scoping uses the separate Production app secrets
+   controls under Publishing settings, but changing them is outside this work.
+
+### V3 allocation terminology and unresolved release gates
+
+Re-fetched the official V3 split and webhook pages for this pass. V3 checkout
+override examples explicitly use:
+
+```json
+{"amount":5000,"currency":"NGN","subaccounts":[{"id":"RS_REVIEWED_SCHOOL_ID","transaction_charge_type":"flat_subaccount","transaction_charge":1900}]}
+```
+
+This is an illustrative blocked instruction, not an existing account or transport
+request. `transaction_charge` is NGN major units here, not 190000 kobo.
+The explicit override examples describe `flat_subaccount` as the recipient's
+fixed amount and `flat` as the merchant's fixed commission. However, the same
+page's “Difference Between” section describes `flat_subaccount` inconsistently.
+Do **not** substitute `flat`, configure a percentage default, or assume the
+subaccount-creation `split_type` field has identical checkout-override semantics.
+
+The server's current SCV3 policy remains: NGN 5,000 gross, exactly one school
+recipient at NGN 1,900, NGN 3,100 merchant gross before actual costs, no Partner
+checkout subaccount, and an eligible NGN 100 internal liability for term-end
+bulk approval/export. Unknown fees/VAT remain unknown. A NGN 70 total-cost
+example gives NGN 3,030 merchant remainder and NGN 2,930 Owner economic net
+where that liability exists; it is not a settlement promise.
+
+Before a separate code release can remove the hard gate, obtain merchant-specific
+written split confirmation, transaction-linked school AND merchant statements,
+complete actual costs/tax treatment, matching authenticated webhook delivery,
+independent refund/recovery evidence and approved operational reconciliation.
+LIVE-mode payment provenance/persistence and durable event acknowledgement need
+separate reviewed implementation/acceptance; current SANDBOX-only history is not
+relabelled as LIVE. Deferred Partner transfer evidence remains a separate blocker.
+
+### Verification for this wiring
+
+Focused synthetic configuration/adapter/HTTP tests exercise absent and conflicting
+configuration, both credential directions, TEST/LIVE hash separation, alternate
+signature rejection, hard-gated checkout/reads/refunds, no webhook resolver/provider
+transport, exact school-only allocation and historical-policy retention.
+These tests are not merchant authentication, settlement, dashboard correspondence,
+customer receipt or live operational evidence. Final run results are recorded below.
+
+- **211 focused API tests passed across 11 files**, including 30 new LIVE-wiring
+  cases and 33 native disposable-PostgreSQL commission/refund cases. All 11
+  explicitly requested test files executed; none was silently omitted.
+- API and frontend TypeScript checks passed; diff whitespace check passed.
+- Development API built/restarted successfully. Its existing subscription and
+  notification worker pause remains active; the unrelated NFC hardware workflow
+  was not started.
+- Development frontend started successfully; the public sign-in screen rendered.
+  No signed-in financial/browser journey is claimed.
+- A request through the actual Development proxy to the new LIVE callback
+  returned503 with the disabled/missing/mismatched configuration response.
+  This verifies route mounting and the default guard, not LIVE credentials or
+  provider delivery. Synthetic HTTP tests separately verify incorrect hash401
+  and correctly authenticated but unpersisted event503.
+
 ## Provider references reviewed
 
 - https://developer.flutterwave.com/v3.0/docs/split-payments
@@ -361,6 +505,7 @@ mutation was performed.
 - https://developer.flutterwave.com/v3.0.0/docs/transaction-verification
 - https://developer.flutterwave.com/v3.0.0/docs/refunds
 - https://developer.flutterwave.com/v3.0.0/reference/get-transaction-refunds
+- https://docs.replit.com/core-concepts/project-editor/app-setup/secrets
 
 The split document's explicit override example says `flat_subaccount` gives
 the school a fixed amount and the main merchant gets the rest after fees, but
