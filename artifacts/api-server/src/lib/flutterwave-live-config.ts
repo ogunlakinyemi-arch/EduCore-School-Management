@@ -3,7 +3,7 @@ export function flutterwaveLiveStatus(env: NodeJS.ProcessEnv = process.env) {
   const enabled = env.EDUCORE_FLUTTERWAVE_LIVE_ENABLED === "true";
   const modeMatches = env.EDUCORE_FLUTTERWAVE_MODE === "LIVE";
   const runtimeMatches = env.NODE_ENV === "production";
-  const secret = env.FLUTTERWAVE_SECRET_KEY;
+  const secret = env.FLUTTERWAVE_LIVE_SECRET_KEY;
   const credentialConfigured = !!secret;
   const credentialValid = typeof secret === "string"
     && /^FLWSECK-(?!TEST-)[A-Za-z0-9_-]{8,}$/.test(secret);

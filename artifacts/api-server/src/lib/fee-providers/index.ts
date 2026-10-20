@@ -644,7 +644,7 @@ export class FlutterwaveLiveAdapter extends FlutterwaveV3Adapter {
     if (!flutterwaveLiveStatus(env).configurationReady) {
       throw new PaymentProviderError("Flutterwave LIVE configuration is disabled, missing or mismatched");
     }
-    super({ secretKey: env.FLUTTERWAVE_SECRET_KEY!, webhookSecret: env.FLUTTERWAVE_WEBHOOK_VERIF_HASH! }, options, "LIVE");
+    super({ secretKey: env.FLUTTERWAVE_LIVE_SECRET_KEY!, webhookSecret: env.FLUTTERWAVE_WEBHOOK_VERIF_HASH! }, options, "LIVE");
   }
 
   override generateReference(): string {

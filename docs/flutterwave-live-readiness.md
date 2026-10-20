@@ -99,12 +99,12 @@ No automatic hold release, reapproval or refund/dispute resolution is supplied.
 
 For a future separately approved live hosted-checkout integration:
 
-- `FLUTTERWAVE_SECRET_KEY`: server-side live merchant API credential. Current
-  TEST adapters must never consume a live value. This is **not** an instruction
-  to replace any existing value or enable live mode.
+- `FLUTTERWAVE_LIVE_SECRET_KEY`: dedicated server-side LIVE merchant credential.
+  Neither generic `FLUTTERWAVE_SECRET_KEY` nor any TEST credential is a fallback.
+  This is **not** an instruction to replace any existing value or enable LIVE.
 - `FLUTTERWAVE_WEBHOOK_VERIF_HASH`: private webhook verifier matching the confirmed
   V3 merchant configuration. A switch to HMAC needs separate reviewed code.
-- `FLUTTERWAVE_PUBLIC_KEY`: only needed if a future approved client/Inline checkout
+- `FLUTTERWAVE_LIVE_PUBLIC_KEY`: only needed if a future approved client/Inline checkout
   actually uses it; current backend-hosted checkout does not require it.
 - `FLUTTERWAVE_ENCRYPTION_KEY`: only if a separately approved direct-card API
   requires it; not required for the current hosted checkout.
@@ -365,7 +365,7 @@ Publish-settings change or publishing is part of this work.
   never selects LIVE. The shared V3 parsing/authentication implementation retains
   the existing TEST constructor's TEST-key validation.
 - LIVE requires production runtime, exact server-side mode/enablement, a valid
-  LIVE-formatted `FLUTTERWAVE_SECRET_KEY`, and a valid verifier explicitly labelled
+  LIVE-formatted `FLUTTERWAVE_LIVE_SECRET_KEY`, and a valid verifier explicitly labelled
   for the LIVE dashboard. TEST credentials never substitute for any missing LIVE
   configuration. Format checks are not authentication or merchant identity proof.
 - TEST factories no longer read `FLUTTERWAVE_SECRET_KEY`, even if it contains a
@@ -398,12 +398,12 @@ this release intentionally cannot process LIVE transactions.**
 The following is the preparation checklist for a separately authorized rollout,
 not permission to modify Production or activate delivery in this pass:
 
-1. In Replit open **Tools → Secrets**. Privately verify whether
-   `FLUTTERWAVE_SECRET_KEY` already contains the intended merchant's LIVE server
-   secret. If missing, an authorized operator can later add it there from the
-   matching LIVE Flutterwave account. Do not overwrite a correct existing value,
-   use chat/source/client-side variables, or substitute a TEST/public/encryption key.
-   Public/encryption credentials are not required by this server wiring.
+1. The user reports adding `FLUTTERWAVE_LIVE_SECRET_KEY` and
+   `FLUTTERWAVE_LIVE_PUBLIC_KEY` to Replit Secrets. No further secret entry/change
+   is requested. The server reads only the dedicated LIVE secret name, never
+   generic or TEST credentials. This report is not credential/merchant validation:
+   no actual value was inspected. The LIVE public key is intentionally unused by
+   this server-hosted flow; do not expose it to the client as part of this work.
 2. Preserve the existing isolated TEST environment and its credentials. Before
    assigning the generic verifier slot to LIVE, prepare the TEST-specific
    `FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH` in the TEST runtime to match its own
@@ -495,6 +495,105 @@ customer receipt or live operational evidence. Final run results are recorded be
   This verifies route mounting and the default guard, not LIVE credentials or
   provider delivery. Synthetic HTTP tests separately verify incorrect hash401
   and correctly authenticated but unpersisted event503.
+
+## Dedicated LIVE credential update — 2026-10-20
+
+**Result: dedicated-name wiring PASS; durable LIVE processing and activation
+BLOCKED.** This section supersedes earlier instructions naming generic
+`FLUTTERWAVE_SECRET_KEY` / `FLUTTERWAVE_PUBLIC_KEY` as LIVE inputs. Work was
+limited to Development source, synthetic tests and this checklist.
+
+### Credential and webhook contract
+
+- LIVE status and adapter construction now read **`FLUTTERWAVE_LIVE_SECRET_KEY`
+  only**. Generic keys, dedicated TEST keys, public keys and encryption keys are
+  never credential substitutes. TEST construction does not read the LIVE names.
+- The user reports adding `FLUTTERWAVE_LIVE_SECRET_KEY` and
+  `FLUTTERWAVE_LIVE_PUBLIC_KEY`. No value was read, inspected, printed, logged,
+  requested, edited or exposed. Presence and merchant validity are not verified.
+  `FLUTTERWAVE_LIVE_PUBLIC_KEY` is intentionally not consumed: backend-hosted
+  checkout needs no public credential. No frontend credential wiring was added.
+- The expected LIVE webhook variable remains
+  **`FLUTTERWAVE_WEBHOOK_VERIF_HASH`**, explicitly bound by
+  `EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT=LIVE` only in a separately authorized
+  future runtime. There is no new `FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH` selector.
+  Actual dashboard correspondence remains unverified.
+- TEST uses `FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH` when provided. The legacy shared
+  verifier can be a TEST fallback only when not LIVE-bound. Missing dedicated
+  TEST verification while LIVE-bound, identical TEST/LIVE hashes while
+  LIVE-bound, and invalid environment scope fail closed. No verifier was changed.
+- No flags were set. Development still cannot construct LIVE configuration.
+  Correct synthetic production-mode configuration cannot bypass the hard-coded
+  checkout, verification/status, refund transport or event-processing blocks.
+
+### Why durable LIVE processing was not implemented
+
+The source schema in `lib/db/src/schema/student-subscription-billing.ts` has an
+explicit `provider_mode = 'SANDBOX'` CHECK. The finalizer in
+`artifacts/api-server/src/lib/student-subscription-billing.ts` also rejects
+non-SANDBOX payment provenance. Existing generic event records do not supply a
+reviewed environment-bound LIVE acceptance/reconciliation design.
+
+Reusing these paths would require schema and financial workflow changes, not just
+an authenticated callback. Migrations are prohibited in this pass. LIVE independent
+transaction verification is also deliberately blocked, and merchant-specific
+allocation, actual settlement, complete costs/VAT and refund/recovery evidence
+remain unavailable. No schema was changed, SANDBOX history relabelled, speculative
+event ledger created, or adverse-event financial resolver enabled.
+
+The separate `/api/webhooks/flutterwave/live/student-subscription` therefore
+continues to refuse processing: disabled configuration returns503; synthetic
+complete configuration rejects missing/wrong/TEST authentication with401; correct
+authentication still returns503 with `processed:false`. It never claims durable
+acceptance. This is a refusal/retry boundary, **not** implemented LIVE idempotency.
+Do not save/configure this callback in the Flutterwave dashboard.
+
+### Verification performed for this update
+
+- **172 focused API tests passed across seven executed files**:
+  `flutterwave-live-config.test.ts` (34), `fee-providers/index.test.ts` (45),
+  `fee-providers/nfc-config.test.ts` (6), `fee-provider-webhooks.test.ts` (29),
+  `services/flutterwave-readiness.test.ts` (10),
+  `student-subscription-webhooks.test.ts` (6), and
+  `student-subscription-billing.test.ts` (42).
+- Added explicit-name-only, generic-LIVE/generic-TEST fallback rejection,
+  throwing-getter isolation tests in both directions, and missing/invalid
+  webhook-scope checks. Synthetic HTTP tests repeat successful-looking,
+  wrong-currency/amount, unknown-reference, reversed and standalone partial-refund
+  events; all remain503/unprocessed without invoking the LIVE financial handler.
+- Existing tests retain exact reference/amount/currency verification and TEST
+  callback coverage, immutable allocation policy and all LIVE transport guards.
+  These are synthetic tests, not actual provider verification or LIVE persistence.
+- API and frontend TypeScript checks passed. Diff whitespace check passed.
+  The first test command named readiness under `src/lib`, so it executed only
+  four files; the corrected `src/services` path and two subscription files
+  executed in the second run. The seven-file total above excludes no requested file.
+- Development API built/restarted successfully; subscription/notification workers
+  remain paused. Actual proxied callback POST returned503 with the disabled
+  configuration response. No frontend code changed or browser financial flow ran.
+  The unrelated failed NFC hardware workflow was not restarted or repaired.
+- Current Replit source was compared with freshly fetched GitHub main; existing
+  local work was preserved. No push, provider call, application-data mutation,
+  migration, secret/flag change, dashboard change, Production operation,
+  Publish-setting change or publishing was performed.
+
+### Remaining acceptance before any separately authorized release
+
+Require a reviewed environment-bound payment/event schema and idempotency keys;
+transaction-ID/reference/currency/amount and frozen-recipient binding through
+independent verification; atomic durable commit before HTTP200; failed-commit
+rollback and bounded safe retries; duplicate/out-of-order and unknown-reference
+handling; durable refund/adverse-event holds and export invalidation; and no hold
+release from later successful collection notifications. Verify these against
+disposable PostgreSQL before any authorized external delivery test. Current
+refusal tests do not prove those future processing guarantees.
+
+The financial policy is unchanged: NGN5,000 per student/term, exactly one school
+allocation of NGN1,900, NGN3,100 merchant gross before actual expenses/taxes, and
+eligible NGN100 internal Partner accrual for term-end approval/export only.
+Merchant-specific split semantics, school/main-merchant bank settlement,
+fees/VAT, refund/recovery and dashboard/version evidence remain separate gates.
+No user secret or dashboard change is requested now.
 
 ## Provider references reviewed
 

@@ -16,7 +16,7 @@ function live(): NodeJS.ProcessEnv {
     EDUCORE_FLUTTERWAVE_MODE: "LIVE",
     EDUCORE_FLUTTERWAVE_LIVE_ENABLED: "true",
     EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT: "LIVE",
-    FLUTTERWAVE_SECRET_KEY: "FLWSECK-fictional-live-credential",
+    FLUTTERWAVE_LIVE_SECRET_KEY: "FLWSECK-fictional-live-credential",
     FLUTTERWAVE_WEBHOOK_VERIF_HASH: "fictional-live-verifier-123",
     FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: "fictional-test-verifier-456",
   };
@@ -28,7 +28,7 @@ const input = {
 };
 describe("isolated LIVE wiring with immutable readiness gate", () => {
   it("is disabled by default, including when only a LIVE secret exists", () => {
-    for (const env of [{}, { FLUTTERWAVE_SECRET_KEY: live().FLUTTERWAVE_SECRET_KEY }]) {
+    for (const env of [{}, { FLUTTERWAVE_LIVE_SECRET_KEY: live().FLUTTERWAVE_LIVE_SECRET_KEY }]) {
       expect(configuredLiveStudentSubscriptionAdapter(env)).toBeNull();
       expect(flutterwaveLiveStatus(env)).toMatchObject({ configurationReady: false, checkoutEnabled: false });
     }
@@ -37,8 +37,8 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     ["EDUCORE_FLUTTERWAVE_LIVE_ENABLED", undefined], ["EDUCORE_FLUTTERWAVE_LIVE_ENABLED", "TRUE"],
     ["EDUCORE_FLUTTERWAVE_MODE", "TEST"], ["EDUCORE_FLUTTERWAVE_MODE", undefined],
     ["NODE_ENV", "development"], ["NODE_ENV", "test"],
-    ["FLUTTERWAVE_SECRET_KEY", undefined], ["FLUTTERWAVE_SECRET_KEY", "FLWSECK_TEST-fictional-test-key"],
-    ["FLUTTERWAVE_SECRET_KEY", "malformed"], ["FLUTTERWAVE_SECRET_KEY", " FLWSECK-fictional-live-key"],
+    ["FLUTTERWAVE_LIVE_SECRET_KEY", undefined], ["FLUTTERWAVE_LIVE_SECRET_KEY", "FLWSECK_TEST-fictional-test-key"],
+    ["FLUTTERWAVE_LIVE_SECRET_KEY", "malformed"], ["FLUTTERWAVE_LIVE_SECRET_KEY", " FLWSECK-fictional-live-key"],
     ["FLUTTERWAVE_WEBHOOK_VERIF_HASH", undefined], ["FLUTTERWAVE_WEBHOOK_VERIF_HASH", "short"],
     ["EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT", undefined], ["EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT", "TEST"],
     ["FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH", "fictional-live-verifier-123"],
@@ -48,9 +48,36 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     expect(() => new FlutterwaveLiveAdapter(env)).toThrow("disabled, missing or mismatched");
   });
   it("never selects TEST credentials as a substitute for a missing LIVE key", () => {
-    const env = { ...live(), FLUTTERWAVE_SECRET_KEY: undefined,
+    const env = { ...live(), FLUTTERWAVE_LIVE_SECRET_KEY: undefined,
       FLUTTERWAVE_SECRET_Test_Key: "FLWSECK_TEST-fictional-test-key", FLUTTERWAVE_TEST_SECRET_KEY: "FLWSECK_TEST-fictional-test-key" };
     expect(configuredLiveStudentSubscriptionAdapter(env)).toBeNull();
+  });
+  it.each(["FLWSECK-fictional-generic-live-key", "FLWSECK_TEST-fictional-generic-test-key"])(
+    "never substitutes a generic credential for the explicit LIVE secret (%s)", generic => {
+      const env = { ...live(), FLUTTERWAVE_LIVE_SECRET_KEY: undefined, FLUTTERWAVE_SECRET_KEY: generic,
+        FLUTTERWAVE_LIVE_PUBLIC_KEY: "FLWPUBK-fictional-live-public-key" };
+      expect(configuredLiveStudentSubscriptionAdapter(env)).toBeNull();
+      expect(flutterwaveLiveStatus(env).credentialConfigured).toBe(false);
+    },
+  );
+  it("LIVE construction never reads generic, TEST, public or encryption credentials", () => {
+    const env = live();
+    for (const key of ["FLUTTERWAVE_SECRET_KEY", "FLUTTERWAVE_TEST_SECRET_KEY",
+      "FLUTTERWAVE_SECRET_Test_Key", "FLUTTERWAVE_PUBLIC_KEY", "FLUTTERWAVE_LIVE_PUBLIC_KEY",
+      "FLUTTERWAVE_PUBLIC_Test_Key", "FLUTTERWAVE_ENCRYPTION_KEY", "FLUTTERWAVE_Encryption_Test_KEY"]) {
+      Object.defineProperty(env, key, { get() { throw new Error("Unrelated credential must not be read"); } });
+    }
+    expect(flutterwaveLiveStatus(env).configurationReady).toBe(true);
+    expect(configuredLiveStudentSubscriptionAdapter(env)).toBeInstanceOf(FlutterwaveLiveAdapter);
+  });
+  it("TEST construction never reads dedicated LIVE secrets or public credentials", () => {
+    const env: NodeJS.ProcessEnv = { NODE_ENV: "production", FLUTTERWAVE_TEST_SECRET_KEY: "FLWSECK_TEST-fictional-test-key" };
+    for (const key of ["FLUTTERWAVE_LIVE_SECRET_KEY", "FLUTTERWAVE_LIVE_PUBLIC_KEY"]) {
+      Object.defineProperty(env, key, { get() { throw new Error("LIVE credential must not be read"); } });
+    }
+    expect(configuredTestAdapter("FLUTTERWAVE", env)).toBeInstanceOf(FlutterwaveTestAdapter);
+    expect(configuredTestAdapter("FLUTTERWAVE", { NODE_ENV: "production",
+      FLUTTERWAVE_LIVE_SECRET_KEY: live().FLUTTERWAVE_LIVE_SECRET_KEY })).toBeNull();
   });
   it("TEST factory never reads the generic credential, even outside Development", () => {
     const env: NodeJS.ProcessEnv = { NODE_ENV: "production", FLUTTERWAVE_TEST_SECRET_KEY: "FLWSECK_TEST-fictional-test-key" };
@@ -65,7 +92,7 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     }
   });
   it("TEST adapters reject LIVE keys and TEST payroll cannot consume the LIVE credential slot", () => {
-    expect(() => new FlutterwaveTestAdapter({ secretKey: live().FLUTTERWAVE_SECRET_KEY! })).toThrow();
+    expect(() => new FlutterwaveTestAdapter({ secretKey: live().FLUTTERWAVE_LIVE_SECRET_KEY! })).toThrow();
     const env = { NODE_ENV: "test", PAYROLL_TRANSFER_MODE: "test",
       FLUTTERWAVE_SECRET_KEY: "FLWSECK_TEST-fictional-misplaced-key" };
     expect(configuredPayrollProviderCapability(env)).toMatchObject({ mode: "NOT_CONFIGURED", credentialsConfigured: false });
@@ -75,6 +102,8 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     expect(flutterwaveTestWebhookVerifier({ ...live(), FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: undefined })).toBeUndefined();
     expect(flutterwaveTestWebhookVerifier({ ...live(), FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: live().FLUTTERWAVE_WEBHOOK_VERIF_HASH })).toBeUndefined();
     expect(flutterwaveTestWebhookVerifier({ FLUTTERWAVE_WEBHOOK_VERIF_HASH: "fictional-legacy-test-verifier" })).toBe("fictional-legacy-test-verifier");
+    expect(flutterwaveLiveStatus({ ...live(), FLUTTERWAVE_WEBHOOK_VERIF_HASH: undefined }).configurationReady).toBe(false);
+    expect(flutterwaveTestWebhookVerifier({ ...live(), EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT: "invalid" })).toBeUndefined();
   });
   it("projects no credentials and never represents configuration as readiness evidence", () => {
     const status = flutterwaveLiveStatus(live());
@@ -134,6 +163,29 @@ it("LIVE HTTP ingress rejects wrong/test hashes and never acknowledges unpersist
       const body = await response.text();
       expect(body).not.toContain("fictional");
       if (status === 503) expect(JSON.parse(body).processed).toBe(false);
+    }
+    // Authenticated retries, mismatches and adverse events must not bypass the
+    // missing LIVE persistence/verification gate, or acknowledge financial work.
+    const handleWebhook = vi.spyOn(FlutterwaveLiveAdapter.prototype, "handleWebhook");
+    try {
+      for (const payload of [
+        { event: "charge.completed", data: { id: 123456, tx_ref: input.reference, amount: 5000, currency: "NGN", status: "successful" } },
+        { event: "charge.completed", data: { id: 123456, tx_ref: input.reference, amount: 1, currency: "USD", status: "successful" } },
+        { event: "charge.completed", data: { id: 123456, tx_ref: "unknown_reference", amount: 5000, currency: "NGN", status: "successful" } },
+        { event: "charge.completed", data: { id: 123456, tx_ref: input.reference, status: "reversed" } },
+        { TransactionId: 123456, FlwRef: "fictional-provider-reference", AmountRefunded: 100, status: "completed" },
+      ]) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const response = await fetch(url, { method: "POST", headers: {
+            "content-type": "application/json", "verif-hash": live().FLUTTERWAVE_WEBHOOK_VERIF_HASH!,
+          }, body: JSON.stringify(payload) });
+          expect(response.status).toBe(503);
+          expect(await response.json()).toMatchObject({ processed: false });
+        }
+      }
+      expect(handleWebhook).not.toHaveBeenCalled();
+    } finally {
+      handleWebhook.mockRestore();
     }
     vi.stubEnv("EDUCORE_FLUTTERWAVE_LIVE_ENABLED", "");
     expect((await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(503);
