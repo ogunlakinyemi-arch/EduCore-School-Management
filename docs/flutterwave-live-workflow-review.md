@@ -1,5 +1,11 @@
 # Coordinated LIVE workflow — Development-only review
 
+**Latest review:** see “Remaining workstreams 1–5” below and
+[migration review](flutterwave-live-migration-review.md). Current acceptance:
+**221 tests across nine files**. The earlier inventory and180-test result below
+are retained as historical preparation evidence, not the latest implementation
+inventory or permission to enable LIVE operations.
+
 ## Not an operational release
 
 This increment implements the safe code, review-only SQL and isolated tests for
@@ -135,3 +141,148 @@ reconciliation/recovery and acknowledgement acceptance. Actual bank credits,
 provider fees/VAT and payout permission need their own evidence.
 
 Code preparation and fictional fixture results authorize none of those actions.
+
+## Remaining workstreams 1–5 — 2026-10-20
+
+### 1. Available settlement evidence — insufficient
+
+Inspected existing local provider-evidence records/reviews and current
+reconciliation/refund logic read-only. No provider request or application-database
+query was made in this pass. This is not a fresh current-database inventory.
+
+| Available evidence | Established | Not established |
+| --- | --- | --- |
+| `reports/software-remediation/flutterwave-readonly-evidence.json`, 2026-10-13 | Bank-catalog GET200, unauthenticated401; explicitly `settlementVerified:false` | Collection, beneficiary ownership, bank credit or refund/transfer permission |
+| Archived Development inventory, reviewed2026-10-19 | Four historical SANDBOX payments: two PAID, one FAILED, one uncertain; no SCV3/frozen split evidence in that inspected inventory | Current inventory or any LIVE settlement |
+| Archived TEST legacy read-back | NGN5,000 charge, NGN70 app fee, zero additional fee, aggregate NGN4,924.75 | Unexplained NGN5.25 difference; **not labelled VAT** |
+| Archived TEST SCV2 read-back | NGN5,000 charge, aggregate NGN4,930 | NGN1,900 school credit, merchant credit, SCV3 policy or LIVE settlement |
+| Archived settlement-list read | No usable response/statement obtained | Absence of settlements, permission denial or completed credits |
+| Current split reconciliation/refund code | Separates expected allocation, provider reports, customer refund and recipient recovery | Real bank recovery from calculations or customer refund status alone |
+
+Required external evidence: authenticated LIVE merchant identity; linked provider
+transaction ID, application reference and provider reference; successful NGN5,000
+principal **and payer charge**; transaction-bound report showing exactly one
+approved school recipient receiving NGN1,900 and no Partner checkout recipient;
+written merchant-specific fixed-charge/fee-order semantics; school/main-merchant
+bank credits linked through transaction/settlement batches; complete actual fee,
+tax/VAT, reserve and adjustment reconciliation from NGN3,100 merchant gross to
+credited net. The historical NGN5.25 discrepancy requires actual provider evidence.
+
+Refund/dispute closure additionally needs bound refund/dispute IDs, exact amounts,
+currency, dates/status, customer disbursement and **separate** recipient recovery/
+merchant adjustment evidence. Approval/export is not a transfer or Paid evidence.
+No suitable transaction-linked LIVE bank evidence was found in the local material.
+**Settlement remains unverified.**
+
+### 2. Migration review
+
+Added review-only stage4 after inbox → finalization → workflow. It strengthens
+authority school/merchant/recipient FKs, verified collection/event identities and
+authenticated event sources; adds access/FK-support indexes and immutable
+operator-review audits. No shared-table DDL, status backfill or application-target
+apply occurred.
+
+A disposable concurrency test found a redundant fingerprint uniqueness constraint
+conflicting with concurrent inbox upserts. The corrected FK uses the existing
+provider/environment/fingerprint key, with a fixed FLUTTERWAVE event discriminator,
+not a competing second uniqueness arbiter. Concurrent delivery then passed.
+All new FKs validated in PostgreSQL; cross-school authority and invented sources
+were rejected. Empty reverse stage4 → stage3/reapply passed; retained evidence
+refused rollback. See the separate migration review for compatibility limits.
+
+### 3. Gated application integration
+
+Existing `readSchoolSubscription` and `assertSubscriptionAccess` accept an
+explicit server-owned LIVE context. The released selector supplies none, and
+cannot be enabled by env, HTTP, headers or school settings. Fixture injection
+exercises the existing access-enforcement functions with actual SQL.
+
+LIVE paid/access requires exact original school/student/term/merchant, authoritative
+intent, successful collection, coordinated receipt, unexpired ACTIVE activation,
+authenticated result/event binding and no hold. Receipt-only, pending and
+collection-only records cannot grant paid status. Missing LIVE schema or ambiguous
+calendar refuses access without shared TEST financial/cached-restriction fallback.
+Independent manual locks still win; existing term grace policy remains.
+
+The old persistent automatic-enforcement writer is explicitly blocked if a future
+released selector chooses LIVE; it must not persist LIVE restrictions to an
+unscoped shared store. LIVE waivers are not borrowed from shared financial rows.
+
+The official-receipt reader is connected to the gated Owner API below. It whitelists
+payer-safe fields, reports current hold/entitlement and preserves original receipts.
+Legacy shared subscription/payment IDs and public student/parent UI routes cannot
+be reused safely without explicit LIVE identity/authorization contracts. Those
+public UI paths remain disabled. Universal app-wide LIVE activation is not claimed.
+
+### 4. Development-only Owner review/recovery API
+
+Paths relative to the API base; all require authenticated Owner permission and
+remain hard-disabled in normal application construction:
+
+- `GET /platform/live-readiness/receipts?merchantScope=...`
+- `POST /platform/live-readiness/receipts/:receiptId/reviews?merchantScope=...`
+- `GET /platform/live-readiness/receipts/:receiptId/official-receipt?merchantScope=...`
+
+Actions: `REVIEW`, `CONFIRM_DURABILITY`, `RETRY`. Reasons cover pending, duplicate,
+uncertain commit, refund, reversal and dispute. There is no Paid/transfer,
+hold-release or financial-case-close action. This is an API surface, not an
+enabled operator UI.
+
+Bounded no-store reads recheck canonical active Owner authority. Other-merchant
+verified records are excluded. Unmatched receipts have no verified merchant;
+their audit namespace records the Owner's selection, not financial attribution.
+Keys bind actor, receipt, action, reason and original-byte fingerprint. Audits are
+append-only; concurrent/repeated keys create one record. Replays report **current**
+protection, including holds occurring after an earlier successful review.
+
+Retry requires original bytes matching the authenticated fingerprint, supplied
+as canonical base64 and never stored as raw replay data. Claims cannot reconstruct
+or authorize replay. Default independent verification remains disabled: retry
+records `EVIDENCE_REQUIRED` without outbound calls. Only fixtures inject a fictional
+verifier. Already complete results are confirmed without another verification;
+held results stay held.
+
+Finalization and operator audit have separate transactions. If finalization
+commits but audit/response fails, retry independently reads the durable result
+before recording confirmation. It never assumes rollback or repeats money
+movement. Reconciliation cases are not erased. Operator API200 means a review
+completed, **not** webhook acknowledgement or operational LIVE processing;
+responses retain `operationallyProcessed:false`.
+
+### 5. Final isolated acceptance
+
+**221 tests passed across nine files** in one final relevant suite:
+
+| Suite | Tests |
+| --- | ---: |
+| Coordinated LIVE workflow/application/operator/migration PostgreSQL and HTTP | 41 |
+| LIVE finalization PostgreSQL | 20 |
+| LIVE inbox PostgreSQL/HTTP | 12 |
+| LIVE configuration/transport guards | 34 |
+| Subscription billing | 42 |
+| Existing subscription webhooks | 6 |
+| Provider readiness | 10 |
+| Deferred commissions PostgreSQL/HTTP | 34 |
+| Term-enforcement policy | 22 |
+
+The coordinated suite grew from22 to41 tests. It proves correct-child activation
+once, receipt once, eligible NGN100 internal accrual, NGN5,000 principal/payer
+charge, NGN1,900 school and NGN3,100 merchant gross before costs. It exercises the
+actual gated router with fixture authentication and canonical SQL authority, not
+a signed-in real Clerk finance browser.
+
+Included: TEST/LIVE and merchant isolation, wrong-child denial, receipt/collection-
+only refusal, pending/unknown state, missing schema, manual-lock precedence,
+concurrent delivery/review, lost commits, exact-byte replay, adverse holds/export
+invalidation, immutable history, FK validation and safe rollback.
+API/frontend typechecks and diff checks passed. Development API restarted and
+public sign-in rendering was checked. No unrelated whole-repository audit,
+provider transaction, authenticated financial browser acceptance or bank
+verification is claimed.
+
+Remaining gates: real provider/recipient/bank evidence and reader; historical
+target-schema rehearsal and separately approved migrations; explicit public LIVE
+identity/UI/waiver/enforcement-persistence contracts; independently evidenced
+financial case closure/recovery and final webhook acknowledgement acceptance.
+Checkout, outbound verification/refund transport, dashboard delivery and LIVE flags
+remain disabled. No secret, Production/Publish configuration or publishing change.

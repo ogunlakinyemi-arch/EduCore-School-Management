@@ -54,6 +54,8 @@ import { createParentCommunicationRouter } from "./parent-communication";
 import { requireSecurityAccess } from "../services/school-security-core-service";
 import promotionExpansionRouter from "./promotion-expansion";
 import subscriptionEnforcementRouter from "./subscription-enforcement";
+import { createLiveReadinessRouter } from "./flutterwave-live-readiness";
+import { pool as liveReadinessPool } from "@workspace/db";
 import studentCardReplacementRouter from "./student-card-replacement";
 import partnerNfcRouter from "./partner-nfc";
 import nfcPaymentLinksRouter from "./nfc-payment-links";
@@ -62,6 +64,7 @@ const router: IRouter = Router();
 // Mount before routers that can provision identity or enforce mutable eligibility.
 if (process.env.NODE_ENV === "development") router.use(devPaymentDiagnosticRouter);
 router.use(rejectOperationalSimulation);
+router.use(createLiveReadinessRouter({pool:liveReadinessPool}));
 router.use(localSplitSimulationRouter);
 router.use(flutterwaveSplitsRouter);
 

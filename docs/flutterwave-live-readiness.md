@@ -1,5 +1,12 @@
 # Flutterwave deferred Partner commissions — Development review
 
+**Latest remaining-workstreams review (2026-10-20):** see
+[coordinated workstreams 1–5](flutterwave-live-workflow-review.md#remaining-workstreams-15--2026-10-20)
+and [additive migration review](flutterwave-live-migration-review.md).
+Current isolated acceptance is **221 tests across nine files**; actual LIVE
+settlement is **UNVERIFIED** and release/transport/dashboard delivery remain off.
+Older dated inventories below are historical, not fresh database/provider reads.
+
 ## Status: NOT authorized or ready for live activation
 
 **Latest coordinated Development-only review:** see

@@ -6,6 +6,18 @@ import { createHash } from "node:crypto";
 import express from "express";
 import { DatabasePool } from "@workspace/db/driver";
 import { beforeAll,beforeEach,afterAll,afterEach,describe,it,expect,vi } from "vitest";
+vi.mock("@workspace/db",async original=>({...await original<typeof import("@workspace/db")>(),
+  pool:{query:()=>{throw new Error("Application DB forbidden in isolated acceptance");},
+    connect:()=>{throw new Error("Application DB forbidden in isolated acceptance");}}}));
+vi.mock("../middlewares/auth",async original=>{
+  const actual=await original<typeof import("../middlewares/auth")>();
+  return {...actual,requireAuthentication:()=> (req:any,res:any,next:any)=>{
+    const role=req.header("x-test-role")??"PLATFORM_OWNER";
+    if(role==="ANONYMOUS"){res.status(401).json({error:"Sign-in required"});return;}
+    req.edupulseUser={user:{id:Number(req.header("x-test-actor")??2),status:"ACTIVE"},
+      roles:[{role,status:"ACTIVE",schoolId:null}]};next();
+  }};
+});
 import { issueLiveIntent } from "./flutterwave-live-intents";
 import { finalizeLiveSubscriptionDesign } from "./flutterwave-live-finalization-design";
 import { processLiveWorkflow,hasLiveTermEntitlement } from "./flutterwave-live-lifecycle";
@@ -14,11 +26,15 @@ import { persistAuthenticatedLiveWebhookReceipt } from "./flutterwave-live-webho
 import { IsolatedLiveVerificationTransport,normalizeLiveIndependentRead } from "../lib/flutterwave-live-verification-transport";
 import { FlutterwaveLiveAdapter } from "../lib/fee-providers";
 import type { LiveCollectionVerifier } from "../lib/flutterwave-live-verification";
+import { createLiveReadinessRouter } from "../routes/flutterwave-live-readiness";
+import { listLiveOperatorReceipts,reviewLiveReceipt } from "./flutterwave-live-operator";
+import { readLiveApplicationReceipt,readLiveSchoolSubscriptionStudents } from "./flutterwave-live-application";
+import { readSchoolSubscription,assertSubscriptionAccess } from "./subscription-enforcement";
 
 // Fixture capability is NEVER mounted in the app, stored in env or exported.
 const capability={enabled:true},merchant="merchant_fixture_live",school="RS_FictionalSchool123",hash="fictional-workflow-live-verifier";
 let pool:InstanceType<typeof DatabasePool>,directory:string,postgres:ChildProcess,server:ReturnType<express.Express["listen"]>,base:string;
-let workflowUp:string,workflowDown:string;
+let workflowUp:string,workflowDown:string,readinessUp:string,readinessDown:string;
 const fixtures=`
 CREATE TABLE schools(id integer PRIMARY KEY,name text);
 CREATE TABLE students(id integer PRIMARY KEY,school_id integer,first_name text,last_name text,status text);
@@ -35,12 +51,24 @@ CREATE TABLE subscriptions(id integer,status text,provider_reference text);
 CREATE TABLE commission_ledger(id integer,amount numeric,status text);
 INSERT INTO subscriptions VALUES(1,'active','SCV2_unchanged_history');
 INSERT INTO commission_ledger VALUES(1,100,'PAID');
+ALTER TABLE schools ADD COLUMN status text DEFAULT 'active';
+ALTER TABLE academic_sessions ADD COLUMN is_current boolean DEFAULT true,ADD COLUMN status text DEFAULT 'ACTIVE';
+ALTER TABLE academic_terms ADD COLUMN is_current boolean DEFAULT true,ADD COLUMN status text DEFAULT 'ACTIVE',
+ ADD COLUMN start_date date DEFAULT CURRENT_DATE-14;
+ALTER TABLE app_users ADD COLUMN first_name text DEFAULT 'Fixture',ADD COLUMN last_name text DEFAULT 'User';
+CREATE TABLE school_subscription_manual_locks(school_id integer PRIMARY KEY,locked boolean,version integer,
+ locked_at timestamptz,locked_by_user_id integer,last_unlocked_at timestamptz,last_unlocked_by_user_id integer,reason text);
+CREATE TABLE nfc_cards(id integer,school_id integer,student_id integer,status text);
+CREATE TABLE employee_nfc_card_bindings(nfc_card_id integer,school_id integer,status text);
+CREATE TABLE platform_devices(school_id integer,status text);
+CREATE TABLE parents(id integer,user_id integer,school_id integer,status text);
+CREATE TABLE parent_student_relationships(parent_id integer,student_id integer,status text);
 `;
-function proof():LiveCollectionVerifier{return {enabled:true,environment:"LIVE",merchantScope:merchant,verify:vi.fn(async input=>
+function proof(scope=merchant):LiveCollectionVerifier{return {enabled:true,environment:"LIVE",merchantScope:scope,verify:vi.fn(async input=>
   normalizeLiveIndependentRead({id:Number(input.transactionId),tx_ref:input.reference,flw_ref:`FLW-${input.transactionId}`,
     status:"successful",currency:"NGN",amount:5000,charged_amount:5000,app_fee:65,merchant_fee:5},
-  {environment:"LIVE",merchantScope:merchant,transactionId:input.transactionId,reference:input.reference,
-    source:"TRANSACTION_BOUND",recipients:[{subaccountId:school,currency:"NGN",amountMinor:190000}]},input,merchant))};}
+  {environment:"LIVE",merchantScope:scope,transactionId:input.transactionId,reference:input.reference,
+    source:"TRANSACTION_BOUND",recipients:[{subaccountId:school,currency:"NGN",amountMinor:190000}]},input,scope))};}
 async function sql(query:string,values?:unknown[]){return (await pool.query(query,values)).rows;}
 async function count(table:string){return Number((await sql(`SELECT count(*) n FROM ${table}`))[0].n);}
 async function reserve(actorId=1,key="workflow-intent-key-0001",studentId=1){
@@ -75,11 +103,17 @@ beforeAll(async()=>{
   workflowUp=await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-workflow.up.sql",import.meta.url),"utf8");
   workflowDown=await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-workflow.down.sql",import.meta.url),"utf8");
   await pool.query(workflowUp);
+  readinessUp=await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-readiness.up.sql",import.meta.url),"utf8");
+  readinessDown=await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-readiness.down.sql",import.meta.url),"utf8");
+  await pool.query(readinessUp);
   const adapter=new FlutterwaveLiveAdapter({NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",
     EDUCORE_FLUTTERWAVE_LIVE_ENABLED:"true",EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT:"LIVE",
     FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-fictional-workflow-only",FLUTTERWAVE_WEBHOOK_VERIF_HASH:hash});
   // Actual isolated HTTP/kernel pipeline, NOT the mounted app route or browser auth.
   const app=express();
+  app.use("/disabled",createLiveReadinessRouter({pool,development:true}));
+  app.use("/non-development",createLiveReadinessRouter({pool,development:false,capability}));
+  app.use(createLiveReadinessRouter({pool,development:true,capability,verifier:proof()}));
   app.post("/webhook",express.raw({type:"application/json"}),async(req,res)=>{
     try{adapter.authenticateWebhook(req.headers);}catch{res.status(401).json({processed:false});return;}
     try{
@@ -87,7 +121,9 @@ beforeAll(async()=>{
       res.status(503).json({...result,processed:false}); // No release/HTTP200 authority.
     }catch{res.status(503).json({processed:false});}
   });
-  app.use(express.json());
+  app.use(express.json({limit:"100kb"}));
+  // The review POST is mounted after JSON parsing below; GETs above need no body.
+  app.use("/review-api",createLiveReadinessRouter({pool,development:true,capability,verifier:proof()}));
   app.post("/intent",async(req,res)=>{
     try{res.json(await reserve(Number(req.header("x-fixture-actor")??1),req.body.key,req.body.studentId??1));}
     catch{res.status(503).json({created:false});}
@@ -100,12 +136,12 @@ beforeEach(async()=>{
   await pool.query(`TRUNCATE flutterwave_live_workflow_audits,flutterwave_live_commission_items,
    flutterwave_live_commission_batches,flutterwave_live_subscription_intents,flutterwave_live_authority_reviews,
    flutterwave_live_webhook_receipts,school_memberships,app_users,academic_terms,academic_sessions,
-   schools,students,partner_profiles,school_partner_attributions,commission_rules RESTART IDENTITY CASCADE`);
-  await pool.query(`INSERT INTO schools VALUES(10,'Original School'),(20,'Other School');
+   schools,students,partner_profiles,school_partner_attributions,commission_rules,school_subscription_manual_locks RESTART IDENTITY CASCADE`);
+  await pool.query(`INSERT INTO schools(id,name) VALUES(10,'Original School'),(20,'Other School');
    INSERT INTO students VALUES(1,10,'Student','One','active'),(2,10,'Student','Two','active');
-   INSERT INTO academic_sessions VALUES(1,10,'2026/2027');
-   INSERT INTO academic_terms VALUES(1,10,1,'First Term',CURRENT_DATE-1);
-   INSERT INTO app_users VALUES(1,'ACTIVE'),(2,'ACTIVE'),(3,'ACTIVE');
+   INSERT INTO academic_sessions(id,school_id,name) VALUES(1,10,'2026/2027');
+   INSERT INTO academic_terms(id,school_id,academic_session_id,name,end_date) VALUES(1,10,1,'First Term',CURRENT_DATE-1);
+   INSERT INTO app_users(id,status) VALUES(1,'ACTIVE'),(2,'ACTIVE'),(3,'ACTIVE');
    INSERT INTO school_memberships VALUES(1,10,'SCHOOL_ADMIN','ACTIVE'),(2,NULL,'PLATFORM_OWNER','ACTIVE'),(3,20,'SCHOOL_ADMIN','ACTIVE');
    INSERT INTO partner_profiles VALUES(1,'ACTIVE');
    INSERT INTO school_partner_attributions VALUES(1,10,1,true,'ACTIVE',now()-interval '1 day',NULL);
@@ -178,7 +214,8 @@ describe("coordinated LIVE workflow isolated HTTP/SQL E2E; no real provider or r
   it("concurrent reservations and deliveries are idempotent through official receipt/accrual issuance",async()=>{
     const intents=await Promise.all(Array.from({length:4},()=>reserve()));
     expect(new Set(intents.map(i=>i.id)).size).toBe(1);
-    await Promise.all(Array.from({length:4},()=>complete(intents[0])));
+    const completed=await Promise.allSettled(Array.from({length:4},()=>complete(intents[0])));
+    expect(completed.map(r=>r.status)).toEqual(["fulfilled","fulfilled","fulfilled","fulfilled"]);
     for(const table of ["flutterwave_live_subscription_intents","flutterwave_live_collection_evidence",
       "flutterwave_live_subscription_activations","flutterwave_live_official_receipts","flutterwave_live_partner_accruals"])
       expect(await count(table)).toBe(1);
@@ -310,7 +347,7 @@ describe("coordinated LIVE workflow isolated HTTP/SQL E2E; no real provider or r
   });
   it("empty workflow rollback/reapply preserves original LIVE design and SANDBOX history",async()=>{
     await pool.query("TRUNCATE flutterwave_live_authority_reviews,flutterwave_live_subscription_intents CASCADE");
-    await pool.query(workflowDown);await pool.query(workflowUp);
+    await pool.query(readinessDown);await pool.query(workflowDown);await pool.query(workflowUp);await pool.query(readinessUp);
     expect(await count("flutterwave_live_subscription_intents")).toBe(0);
     expect(await count("flutterwave_live_authority_reviews")).toBe(0);
   });
@@ -330,5 +367,192 @@ describe("coordinated LIVE workflow isolated HTTP/SQL E2E; no real provider or r
     expect(await count("flutterwave_live_partner_accruals")).toBe(1);
     expect(await count("flutterwave_live_official_receipts")).toBe(0);
     await expect(approve(intent)).rejects.toMatchObject({code:"LIVE_COMMISSION_NOT_ELIGIBLE"});
+  });
+});
+
+const operator=()=>({actorId:2,merchantScope:merchant,development:true,capability});
+const liveApp=()=>({merchantScope:merchant,capability});
+const reviewInput=(receiptId:number,key="operator-review-key-0001")=>({
+  receiptId,action:"CONFIRM_DURABILITY" as const,reason:"UNCERTAIN_COMMIT" as const,idempotencyKey:key,
+});
+describe("remaining readiness: real gated API/access consumers, operator recovery and additive migration review",()=>{
+  it("hard-disabled application/operator paths and non-Development contexts refuse before DB acquisition",async()=>{
+    const connect=vi.fn(),query=vi.fn();
+    await expect(listLiveOperatorReceipts({connect},{...operator(),capability:undefined})).rejects.toMatchObject({code:"LIVE_WORKFLOW_RELEASE_DISABLED"});
+    await expect(listLiveOperatorReceipts({connect},{...operator(),development:false})).rejects.toMatchObject({code:"LIVE_OPERATOR_DEVELOPMENT_ONLY"});
+    await expect(readLiveApplicationReceipt({query},{intentId:1,schoolId:10,studentId:1,termId:1},
+      {merchantScope:merchant,capability:{enabled:false}})).rejects.toMatchObject({code:"LIVE_WORKFLOW_RELEASE_DISABLED"});
+    await expect(readSchoolSubscription({query},10,{merchantScope:merchant,capability:{enabled:false}}))
+      .rejects.toMatchObject({code:"LIVE_WORKFLOW_RELEASE_DISABLED"});
+    expect(connect).not.toHaveBeenCalled();expect(query).not.toHaveBeenCalled();
+  });
+  it("mounted Owner API preserves authentication, canonical role and hard release/Development gates",async()=>{
+    for(const [role,status] of [["ANONYMOUS",401],["SCHOOL_ADMIN",403],["PARTNER",403],["PLATFORM_OWNER",503]] as const){
+      const response=await fetch(`${base}/disabled/platform/live-readiness/receipts?merchantScope=${merchant}`,{headers:{"x-test-role":role}});
+      expect(response.status).toBe(status);
+    }
+    expect((await fetch(`${base}/non-development/platform/live-readiness/receipts?merchantScope=${merchant}`)).status).toBe(503);
+    expect((await fetch(`${base}/platform/live-readiness/receipts?merchantScope=${merchant}`,{headers:{"x-test-actor":"1"}})).status).toBe(403);
+    expect(await count("flutterwave_live_operator_reviews")).toBe(0);
+  });
+  it("existing student access enforcement consumes only fully coordinated LIVE issuance for the exact current child",async()=>{
+    await pool.query("UPDATE academic_terms SET end_date=CURRENT_DATE+7");
+    const intent=await reserve(),scope={intentId:Number(intent.id),schoolId:10,studentId:1,termId:1};
+    await expect(assertSubscriptionAccess(10,1,pool,liveApp())).rejects.toMatchObject({statusCode:403});
+    await receive(raw(intent)); // Receipt-only is not payment or activation.
+    expect((await readSchoolSubscription(pool,10,liveApp()))?.amountPaidMinor).toBe(0);
+    await expect(readLiveApplicationReceipt(pool,scope,liveApp())).rejects.toMatchObject({code:"LIVE_OFFICIAL_RECEIPT_UNAVAILABLE"});
+    await complete(intent);
+    expect((await readSchoolSubscription(pool,10,liveApp()))?.amountPaidMinor).toBe(500000);
+    await expect(assertSubscriptionAccess(10,1,pool,liveApp())).resolves.toBeUndefined();
+    await expect(assertSubscriptionAccess(10,2,pool,liveApp())).rejects.toMatchObject({statusCode:403});
+    const receipt=await readLiveApplicationReceipt(pool,scope,liveApp());
+    expect(receipt).toMatchObject({activated:true,recorded:true,held:false});
+    await expect(readLiveApplicationReceipt(pool,{...scope,studentId:2},liveApp())).rejects.toThrow();
+    await pool.query("INSERT INTO school_subscription_manual_locks(school_id,locked,version) VALUES(10,true,1)");
+    await expect(assertSubscriptionAccess(10,1,pool,liveApp())).rejects.toMatchObject({statusCode:403,eventType:"SCHOOL_SUBSCRIPTION_LOCKED"});
+    await pool.query("UPDATE school_subscription_manual_locks SET locked=false");
+    await complete(intent,"reversed");
+    await expect(assertSubscriptionAccess(10,1,pool,liveApp())).rejects.toMatchObject({statusCode:403});
+  });
+  it("explicit LIVE access never falls back to shared TEST state on missing LIVE tables or ambiguous calendars",async()=>{
+    await pool.query("UPDATE academic_terms SET end_date=CURRENT_DATE+7");
+    const query=vi.fn(async(statement:string,values?:unknown[])=>{
+      if(statement.includes("flutterwave_live_subscription_intents"))throw new Error("Synthetic missing LIVE schema");
+      if(statement.includes("FROM subscriptions")||statement.includes("school_subscription_enforcement"))throw new Error("Forbidden TEST financial fallback");
+      return pool.query(statement,values);
+    });
+    await expect(assertSubscriptionAccess(10,1,{query} as any,liveApp())).rejects.toMatchObject({statusCode:503});
+    expect(query.mock.calls.some(([q])=>q.includes("FROM subscriptions")||q.includes("school_subscription_enforcement"))).toBe(false);
+    await pool.query("UPDATE academic_terms SET is_current=false");
+    await expect(assertSubscriptionAccess(10,1,pool,liveApp())).rejects.toMatchObject({statusCode:503});
+  });
+  it("raw lower-level collection without a coordinated receipt/result cannot grant student access",async()=>{
+    await pool.query("UPDATE academic_terms SET end_date=CURRENT_DATE+7");
+    const intent=await reserve(),body=raw(intent);
+    await finalizeLiveSubscriptionDesign(pool,await receive(body),body,proof());
+    const students=await readLiveSchoolSubscriptionStudents(pool,10,1,liveApp());
+    expect(students.rows.find(s=>s.studentId===1)).toMatchObject({paid:false,unknown:true});
+    await expect(assertSubscriptionAccess(10,1,pool,liveApp())).rejects.toMatchObject({statusCode:403});
+  });
+  it("pending/uncertain confirmation appends audit exactly once without inventing activation or resolving evidence",async()=>{
+    const intent=await reserve(),id=await receive(raw(intent));
+    const results=await Promise.all(Array.from({length:3},()=>reviewLiveReceipt(pool,operator(),reviewInput(id))));
+    expect(results.filter(r=>!r.duplicate)).toHaveLength(1);
+    expect(results[0].currentOutcome).toBe("EVIDENCE_REQUIRED");
+    expect(await count("flutterwave_live_operator_reviews")).toBe(1);
+    expect(await count("flutterwave_live_subscription_activations")).toBe(0);
+    const list=await listLiveOperatorReceipts(pool,operator());
+    expect(list).toMatchObject({settlementVerified:false,operationallyProcessed:false});
+    expect(list.receipts[0]).not.toHaveProperty("payload_sha256");
+    expect(list.receipts[0].verified_merchant_scope).toBeNull();
+  });
+  it("operator retries require original authenticated bytes, never inbox claims or a second outbound attempt",async()=>{
+    const intent=await reserve(),body=raw(intent),id=await receive(body),input={...reviewInput(id),action:"RETRY" as const};
+    await expect(reviewLiveReceipt(pool,operator(),input)).rejects.toMatchObject({code:"LIVE_ORIGINAL_BYTES_REQUIRED"});
+    await expect(reviewLiveReceipt(pool,operator(),{...input,originalBody:Buffer.from(`${body} `)}))
+      .rejects.toMatchObject({code:"LIVE_ORIGINAL_BYTES_MISMATCH"});
+    const disabled={...proof(),enabled:false};
+    const result=await reviewLiveReceipt(pool,operator(),{...input,originalBody:body},disabled);
+    expect(result.currentOutcome).toBe("EVIDENCE_REQUIRED");expect(disabled.verify).not.toHaveBeenCalled();
+    expect(await count("flutterwave_live_subscription_activations")).toBe(0);
+  });
+  it("actual review HTTP retry uses fictional independent evidence and issues correct money/receipt/accrual once",async()=>{
+    await pool.query("UPDATE academic_terms SET end_date=CURRENT_DATE+7");
+    const intent=await reserve(),body=raw(intent),id=await receive(body);
+    const request={action:"RETRY",reason:"PENDING",idempotencyKey:"http-operator-retry-key",originalBodyBase64:body.toString("base64")};
+    const url=`${base}/review-api/platform/live-readiness/receipts/${id}/reviews?merchantScope=${merchant}`;
+    for(let i=0;i<2;i++){
+      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(request)});
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({duplicate:i===1,currentOutcome:"RECORDED_UNRELEASED",operationallyProcessed:false});
+    }
+    const financial=(await sql("SELECT * FROM flutterwave_live_collection_evidence"))[0];
+    expect(financial).toMatchObject({gross_minor:500000,school_minor:190000,merchant_gross_minor:310000,partner_accrual_minor:10000});
+    for(const table of ["flutterwave_live_subscription_activations","flutterwave_live_official_receipts",
+      "flutterwave_live_partner_accruals","flutterwave_live_operator_reviews"])expect(await count(table)).toBe(1);
+    const response=await fetch(`${base}/platform/live-readiness/receipts/${id}/official-receipt?merchantScope=${merchant}`);
+    expect(response.status).toBe(200);const receipt=await response.json();
+    expect(receipt).toMatchObject({activated:true,receipt:{grossAmountMinor:500000}});
+    expect(receipt).not.toHaveProperty("receipt.allocations");
+  });
+  it("reusing an operator key for another action or receipt is refused and history cannot be rewritten",async()=>{
+    const intent=await reserve(),id=await receive(raw(intent));
+    await reviewLiveReceipt(pool,operator(),reviewInput(id));
+    await expect(reviewLiveReceipt(pool,operator(),{...reviewInput(id),action:"REVIEW"})).rejects.toMatchObject({code:"LIVE_REVIEW_KEY_CONFLICT"});
+    await expect(pool.query("UPDATE flutterwave_live_operator_reviews SET outcome='RECORDED_UNRELEASED'")).rejects.toThrow("immutable");
+    await expect(pool.query("DELETE FROM flutterwave_live_operator_reviews")).rejects.toThrow("immutable");
+  });
+  it.each(["before","after"] as const)("operator audit response loss %s COMMIT replays without duplicate review",async when=>{
+    const intent=await reserve(),id=await receive(raw(intent));let fail=true;
+    const target={connect:async()=>{
+      const client=await pool.connect();return{release:()=>client.release(),query:async(q:string,args?:unknown[])=>{
+        if(q==="COMMIT"&&fail){fail=false;if(when==="after")await client.query(q);throw new Error("Synthetic review commit loss");}
+        return client.query(q,args);
+      }};
+    }};
+    await expect(reviewLiveReceipt(target,operator(),reviewInput(id))).rejects.toThrow("review commit loss");
+    expect(await count("flutterwave_live_operator_reviews")).toBe(when==="after"?1:0);
+    await reviewLiveReceipt(pool,operator(),reviewInput(id));expect(await count("flutterwave_live_operator_reviews")).toBe(1);
+  });
+  it.each(["REFUND","REVERSAL","DISPUTE"] as const)("%s review retains holds, invalidated batches and original receipt",async reason=>{
+    const intent=await reserve();await complete(intent);const batch=await approve(intent);
+    const before=(await sql("SELECT snapshot FROM flutterwave_live_official_receipts"))[0].snapshot;
+    const body=reason==="REFUND"?Buffer.from(JSON.stringify({TransactionId:123456,FlwRef:"FLW-123456",AmountRefunded:100,status:"completed"}))
+      :reason==="DISPUTE"?Buffer.from(JSON.stringify({event:"chargeback.initiated",data:{id:123456,tx_ref:intent.reference,flw_ref:"FLW-123456"}}))
+      :raw(intent,"reversed");
+    const id=await receive(body);await processLiveWorkflow(pool,id,body,proof(),capability);
+    const result=await reviewLiveReceipt(pool,operator(),{...reviewInput(id),reason,action:"RETRY",originalBody:body},proof());
+    expect(result.currentOutcome).toBe("HELD_RETAINED");
+    expect((await sql("SELECT snapshot FROM flutterwave_live_official_receipts"))[0].snapshot).toEqual(before);
+    expect((await sql("SELECT status FROM flutterwave_live_commission_batches WHERE id=$1",[batch.id]))[0].status).toBe("REVIEW_REQUIRED");
+    expect((await sql("SELECT state FROM flutterwave_live_partner_accruals"))[0].state).toBe("HELD");
+    expect(await count("flutterwave_live_reconciliation_cases")).toBe(1);
+  });
+  it("a pre-hold successful operator review replays with current HELD status, never a stale approval",async()=>{
+    const intent=await reserve();await complete(intent);const id=await receive(raw(intent));
+    await reviewLiveReceipt(pool,operator(),reviewInput(id));
+    await complete(intent,"reversed");
+    const replay=await reviewLiveReceipt(pool,operator(),reviewInput(id));
+    expect(replay).toMatchObject({duplicate:true,currentOutcome:"HELD_RETAINED",review:{outcome:"RECORDED_UNRELEASED"}});
+  });
+  it("verified other-merchant evidence cannot be read or reviewed under this merchant scope",async()=>{
+    const other="another_fixture_merchant";
+    await pool.query(`INSERT INTO flutterwave_live_authority_reviews(merchant_scope,school_id,school_subaccount_id,
+      evidence_sha256,reviewed_by,expires_at) VALUES($1,10,$2,repeat('b',64),2,now()+interval '1 day')`,[other,school]);
+    const intent=await issueLiveIntent(pool,{actorId:1,schoolId:10,studentId:1,termId:1,merchantScope:other,
+      idempotencyKey:"other-merchant-intent-key"},capability),body=raw(intent),id=await receive(body);
+    await processLiveWorkflow(pool,id,body,proof(other),capability);
+    expect((await listLiveOperatorReceipts(pool,operator())).receipts).toHaveLength(0);
+    await expect(reviewLiveReceipt(pool,operator(),reviewInput(id))).rejects.toMatchObject({code:"LIVE_OPERATOR_RECEIPT_UNAVAILABLE"});
+  });
+  it("stage-4 draft validates all FKs, scope indexes and cross-tenant authority binding",async()=>{
+    const constraints=await sql("SELECT conname,convalidated FROM pg_constraint WHERE conname LIKE 'live_%'");
+    expect(constraints.every(c=>c.convalidated)).toBe(true);
+    expect(constraints.map(c=>c.conname)).toContain("live_collection_verified_identity_fk");
+    const indexes=await sql("SELECT indexname FROM pg_indexes WHERE indexname LIKE 'live_%'");
+    expect(indexes.map(i=>i.indexname)).toEqual(expect.arrayContaining(["live_application_scope_idx","live_operator_receipt_idx","live_receipt_result_event_idx"]));
+    await pool.query(`INSERT INTO flutterwave_live_authority_reviews(merchant_scope,school_id,school_subaccount_id,
+      evidence_sha256,reviewed_by,expires_at) VALUES('other_merchant',20,'RS_OtherFictional123',repeat('b',64),2,now()+interval '1 day')`);
+    await expect(pool.query(`INSERT INTO flutterwave_live_subscription_intents(merchant_scope,reference,school_id,student_id,
+      session_id,term_id,term_end_date,school_subaccount_id,partner_accrual_minor,issued_by,issuer_key,authority_review_id,authority_snapshot)
+      VALUES($1,'SCV3_wrong_scope_fixture',10,1,1,1,CURRENT_DATE,$2,0,1,'scope-mismatch-key-01',2,'{}')`,[merchant,school]))
+      .rejects.toThrow("live_intent_review_scope_fk");
+  });
+  it("stage-4 rejects invented collection identities and unauthenticated event sources in SQL",async()=>{
+    const intent=await reserve();
+    await expect(pool.query(`INSERT INTO flutterwave_live_collection_evidence(intent_id,merchant_scope,school_subaccount_id,
+      transaction_id,provider_reference,gross_minor,currency,school_minor,merchant_gross_minor,partner_accrual_minor,
+      provider_fee_minor,additional_fee_minor) VALUES($1,$2,$3,'123456','FLW-123456',500000,'NGN',190000,310000,10000,0,0)`,
+      [intent.id,merchant,school])).rejects.toThrow("live_collection_verified_identity_fk");
+    await pool.query("UPDATE flutterwave_live_subscription_intents SET verified_transaction_id='123456' WHERE id=$1",[intent.id]);
+    await expect(pool.query(`INSERT INTO flutterwave_live_finalization_events(intent_id,semantic_key,kind,transaction_id,source_payload_sha256)
+      VALUES($1,repeat('c',64),'COLLECTION','123456',repeat('d',64))`,[intent.id])).rejects.toThrow("live_event_authenticated_source_fk");
+  });
+  it("stage-4 rollback refuses retained evidence without disturbing older financial/history tables",async()=>{
+    const client=await pool.connect();
+    try{await expect(client.query(readinessDown)).rejects.toThrow("preservation review");await client.query("ROLLBACK");}
+    finally{client.release();}
+    expect(await count("flutterwave_live_authority_reviews")).toBe(1);
   });
 });

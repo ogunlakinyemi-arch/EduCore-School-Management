@@ -6,12 +6,18 @@ import { queueCommunicationNotification, type CommunicationQueryClient } from ".
 import { subscriptionPolicy, type SubscriptionStudent } from "./subscription-enforcement-policy";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import { assertManualSchoolUnlocked, readManualSchoolState, readSubscriptionScopeCounts } from "./school-subscription-lock";
+import {
+  assertLiveApplicationContext,readLiveSchoolSubscriptionStudents,releasedLiveApplicationContext,
+  type LiveApplicationContext,
+} from "./flutterwave-live-application";
 
 export type EnforcementSource = "AUTOMATIC_TERM_ENFORCEMENT" | "SUBSCRIPTION_PAYMENT_RESTORATION";
 export type EnforcementActor = { id: number; clerkUserId: string; email: string };
 export type EnforcementSnapshot = Awaited<ReturnType<typeof readSchoolSubscription>>;
 
-export async function readSchoolSubscription(db: CommunicationQueryClient, schoolId: number) {
+export async function readSchoolSubscription(db: CommunicationQueryClient, schoolId: number,
+  live:LiveApplicationContext|undefined=releasedLiveApplicationContext()) {
+  if(live)assertLiveApplicationContext(live);
   const calendar = await db.query<{
     schoolName: string; sessionId: number; sessionName: string; termId: number; termName: string; startDate: string; endDate: string; today: string;
   }>(
@@ -29,7 +35,8 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
   // Ambiguous or missing calendars are NOT evidence of nonpayment.
   if (calendar.rows.length !== 1) return null;
   const term = calendar.rows[0];
-  const students = await db.query<SubscriptionStudent & { amountMinor: number }>(
+  const students = live ? await readLiveSchoolSubscriptionStudents(db,schoolId,term.termId,live)
+    : await db.query<SubscriptionStudent & { amountMinor: number }>(
     `SELECT st.id AS "studentId",
        EXISTS (
          SELECT 1 FROM subscriptions s WHERE s.school_id=st.school_id AND s.student_id=st.id
@@ -63,7 +70,9 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
   );
   const policy = subscriptionPolicy(term, students.rows, term.today);
   if (!policy.inGracePeriod && students.rows.some(s => s.unknown)) {
-    const known = await db.query<{ ids: number[] }>(
+    // Shared enforcement history has no LIVE discriminator. Never inherit TEST
+    // restrictions into an explicitly LIVE read; retain LIVE uncertain rows.
+    const known = live ? {rows:[{ids:students.rows.filter(s=>s.unknown).map(s=>s.studentId)}]} : await db.query<{ ids: number[] }>(
       "SELECT restricted_student_ids AS ids FROM school_subscription_enforcement WHERE school_id=$1 AND academic_term_id=$2",
       [schoolId, term.termId],
     );
@@ -81,14 +90,17 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
   };
 }
 
-export async function assertSubscriptionAccess(schoolId: number, studentId?: number | null, db: CommunicationQueryClient = pool) {
+export async function assertSubscriptionAccess(schoolId: number, studentId?: number | null, db: CommunicationQueryClient = pool,
+  live:LiveApplicationContext|undefined=releasedLiveApplicationContext()) {
+  if(live)assertLiveApplicationContext(live);
   // A verified payment or unavailable calendar never bypasses a manual lock.
   await assertManualSchoolUnlocked(db, schoolId);
   // Normal school/teacher/reader operations are NOT auto-locked by students.
   if (studentId == null) return;
   let snapshot: EnforcementSnapshot;
-  try { snapshot = await readSchoolSubscription(db, schoolId); }
+  try { snapshot = await readSchoolSubscription(db, schoolId,live); }
   catch (error) {
+    if(live)throw new AuthError(503,"LIVE subscription access cannot be confirmed; no shared financial fallback is permitted");
     // Preserve a previously confirmed current-term restriction, without
     // inventing a new restriction from an infrastructure failure.
     logger.error({ schoolId, error }, "Subscription eligibility unavailable; access unchanged");
@@ -112,6 +124,7 @@ export async function assertSubscriptionAccess(schoolId: number, studentId?: num
     }
     return;
   }
+  if(live && !snapshot)throw new AuthError(503,"LIVE academic scope cannot be confirmed");
   if (snapshot && snapshot.restrictedStudentIds.includes(studentId)) {
     throw new AuthError(403, "Subscription is required to continue using this feature. Please contact your School Administrator.", "SUBSCRIPTION_REQUIRED");
   }
@@ -140,6 +153,9 @@ export async function readSchoolEnforcementSummary(db: CommunicationQueryClient,
 export async function reconcileSchoolSubscription(
   schoolId: number, source: EnforcementSource, actor?: EnforcementActor, expectedTermId?: number,
 ) {
+  // The existing persistent automatic-restriction store is not environment
+  // scoped. A future LIVE selector must never feed that legacy mutation path.
+  if(releasedLiveApplicationContext())throw new AuthError(503,"LIVE enforcement persistence requires its own reviewed namespace");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

@@ -32,3 +32,14 @@ Allocation-version acceptance must include the real provider adapter under injec
 **Why:** A correct new-policy planner was rejected by an adapter retaining the legacy school amount. A separate platform-only fallback could still collect funds, while gross/net fee screenshots could not establish recipient allocation.
 
 **How to apply:** Exercise reference-selected instructions through the adapter, preserve cross-version rejection, test every unavailable-plan fallback before provider transport, and distinguish internal credits from provider recipient settlement.
+
+Financial migration reviews must exercise concurrent inserts/upserts after adding
+unique indexes, even when a new key appears logically redundant.
+
+**Why:** A second uniqueness arbiter on an authenticated delivery fingerprint
+caused an existing concurrent upsert to raise a duplicate-key error instead of
+replaying. Sequential FK/constraint checks did not expose the incompatibility.
+
+**How to apply:** Prefer referencing an existing namespace key over introducing
+a competing redundant unique key. Prove the actual concurrent write contract in
+disposable PostgreSQL, and drain all concurrent test attempts before fixture reset.
