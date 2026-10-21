@@ -19,6 +19,7 @@ vi.mock("../middlewares/auth",async original=>{
   }};
 });
 import { issueLiveIntent } from "./flutterwave-live-intents";
+import { createStudentSubscriptionLiveWebhookRouter } from "../routes/student-subscription-live-webhooks";
 import { liveSplitAuthorityDigest, type LiveSplitAuthorityEvidence } from "../lib/flutterwave-live-split-authority";
 import { finalizeLiveSubscriptionDesign } from "./flutterwave-live-finalization-design";
 import { processLiveWorkflow,hasLiveTermEntitlement } from "./flutterwave-live-lifecycle";
@@ -94,6 +95,7 @@ async function receive(body:Buffer){
 async function complete(intent:any,status="successful",verifier=proof()){
   const body=raw(intent,status);return processLiveWorkflow(pool,await receive(body),body,verifier,capability);
 }
+let loseNextIngressCommit=false;
 async function approve(intent:any,actorId=2,key="workflow-approval-key-0001"){
   return approveLiveCommissionBatch(pool,{actorId,merchantScope:merchant,intentIds:[Number(intent.id)],idempotencyKey:key},capability);
 }
@@ -118,8 +120,9 @@ beforeAll(async()=>{
   const adapter=new FlutterwaveLiveAdapter({NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",
     EDUCORE_FLUTTERWAVE_LIVE_ENABLED:"true",EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT:"LIVE",
     FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-fictional-workflow-only",FLUTTERWAVE_WEBHOOK_VERIF_HASH:hash});
-  // Actual isolated HTTP/kernel pipeline, NOT the mounted app route or browser auth.
+  // Actual ingress factory and kernel; fictional auth/verification and local DB.
   const app=express();
+  app.use("/platform/live-readiness/evidence-preview",express.json({limit:"16kb"}));
   app.use("/family-disabled",createLiveFamilyAccessRouter({pool,development:true}));
   app.use("/family-non-development",createLiveFamilyAccessRouter({pool,development:false,
     context:()=>({merchantScope:merchant,capability})}));
@@ -127,13 +130,23 @@ beforeAll(async()=>{
   app.use("/disabled",createLiveReadinessRouter({pool,development:true}));
   app.use("/non-development",createLiveReadinessRouter({pool,development:false,capability}));
   app.use(createLiveReadinessRouter({pool,development:true,capability,verifier:proof()}));
-  app.post("/webhook",express.raw({type:"application/json"}),async(req,res)=>{
-    try{adapter.authenticateWebhook(req.headers);}catch{res.status(401).json({processed:false});return;}
-    try{
-      const result=await processLiveWorkflow(pool,await receive(req.body),req.body,proof(),capability);
-      res.status(503).json({...result,processed:false}); // No release/HTTP200 authority.
-    }catch{res.status(503).json({processed:false});}
-  });
+  app.use("/webhook",express.raw({type:"application/json"}),createStudentSubscriptionLiveWebhookRouter({
+    pool,authenticator:()=>adapter,capability,verifier:proof(),
+  }));
+  app.use("/webhook-disabled",express.raw({type:"application/json"}),createStudentSubscriptionLiveWebhookRouter({
+    pool,authenticator:()=>adapter,
+  }));
+  app.use("/webhook-uncertain",express.raw({type:"application/json"}),createStudentSubscriptionLiveWebhookRouter({
+    pool:{connect:async()=>{
+      const client=await pool.connect();
+      return {release:()=>client.release(),query:async(query:string,values?:unknown[])=>{
+        if(query==="COMMIT"&&loseNextIngressCommit){
+          loseNextIngressCommit=false;await client.query("COMMIT");throw new Error("Fictional receipt commit response loss");
+        }
+        return client.query(query,values);
+      }};
+    }},authenticator:()=>adapter,capability,verifier:proof(),
+  }));
   app.use(express.json({limit:"100kb"}));
   // The review POST is mounted after JSON parsing below; GETs above need no body.
   app.use("/review-api",createLiveReadinessRouter({pool,development:true,capability,verifier:proof()}));
@@ -146,6 +159,7 @@ beforeAll(async()=>{
   base=`http://127.0.0.1:${address.port}`;
 },20000);
 beforeEach(async()=>{
+  loseNextIngressCommit=false;
   await pool.query(`TRUNCATE flutterwave_live_workflow_audits,flutterwave_live_commission_items,
    flutterwave_live_commission_batches,flutterwave_live_subscription_intents,flutterwave_live_authority_reviews,
    flutterwave_live_webhook_receipts,school_memberships,app_users,academic_terms,academic_sessions,
@@ -209,11 +223,117 @@ describe("coordinated LIVE workflow isolated HTTP/SQL E2E; no real provider or r
   });
   it("rejects wrong/TEST webhook authentication before any receipt or activation",async()=>{
     const intent=await reserve();
+    const connect=vi.spyOn(pool,"connect");
     for(const value of ["","fictional-test-verifier"]){
       expect((await fetch(`${base}/webhook`,{method:"POST",headers:{"content-type":"application/json","verif-hash":value},body:raw(intent)})).status).toBe(401);
     }
+    expect(connect).not.toHaveBeenCalled();
+    connect.mockRestore();
     expect(await count("flutterwave_live_webhook_receipts")).toBe(0);
     expect(await count("flutterwave_live_subscription_activations")).toBe(0);
+  });
+  it("actual ingress retains disabled defaults and byte-identical receipt retries never finalize",async()=>{
+    const intent=await reserve(),body=raw(intent);
+    for(let i=0;i<2;i++){
+      const response=await fetch(`${base}/webhook-disabled`,{method:"POST",headers:{"content-type":"application/json","verif-hash":hash},body});
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({processed:false,receiptRecorded:true});
+    }
+    expect(await count("flutterwave_live_webhook_receipts")).toBe(1);
+    expect((await sql("SELECT delivery_count FROM flutterwave_live_webhook_receipts"))[0].delivery_count).toBe(2);
+    expect(await count("flutterwave_live_collection_evidence")).toBe(0);
+    expect(await count("flutterwave_live_subscription_activations")).toBe(0);
+  });
+  it("actual ingress reconciles a committed receipt with a lost response through safe provider redelivery",async()=>{
+    const intent=await reserve(),body=raw(intent);
+    const send=()=>fetch(`${base}/webhook-uncertain`,{method:"POST",headers:{"content-type":"application/json","verif-hash":hash},body});
+    loseNextIngressCommit=true;
+    const uncertain=await send();expect(uncertain.status).toBe(503);
+    expect(await uncertain.json()).toMatchObject({processed:false});
+    expect(await count("flutterwave_live_webhook_receipts")).toBe(1);
+    expect(await count("flutterwave_live_collection_evidence")).toBe(0);
+    for(let i=0;i<2;i++){
+      const replay=await send();expect(replay.status).toBe(503);expect(await replay.json()).toMatchObject({processed:false});
+    }
+    expect(await count("flutterwave_live_webhook_receipts")).toBe(1);
+    expect(await count("flutterwave_live_collection_evidence")).toBe(1);
+    expect(await count("flutterwave_live_subscription_activations")).toBe(1);
+    expect(await count("flutterwave_live_partner_accruals")).toBe(1);
+    expect((await sql("SELECT delivery_count FROM flutterwave_live_webhook_receipts"))[0].delivery_count).toBe(3);
+  });
+  it("actual ingress fixture lifecycle deduplicates retries and retains adverse holds on success replay",async()=>{
+    const intent=await reserve();
+    const send=(body:Buffer)=>fetch(`${base}/webhook`,{method:"POST",headers:{"content-type":"application/json","verif-hash":hash},body});
+    for(let i=0;i<2;i++){
+      const response=await send(raw(intent));expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({processed:false,receiptRecorded:true});
+    }
+    expect(await count("flutterwave_live_webhook_receipts")).toBe(1);
+    expect(await count("flutterwave_live_collection_evidence")).toBe(1);
+    expect(await count("flutterwave_live_subscription_activations")).toBe(1);
+    expect(await count("flutterwave_live_partner_accruals")).toBe(1);
+    const adverse=await send(raw(intent,"reversed"));expect(adverse.status).toBe(503);await adverse.json();
+    const replay=await send(raw(intent));expect(replay.status).toBe(503);await replay.json();
+    expect((await sql("SELECT status FROM flutterwave_live_subscription_activations"))[0].status).toBe("HELD");
+    expect(await count("flutterwave_live_collection_evidence")).toBe(1);
+    expect(await count("flutterwave_live_reconciliation_cases")).toBeGreaterThan(0);
+  });
+  it("actual disabled ingress receipt recovery requires exact original bytes, not reencoded JSON",async()=>{
+    const intent=await reserve(),body=raw(intent);
+    const response=await fetch(`${base}/webhook-disabled`,{method:"POST",headers:{"content-type":"application/json","verif-hash":hash},body});
+    expect(response.status).toBe(503);await response.json();
+    const id=Number((await sql("SELECT id FROM flutterwave_live_webhook_receipts"))[0].id);
+    const input={receiptId:id,action:"RETRY" as const,reason:"PENDING" as const,idempotencyKey:"ingress-original-retry-01"};
+    await expect(reviewLiveReceipt(pool,{actorId:2,merchantScope:merchant,development:true,capability},input,proof()))
+      .rejects.toMatchObject({code:"LIVE_ORIGINAL_BYTES_REQUIRED"});
+    await expect(reviewLiveReceipt(pool,{actorId:2,merchantScope:merchant,development:true,capability},
+      {...input,originalBody:Buffer.from(JSON.stringify(JSON.parse(body.toString()),null,2))},proof()))
+      .rejects.toMatchObject({code:"LIVE_ORIGINAL_BYTES_MISMATCH"});
+    await reviewLiveReceipt(pool,{actorId:2,merchantScope:merchant,development:true,capability},
+      {...input,originalBody:body},proof());
+    expect(await count("flutterwave_live_collection_evidence")).toBe(1);
+    expect(await count("flutterwave_live_subscription_activations")).toBe(1);
+  });
+  it("Owner evidence preview binds the immutable review without approving or changing any LIVE records",async()=>{
+    const tables=["flutterwave_live_authority_reviews","flutterwave_live_subscription_intents","flutterwave_live_collection_evidence",
+      "flutterwave_live_subscription_activations","flutterwave_live_official_receipts","flutterwave_live_partner_accruals","flutterwave_live_workflow_audits"];
+    const before=await Promise.all(tables.map(count));
+    const response=await fetch(`${base}/platform/live-readiness/evidence-preview`,{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({merchantScope:merchant,schoolId:10,reviewId:1,authorityEvidence:authorityEvidence()})});
+    expect(response.status).toBe(200);
+    const report=await response.json() as any;
+    expect(report).toMatchObject({previewOnly:true,approved:false,persisted:false,activationReady:false,evidenceValid:true,
+      evidenceStatus:"MATCHES_EXISTING_REVIEW",missingTables:[],allocationPreview:{amount:5000,currency:"NGN",
+        subaccounts:[{id:school,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]}});
+    expect(report.checks).toContainEqual(expect.objectContaining({key:"MIGRATION_APPROVAL",status:"UNVERIFIED"}));
+    expect(report.checks).toContainEqual(expect.objectContaining({key:"WEBHOOK_ENVIRONMENT_AUTHENTICATION",status:"UNVERIFIED"}));
+    expect(await Promise.all(tables.map(count))).toEqual(before);
+  });
+  it("preview rejects missing, changed, wrong-scope and expired authority without exposing an allocation",async()=>{
+    const send=(body:any)=>fetch(`${base}/platform/live-readiness/evidence-preview`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+    const input={merchantScope:merchant,schoolId:10,reviewId:1,authorityEvidence:authorityEvidence()};
+    for(const change of [{authorityEvidence:{}},{authorityEvidence:{...authorityEvidence(),dashboardFeeBearer:"CUSTOMER"}},
+      {authorityEvidence:{...authorityEvidence(),schoolOwnershipEvidenceSha256:"c".repeat(64)}},{schoolId:20}]){
+      const response=await send({...input,...change});expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({evidenceValid:false,allocationPreview:null,activationReady:false,approved:false});
+    }
+    const missing=await send({...input,authorityEvidence:undefined});expect(missing.status).toBe(400);await missing.text();
+    await sql(`INSERT INTO flutterwave_live_authority_reviews(merchant_scope,school_id,school_subaccount_id,evidence_sha256,reviewed_by,created_at,expires_at)
+      VALUES($1,10,$2,$3,2,now()-interval '1 hour',now()-interval '1 second')`,[merchant,school,liveSplitAuthorityDigest(authorityEvidence())]);
+    const expired=await send({...input,reviewId:2});expect(expired.status).toBe(200);
+    expect(await expired.json()).toMatchObject({evidenceValid:false,evidenceStatus:"AUTHORITY_REVIEW_EXPIRED",allocationPreview:null});
+    expect(await count("flutterwave_live_subscription_intents")).toBe(0);
+  });
+  it("preview denies non-Owners and non-Development before DB access",async()=>{
+    const connect=vi.spyOn(pool,"connect");
+    for(const role of ["ANONYMOUS","PARENT","SCHOOL_ADMIN","TEACHER","PARTNER","INTERNAL_OFFICER","COMPANY_ACCOUNTANT"]){
+      const response=await fetch(`${base}/platform/live-readiness/evidence-preview`,{method:"POST",
+        headers:{"content-type":"application/json","x-test-role":role},body:"{}"});
+      expect(response.status).toBe(role==="ANONYMOUS"?401:403);await response.text();
+    }
+    const outside=await fetch(`${base}/non-development/platform/live-readiness/evidence-preview`,{method:"POST",
+      headers:{"content-type":"application/json"},body:"{}"});expect(outside.status).toBe(503);await outside.text();
+    expect(connect).not.toHaveBeenCalled();
   });
   it("canonical authority prevents cross-school/inactive/Owner operational issuance and missing LIVE review",async()=>{
     for(const actor of [2,3,999])await expect(reserve(actor)).rejects.toMatchObject({code:"LIVE_INTENT_AUTHORITY_DENIED"});

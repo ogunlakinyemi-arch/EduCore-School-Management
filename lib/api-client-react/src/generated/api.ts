@@ -522,6 +522,8 @@ import type {
   ListTransportRequestsParams,
   ListTransportRouteStaffParams,
   ListTransportRoutesParams,
+  LiveEvidencePreviewInput,
+  LiveEvidencePreviewReport,
   LocalFlutterwaveSplitSimulation,
   LocalFlutterwaveSplitSimulationInput,
   LostCardInput,
@@ -35115,6 +35117,94 @@ export function useListPartnerTermCommissions<TData = Awaited<ReturnType<typeof 
 
 
 
+
+export const getPreviewFlutterwaveLiveEvidenceUrl = () => {
+
+
+
+
+  return `/api/platform/live-readiness/evidence-preview`
+}
+
+/**
+ * @summary Owner-only Development read-only evidence import preview
+ */
+export const previewFlutterwaveLiveEvidence = async (liveEvidencePreviewInput: LiveEvidencePreviewInput, options?: Parameters<typeof customFetch>[1]): Promise<LiveEvidencePreviewReport> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LiveEvidencePreviewReport>(getPreviewFlutterwaveLiveEvidenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(liveEvidencePreviewInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewFlutterwaveLiveEvidenceMutationKey = () => ['previewFlutterwaveLiveEvidence'] as const;
+
+export const getPreviewFlutterwaveLiveEvidenceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewFlutterwaveLiveEvidence>>, TError,PreviewFlutterwaveLiveEvidenceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewFlutterwaveLiveEvidence>>, TError,PreviewFlutterwaveLiveEvidenceMutationVariables, TContext> => {
+
+const mutationKey = getPreviewFlutterwaveLiveEvidenceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewFlutterwaveLiveEvidence>>, PreviewFlutterwaveLiveEvidenceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewFlutterwaveLiveEvidence(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewFlutterwaveLiveEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof previewFlutterwaveLiveEvidence>>>
+    export type PreviewFlutterwaveLiveEvidenceMutationBody = BodyType<LiveEvidencePreviewInput>
+    export type PreviewFlutterwaveLiveEvidenceMutationError = ErrorType<void>
+    export type PreviewFlutterwaveLiveEvidenceMutationVariables = {data: BodyType<LiveEvidencePreviewInput>}
+
+    /**
+ * @summary Owner-only Development read-only evidence import preview
+ */
+export const usePreviewFlutterwaveLiveEvidence = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewFlutterwaveLiveEvidence>>, TError,PreviewFlutterwaveLiveEvidenceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewFlutterwaveLiveEvidence>>,
+        TError,
+        PreviewFlutterwaveLiveEvidenceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewFlutterwaveLiveEvidenceMutationOptions(options));
+    }
 
 export const getListPartnerPayoutBatchesUrl = () => {
 

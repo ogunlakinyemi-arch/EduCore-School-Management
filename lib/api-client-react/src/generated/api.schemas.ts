@@ -14798,6 +14798,93 @@ export interface DeferredCommissionTotals {
   recoveryMinor: number;
 }
 
+export type LiveEvidencePreviewInputAuthorityEvidence = { [key: string]: unknown };
+
+export interface LiveEvidencePreviewInput {
+  /** @pattern ^[A-Za-z0-9_-]{8,80}$ */
+  merchantScope: string;
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  reviewId: number;
+  authorityEvidence: LiveEvidencePreviewInputAuthorityEvidence;
+}
+
+export interface LiveEvidenceCheck {
+  key: string;
+  status: string;
+  detail: string;
+}
+
+export type LiveAllocationPreviewAmount = typeof LiveAllocationPreviewAmount[keyof typeof LiveAllocationPreviewAmount];
+
+
+export const LiveAllocationPreviewAmount = {
+  NUMBER_5000: 5000,
+} as const;
+
+export type LiveAllocationPreviewCurrency = typeof LiveAllocationPreviewCurrency[keyof typeof LiveAllocationPreviewCurrency];
+
+
+export const LiveAllocationPreviewCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type LiveAllocationPreviewSubaccountsItemTransactionChargeType = typeof LiveAllocationPreviewSubaccountsItemTransactionChargeType[keyof typeof LiveAllocationPreviewSubaccountsItemTransactionChargeType];
+
+
+export const LiveAllocationPreviewSubaccountsItemTransactionChargeType = {
+  flat_subaccount: 'flat_subaccount',
+} as const;
+
+export type LiveAllocationPreviewSubaccountsItemTransactionCharge = typeof LiveAllocationPreviewSubaccountsItemTransactionCharge[keyof typeof LiveAllocationPreviewSubaccountsItemTransactionCharge];
+
+
+export const LiveAllocationPreviewSubaccountsItemTransactionCharge = {
+  NUMBER_1900: 1900,
+} as const;
+
+export type LiveAllocationPreviewSubaccountsItem = {
+  id: string;
+  transaction_charge_type: LiveAllocationPreviewSubaccountsItemTransactionChargeType;
+  transaction_charge: LiveAllocationPreviewSubaccountsItemTransactionCharge;
+};
+
+export interface LiveAllocationPreview {
+  amount: LiveAllocationPreviewAmount;
+  currency: LiveAllocationPreviewCurrency;
+  /**
+     * @minItems 1
+     * @maxItems 1
+     */
+  subaccounts: LiveAllocationPreviewSubaccountsItem[];
+}
+
+export interface LiveConfirmedPolicy {
+  amount: number;
+  schoolAmount: number;
+  currency: string;
+  feeBearer: string;
+  eligiblePartnerAmount: number;
+  partnerPayment: string;
+  transactionSplitRatio: string;
+}
+
+export interface LiveEvidencePreviewReport {
+  previewOnly: true;
+  approved: false;
+  persisted: false;
+  activationReady: false;
+  evidenceValid: boolean;
+  evidenceStatus: string;
+  /** @nullable */
+  reviewHash: string | null;
+  allocationPreview: LiveAllocationPreview | null;
+  policy: LiveConfirmedPolicy;
+  checks: LiveEvidenceCheck[];
+  missingTables: string[];
+}
+
 export interface SettlementRemovalConfirmation {
   /** @minimum 1 */
   expectedProfileId: number;

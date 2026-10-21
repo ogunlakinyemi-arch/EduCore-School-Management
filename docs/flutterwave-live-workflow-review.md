@@ -1,5 +1,13 @@
 # Coordinated LIVE workflow — Development-only review
 
+**Actual ingress and Owner preview follow-up (2026-10-21):**
+isolated HTTP acceptance now mounts the same ingress factory used by the
+application, rather than a duplicate fixture route. The factory reuses the
+durable lifecycle only with explicitly injected fictional test dependencies;
+it still never acknowledges 200. The new Owner-only evidence preview uses
+read-only transactions and cannot approve, persist or release a workflow.
+See [current instructions and gates](flutterwave-live-evidence-preview-and-ingress.md).
+
 **Confirmed split follow-up (2026-10-21):** support's written fixed-subaccount /
 Merchant fee-bearer model is accepted without changing deferred Partner policy.
 Issuance and first activation now verify a canonical account-evidence document

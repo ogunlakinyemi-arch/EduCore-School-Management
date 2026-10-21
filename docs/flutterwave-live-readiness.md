@@ -1,5 +1,12 @@
 # Flutterwave deferred Partner commissions — Development review
 
+**Read-only preview and actual ingress follow-up (2026-10-21):**
+Owner → Partners → LIVE readiness now validates existing review-bound evidence
+without approval/persistence. The actual webhook factory is exercised against
+the existing durable kernel with fictional dependencies and disposable SQL;
+application defaults and HTTP acknowledgement remain blocked.
+See [current operator instructions](flutterwave-live-evidence-preview-and-ingress.md).
+
 **Written support confirmation update (2026-10-21):** the user supplied explicit
 fixed `flat_subaccount` / omitted-ratio / Merchant fee-bearer confirmation.
 See [confirmed-model implementation and exact activation checklist](flutterwave-live-confirmed-split-activation.md).

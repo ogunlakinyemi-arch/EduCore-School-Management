@@ -1,5 +1,11 @@
 # Confirmed Flutterwave split model — disabled LIVE activation checklist
 
+**Next Development increment:** an Owner-only read-only evidence import preview
+and actual ingress factory now reuse the existing authority and durable lifecycle
+checks. See [operator steps and unchanged gates](flutterwave-live-evidence-preview-and-ingress.md).
+This preview is not the separately authorized authority-approval/import workflow.
+The real handler still returns 503 / `processed:false`.
+
 ## Written support confirmation and policy
 
 The user supplied written Flutterwave support confirmation specifying
@@ -91,8 +97,9 @@ immutable issuance is replayed unchanged. Old generic hashes/design snapshots
 are not automatically upgraded, rewritten or approved.
 
 No new database column or migration is needed for this change. No HTTP
-checkout/authority-review creation endpoint has been enabled. A separately
-reviewed Owner evidence-import/issuance integration is still needed before
+checkout/authority-review creation endpoint has been enabled. The read-only
+evidence-preview endpoint does not create a review. A separately approved
+audited Owner evidence-import/issuance integration is still needed before
 operational use; caller-submitted booleans must never become approval.
 
 ## Release gates that remain closed
@@ -162,16 +169,19 @@ fictional verification evidence, never the application database.
 - 56 unit/configuration cases passed across
   `flutterwave-live-split-authority.test.ts` and
   `flutterwave-live-config.test.ts`.
-- 63 isolated native PostgreSQL/HTTP cases passed in the final
-  `flutterwave-live-workflow.e2e.postgres.test.ts` run. This includes rejection
-  before issuance, first-activation rollback with retained reconciliation,
-  eligible/no-Partner branches, immutable historical behaviour, disabled
-  capabilities and verification transport, scoped reads and recovery flows.
-- API TypeScript and `git diff --check` passed.
-- An initial new negative fixture accidentally duplicated the existing unique
-  student/term intent scope; it was corrected to use the second fixture student.
-  Fixture HTTP connections are explicitly closed at teardown. The entire
-  63-case native file was rerun successfully; the already-passing 56 independent
-  unit/configuration cases were not needlessly rerun.
+- 70 isolated native PostgreSQL/HTTP workflow cases passed using the actual
+  ingress factory, including authentication-before-DB, disabled defaults,
+  delivery retries, lost receipt commit response, adverse hold/replay, exact-byte
+  recovery and Owner read-only hash-bound preview/denial cases.
+- 20 isolated native finalization and 4 read-only preview unit cases passed.
+  Together with the 56 unit/configuration cases, this is **150 API tests**.
+- Frontend coverage verifies local import, invalid/oversized/unreadable files,
+  late file/request responses, evidence mismatches, access changes and failure
+  states; see the current [verification report](flutterwave-live-evidence-preview-and-ingress.md).
+- Generated shared-library, API and frontend TypeScript, API/frontend builds and
+  `git diff --check` passed. Development services restarted successfully.
+- The screenshot browser renders the sign-in page, not the protected Owner
+  screen. Authenticated application browser acceptance is a separate follow-up;
+  DOM and isolated SQL evidence are not presented as that acceptance.
 - No new application migration, actual provider interaction or real-money
   acceptance is established by these results.

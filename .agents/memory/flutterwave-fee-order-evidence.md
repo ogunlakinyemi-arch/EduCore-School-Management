@@ -45,3 +45,13 @@ the authority must bind the exact reviewed document and original recipient.
 
 **How to apply:** Keep approval custody separate from evidence submission, and
 recheck the original review before a first operational activation.
+
+An Owner's evidence import preview is read-only validation, never an approval
+or authority creation step. A bound document does not independently verify the
+dashboard or authorize a real charge, even if the schema tables are present.
+
+**Why:** The user explicitly separated preparation from migration application,
+webhook acceptance and real-money release authorization.
+
+**How to apply:** Keep financial gates independent of preview access; do not
+reuse an informational match or isolated finalization success as release consent.

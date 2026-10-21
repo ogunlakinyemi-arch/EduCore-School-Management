@@ -1,0 +1,88 @@
+paths:
+  /platform/live-readiness/evidence-preview:
+    post:
+      operationId: previewFlutterwaveLiveEvidence
+      summary: Owner-only Development read-only evidence import preview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveEvidencePreviewInput" }
+      responses:
+        "200":
+          description: Validation report only, never approval, persistence or activation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LiveEvidencePreviewReport" }
+        "400": { description: Invalid preview request }
+        "401": { description: Sign-in required }
+        "403": { description: Platform Owner only }
+        "503": { description: Not Development or safe read unavailable }
+components:
+  schemas:
+    LiveEvidencePreviewInput:
+      type: object
+      additionalProperties: false
+      required: [merchantScope, schoolId, reviewId, authorityEvidence]
+      properties:
+        merchantScope: { type: string, pattern: '^[A-Za-z0-9_-]{8,80}$' }
+        schoolId: { type: integer, minimum: 1 }
+        reviewId: { type: integer, minimum: 1 }
+        authorityEvidence: { type: object, additionalProperties: true }
+    LiveEvidenceCheck:
+      type: object
+      required: [key, status, detail]
+      properties:
+        key: { type: string }
+        status: { type: string }
+        detail: { type: string }
+    LiveAllocationPreview:
+      type: object
+      required: [amount, currency, subaccounts]
+      properties:
+        amount: { type: number, enum: [5000] }
+        currency: { type: string, enum: [NGN] }
+        subaccounts:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: object
+            required: [id, transaction_charge_type, transaction_charge]
+            properties:
+              id: { type: string }
+              transaction_charge_type: { type: string, enum: [flat_subaccount] }
+              transaction_charge: { type: number, enum: [1900] }
+    LiveConfirmedPolicy:
+      type: object
+      required: [amount, schoolAmount, currency, feeBearer, eligiblePartnerAmount, partnerPayment, transactionSplitRatio]
+      properties:
+        amount: { type: number }
+        schoolAmount: { type: number }
+        currency: { type: string }
+        feeBearer: { type: string }
+        eligiblePartnerAmount: { type: number }
+        partnerPayment: { type: string }
+        transactionSplitRatio: { type: string }
+    LiveEvidencePreviewReport:
+      type: object
+      required: [previewOnly, approved, persisted, activationReady, evidenceValid, evidenceStatus, reviewHash, allocationPreview, policy, checks, missingTables]
+      properties:
+        previewOnly: { type: boolean, enum: [true] }
+        approved: { type: boolean, enum: [false] }
+        persisted: { type: boolean, enum: [false] }
+        activationReady: { type: boolean, enum: [false] }
+        evidenceValid: { type: boolean }
+        evidenceStatus: { type: string }
+        reviewHash: { type: [string, "null"] }
+        allocationPreview:
+          anyOf:
+            - { $ref: "#/components/schemas/LiveAllocationPreview" }
+            - { type: "null" }
+        policy: { $ref: "#/components/schemas/LiveConfirmedPolicy" }
+        checks:
+          type: array
+          items: { $ref: "#/components/schemas/LiveEvidenceCheck" }
+        missingTables:
+          type: array
+          items: { type: string }

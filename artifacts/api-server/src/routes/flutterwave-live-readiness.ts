@@ -6,6 +6,7 @@ import { LiveFinalizationBlocked,type LiveCollectionVerifier } from "../lib/flut
 import { AuthError,getUserContext,isPlatformOwner,requireAuthentication } from "../middlewares/auth";
 import { listLiveOperatorReceipts,reviewLiveReceipt } from "../services/flutterwave-live-operator";
 import { readLiveApplicationReceipt } from "../services/flutterwave-live-application";
+import { previewLiveEvidence } from "../services/flutterwave-live-evidence-preview";
 
 const reviewBody=z.object({
   action:z.enum(["REVIEW","CONFIRM_DURABILITY","RETRY"]),
@@ -20,6 +21,25 @@ export function createLiveReadinessRouter(deps:{pool:StudentSubscriptionSqlPool;
   development?:boolean;verifier?:LiveCollectionVerifier}):IRouter{
   const router=Router(),capability=deps.capability??blockedLiveWorkflow;
   router.use("/platform/live-readiness",requireAuthentication());
+  // Read-only preview deliberately does not require an enabled financial
+  // capability. Owner + Development are checked before parsing or DB access.
+  router.post("/platform/live-readiness/evidence-preview",async(req,res,next)=>{
+    res.setHeader("Cache-Control","no-store");
+    try{
+      if(!isPlatformOwner(getUserContext(req)))throw new AuthError(403,"Platform Owner permission required");
+      if(!(deps.development??(process.env.NODE_ENV==="development"&&!process.env.REPLIT_DEPLOYMENT)))
+        throw new AuthError(503,"LIVE evidence preview is Development-only");
+      const body=z.object({merchantScope:z.string().regex(/^[A-Za-z0-9_-]{8,80}$/),
+        schoolId:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        reviewId:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        authorityEvidence:z.record(z.string(),z.unknown())}).strict().parse(req.body);
+      res.json(await previewLiveEvidence(deps.pool,{...body,authorityEvidence:body.authorityEvidence}));
+    }catch(error){
+      if(error instanceof z.ZodError){next(new AuthError(400,"Invalid LIVE evidence preview"));return;}
+      if(error instanceof AuthError){next(error);return;}
+      next(new AuthError(503,"LIVE evidence preview unavailable; no approval or persistence occurred"));
+    }
+  });
   const wrap=(handler:(req:any,res:any,actorId:number,merchantScope:string)=>Promise<void>)=>
     async(req:any,res:any,next:any)=>{
       try{

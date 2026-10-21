@@ -15004,6 +15004,60 @@ export const ListPartnerTermCommissionsResponseItem = zod.object({
 export const ListPartnerTermCommissionsResponse = zod.array(ListPartnerTermCommissionsResponseItem)
 
 
+/**
+ * @summary Owner-only Development read-only evidence import preview
+ */
+export const previewFlutterwaveLiveEvidenceBodyMerchantScopeRegExp = new RegExp('^[A-Za-z0-9_-]{8,80}$');
+
+
+
+
+export const PreviewFlutterwaveLiveEvidenceBody = zod.object({
+  "merchantScope": zod.string().regex(previewFlutterwaveLiveEvidenceBodyMerchantScopeRegExp),
+  "schoolId": zod.number().int().min(1),
+  "reviewId": zod.number().int().min(1),
+  "authorityEvidence": zod.record(zod.string(), zod.unknown())
+})
+
+export const previewFlutterwaveLiveEvidenceResponseAllocationPreviewOneSubaccountsMax = 1;
+
+
+
+export const PreviewFlutterwaveLiveEvidenceResponse = zod.object({
+  "previewOnly": zod.literal(true),
+  "approved": zod.literal(false),
+  "persisted": zod.literal(false),
+  "activationReady": zod.literal(false),
+  "evidenceValid": zod.boolean(),
+  "evidenceStatus": zod.string(),
+  "reviewHash": zod.string().nullable(),
+  "allocationPreview": zod.union([zod.object({
+  "amount": zod.literal(5000),
+  "currency": zod.enum(['NGN']),
+  "subaccounts": zod.array(zod.object({
+  "id": zod.string(),
+  "transaction_charge_type": zod.enum(['flat_subaccount']),
+  "transaction_charge": zod.literal(1900)
+})).min(1).max(previewFlutterwaveLiveEvidenceResponseAllocationPreviewOneSubaccountsMax)
+}),zod.null()]),
+  "policy": zod.object({
+  "amount": zod.number(),
+  "schoolAmount": zod.number(),
+  "currency": zod.string(),
+  "feeBearer": zod.string(),
+  "eligiblePartnerAmount": zod.number(),
+  "partnerPayment": zod.string(),
+  "transactionSplitRatio": zod.string()
+}),
+  "checks": zod.array(zod.object({
+  "key": zod.string(),
+  "status": zod.string(),
+  "detail": zod.string()
+})),
+  "missingTables": zod.array(zod.string())
+})
+
+
 export const ListPartnerPayoutBatchesResponseItem = zod.object({
   "id": zod.number().int(),
   "status": zod.string(),

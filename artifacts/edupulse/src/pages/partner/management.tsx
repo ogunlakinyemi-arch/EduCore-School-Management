@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import LiveReadinessPage from './live-readiness';
 import { Route, Switch, Link, useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
@@ -887,6 +888,7 @@ function AttributionConflicts() {
 
 export default function PartnerManagement() {
   const [location] = useLocation();
+  const isOwner = useGetAuthorizedContext().data?.isPlatformOwner === true;
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl">
@@ -911,6 +913,13 @@ export default function PartnerManagement() {
             Attribution Conflicts
           </button>
         </Link>
+        {isOwner && (
+          <Link href="/partners/live-readiness">
+            <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/live-readiness' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
+              LIVE readiness
+            </button>
+          </Link>
+        )}
       </div>
 
       <Switch>
@@ -918,6 +927,7 @@ export default function PartnerManagement() {
         <Route path="/partners/term-commissions" component={TermCommissionsPage} />
         <Route path="/partners/payouts" component={PayoutsOverview} />
         <Route path="/partners/conflicts" component={AttributionConflicts} />
+        <Route path="/partners/live-readiness" component={LiveReadinessPage} />
         <Route path="/partners/:id">
           {params => <PartnerDetail id={Number(params.id)} />}
         </Route>

@@ -4505,6 +4505,8 @@ paths:
           description: Idempotency key payload conflict or insufficient exact payable commissions
   /platform/partner-term-commissions:
     $ref: "./deferred-commissions.yaml#/paths/~1platform~1partner-term-commissions"
+  /platform/live-readiness/evidence-preview:
+    $ref: "./live-evidence-preview.yaml#/paths/~1platform~1live-readiness~1evidence-preview"
   /platform/partner-payout-batches:
     $ref: "./deferred-commissions.yaml#/paths/~1platform~1partner-payout-batches"
   /platform/partner-payout-batches/{batchId}:

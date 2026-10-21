@@ -35,7 +35,7 @@ function diagnosticClaims(rawBody: Buffer): Record<string, string> {
 export async function persistAuthenticatedLiveWebhookReceipt(
   pool: StudentSubscriptionSqlPool,
   rawBody: Buffer,
-): Promise<void> {
+): Promise<number> {
   if (!Buffer.isBuffer(rawBody) || rawBody.length === 0 || rawBody.length > 65_536) {
     throw new Error("LIVE webhook receipt body is invalid");
   }
@@ -45,17 +45,20 @@ export async function persistAuthenticatedLiveWebhookReceipt(
     await client.query("BEGIN");
     await client.query("SET LOCAL lock_timeout = '2s'");
     await client.query("SET LOCAL statement_timeout = '3s'");
-    await client.query(
+    const receipt=await client.query(
       `INSERT INTO flutterwave_live_webhook_receipts
         (provider,environment,payload_sha256,payload_bytes,claims,signature_verified)
        VALUES ('FLUTTERWAVE','LIVE',$1,$2,$3::jsonb,true)
        ON CONFLICT (provider,environment,payload_sha256) DO UPDATE
          SET delivery_count=CASE WHEN flutterwave_live_webhook_receipts.delivery_count < 2147483647
                THEN flutterwave_live_webhook_receipts.delivery_count+1 ELSE 2147483647 END,
-             last_received_at=NOW()`,
+             last_received_at=NOW() RETURNING id`,
       [digest, rawBody.length, JSON.stringify(diagnosticClaims(rawBody))],
     );
+    const id=Number(receipt.rows[0]?.id);
+    if(!Number.isSafeInteger(id)||id<=0)throw new Error("LIVE receipt identity unavailable");
     await client.query("COMMIT");
+    return id;
   } catch (error) {
     // Includes uncertain COMMIT: do not claim success; exact redelivery is safe.
     await client.query("ROLLBACK").catch(() => undefined);
