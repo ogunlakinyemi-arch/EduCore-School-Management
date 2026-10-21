@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import LiveReadinessPage from './live-readiness';
+import { LiveReadinessAccess } from '@/components/live-readiness-access';
 import { Route, Switch, Link, useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
@@ -888,11 +889,13 @@ function AttributionConflicts() {
 
 export default function PartnerManagement() {
   const [location] = useLocation();
-  const isOwner = useGetAuthorizedContext().data?.isPlatformOwner === true;
+  const authorization = useGetAuthorizedContext();
+  const isOwner = !authorization.isLoading && !authorization.isError && authorization.data?.isPlatformOwner === true;
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl">
-      <div className="mb-8 flex min-w-0 max-w-full gap-2 overflow-x-auto whitespace-nowrap border-b border-[hsl(var(--border))] pb-2">
+      <LiveReadinessAccess isOwner={isOwner} />
+      <div data-testid="partner-navigation" className="mb-8 flex min-w-0 max-w-full flex-wrap gap-2 border-b border-[hsl(var(--border))] pb-2">
         <Link href="/partners">
           <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners' || location.match(/^\/partners\/\d+$/) ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
             Partners
@@ -913,7 +916,7 @@ export default function PartnerManagement() {
             Attribution Conflicts
           </button>
         </Link>
-        {isOwner && (
+        {isOwner && import.meta.env.DEV && (
           <Link href="/partners/live-readiness">
             <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/live-readiness' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
               LIVE readiness

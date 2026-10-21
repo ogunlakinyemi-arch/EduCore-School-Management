@@ -659,12 +659,13 @@ export const GetFlutterwaveSplitDashboardResponse = zod.object({
   "feeBearer": zod.enum(['PLATFORM']),
   "isOwner": zod.boolean(),
   "currentAllocationPolicy": zod.union([zod.object({
-  "version": zod.literal(2),
+  "version": zod.union([zod.literal(2),zod.literal(3)]),
   "schoolMinor": zod.number().int(),
   "platformWithPartnerMinor": zod.number().int(),
   "platformWithoutPartnerMinor": zod.number().int(),
-  "partnerMinor": zod.number().int()
-}).describe('Current student subscription policy, not a recalculation of historical payments. Provider processing fees are separate Owner expenses.'),zod.null()]).describe('Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only.'),
+  "partnerMinor": zod.number().int(),
+  "deferredPartner": zod.boolean().optional().describe('V3 accrues eligible Partner commission internally rather than adding a Partner checkout subaccount.')
+}).describe('Current student subscription policy, not a recalculation of historical payments. V3 has a school-only checkout allocation and internal deferred Partner payable. Owner economic shares are before provider expenses, not verified merchant bank credits.'),zod.null()]).describe('Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only.'),
   "testCredentialConfigured": zod.boolean(),
   "scopes": zod.array(zod.object({
   "kind": zod.enum(['SCHOOL', 'PARTNER']),

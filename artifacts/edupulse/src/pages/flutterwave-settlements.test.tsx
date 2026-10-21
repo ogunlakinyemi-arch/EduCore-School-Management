@@ -3,16 +3,20 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Router, Route, Switch } from 'wouter';
+import { memoryLocation } from 'wouter/memory-location';
 
 const f = vi.hoisted(() => ({
   userId: 'unit-owner' as string | null, loaded: true, schoolId: null as number | null,
   dashboard: vi.fn(), evidence: vi.fn(), review: vi.fn(), submit: vi.fn(), other: vi.fn(),
   dashboardOptions: null as any, evidenceOptions: null as any,
+  owner: true, authLoading: false, authError: false, preview: vi.fn(),
 }));
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ userId: f.userId, isLoaded: f.loaded }) }));
 vi.mock('@/components/shared', () => ({
   useTenant: () => ({ schoolId: f.schoolId }),
   money: (n: number) => `NGN ${n.toLocaleString('en-NG')}`,
+  cx: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
   Button: ({ children, testId, variant: _variant, ...props }: any) => <button data-testid={testId} {...props}>{children}</button>,
   PageHeading: ({ title, description }: any) => <header>{title}{description}</header>,
   StatusPill: ({ value }: any) => <span>{value}</span>,
@@ -23,6 +27,8 @@ vi.mock('@/components/shared', () => ({
 vi.mock('@workspace/api-client-react', async () => {
   const { useQuery, useMutation } = await import('@tanstack/react-query');
   return {
+    useGetAuthorizedContext: () => ({ data: { isPlatformOwner: f.owner }, isLoading: f.authLoading, isError: f.authError }),
+    usePreviewFlutterwaveLiveEvidence: () => ({ mutateAsync: f.preview }),
     getGetFlutterwaveSplitDashboardQueryKey: (p: unknown) => ['flutterwave-dashboard', p],
     getGetFlutterwaveTransactionSplitEvidenceQueryKey: (id: number) => ['flutterwave-evidence', id],
     useGetFlutterwaveSplitDashboard: (_p: unknown, options: any) => {
@@ -42,6 +48,7 @@ vi.mock('@workspace/api-client-react', async () => {
   };
 });
 import { FlutterwaveSettlementsPage } from './flutterwave-settlements';
+import PartnerManagement from './partner/management';
 
 const reference = 'RS_5F0DB5C736A2550E783A15B9EB9FBF09';
 const recipient = {
@@ -61,7 +68,7 @@ const dashboard = () => ({
   testCredentialConfigured: true, scopes: [{ kind: 'SCHOOL', id: 1, name: 'UNIT SCHOOL' }],
   recipients: [{ ...recipient }], schools: [{ schoolId: 1, enabled: false, testSplitVerificationAuthorized: false }],
   payments: [{ ...payment }],
-  currentAllocationPolicy: { version: 2, schoolMinor: 190000, platformWithPartnerMinor: 300000, platformWithoutPartnerMinor: 310000, partnerMinor: 10000 },
+  currentAllocationPolicy: { version: 3, schoolMinor: 190000, platformWithPartnerMinor: 300000, platformWithoutPartnerMinor: 310000, partnerMinor: 10000 },
 });
 const partialEvidence = () => ({
   status: 'UNCONFIRMED', evidenceLevel: 'PARTIAL', reason: 'Matching collection only; allocation unavailable.',
@@ -96,7 +103,9 @@ async function openReviewed() {
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   f.userId = 'unit-owner'; f.loaded = true; f.schoolId = null;
-  for (const fn of [f.dashboard, f.evidence, f.review, f.submit, f.other]) fn.mockReset();
+  f.owner = true; f.authLoading = false; f.authError = false;
+  vi.stubEnv('DEV', true);
+  for (const fn of [f.dashboard, f.evidence, f.review, f.submit, f.other, f.preview]) fn.mockReset();
   f.dashboard.mockResolvedValue(dashboard());
   f.evidence.mockResolvedValue(partialEvidence());
   f.review.mockResolvedValue({ ...recipient, status: 'TEST_READY' });
@@ -107,7 +116,7 @@ beforeEach(() => {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
 afterEach(async () => {
-  await act(async () => root.unmount()); client.clear(); host.remove(); vi.unstubAllGlobals();
+  await act(async () => root.unmount()); client.clear(); host.remove(); vi.unstubAllGlobals(); vi.unstubAllEnvs();
 });
 
 describe('Offline signed-in TEST verification screen (mock identity/API, real React/query behavior)', () => {
@@ -119,16 +128,67 @@ describe('Offline signed-in TEST verification screen (mock identity/API, real Re
     expect(host.textContent).toContain('NGN 100');
     expect(host.textContent).toContain('NGN 2,900');
     const rules = node('text-split-rules').textContent!;
-    expect(rules).toContain('school receives NGN 1,900');
-    expect(rules).toContain('Platform Owner receives NGN 3,000');
-    expect(rules).toContain('Partner receives NGN 100');
-    expect(rules).toContain('Without an eligible Partner, school receives NGN 1,900 and Platform Owner receives NGN 3,100');
-    expect(rules).toContain('Provider processing fees are separate Owner expenses');
+    expect(rules).toContain('School checkout allocation: NGN 1,900');
+    expect(rules).toContain('Merchant remainder before provider expenses: NGN 3,100, whether or not a Partner is eligible');
+    expect(rules).toContain("Partner's NGN 100 is an internal accrued payable for term-end Owner approval/export, not a checkout subaccount or immediate payout");
+    expect(rules).toContain('Owner economic share before provider expenses: NGN 3,000 with an eligible Partner, or NGN 3,100 without one');
+    expect(rules).toContain('Provider processing fees and any evidenced taxes are Merchant expenses, deducted once');
+    expect(rules).not.toMatch(/Partner receives|Platform Owner receives/);
     expect(rules).not.toMatch(/NGN 2,000|NGN 2,900/);
     expect(f.dashboardOptions.queryKey).toContain('owner-policy-v2');
     expect(f.evidence).not.toHaveBeenCalled();
     expect(f.evidenceOptions.enabled).toBe(false);
     expect(f.evidenceOptions.queryKey.at(-1)).toBe('unit-owner');
+  });
+  it('offers an explicit read-only LIVE link near the top of the TEST page without provider reads', async () => {
+    await render();
+    const link = node<HTMLAnchorElement>('link-open-live-readiness');
+    expect(link.textContent).toBe('Open LIVE readiness');
+    expect(link.getAttribute('href')).toBe('/partners/live-readiness');
+    expect(host.textContent).toContain('Split Settlements is Development TEST-only. This page does not activate LIVE');
+    expect(link.compareDocumentPosition(node('text-split-rules')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(link.className).toContain('w-full');
+    expect(node('live-readiness-access').className).toContain('flex-col');
+    for (const fn of [f.evidence, f.review, f.submit, f.other, f.preview]) expect(fn).not.toHaveBeenCalled();
+  });
+  it.each(['SCHOOL_ADMIN','PARTNER','INTERNAL_OFFICER','COMPANY_ACCOUNTANT'])('does not show the LIVE link to %s', async role => {
+    f.userId = `unit-${role}`; f.owner = false;
+    f.dashboard.mockResolvedValue({...dashboard(),isOwner:false});
+    await render();
+    expect(node('link-open-live-readiness')).toBeNull();
+  });
+  it.each(['denied','loading','error'])('hides the link even with cached Owner dashboard data when current authorization is %s', async state => {
+    f.owner = state !== 'denied'; f.authLoading = state === 'loading'; f.authError = state === 'error';
+    await render();
+    expect(node('link-open-live-readiness')).toBeNull();
+  });
+  it('does not add the Development discovery link to a production build', async () => {
+    vi.stubEnv('DEV', false);
+    await render();
+    expect(node('link-open-live-readiness')).toBeNull();
+  });
+  it('navigates from the actual TEST page to the actual Partners LIVE preview with no financial mutation', async () => {
+    const location = memoryLocation({path:'/flutterwave-settlements'});
+    await act(async()=>root.render(
+      <QueryClientProvider client={client}><Router hook={location.hook}><Switch>
+        <Route path="/flutterwave-settlements"><FlutterwaveSettlementsPage /></Route>
+        <Route path="/partners/*"><PartnerManagement /></Route>
+      </Switch></Router></QueryClientProvider>,
+    ));
+    await settle(); await click('link-open-live-readiness');
+    expect(node('live-readiness-page')).not.toBeNull();
+    expect(host.textContent).toContain('Flutterwave LIVE evidence preview');
+    expect(node('partner-navigation').className).toContain('flex-wrap');
+    expect(node('partner-navigation').className).not.toContain('overflow-x-auto');
+    expect(node<HTMLAnchorElement>('link-open-live-readiness').getAttribute('href')).toBe('/partners/live-readiness');
+    expect(node<HTMLButtonElement>('button-preview').disabled).toBe(true);
+    for (const fn of [f.evidence, f.review, f.submit, f.other, f.preview]) expect(fn).not.toHaveBeenCalled();
+    f.owner = false;
+    await act(async()=>location.navigate('/flutterwave-settlements'));
+    await settle();
+    await act(async()=>location.navigate('/partners/live-readiness'));
+    expect(node('link-open-live-readiness')).toBeNull();
+    expect(node('live-readiness-denied')).not.toBeNull();
   });
   it.each([false, true])('hides all financial actions while auth is unresolved or signed out (%s)', async loaded => {
     f.loaded = loaded; f.userId = null;

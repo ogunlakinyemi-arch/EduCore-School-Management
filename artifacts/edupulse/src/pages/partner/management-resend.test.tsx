@@ -28,6 +28,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 });
 
 vi.mock('@workspace/api-client-react', () => ({
+  useGetAuthorizedContext: () => ({ data: { isPlatformOwner: true }, isLoading: false, isError: false }),
   useGetPartnerNfcPermission: () => ({ data: { enabled: false }, isLoading: false, isError: false }),
   useUpdatePartnerNfcPermission: () => ({ mutateAsync: vi.fn(), isPending: false }),
   getListPartnersQueryKey: () => ['/api/platform/partners'],

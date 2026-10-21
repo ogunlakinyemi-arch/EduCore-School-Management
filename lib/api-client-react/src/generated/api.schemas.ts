@@ -13849,10 +13849,11 @@ export type FlutterwaveCurrentAllocationPolicyVersion = typeof FlutterwaveCurren
 
 export const FlutterwaveCurrentAllocationPolicyVersion = {
   NUMBER_2: 2,
+  NUMBER_3: 3,
 } as const;
 
 /**
- * Current student subscription policy, not a recalculation of historical payments. Provider processing fees are separate Owner expenses.
+ * Current student subscription policy, not a recalculation of historical payments. V3 has a school-only checkout allocation and internal deferred Partner payable. Owner economic shares are before provider expenses, not verified merchant bank credits.
  */
 export interface FlutterwaveCurrentAllocationPolicy {
   version: FlutterwaveCurrentAllocationPolicyVersion;
@@ -13860,6 +13861,8 @@ export interface FlutterwaveCurrentAllocationPolicy {
   platformWithPartnerMinor: number;
   platformWithoutPartnerMinor: number;
   partnerMinor: number;
+  /** V3 accrues eligible Partner commission internally rather than adding a Partner checkout subaccount. */
+  deferredPartner?: boolean;
 }
 
 export type FlutterwaveSplitDashboardMode = typeof FlutterwaveSplitDashboardMode[keyof typeof FlutterwaveSplitDashboardMode];

@@ -18,6 +18,23 @@ payment/refund/transfer is changed. No Flutterwave API is called by tests.
 ## Owner review/import preview
 
 Open **Owner → Partners → LIVE readiness** (`/partners/live-readiness`).
+In Development, an alternative entry is **Financials → Flutterwave Splits →
+Split Settlements → Open LIVE readiness**. The prominent button appears near
+the top only when both the TEST dashboard and current authorized context
+identify the Platform Owner. It is hidden while authorization is pending,
+failed or denied, and is absent from production builds. The Partners page also
+has the prominent link above its wrapping tabs, so mobile access does not
+depend on horizontal scrolling.
+
+The TEST page explicitly states that it cannot activate LIVE. Its v3 policy
+summary distinguishes the school NGN 1,900 checkout allocation from the NGN
+3,100 merchant remainder before expenses. Eligible NGN 100 Partner commission
+is an internal accrued payable for term-end Owner approval/export, never a
+checkout subaccount or immediate payout. The Owner economic share is NGN 3,000
+with an eligible Partner, or NGN 3,100 without one, before provider expenses.
+These labels do not claim actual bank credit. Historical payment cards retain
+their original allocations.
+
 The page and its tab require Platform Owner access. Its API is
 `POST /api/platform/live-readiness/evidence-preview`, restricted to authenticated
 Owners in Development even while financial workflow capabilities remain blocked.
@@ -135,3 +152,21 @@ shows the existing sign-in page at the protected route, not the Owner form.
 Authenticated application browser verification remains unperformed and is
 proposed separately; DOM/fictional SQL results are not real merchant/settlement
 or authenticated Owner-browser evidence.
+
+### Navigation/UI follow-up verification
+
+- 66 focused UI tests passed across Split Settlements, LIVE preview, Partners
+  management/invitation/payout controls and term commissions. Actual React
+  routing was exercised from the new TEST-page link into the existing Partners
+  LIVE preview; no evidence/financial action was invoked by navigation.
+- Coverage includes Owner-only/pending/failed authorization, Development-only
+  discovery, wrapping navigation, full-width mobile link styling and unchanged
+  historical allocation displays. This is DOM coverage, not an authenticated
+  application browser/mobile visual acceptance claim.
+- 84 mocked API tests passed, including the existing v3 policy response and
+  historical preservation. The two outdated v2 response expectations were
+  corrected to match the pre-existing v3 implementation.
+- The read-only OpenAPI policy descriptor now admits v2/v3 and the existing
+  deferred-Partner flag. Client/Zod code generation and shared-library/frontend
+  typechecks passed. Frontend build and diff checks passed.
+- No backend allocation, payment, migration or LIVE-gate implementation changed.

@@ -330,15 +330,16 @@ components:
         id: { type: integer }
         name: { type: string }
     FlutterwaveCurrentAllocationPolicy:
-      description: Current student subscription policy, not a recalculation of historical payments. Provider processing fees are separate Owner expenses.
+      description: Current student subscription policy, not a recalculation of historical payments. V3 has a school-only checkout allocation and internal deferred Partner payable. Owner economic shares are before provider expenses, not verified merchant bank credits.
       type: object
       required: [version, schoolMinor, platformWithPartnerMinor, platformWithoutPartnerMinor, partnerMinor]
       properties:
-        version: { type: integer, enum: [2] }
+        version: { type: integer, enum: [2, 3] }
         schoolMinor: { type: integer }
         platformWithPartnerMinor: { type: integer }
         platformWithoutPartnerMinor: { type: integer }
         partnerMinor: { type: integer }
+        deferredPartner: { type: boolean, description: V3 accrues eligible Partner commission internally rather than adding a Partner checkout subaccount. }
     FlutterwaveSplitDashboard:
       type: object
       required: [developmentOnly, mode, currency, feeBearer, isOwner, currentAllocationPolicy, testCredentialConfigured, scopes, recipients, schools, payments]

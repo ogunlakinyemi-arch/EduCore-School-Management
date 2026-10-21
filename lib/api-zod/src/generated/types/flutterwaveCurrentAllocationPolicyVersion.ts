@@ -11,4 +11,5 @@ export type FlutterwaveCurrentAllocationPolicyVersion = typeof FlutterwaveCurren
 
 export const FlutterwaveCurrentAllocationPolicyVersion = {
   NUMBER_2: 2,
+  NUMBER_3: 3,
 } as const;

@@ -19,6 +19,7 @@ import type {
   FlutterwaveRecipient, FlutterwaveSplitPayment, FlutterwaveSplitDashboard, FlutterwaveSplitScope,
 } from '@workspace/api-client-react';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, useTenant, money } from '@/components/shared';
+import { LiveReadinessAccess } from '@/components/live-readiness-access';
 
 const entry = 'w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm';
 const note = 'text-xs leading-5 text-[hsl(var(--muted-foreground))]';
@@ -300,12 +301,20 @@ export function FlutterwaveSettlementsPage() {
   return (
     <div className="fade-up" key={userId}>
       {heading}
+      <LiveReadinessAccess isOwner={d.isOwner} />
+      <Banner tone="warn">Split Settlements is Development TEST-only. This page does not activate LIVE. LIVE readiness is a separate read-only Owner evidence preview, not permission to create a LIVE payment.</Banner>
       {d.isOwner && <div className="panel mb-5 p-4 text-sm"><Link href="/flutterwave-split-simulation" className="font-bold underline">Open separate local simulation — TEST / NOT REAL</Link><p>No saved recipients, settings, payments or provider calls. This does not enable operational splits.</p></div>}
       <Banner tone="warn">TEST mode, {d.currency}, provider fees borne by the {d.feeBearer.toLowerCase()}. No real transfers are made. Existing paid receipts are never changed. Fees and applicable VAT are platform expenses. Only provider-reported costs appear below; confirm VAT inclusion against provider statements.</Banner>
       {!d.testCredentialConfigured && <Banner tone="error">The TEST credential format is not configured. Recipient creation will fail until it is. This reflects configuration format, not permissions.</Banner>}
       {msg && <Banner tone={msg.tone}>{msg.text}</Banner>}
       {d.isOwner && <div className="panel mb-6 p-5 text-xs leading-6" data-testid="text-split-rules">
-        {policy ? <>Current student subscription policy v{policy.version}: payer pays {naira(policy.schoolMinor + policy.platformWithPartnerMinor + policy.partnerMinor)};
+        {policy?.version === 3 ? <>Current student subscription policy v3: payer pays {naira(policy.schoolMinor + policy.platformWithPartnerMinor + policy.partnerMinor)}.
+          {' '}School checkout allocation: {naira(policy.schoolMinor)}.
+          {' '}Merchant remainder before provider expenses: {naira(policy.platformWithoutPartnerMinor)}, whether or not a Partner is eligible.
+          {' '}An eligible Partner's {naira(policy.partnerMinor)} is an internal accrued payable for term-end Owner approval/export, not a checkout subaccount or immediate payout.
+          {' '}Owner economic share before provider expenses: {naira(policy.platformWithPartnerMinor)} with an eligible Partner, or {naira(policy.platformWithoutPartnerMinor)} without one.
+          {' '}Provider processing fees and any evidenced taxes are Merchant expenses, deducted once from the merchant remainder; the displayed shares are not verified bank credits.
+        </> : policy ? <>Legacy allocation metadata v{policy.version}: payer pays {naira(policy.schoolMinor + policy.platformWithPartnerMinor + policy.partnerMinor)};
           {' '}school receives {naira(policy.schoolMinor)}; with an eligible Partner, Platform Owner receives {naira(policy.platformWithPartnerMinor)} and Partner receives {naira(policy.partnerMinor)}.
           {' '}Without an eligible Partner, school receives {naira(policy.schoolMinor)} and Platform Owner receives {naira(policy.platformWithoutPartnerMinor)}.
           {' '}Provider processing fees are separate Owner expenses, not deductions from School or Partner allocations. Saved payment references below retain their original allocation policy.</>

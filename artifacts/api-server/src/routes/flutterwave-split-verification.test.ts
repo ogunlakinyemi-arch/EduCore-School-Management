@@ -85,8 +85,8 @@ describe("In-process Development split verification authorization",()=>{
     f.payment.mockResolvedValue(saved);
     const response=await request("PLATFORM_OWNER","/flutterwave/split-dashboard");
     expect(response.status).toBe(200);
-    expect(response.body.currentAllocationPolicy).toEqual({version:2,schoolMinor:190000,
-      platformWithPartnerMinor:300000,platformWithoutPartnerMinor:310000,partnerMinor:10000});
+    expect(response.body.currentAllocationPolicy).toEqual({version:3,schoolMinor:190000,
+      platformWithPartnerMinor:300000,platformWithoutPartnerMinor:310000,partnerMinor:10000,deferredPartner:true});
     expect(JSON.stringify(response.body.currentAllocationPolicy)).not.toMatch(/200000|290000/);
     expect(response.body.payments).toEqual([saved]);
     expect(saved.reference).toBe("SC_original");

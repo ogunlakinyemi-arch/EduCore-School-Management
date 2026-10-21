@@ -61,6 +61,7 @@
 - [Guest NFC payments](guest-nfc-payment-policy.md) — parents need no EduCore account; support printed and assisted online payment without mislabelling cash or internal allocations.
 - [Flutterwave capability evidence](flutterwave-capability-evidence.md) — collection readiness, bank verification, payout permission and actual split settlement are separate evidence.
 - [Flutterwave fee ordering](flutterwave-fee-order-evidence.md) — support-reported fee-first splitting needs exact post-fee payout evidence, not percentage guesses.
+- [LIVE readiness discovery](live-readiness-discovery.md) — Owners expect entry from the existing financial workflow, with mobile visibility and no implied LIVE activation.
 - [Flutterwave webhook contracts](flutterwave-webhook-contracts.md) — recheck versioned authentication, standalone refund bodies and completion semantics before treating notifications as money movement.
 - [Local financial simulations](local-financial-simulation-policy.md) — fictional demonstrations never authorize onboarding, operational enablement or payment.
 - [Company rename safety](company-rename-safety.md) — current branding changes do not authorize rewriting historical records or changing financial/provider identity.
