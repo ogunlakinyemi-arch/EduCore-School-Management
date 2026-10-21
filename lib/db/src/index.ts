@@ -1,9 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
 import * as schema from "./schema";
 import { terminalTestTarget, verifyTerminalTestSocket, terminalTestPoolOptions } from "./terminal-test-target";
-
-const { Pool } = pg;
+import { ResilientPool } from "./connection-resilience";
 
 function connectionOptions() {
   // Any supplied test-mode value opts out of the shared credential entirely.
@@ -19,11 +17,17 @@ function connectionOptions() {
   return { connectionString: process.env.DATABASE_URL };
 }
 
-// Pool construction is lazy; startup performs no connection or SQL.
-export const pool = new Pool(connectionOptions());
+// Pool construction is lazy; startup performs no connection or SQL. The pool
+// survives dropped idle connections and bounds connection acquisition.
+export const pool = new ResilientPool(connectionOptions());
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
+export {
+  classifyDatabaseError,
+  setDatabaseDiagnosticReporter,
+  type DatabaseErrorDiagnostic,
+} from "./connection-resilience";
 // Driver constructors/types let consumers inspect connection metadata or use
 // isolated test pools without introducing a second application DB connection.
 export { Client as DatabaseClient, Pool as DatabasePool } from "pg";
