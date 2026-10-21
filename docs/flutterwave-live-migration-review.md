@@ -2,6 +2,13 @@
 
 ## Decision
 
+**Confirmed split follow-up (2026-10-21):** structured Merchant-fee-bearer and LIVE
+school-ownership evidence reuses the existing review hash and authority snapshot.
+No draft SQL, source schema or migration journal changed. The four drafts below
+still require explicit target-specific application approval; no application
+migration was applied. Generic old review hashes are not automatically upgraded.
+See [current manual checklist](flutterwave-live-confirmed-split-activation.md).
+
 **Final minimal pass (2026-10-21):** the supported
 `pnpm --filter @workspace/scripts run export:schema:audit --out /tmp/review.sql`
 command now passes its strict current-source key check and emits dependency-ordered

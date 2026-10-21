@@ -4,6 +4,7 @@ import { blockedLiveWorkflow, requireLiveWorkflow, type LiveWorkflowCapability }
 import { blockedLiveCollectionVerifier, LiveFinalizationBlocked, type LiveCollectionVerifier } from "../lib/flutterwave-live-verification";
 import { finalizeLiveSubscriptionDesign } from "./flutterwave-live-finalization-design";
 import { liveVerifiedIssuance } from "./flutterwave-live-application";
+import { verifyLiveSplitAuthority } from "../lib/flutterwave-live-split-authority";
 
 async function collection(client: StudentSubscriptionSqlClient,intent: any) {
   if(!intent.issued_by || !intent.issuer_key || !intent.authority_snapshot)
@@ -13,11 +14,17 @@ async function collection(client: StudentSubscriptionSqlClient,intent: any) {
     WHERE a.intent_id=$1 AND a.environment='LIVE'`,[intent.id])).rows[0];
   if(prior) return; // Replay the completed immutable issuance, not a new activation.
   // Legacy hand-seeded design snapshots are NOT authoritative operational intents.
-  const review=(await client.query(`SELECT id FROM flutterwave_live_authority_reviews WHERE id=$1
+   const review=(await client.query(`SELECT id,evidence_sha256 FROM flutterwave_live_authority_reviews WHERE id=$1
     AND environment='LIVE' AND merchant_scope=$2 AND school_id=$3 AND school_subaccount_id=$4 AND expires_at>now() FOR SHARE`,
     [intent.authority_review_id,intent.merchant_scope,intent.school_id,intent.school_subaccount_id])).rows[0];
   if(!review)
     throw new LiveFinalizationBlocked("LIVE_AUTHORITATIVE_INTENT_REQUIRED");
+   // Recheck immutable review binding at first activation, not merely issuance.
+   // Completed history above is replayed unchanged; no historical backfill.
+   verifyLiveSplitAuthority(intent.authority_snapshot.liveSplitAuthority,{
+     merchantScope:intent.merchant_scope,schoolId:intent.school_id,
+     schoolSubaccountId:intent.school_subaccount_id,evidenceSha256:review.evidence_sha256,
+   });
   await client.query(`INSERT INTO flutterwave_live_subscription_activations(intent_id,environment,status,expires_at)
     SELECT id,'LIVE','ACTIVE',(term_end_date+1)::timestamp AT TIME ZONE 'Africa/Lagos'
     FROM flutterwave_live_subscription_intents WHERE id=$1 AND environment='LIVE' AND NOT on_hold

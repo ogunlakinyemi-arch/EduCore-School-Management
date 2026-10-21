@@ -1,4 +1,8 @@
-/** Server-only configuration. Never return credentials or infer dashboard settings. */
+import { confirmedLiveSplitModel } from "./flutterwave-live-split-authority";
+
+/** Server-only configuration. Never return credentials or infer dashboard settings.
+ * configurationReady describes credential/runtime wiring ONLY, never activation.
+ */
 export function flutterwaveLiveStatus(env: NodeJS.ProcessEnv = process.env) {
   const enabled = env.EDUCORE_FLUTTERWAVE_LIVE_ENABLED === "true";
   const modeMatches = env.EDUCORE_FLUTTERWAVE_MODE === "LIVE";
@@ -20,6 +24,15 @@ export function flutterwaveLiveStatus(env: NodeJS.ProcessEnv = process.env) {
     webhookSeparated, configurationReady,
     // No environment variable can substitute for the outstanding acceptance/release work.
     checkoutEnabled: false as const, providerTransportEnabled: false as const,
+    confirmedSplitModel: confirmedLiveSplitModel,
+    releaseChecks: {
+      dashboardFeeBearer: "REQUIRES_REVIEWED_MERCHANT_EVIDENCE",
+      schoolLiveIdentityAndOwnership: "REQUIRES_REVIEWED_LIVE_EVIDENCE",
+      applicationMigrations: "REQUIRES_TARGET_VERIFICATION_AND_EXPLICIT_APPROVAL",
+      workflow: "HARD_DISABLED",
+      independentVerificationTransport: "HARD_DISABLED",
+      durableWebhookFinalization: "NOT_RELEASED_RECEIPT_ONLY_503",
+    } as const,
     readiness: "BLOCKED_PENDING_MERCHANT_EVIDENCE_AND_RELEASE_REVIEW" as const,
   };
 }

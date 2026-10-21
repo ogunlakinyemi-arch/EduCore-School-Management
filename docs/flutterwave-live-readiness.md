@@ -1,5 +1,14 @@
 # Flutterwave deferred Partner commissions — Development review
 
+**Written support confirmation update (2026-10-21):** the user supplied explicit
+fixed `flat_subaccount` / omitted-ratio / Merchant fee-bearer confirmation.
+See [confirmed-model implementation and exact activation checklist](flutterwave-live-confirmed-split-activation.md).
+The intended provider model is no longer blocked by contradictory public prose.
+Actual LIVE dashboard/recipient evidence, approved application migrations,
+durable finalization and the hard-disabled release gates remain outstanding.
+New issuance and first activation now require hash-bound structured account
+evidence; no new migration, application DDL or provider call was made.
+
 **Final minimal Development pass (2026-10-21):** the standard offline
 `export:schema:audit` command now produces correctly dependency-ordered SQL after
 an explicit current-source ownership-guard correction. Historical UNIQUE INDEX
@@ -224,11 +233,12 @@ migration, Production access, secret change or publishing is required.
 
 ### Remaining blockers and required account evidence
 
-1. **Effective allocation:** Flutterwave's split page still contradicts itself
-   about `flat_subaccount`; its explicit override example supports the intended
-   fixed school amount. Written merchant-specific confirmation and exact
-   transaction-linked school/main-merchant statements are required. Percentage
-   defaults, bank ownership checks and successful collection are not substitutes.
+1. **Effective account configuration:** the user's written support reply confirms
+   the fixed-amount model with Merchant fee bearer and no ratio. Actual LIVE
+   dashboard evidence, genuine school-recipient ownership and exact
+   transaction-linked school/main-merchant statements remain required.
+   Percentage defaults, support prose alone and successful collection are not
+   substitutes for evidence of this merchant's actual configuration/settlement.
 2. **Complete costs and settlement:** Need actual app fee, any additional fee,
    tax/VAT treatment and bank-credit evidence for both eligible-Partner and
    no-Partner payments. No full transaction-level split normalizer or independently
@@ -960,8 +970,7 @@ compatibility is claimed.
 - https://developer.flutterwave.com/v3.0.0/reference/get-transaction-refunds
 - https://docs.replit.com/core-concepts/project-editor/app-setup/secrets
 
-The split document's explicit override example says `flat_subaccount` gives
-the school a fixed amount and the main merchant gets the rest after fees, but
-another paragraph on the same page describes it differently. This contradiction
-is an unresolved activation blocker, not permission to guess percentages or
-remove the guard.
+The user's later written support confirmation resolves the intended
+`flat_subaccount` interpretation with Merchant fee bearer. Actual merchant
+dashboard, recipient ownership and transaction-bound settlement evidence still
+require review; the confirmation does not authorize percentages or guard removal.

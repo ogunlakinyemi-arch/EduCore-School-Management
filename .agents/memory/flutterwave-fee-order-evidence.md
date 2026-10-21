@@ -20,12 +20,28 @@ entitlement intact, accrue the eligible Partner internally and expense provider
 costs once against the merchant remainder. Never guess percentages or repair
 prior history to match dashboard displays.
 
-Flutterwave's split documentation contains contradictory descriptions of
-`flat_subaccount`, although its explicit override example shows a fixed
-subaccount amount with merchant remainder after fees.
+The user later supplied written Flutterwave support confirmation: use
+`flat_subaccount` with explicit fixed recipient charges, omit
+`transaction_split_ratio`, and set Settings > Business preference fee bearer
+to Merchant. Treat the intended provider semantics as confirmed, not still
+blocked by contradictory public prose. This does not change deferred Partner
+policy or establish the actual LIVE dashboard setting/recipient ownership.
 
-**Why:** The reviewed provider page stated both interpretations. Code payload
-validity cannot settle that contradiction for this merchant's effective settings.
+**Why:** The user's support quote resolves the earlier interpretation question,
+but cannot prove the merchant actually made the required account configuration.
 
-**How to apply:** Retain fail-closed checkout guards until account-specific
-confirmation and independent transaction-level settlement evidence agree.
+**How to apply:** Require separately reviewed Merchant dashboard and genuine
+LIVE school-ownership evidence, approved schema/workflow/webhook finalization
+and independent transaction-level settlement acceptance. Preserve hard-disabled
+release gates until separately authorized. Never promote support prose alone
+into actual account verification or money-movement permission.
+
+Structured authority evidence must be committed by the immutable reviewed hash,
+not accepted merely because a caller supplies true attestations. Preserve old
+generic reviews and completed financial history rather than rewriting them.
+
+**Why:** A generic evidence digest says nothing about fee bearer or ownership;
+the authority must bind the exact reviewed document and original recipient.
+
+**How to apply:** Keep approval custody separate from evidence submission, and
+recheck the original review before a first operational activation.

@@ -19,6 +19,7 @@ vi.mock("../middlewares/auth",async original=>{
   }};
 });
 import { issueLiveIntent } from "./flutterwave-live-intents";
+import { liveSplitAuthorityDigest, type LiveSplitAuthorityEvidence } from "../lib/flutterwave-live-split-authority";
 import { finalizeLiveSubscriptionDesign } from "./flutterwave-live-finalization-design";
 import { processLiveWorkflow,hasLiveTermEntitlement } from "./flutterwave-live-lifecycle";
 import { approveLiveCommissionBatch,exportLiveCommissionBatch } from "./flutterwave-live-commissions";
@@ -73,8 +74,14 @@ function proof(scope=merchant):LiveCollectionVerifier{return {enabled:true,envir
     source:"TRANSACTION_BOUND",recipients:[{subaccountId:school,currency:"NGN",amountMinor:190000}]},input,scope))};}
 async function sql(query:string,values?:unknown[]){return (await pool.query(query,values)).rows;}
 async function count(table:string){return Number((await sql(`SELECT count(*) n FROM ${table}`))[0].n);}
+function authorityEvidence(merchantScope=merchant):LiveSplitAuthorityEvidence {
+  return {version:1,provider:"FLUTTERWAVE",environment:"LIVE",merchantScope,schoolId:10,schoolSubaccountId:school,
+    dashboardFeeBearer:"MERCHANT",dashboardFeeBearerEvidenceSha256:"a".repeat(64),
+    liveSubaccountVerified:true,schoolOwnershipVerified:true,schoolOwnershipEvidenceSha256:"b".repeat(64)};
+}
 async function reserve(actorId=1,key="workflow-intent-key-0001",studentId=1){
-  return issueLiveIntent(pool,{actorId,schoolId:10,studentId,termId:1,merchantScope:merchant,idempotencyKey:key},capability);
+  return issueLiveIntent(pool,{actorId,schoolId:10,studentId,termId:1,merchantScope:merchant,idempotencyKey:key,
+    authorityEvidence:authorityEvidence()},capability);
 }
 function raw(intent:any,status="successful",tx=123456){return Buffer.from(JSON.stringify({
   event:"charge.completed",data:{id:tx,tx_ref:intent.reference,flw_ref:`FLW-${tx}`,status,amount:5000,currency:"NGN"},
@@ -153,7 +160,7 @@ beforeEach(async()=>{
    INSERT INTO school_partner_attributions VALUES(1,10,1,true,'ACTIVE',now()-interval '1 day',NULL);
    INSERT INTO commission_rules VALUES(1,'ACTIVE','NGN',5000,1900,100,3000,'First Term',now()-interval '1 day',NULL);
    INSERT INTO flutterwave_live_authority_reviews(merchant_scope,school_id,school_subaccount_id,evidence_sha256,reviewed_by,expires_at)
-    VALUES('merchant_fixture_live',10,'RS_FictionalSchool123',repeat('a',64),2,now()+interval '1 day');`);
+    VALUES('merchant_fixture_live',10,'RS_FictionalSchool123','${liveSplitAuthorityDigest(authorityEvidence())}',2,now()+interval '1 day');`);
 });
 afterEach(async()=>{
   expect(await sql("SELECT * FROM subscriptions")).toEqual([{id:1,status:"active",provider_reference:"SCV2_unchanged_history"}]);
@@ -161,10 +168,10 @@ afterEach(async()=>{
   vi.restoreAllMocks();
 });
 afterAll(async()=>{
-  if(server)await new Promise<void>(r=>server.close(()=>r()));await pool?.end();
+  if(server)await new Promise<void>(r=>{server.close(()=>r());server.closeAllConnections();});await pool?.end();
   if(postgres?.exitCode===null)await new Promise<void>(r=>{postgres.once("exit",()=>r());postgres.kill("SIGTERM");});
   if(directory)await rm(directory,{recursive:true,force:true});
-});
+},20000);
 
 describe("coordinated LIVE workflow isolated HTTP/SQL E2E; no real provider or release",()=>{
   it("hard-disabled capability and transport cannot acquire DB or invoke any outbound reader",async()=>{
@@ -226,6 +233,32 @@ describe("coordinated LIVE workflow isolated HTTP/SQL E2E; no real provider or r
       "flutterwave_live_subscription_activations","flutterwave_live_official_receipts","flutterwave_live_partner_accruals"])
       expect(await count(table)).toBe(1);
     await expect(reserve(1,"workflow-intent-key-0001",2)).rejects.toMatchObject({code:"LIVE_INTENT_KEY_CONFLICT"});
+  });
+  it("requires hash-bound Merchant dashboard and genuine LIVE ownership evidence before issuance",async()=>{
+    const input={actorId:1,schoolId:10,studentId:1,termId:1,merchantScope:merchant,idempotencyKey:"unreviewed-evidence-0001"};
+    for(const evidence of [undefined,{...authorityEvidence(),dashboardFeeBearer:"CUSTOMER"},
+      {...authorityEvidence(),environment:"TEST"},{...authorityEvidence(),schoolOwnershipVerified:false}]){
+      await expect(issueLiveIntent(pool,{...input,authorityEvidence:evidence},capability))
+        .rejects.toMatchObject({code:"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"});
+    }
+    await expect(issueLiveIntent(pool,{...input,authorityEvidence:{...authorityEvidence(),schoolOwnershipEvidenceSha256:"c".repeat(64)}},capability))
+      .rejects.toMatchObject({code:"LIVE_SPLIT_AUTHORITY_HASH_MISMATCH"});
+    expect(await count("flutterwave_live_subscription_intents")).toBe(0);
+    expect(await count("flutterwave_live_authority_reviews")).toBe(1);
+  });
+  it("rechecks structured authority at first activation and rolls back financial finalization for old unreviewed snapshots",async()=>{
+    const original=await reserve();
+    const forged=(await pool.query(`INSERT INTO flutterwave_live_subscription_intents
+      (merchant_scope,reference,school_id,student_id,session_id,term_id,term_end_date,school_subaccount_id,
+       partner_profile_id,partner_accrual_minor,issued_by,issuer_key,authority_review_id,authority_snapshot)
+      SELECT merchant_scope,'SCV3_legacy_unreviewed_fixture',school_id,2,session_id,term_id,term_end_date,school_subaccount_id,
+       partner_profile_id,partner_accrual_minor,issued_by,'legacy-unreviewed-key-01',authority_review_id,authority_snapshot-'liveSplitAuthority'
+      FROM flutterwave_live_subscription_intents WHERE id=$1 RETURNING *`,[original.id])).rows[0];
+    await expect(complete(forged)).rejects.toMatchObject({code:"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"});
+    expect(await count("flutterwave_live_subscription_activations")).toBe(0);
+    expect(await count("flutterwave_live_official_receipts")).toBe(0);
+    expect(await count("flutterwave_live_collection_evidence")).toBe(0);
+    expect(await count("flutterwave_live_reconciliation_cases")).toBe(1);
   });
   it("no-Partner issuance retains school/merchant cash and creates no Partner payable",async()=>{
     await pool.query("TRUNCATE school_partner_attributions");
@@ -525,9 +558,9 @@ describe("remaining readiness: real gated API/access consumers, operator recover
   it("verified other-merchant evidence cannot be read or reviewed under this merchant scope",async()=>{
     const other="another_fixture_merchant";
     await pool.query(`INSERT INTO flutterwave_live_authority_reviews(merchant_scope,school_id,school_subaccount_id,
-      evidence_sha256,reviewed_by,expires_at) VALUES($1,10,$2,repeat('b',64),2,now()+interval '1 day')`,[other,school]);
+       evidence_sha256,reviewed_by,expires_at) VALUES($1,10,$2,$3,2,now()+interval '1 day')`,[other,school,liveSplitAuthorityDigest(authorityEvidence(other))]);
     const intent=await issueLiveIntent(pool,{actorId:1,schoolId:10,studentId:1,termId:1,merchantScope:other,
-      idempotencyKey:"other-merchant-intent-key"},capability),body=raw(intent),id=await receive(body);
+       idempotencyKey:"other-merchant-intent-key",authorityEvidence:authorityEvidence(other)},capability),body=raw(intent),id=await receive(body);
     await processLiveWorkflow(pool,id,body,proof(other),capability);
     expect((await listLiveOperatorReceipts(pool,operator())).receipts).toHaveLength(0);
     await expect(reviewLiveReceipt(pool,operator(),reviewInput(id))).rejects.toMatchObject({code:"LIVE_OPERATOR_RECEIPT_UNAVAILABLE"});
@@ -674,8 +707,9 @@ describe("gated LIVE family identity and public access contract",()=>{
   });
   it("never uses other-merchant financial evidence",async()=>{
     await sql(`INSERT INTO flutterwave_live_authority_reviews(merchant_scope,school_id,school_subaccount_id,evidence_sha256,reviewed_by,expires_at)
-      VALUES('other_merchant_live',10,$1,repeat('b',64),2,now()+interval '1 day')`,[school]);
-    const intent=await issueLiveIntent(pool,{actorId:1,schoolId:10,studentId:1,termId:1,merchantScope:"other_merchant_live",idempotencyKey:"other-merchant-key-0001"},capability);
+       VALUES('other_merchant_live',10,$1,$2,2,now()+interval '1 day')`,[school,liveSplitAuthorityDigest(authorityEvidence("other_merchant_live"))]);
+    const intent=await issueLiveIntent(pool,{actorId:1,schoolId:10,studentId:1,termId:1,merchantScope:"other_merchant_live",
+      idempotencyKey:"other-merchant-key-0001",authorityEvidence:authorityEvidence("other_merchant_live")},capability);
     await complete(intent,"successful",proof("other_merchant_live"));
     expect((await items())[0].liveStatus).toBe("UNAVAILABLE");
   });

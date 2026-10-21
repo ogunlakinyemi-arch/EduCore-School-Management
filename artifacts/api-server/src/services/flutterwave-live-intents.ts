@@ -2,13 +2,16 @@ import { randomUUID } from "node:crypto";
 import type { StudentSubscriptionSqlPool } from "../lib/student-subscription-billing";
 import { blockedLiveWorkflow, requireLiveWorkflow, type LiveWorkflowCapability } from "../lib/flutterwave-live-workflow-gate";
 import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
+import { verifyLiveSplitAuthority, confirmedLiveSplitPreview } from "../lib/flutterwave-live-split-authority";
 
-/** Prices, recipients, Partner IDs, labels and eligibility are NEVER caller input.
+/** Prices, recipients, Partner IDs, labels and eligibility are NEVER caller authority.
+ * Supplied evidence must match the existing immutable review's canonical hash.
  * Canonical identity/calendar/membership/attribution reads are environment-neutral;
  * every financial read/write is LIVE-only. No TEST recipient/profile is consulted.
  */
 export async function issueLiveIntent(pool: StudentSubscriptionSqlPool, input: {
   actorId: number; schoolId: number; studentId: number; termId: number; merchantScope: string; idempotencyKey: string;
+  authorityEvidence?: unknown;
 }, capability: LiveWorkflowCapability = blockedLiveWorkflow) {
   requireLiveWorkflow(capability);
   if (![input.actorId,input.schoolId,input.studentId,input.termId].every(n=>Number.isSafeInteger(n)&&n>0)
@@ -37,6 +40,11 @@ export async function issueLiveIntent(pool: StudentSubscriptionSqlPool, input: {
       WHERE environment='LIVE' AND merchant_scope=$1 AND school_id=$2 AND expires_at>now()
       ORDER BY id DESC LIMIT 1 FOR SHARE`,[input.merchantScope,input.schoolId])).rows[0];
     if(!review) throw new LiveFinalizationBlocked("LIVE_RECIPIENT_REVIEW_MISSING");
+    const authorityEvidence=verifyLiveSplitAuthority(input.authorityEvidence,{
+      merchantScope:input.merchantScope,schoolId:input.schoolId,
+      schoolSubaccountId:review.school_subaccount_id,evidenceSha256:review.evidence_sha256,
+    });
+    const splitPreview=confirmedLiveSplitPreview(authorityEvidence);
     const attribution=(await client.query(`SELECT a.id,a.partner_profile_id FROM school_partner_attributions a
       JOIN partner_profiles pp ON pp.id=a.partner_profile_id AND pp.status='ACTIVE'
       WHERE a.school_id=$1 AND a.is_current AND a.status='ACTIVE' AND a.starts_at<=now()
@@ -59,7 +67,8 @@ export async function issueLiveIntent(pool: StudentSubscriptionSqlPool, input: {
     }
     const snapshot={ schoolName:source.school_name,studentName:source.student_name,
       sessionName:source.session_name,termName:source.term_name,
-      attributionId:attribution?.id??null,ruleId:rule?.id??null,evidenceSha256:review.evidence_sha256 };
+       attributionId:attribution?.id??null,ruleId:rule?.id??null,evidenceSha256:review.evidence_sha256,
+       liveSplitAuthority:authorityEvidence,splitPreview };
     const row=(await client.query(`INSERT INTO flutterwave_live_subscription_intents
       (merchant_scope,reference,school_id,student_id,session_id,term_id,term_end_date,school_subaccount_id,
        partner_profile_id,partner_accrual_minor,issued_by,issuer_key,authority_review_id,authority_snapshot)

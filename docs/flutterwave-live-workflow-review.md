@@ -1,5 +1,14 @@
 # Coordinated LIVE workflow — Development-only review
 
+**Confirmed split follow-up (2026-10-21):** support's written fixed-subaccount /
+Merchant fee-bearer model is accepted without changing deferred Partner policy.
+Issuance and first activation now verify a canonical account-evidence document
+against the immutable authority-review hash. No new migration is needed and
+all operational gates remain closed. See the
+[current activation checklist](flutterwave-live-confirmed-split-activation.md);
+older "written split confirmation pending" statements below are superseded for
+provider semantics only, not account settings or actual settlement evidence.
+
 **Final minimal Development pass (2026-10-21):** see
 “Final export and operational-recovery acceptance” below. Fresh checks:
 **25 export tests and 11 focused native tests passed**, plus API/scripts
