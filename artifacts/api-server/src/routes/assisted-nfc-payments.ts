@@ -52,6 +52,7 @@ router.post("/student-nfc/assisted-requests", async (req, res, next) => {
     const input = requestBody.parse(req.body); // No client amount, parent, session, or verification flags.
     const client = await pool.connect();
     let subscriptionId: number;
+    let expected: {schoolId:number;studentId:number;sessionId:number;termId:number};
     try {
       await client.query("BEGIN");
       const term = (await client.query(`${termsSql} AND t.id=$2 FOR SHARE OF t,ses`, [schoolId, input.termId])).rows[0];
@@ -65,11 +66,12 @@ router.post("/student-nfc/assisted-requests", async (req, res, next) => {
       const subscription = await ensureStudentNfcSubscription(client, schoolId, student.id, term.sessionId, term.id);
       if (!subscription) throw new AuthError(409, "The student's NFC obligation requires review.");
       subscriptionId = Number(subscription.subscriptionId);
+      expected={schoolId,studentId:student.id,sessionId:term.sessionId,termId:term.id};
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }
     finally { client.release(); }
     // Reuse the guarded reservation/link path. No provider success or receipt is synthesized.
-    const link = await createBoundNfcPaymentLink(req, subscriptionId, { termId: input.termId, mode: "FLUTTERWAVE_SANDBOX" });
+    const link = await createBoundNfcPaymentLink(req, subscriptionId, { termId: input.termId, mode: "FLUTTERWAVE_SANDBOX" },expected);
     res.set("Cache-Control", "no-store").json(link);
   } catch (error) {
     if (error instanceof z.ZodError) { res.status(400).json({ error: "Only valid student and term IDs are accepted; the NFC fee is fixed." }); return; }

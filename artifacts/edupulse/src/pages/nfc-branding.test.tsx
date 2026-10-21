@@ -14,7 +14,7 @@ import PublicNfcPaymentPage from './public-nfc-payment';
 import { NfcServiceBranding } from '../components/nfc-service-branding';
 
 const fixture: NfcPaymentLink = {
-  reference: 'NFC_fixture', schoolName: 'Fixture School', studentIdentifier: 'STUDENT-001',
+  reference: 'NFC_fixture', schoolName: 'Fixture School', studentName:'Fixture Student', studentIdentifier: 'STUDENT-001',
   termName: 'First term', sessionName: '2026/2027', amountMinor: 500000, amountDueMinor: 500000,
   currency: 'NGN', mode: 'DEVELOPMENT_SIMULATION', status: 'PENDING',
   expiresAt: '2026-10-16T12:00:00.000Z', settlementStatus: 'UNVERIFIED',
@@ -34,7 +34,7 @@ describe('Company branding and unchanged public NFC notices', () => {
   });
   it('keeps identifiers, term, fixed fee, reference, status and expiry visible', () => {
     const html = renderToStaticMarkup(<PublicNfcPaymentPage />);
-    for (const copy of ['Fixture School', 'STUDENT-001', 'First term', '2026/2027', '5,000.00',
+    for (const copy of ['Fixture School', 'Fixture Student', 'STUDENT-001', 'First term', '2026/2027', '5,000.00',
       'NFC_fixture', 'Awaiting payment', 'Expires', 'YETENIA TECHNOLOGIES LIMITED']) expect(html).toContain(copy);
   });
   it('keeps simulation warnings prominent and retains no-account, assistance and cash warnings', () => {

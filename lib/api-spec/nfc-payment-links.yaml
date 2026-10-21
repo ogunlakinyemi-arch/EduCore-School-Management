@@ -123,10 +123,11 @@ components:
         mode: {type: string, enum: [DEVELOPMENT_SIMULATION, FLUTTERWAVE_SANDBOX]}
     NfcPaymentLink:
       type: object
-      required: [reference, schoolName, studentIdentifier, termName, sessionName, amountMinor, amountDueMinor, currency, mode, status, expiresAt, settlementStatus, subscriptionActivated, expectedAllocations]
+      required: [reference, schoolName, studentName, studentIdentifier, termName, sessionName, amountMinor, amountDueMinor, currency, mode, status, expiresAt, settlementStatus, subscriptionActivated, expectedAllocations]
       properties:
         reference: {type: string}
         schoolName: {type: string}
+        studentName: {type: string, description: Canonical student display name resolved only from the authorized payment link context.}
         studentIdentifier: {type: string}
         termName: {type: string}
         sessionName: {type: string}

@@ -13,6 +13,8 @@ import type { NfcPaymentLinkStatus } from './nfcPaymentLinkStatus';
 export interface NfcPaymentLink {
   reference: string;
   schoolName: string;
+  /** Canonical student display name resolved only from the authorized payment link context. */
+  studentName: string;
   studentIdentifier: string;
   termName: string;
   sessionName: string;

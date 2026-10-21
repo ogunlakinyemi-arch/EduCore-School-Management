@@ -34,6 +34,7 @@ export const linkScopeSql = `
 
 export const publicLinkSql = `
  SELECT l.*,sc.name AS "schoolName",st.admission_no AS "studentIdentifier",
+        trim(concat_ws(' ',NULLIF(trim(st.first_name),''),NULLIF(trim(st.last_name),''))) AS "studentName",
         t.name AS "termName",ses.name AS "sessionName",
         sub.status AS "subscriptionStatus",sub.verification_status AS "verificationStatus",
         p.status AS "paymentStatus",p.reconciliation_status AS "paymentReconciliation",
@@ -41,15 +42,28 @@ export const publicLinkSql = `
         p.receipt_snapshot AS "receiptSnapshot"
  FROM nfc_payment_links l
  JOIN subscriptions sub ON sub.id=l.subscription_id AND sub.school_id=l.school_id AND sub.student_id=l.student_id
+ JOIN student_subscription_terms b ON b.subscription_id=l.subscription_id AND b.school_id=l.school_id
+   AND b.student_id=l.student_id AND b.academic_session_id=l.academic_session_id AND b.academic_term_id=l.academic_term_id
  JOIN schools sc ON sc.id=l.school_id AND LOWER(sc.status)='active'
  JOIN students st ON st.id=l.student_id AND st.school_id=l.school_id AND LOWER(st.status)='active'
- JOIN academic_terms t ON t.id=l.academic_term_id AND t.school_id=l.school_id
+ JOIN academic_terms t ON t.id=l.academic_term_id AND t.school_id=l.school_id AND t.academic_session_id=l.academic_session_id
  JOIN academic_sessions ses ON ses.id=l.academic_session_id AND ses.school_id=l.school_id
  LEFT JOIN student_subscription_payments p ON p.id=l.payment_id
    AND p.subscription_id=l.subscription_id AND p.school_id=l.school_id AND p.student_id=l.student_id
    AND p.academic_session_id=l.academic_session_id AND p.academic_term_id=l.academic_term_id
     AND p.provider='FLUTTERWAVE' AND p.provider_mode='SANDBOX'
  WHERE l.token_hash=$1`;
+
+/** Never attach a reused link or resolved bearer token to another intent. */
+export function assertNfcLinkBinding(row: any, scope: any) {
+  if (!row || [
+    [row.school_id,scope.schoolId],[row.student_id,scope.studentId],
+    [row.subscription_id,scope.subscriptionId],[row.academic_session_id,scope.sessionId],
+    [row.academic_term_id,scope.termId],
+  ].some(([actual,expected])=>!Number.isSafeInteger(Number(actual))||Number(actual)<=0||Number(actual)!==Number(expected))) {
+    throw new AuthError(409, "Payment link could not be safely resolved. Ask school staff for a new link.");
+  }
+}
 
 export function nfcLinkStatus(row: any, now = Date.now()) {
   const verified = String(row.verificationStatus).toLowerCase() === "verified"
@@ -64,7 +78,9 @@ export function nfcLinkStatus(row: any, now = Date.now()) {
 }
 
 export function publicNfcLink(row: any) {
-  if (typeof row.reference !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(row.reference)
+  if (typeof row.studentName !== "string" || !row.studentName.trim()
+      || typeof row.studentIdentifier !== "string" || !row.studentIdentifier.trim()
+      || typeof row.reference !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(row.reference)
       || !Number.isFinite(new Date(row.expires_at).getTime())
       || !Array.isArray(row.expected_allocations)
       || row.expected_allocations.some((a: any) => !a || typeof a.recipientType !== "string" || !Number.isSafeInteger(a.amountMinor))) {
@@ -81,7 +97,7 @@ export function publicNfcLink(row: any) {
   }
   return {
     reference: row.reference, schoolName: row.schoolName,
-    studentIdentifier: row.studentIdentifier, termName: row.termName, sessionName: row.sessionName,
+    studentName: row.studentName.trim(), studentIdentifier: row.studentIdentifier, termName: row.termName, sessionName: row.sessionName,
     amountMinor: 500_000, amountDueMinor: status === "PAID" ? 0 : 500_000, currency: "NGN",
     mode: row.mode, status, expiresAt: new Date(row.expires_at).toISOString(),
     settlementStatus: "UNVERIFIED", subscriptionActivated: status === "PAID",

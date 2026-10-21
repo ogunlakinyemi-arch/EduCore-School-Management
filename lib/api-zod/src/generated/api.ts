@@ -760,6 +760,7 @@ export const CreateStudentNfcAssistedRequestBody = zod.object({
 export const CreateStudentNfcAssistedRequestResponse = zod.object({
   "reference": zod.string(),
   "schoolName": zod.string(),
+  "studentName": zod.string().describe('Canonical student display name resolved only from the authorized payment link context.'),
   "studentIdentifier": zod.string(),
   "termName": zod.string(),
   "sessionName": zod.string(),
@@ -891,6 +892,7 @@ export const CreateNfcPaymentLinkBody = zod.object({
 export const CreateNfcPaymentLinkResponse = zod.object({
   "reference": zod.string(),
   "schoolName": zod.string(),
+  "studentName": zod.string().describe('Canonical student display name resolved only from the authorized payment link context.'),
   "studentIdentifier": zod.string(),
   "termName": zod.string(),
   "sessionName": zod.string(),
@@ -933,6 +935,7 @@ export const ViewPublicNfcPaymentLinkBody = zod.object({
 export const ViewPublicNfcPaymentLinkResponse = zod.object({
   "reference": zod.string(),
   "schoolName": zod.string(),
+  "studentName": zod.string().describe('Canonical student display name resolved only from the authorized payment link context.'),
   "studentIdentifier": zod.string(),
   "termName": zod.string(),
   "sessionName": zod.string(),
@@ -967,6 +970,7 @@ export const SimulateNfcPaymentLinkBody = zod.object({
 export const SimulateNfcPaymentLinkResponse = zod.object({
   "reference": zod.string(),
   "schoolName": zod.string(),
+  "studentName": zod.string().describe('Canonical student display name resolved only from the authorized payment link context.'),
   "studentIdentifier": zod.string(),
   "termName": zod.string(),
   "sessionName": zod.string(),
@@ -1003,6 +1007,7 @@ export const CheckoutPublicNfcPaymentLinkBody = zod.object({
 export const CheckoutPublicNfcPaymentLinkResponse = zod.object({
   "reference": zod.string(),
   "schoolName": zod.string(),
+  "studentName": zod.string().describe('Canonical student display name resolved only from the authorized payment link context.'),
   "studentIdentifier": zod.string(),
   "termName": zod.string(),
   "sessionName": zod.string(),
@@ -1036,6 +1041,7 @@ export const VerifyPublicNfcPaymentLinkBody = zod.object({
 export const VerifyPublicNfcPaymentLinkResponse = zod.object({
   "reference": zod.string(),
   "schoolName": zod.string(),
+  "studentName": zod.string().describe('Canonical student display name resolved only from the authorized payment link context.'),
   "studentIdentifier": zod.string(),
   "termName": zod.string(),
   "sessionName": zod.string(),

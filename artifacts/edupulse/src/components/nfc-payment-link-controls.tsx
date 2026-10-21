@@ -92,7 +92,7 @@ export function NfcPaymentLinkControls({ row, familyView = false }: { row: Stude
               <div style={{ padding: 32, fontFamily: 'sans-serif', maxWidth: 560 }}>
                 <h1 style={{ fontSize: 22 }}>NFC term fee payment instructions</h1>
                 <NfcServiceBranding />
-                <p>{link.schoolName} · {link.studentIdentifier}</p>
+                <p>{link.schoolName} · {link.studentName} · {link.studentIdentifier}</p>
                 <p>{link.termName}, {link.sessionName} · Amount due {minor(link.amountDueMinor)}</p>
                 <p>Reference {link.reference}. Expires {new Date(link.expiresAt).toLocaleString()}.</p>
                 <p>Scan the code or open the link below on a phone. No account is needed.</p>

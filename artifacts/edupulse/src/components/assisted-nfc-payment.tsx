@@ -70,7 +70,7 @@ function AssistedForm({ schoolId, identity, onClose, onCreated }: { schoolId: nu
     return <div className="space-y-3 text-sm" data-testid="assisted-nfc-result">
       <p role="status" className="rounded-xl bg-[hsl(var(--secondary))] px-4 py-3 font-semibold">Payment request created. It is pending; nothing has been paid or verified.</p>
       <dl className="space-y-1 text-xs">
-        <div>Student: <b>{link.studentIdentifier}</b> · {link.schoolName}</div>
+        <div>Student: <b>{link.studentName}</b> · {link.studentIdentifier} · {link.schoolName}</div>
         <div>Term: <b>{link.termName}, {link.sessionName}</b></div>
         <div>Status: <b>{String(link.status).replaceAll('_', ' ').toLowerCase()}</b> · Amount {naira(link.amountMinor)}</div>
         <div>Reference <span className="font-mono">{link.reference}</span></div>
@@ -89,7 +89,7 @@ function AssistedForm({ schoolId, identity, onClose, onCreated }: { schoolId: nu
       : !data?.students.length || !data.terms.length ? <p className="text-sm text-[hsl(var(--muted-foreground))]">{!data?.students.length ? 'No active students are available.' : 'No current or future term is available.'}</p>
       : <>
         <Field label="Student">
-          <select required value={studentId} onChange={e => setStudentId(e.target.value)} data-testid="select-assisted-student">
+          <select required disabled={create.isPending} value={studentId} onChange={e => setStudentId(e.target.value)} data-testid="select-assisted-student">
             <option value="">Select a student</option>
             {data.students.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} · {s.admissionNo}</option>)}
           </select>
@@ -99,7 +99,7 @@ function AssistedForm({ schoolId, identity, onClose, onCreated }: { schoolId: nu
           <div className="mt-1">Parents: {student.parents.length ? student.parents.map(p => `${p.name}${p.relationshipType ? ` (${p.relationshipType.toLowerCase()})` : ''}${p.phone ? ` ${p.phone}` : ''}`).join('; ') : 'none linked'}</div>
         </div>}
         <Field label="Term (current or future)">
-          <select required value={termId} onChange={e => setTermId(e.target.value)} data-testid="select-assisted-term">
+          <select required disabled={create.isPending} value={termId} onChange={e => setTermId(e.target.value)} data-testid="select-assisted-term">
             <option value="">Select a term</option>
             {data.terms.map(t => <option key={t.id} value={t.id}>{t.sessionName}, {t.name}{t.isCurrent ? ' (current)' : ''}</option>)}
           </select>

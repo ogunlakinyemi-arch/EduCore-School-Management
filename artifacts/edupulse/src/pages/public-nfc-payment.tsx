@@ -29,44 +29,54 @@ export function nfcPaymentError(error: unknown) {
 }
 
 export default function PublicNfcPaymentPage() {
-  const [token] = useState(readToken);
+  const [token, setToken] = useState(readToken);
   const [link, setLink] = useState<NfcPaymentLink | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState('');
+  useEffect(()=>{
+    const changed=()=>{setLink(null);setError('');setEmail('');setBusy(false);setToken(readToken());};
+    window.addEventListener('hashchange',changed);
+    return ()=>window.removeEventListener('hashchange',changed);
+  },[]);
 
   const load = useCallback(async () => {
     if (!token) { setError('This link is incomplete. Ask the school for a new payment link.'); return; }
     setBusy(true); setError(''); setLink(null);
-    try { setLink(await viewPublicNfcPaymentLink({ token })); }
-    catch (e) { setError(nfcPaymentError(e)); }
-    finally { setBusy(false); }
+    try { const next=await viewPublicNfcPaymentLink({ token });if(token===readToken())setLink(next); }
+    catch (e) { if(token===readToken())setError(nfcPaymentError(e)); }
+    finally { if(token===readToken())setBusy(false); }
   }, [token]);
   useEffect(() => { void load(); }, [load]);
 
   const simulate = async (outcome: 'SUCCESS' | 'FAILED') => {
+    if(token!==readToken()){setLink(null);return;}
     setBusy(true); setError('');
-    try { setLink(await simulateNfcPaymentLink({ token, outcome })); }
-    catch { setError('The simulation could not be completed. Refresh and try again.'); }
-    finally { setBusy(false); }
+    try { const next=await simulateNfcPaymentLink({ token, outcome });if(token===readToken())setLink(next); }
+    catch { if(token===readToken())setError('The simulation could not be completed. Refresh and try again.'); }
+    finally { if(token===readToken())setBusy(false); }
   };
 
   const verify = async () => {
+    if(token!==readToken()){setLink(null);return;}
     setBusy(true); setError('');
-    try { setLink(await verifyPublicNfcPaymentLink({ token })); }
-    catch (e) { setError(nfcPaymentError(e)); }
-    finally { setBusy(false); }
+    try { const next=await verifyPublicNfcPaymentLink({ token });if(token===readToken())setLink(next); }
+    catch (e) { if(token===readToken())setError(nfcPaymentError(e)); }
+    finally { if(token===readToken())setBusy(false); }
   };
   const checkoutPayment = async (event: React.FormEvent) => {
-    event.preventDefault(); setBusy(true); setError('');
+    event.preventDefault();
+    if(token!==readToken()){setLink(null);return;}
+    setBusy(true); setError('');
     try {
       const result = await checkoutPublicNfcPaymentLink({ token, email: email.trim() });
+      if(token!==readToken())return;
       setLink(result);
       const url = result.status === 'PENDING' ? safeFlutterwaveUrl(result.checkoutUrl) : null;
       if (url) window.location.assign(url);
       else if (result.status !== 'PAID') setError('Checkout is initializing or needs review. Do not start another payment; refresh or check payment status.');
-    } catch (e) { setError(nfcPaymentError(e)); }
-    finally { setBusy(false); }
+    } catch (e) { if(token===readToken())setError(nfcPaymentError(e)); }
+    finally { if(token===readToken())setBusy(false); }
   };
 
   const pending = !error && link?.status === 'PENDING';
@@ -86,14 +96,15 @@ export default function PublicNfcPaymentPage() {
           Flutterwave TEST MODE. No real money moves and no automatic bank splits run. Only server-verified test payments update the Development subscription.</p>}
         <dl className="mt-4 space-y-1 text-sm">
           <div>{link.schoolName}</div>
-          <div className="font-bold">{link.studentIdentifier}</div>
+          <div className="font-bold">{link.studentName}</div>
+          <div>{link.studentIdentifier}</div>
           <div>{link.termName}, {link.sessionName}</div>
           <div className="text-xl font-bold tabular-nums">{minor(link.amountDueMinor)}</div>
           <div>Status: <b data-testid="public-nfc-status">{statusText[link.status] ?? link.status}</b></div>
           <div className="text-xs text-[hsl(var(--muted-foreground))]">Reference <span className="font-mono">{link.reference}</span> · Expires {new Date(link.expiresAt).toLocaleString()}</div>
         </dl>
         <p className="mt-4 text-xs leading-5">
-          No EduCore account is needed. Check the school, student identifier and term before continuing.
+          No EduCore account is needed. Check the school, student name, identifier and term before continuing.
           If you do not have a suitable device, school staff can assist using these instructions.
           Cash given to the school does not verify this NFC subscription.
         </p>

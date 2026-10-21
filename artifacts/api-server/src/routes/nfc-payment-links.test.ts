@@ -123,11 +123,22 @@ describe("NFC link routed input and operational authorization", () => {
     expect(state.query).not.toHaveBeenCalled();
   });
   const validRow = () => ({
-    id: 6, reference: "NFC_valid_test_reference", schoolName: "TEST School", studentIdentifier: "TEST-7",
+    id: 6, school_id:44,student_id:7,subscription_id:9,academic_session_id:2,academic_term_id:3,
+    reference: "NFC_valid_test_reference", schoolName: "TEST School", studentName:"Test Student", studentIdentifier: "TEST-7",
     termName: "First Term", sessionName: "TEST Session", status: "PENDING", mode: "FLUTTERWAVE_SANDBOX",
     expires_at: new Date(Date.now() + 86400000), payment_id: 17, paymentReference: "student_valid_test_payment",
     subscriptionStatus: "pending", verificationStatus: "pending",
     expected_allocations: [{ recipientType: "SCHOOL", amountMinor: 200000 }, { recipientType: "PLATFORM", amountMinor: 300000 }],
+  });
+  it.each(["student_id","school_id","academic_term_id","academic_session_id","subscription_id"])("rejects a reused link with a mismatched %s",async field=>{
+    state.query.mockImplementation(async(sql:string)=>{
+      if(sql.includes("FROM student_subscription_terms b"))return {rows:[state.scope]};
+      if(sql.includes("SELECT * FROM nfc_payment_links"))return {rows:[{...validRow(),[field]:999}]};
+      return {rows:[]};
+    });
+    const response=await post("/subscriptions/9/payment-link",{termId:3,mode:"FLUTTERWAVE_SANDBOX"},true);
+    expect(response.status).toBe(409);
+    expect(state.query.mock.calls.some(([sql])=>sql==="COMMIT")).toBe(false);
   });
   it("reports missing TEST/webhook configuration without inserting a link or payment", async () => {
     const response = await post("/subscriptions/9/payment-link", { termId: 3, mode: "FLUTTERWAVE_SANDBOX" }, true);

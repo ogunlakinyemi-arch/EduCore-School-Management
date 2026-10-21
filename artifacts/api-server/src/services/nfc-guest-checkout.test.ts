@@ -45,7 +45,7 @@ beforeEach(() => {
   fake.row = { id: 6, subscription_id: 9, school_id: 44, student_id: 7, academic_term_id: 3,
     academic_session_id: 2, created_by: 10, reference: "NFC_guest_test_reference",
     mode: "FLUTTERWAVE_SANDBOX", status: "PENDING", expires_at: new Date(Date.now() + 86_400_000),
-    schoolName: "TEST School", studentIdentifier: "TEST-7", termName: "First Term", sessionName: "TEST Session",
+    schoolName: "TEST School", studentName:"Test Student", studentIdentifier: "TEST-7", termName: "First Term", sessionName: "TEST Session",
     subscriptionStatus: "pending", verificationStatus: "pending", payment_id: 17,
     paymentReference: "student_guest_123456", failureCode: "GUEST_CHECKOUT_RESERVED",
     expected_allocations: [{ recipientType: "SCHOOL", amountMinor: 200000 },

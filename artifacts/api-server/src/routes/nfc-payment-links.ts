@@ -8,7 +8,7 @@ import { configuredStudentSubscriptionCheckoutBaseUrl } from "../lib/student-sub
 import { assertStudentNfcPaymentAccess } from "../lib/student-nfc-obligations";
 import {
   expectedNfcAllocations, linkScopeSql, newNfcLinkReference, nfcLinkToken, nfcLinkTokenHash,
-  publicLinkSql, publicNfcLink, requireNfcLinkDevelopment, simulateNfcLink,
+  publicLinkSql, publicNfcLink, requireNfcLinkDevelopment, simulateNfcLink, assertNfcLinkBinding,
 } from "../services/nfc-payment-links";
 
 const router = Router();
@@ -64,7 +64,8 @@ router.post("/public/nfc-payment-links/verify", run(async (req, res) => {
     .json(await verifyGuestNfcCheckout(token));
 }));
 
-export async function createBoundNfcPaymentLink(req: Request, subscriptionId: number, input: z.infer<typeof generationInput>) {
+export async function createBoundNfcPaymentLink(req: Request, subscriptionId: number, input: z.infer<typeof generationInput>,
+  expected?: {schoolId:number;studentId:number;sessionId:number;termId:number}) {
   requireNfcLinkDevelopment();
   const base = configuredStudentSubscriptionCheckoutBaseUrl();
   if (!base) throw new AuthError(503, "Development payment-page URL is unavailable");
@@ -73,6 +74,10 @@ export async function createBoundNfcPaymentLink(req: Request, subscriptionId: nu
     await db.query("BEGIN");
     const scope = (await db.query(`${linkScopeSql} WHERE b.subscription_id=$1 AND b.academic_term_id=$2`, [subscriptionId, input.termId])).rows[0];
     if (!scope) throw new AuthError(404, "The student's term subscription was not found");
+    if (Number(scope.subscriptionId)!==subscriptionId||Number(scope.termId)!==input.termId
+      || (expected&&(["schoolId","studentId","sessionId","termId"] as const).some(key=>Number(scope[key])!==expected[key]))) {
+      throw new AuthError(409,"Payment request could not be safely resolved. Ask school staff to review it.");
+    }
     const roles = getUserContext(req).roles ?? [];
     const staff = roles.some(r => r.status === "ACTIVE" && r.schoolId === scope.schoolId
       && ["SCHOOL_ADMIN", "ACCOUNTANT"].includes(r.role));
@@ -124,9 +129,14 @@ export async function createBoundNfcPaymentLink(req: Request, subscriptionId: nu
           paymentId, JSON.stringify(allocations)],
       )).rows[0];
     }
+    assertNfcLinkBinding(row,scope);
+    if(row.mode!==input.mode)throw new AuthError(409,"Payment link could not be safely resolved.");
     const token = nfcLinkToken(row.reference);
     const full = (await db.query(publicLinkSql, [nfcLinkTokenHash(token)])).rows[0];
     if (!full) throw new AuthError(409, "Payment link could not be resolved");
+    assertNfcLinkBinding(full,scope);
+    if(full.id!==row.id||full.reference!==row.reference||full.mode!==input.mode)
+      throw new AuthError(409,"Payment link could not be safely resolved.");
     // A fragment keeps the bearer token out of HTTP access logs and Referer headers.
     const url = new URL(`${base.replace(/\/$/, "")}/nfc/pay`);
     url.hash = token;

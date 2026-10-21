@@ -1,18 +1,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   expectedNfcAllocations, nfcLinkStatus, nfcLinkToken, nfcLinkTokenHash,
-  publicNfcLink, requireNfcLinkDevelopment, simulateNfcLink,
+  publicNfcLink, requireNfcLinkDevelopment, simulateNfcLink, assertNfcLinkBinding,
 } from "./nfc-payment-links";
 
 const row = (overrides = {}) => ({
   id: 1, reference: "NFC_fixture", mode: "DEVELOPMENT_SIMULATION", status: "PENDING",
   expires_at: new Date(Date.now() + 3600000), subscriptionStatus: "pending", verificationStatus: "pending",
-  schoolName: "QA School", studentIdentifier: "QA-1", termName: "First term", sessionName: "2026/27",
+  schoolName: "QA School", studentName:"QA Student", studentIdentifier: "QA-1", termName: "First term", sessionName: "2026/27",
   expected_allocations: [{ recipientType: "SCHOOL", recipientId: 12, amountMinor: 200000 },
     { recipientType: "PLATFORM", recipientId: null, amountMinor: 300000 }],
   ...overrides,
 });
 describe("Development guest NFC link isolation", () => {
+  it.each([undefined,null,"","   "])("fails closed for unresolved canonical student name %s",studentName=>{
+    expect(()=>publicNfcLink(row({studentName}))).toThrow();
+  });
+  it.each(["school_id","student_id","subscription_id","academic_session_id","academic_term_id"])("rejects mismatched intent %s",field=>{
+    const bound={school_id:1,student_id:2,subscription_id:3,academic_session_id:4,academic_term_id:5};
+    const scope={schoolId:1,studentId:2,subscriptionId:3,sessionId:4,termId:5};
+    expect(()=>assertNfcLinkBinding(bound,scope)).not.toThrow();
+    expect(()=>assertNfcLinkBinding({...bound,[field]:99},scope)).toThrow();
+  });
+  it("only adds the canonical display name, not private student or guardian data",()=>{
+    const serialized=publicNfcLink(row({guardianEmail:"private@example.invalid",student_id:77,
+      first_name:"Private",date_of_birth:"2000-01-01",parents:[{phone:"secret-phone"}]}));
+    expect(serialized.studentName).toBe("QA Student");
+    expect(JSON.stringify(serialized)).not.toMatch(/private@example|student_id|first_name|date_of_birth|parents|secret-phone/);
+  });
   beforeEach(() => { vi.stubEnv("NODE_ENV", "development"); vi.stubEnv("REPLIT_DEPLOYMENT", ""); vi.stubEnv("SESSION_SECRET", "private-test-signing-secret-not-a-live-credential"); });
   afterEach(() => vi.unstubAllEnvs());
   it("derives an opaque purpose-specific token and stores only its hash", () => {
