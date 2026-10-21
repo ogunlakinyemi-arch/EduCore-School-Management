@@ -16,6 +16,9 @@ vi.mock("@workspace/db",()=>{
   });
   return {pool:{query,connect:async()=>({query,release:vi.fn()})}};
 });
+vi.mock("../services/telegram-provider",()=>({
+  getTelegramHealth:()=>({ready:false,status:"DEVELOPMENT_ONLY"}),
+}));
 vi.mock("../middlewares/auth",async original=>{
   const actual=await original<typeof import("../middlewares/auth")>();
   const ctx=()=>({user:{id:17,email:"fictional@example.invalid"},roles:[{role:h.role,schoolId:h.schoolId,status:h.status}]});
@@ -56,9 +59,52 @@ describe("Owner/school channel policy HTTP boundaries; no delivery",()=>{
     expect(restored.policy).toEqual(p);
     expect(h.writes).toHaveLength(1);expect(h.writes[0].sql).toContain("GLOBAL_CHANNEL_POLICY_UPDATED");
   });
+  it("Owner may permit unavailable Telegram globally and for an opted-in school without delivering messages",async()=>{
+    h.role="PLATFORM_OWNER";
+    const p=defaultNotificationPolicy();
+    for(const rule of Object.values(p.events))rule!.allowed.push("TELEGRAM");
+    p.schools["9"]={enabled:true,allowed:["IN_APP","TELEGRAM"]};
+    const r=await put("/communication/channel-policy",p);
+    expect(r.status).toBe(200);
+    expect((await r.json() as {policy:typeof p}).policy).toEqual(p);
+    expect(h.writes).toHaveLength(1);
+    expect(h.writes[0].sql).toContain("GLOBAL_CHANNEL_POLICY_UPDATED");
+    expect(h.writes.some(write=>/communication_deliveries|outbox|messages/i.test(write.sql))).toBe(false);
+  });
+  it("rejects setting unavailable Telegram as a default",async()=>{
+    h.role="PLATFORM_OWNER";
+    const p=defaultNotificationPolicy();
+    p.events.FINANCE!.allowed.push("TELEGRAM");
+    p.events.FINANCE!.defaults.push("TELEGRAM");
+    const r=await put("/communication/channel-policy",p);
+    expect(r.status).toBe(400);
+    expect(await r.json()).toMatchObject({code:"UNAVAILABLE_DEFAULT"});
+    expect(h.writes).toHaveLength(0);
+  });
+  it("rejects a new school Telegram override until the global policy allows it",async()=>{
+    h.role="PLATFORM_OWNER";
+    const p=defaultNotificationPolicy();
+    p.schools["9"]={enabled:true,allowed:["IN_APP","TELEGRAM"]};
+    const rejected=await put("/communication/channel-policy",p);
+    expect(rejected.status).toBe(400);
+    expect(await rejected.json()).toMatchObject({code:"OVERRIDE_NOT_GLOBALLY_ALLOWED"});
+    expect(h.writes).toHaveLength(0);
+    p.events.FINANCE!.allowed.push("TELEGRAM");
+    const accepted=await put("/communication/channel-policy",p);
+    expect(accepted.status).toBe(200);
+    expect(h.writes).toHaveLength(1);
+    expect(h.writes[0].sql).toContain("GLOBAL_CHANNEL_POLICY_UPDATED");
+  });
   it("School Admin cannot select SMS for reminders or unavailable channels",async()=>{
     expect((await put("/communication/schools/9/defaults",{SUBSCRIPTION:["SMS"]})).status).toBe(403);
     expect((await put("/communication/schools/9/defaults",{ATTENDANCE_ENTRY:["PUSH"]})).status).toBe(403);
+    expect(h.writes).toHaveLength(0);
+  });
+  it("school delivery defaults still reject Telegram when Owner permits it globally",async()=>{
+    const p=defaultNotificationPolicy();
+    p.events.ATTENDANCE_ENTRY!.allowed.push("TELEGRAM");
+    h.policy=p;
+    expect((await put("/communication/schools/9/defaults",{ATTENDANCE_ENTRY:["TELEGRAM"]})).status).toBe(403);
     expect(h.writes).toHaveLength(0);
   });
   it("school choices are tenant-bound, audited and constrained by Owner",async()=>{

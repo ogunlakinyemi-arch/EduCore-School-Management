@@ -65,7 +65,7 @@ describe('Owner school permission selector',()=>{
     const saved=mocks.mutateAsync.mock.calls[0][0].data;
     expect(saved.events).toEqual(policy.events);
     expect(saved.events.FINANCE.allowed).not.toContain('SMS');
-    expect(saved.schools['9']).toEqual({enabled:true,allowed:['IN_APP','SMS','EMAIL','PUSH','TELEGRAM']});
+    expect(saved.schools['9']).toEqual({enabled:true,allowed:['IN_APP','SMS','EMAIL']});
     expect(saved.schools['12']).toEqual(policy.schools['12']);
     expect(policy.schools['9']).toBeUndefined();
     expect(mocks.refetch).toHaveBeenCalledOnce();
@@ -118,5 +118,30 @@ describe('Owner school permission selector',()=>{
     await click(button('Save Owner policy'));
     expect(mocks.mutateAsync.mock.calls[1][0].data.schools).toEqual({});
     expect(mocks.mutateAsync.mock.calls[1][0].data.events).toEqual(policy.events);
+  });
+  it('permits Telegram while unavailable but keeps it out of defaults until delivery is ready',async()=>{
+    await render();
+    const telegramAllowed=host.querySelector<HTMLInputElement>('input[aria-label="FINANCE TELEGRAM allowed"]')!;
+    const telegramDefault=host.querySelector<HTMLInputElement>('input[aria-label="FINANCE TELEGRAM default"]')!;
+    expect(telegramAllowed.disabled).toBe(false);
+    expect(telegramDefault.disabled).toBe(true);
+    expect(host.textContent).toContain('TELEGRAM — delivery unavailable');
+
+    await click(telegramAllowed);
+    expect(telegramAllowed.checked).toBe(true);
+    expect(telegramDefault.disabled).toBe(true);
+    expect(host.textContent).toContain('TELEGRAM — Permitted, not yet deliverable');
+
+    await change(select(),'9');
+    await click(button('Add override'));
+    const override=[...host.querySelectorAll('fieldset')].find(item=>item.querySelector('legend')?.textContent==='North Academy')!;
+    const schoolTelegram=override.querySelector<HTMLInputElement>('input[aria-label="School 9 TELEGRAM permitted"]')!;
+    expect(schoolTelegram.disabled).toBe(false);
+    expect(schoolTelegram.checked).toBe(true);
+    await click(button('Save Owner policy'));
+    const saved=mocks.mutateAsync.mock.calls[0][0].data;
+    expect(saved.events.FINANCE.allowed).toContain('TELEGRAM');
+    expect(saved.events.FINANCE.defaults).not.toContain('TELEGRAM');
+    expect(saved.schools['9'].allowed).toContain('TELEGRAM');
   });
 });
