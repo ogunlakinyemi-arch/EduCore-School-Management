@@ -67,8 +67,13 @@ disable notifications; they cannot expand global permissions.
 19 policy unit,11 governance HTTP,40 queue/dispatcher,12 attendance-role,
 23 existing attendance-phase and8 attendance-communication tests. Passing
 unchanged suites were reused rather than repeatedly rerun. OpenAPI/codegen and
-API typecheck passed; frontend typecheck was rerun after its final hook correction.
+API/frontend typechecks passed.
 No broad financial audit or Flutterwave LIVE test was repeated.
+
+Development API and web workflows are running with notification workers paused.
+Duplicate-startup port conflicts were cleared only after verifying the older local
+listeners had no active connections. API health returned200; anonymous Owner-policy
+access returned401. No passing test suite was repeated during that recovery.
 
 No application DB migration, credentials/provider configuration change, real SMS,
 real-recipient test message, Production/Publish change or publishing is included.
