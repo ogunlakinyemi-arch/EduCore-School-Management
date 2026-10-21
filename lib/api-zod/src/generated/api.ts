@@ -11,6 +11,72 @@ import * as zod from 'zod';
 
 
 
+export const GetTelegramStatusQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetTelegramStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "ready": zod.boolean(),
+  "reason": zod.string(),
+  "botUsername": zod.string().nullable(),
+  "linked": zod.boolean(),
+  "consented": zod.boolean(),
+  "parentEligible": zod.boolean(),
+  "policyAllowed": zod.boolean(),
+  "pending": zod.boolean(),
+  "pendingAccountLabel": zod.string().nullable()
+})
+
+
+export const CheckTelegramHealthResponse = zod.object({
+  "configured": zod.boolean(),
+  "ready": zod.boolean(),
+  "reason": zod.string(),
+  "botUsername": zod.string().nullable(),
+  "linked": zod.boolean(),
+  "consented": zod.boolean(),
+  "parentEligible": zod.boolean(),
+  "policyAllowed": zod.boolean(),
+  "pending": zod.boolean(),
+  "pendingAccountLabel": zod.string().nullable()
+})
+
+
+
+
+
+export const CreateTelegramLinkBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "consent": zod.literal(true)
+})
+
+export const CreateTelegramLinkResponse = zod.object({
+  "url": zod.string(),
+  "expiresAt": zod.string()
+})
+
+
+export const UnlinkTelegramResponse = zod.object({
+  "unlinked": zod.boolean()
+})
+
+
+
+
+
+export const ConfirmTelegramLinkBody = zod.object({
+  "schoolId": zod.number().int().min(1)
+})
+
+export const ConfirmTelegramLinkResponse = zod.object({
+  "linked": zod.boolean()
+})
+
+
+
+
+
 export const ListOwnerAttendanceClassesQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1)
 })
@@ -1801,7 +1867,7 @@ export const ArchiveCommunicationNotificationResponse = zod.object({
   "readAt": zod.coerce.date().nullable(),
   "deliveries": zod.array(zod.object({
   "id": zod.number().int(),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
   "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
   "providerMessageId": zod.string().nullable(),
@@ -1850,7 +1916,7 @@ export const UnarchiveCommunicationNotificationResponse = zod.object({
   "readAt": zod.coerce.date().nullable(),
   "deliveries": zod.array(zod.object({
   "id": zod.number().int(),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
   "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
   "providerMessageId": zod.string().nullable(),
@@ -17242,7 +17308,7 @@ export const ListCommunicationNotificationsResponse = zod.object({
   "readAt": zod.coerce.date().nullable(),
   "deliveries": zod.array(zod.object({
   "id": zod.number().int(),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
   "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
   "providerMessageId": zod.string().nullable(),
@@ -17293,7 +17359,7 @@ export const MarkCommunicationNotificationReadResponse = zod.object({
   "readAt": zod.coerce.date().nullable(),
   "deliveries": zod.array(zod.object({
   "id": zod.number().int(),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
   "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
   "providerMessageId": zod.string().nullable(),
@@ -17346,7 +17412,7 @@ export const GetCommunicationPreferencesResponse = zod.object({
   "preferences": zod.array(zod.object({
   "schoolId": zod.number().int().nullable(),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "enabled": zod.boolean(),
   "mandatory": zod.boolean().describe('Security/account notifications may be mandatory and cannot be suppressed.'),
   "updatedAt": zod.coerce.date()
@@ -17364,14 +17430,14 @@ export const GetCommunicationPreferencesResponse = zod.object({
 export const UpdateCommunicationPreferenceBody = zod.object({
   "schoolId": zod.number().int().min(1).nullable(),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "enabled": zod.boolean()
 })
 
 export const UpdateCommunicationPreferenceResponse = zod.object({
   "schoolId": zod.number().int().nullable(),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "enabled": zod.boolean(),
   "mandatory": zod.boolean().describe('Security/account notifications may be mandatory and cannot be suppressed.'),
   "updatedAt": zod.coerce.date()
@@ -17395,7 +17461,7 @@ export const ListCommunicationTemplatesResponseItem = zod.object({
   "templateKey": zod.string(),
   "name": zod.string(),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "subject": zod.string().nullable(),
   "body": zod.string(),
   "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])),
@@ -17428,7 +17494,7 @@ export const CreateCommunicationTemplateBody = zod.object({
   "templateKey": zod.string().min(1).max(createCommunicationTemplateBodyTemplateKeyMax).regex(createCommunicationTemplateBodyTemplateKeyRegExp),
   "name": zod.string().min(1).max(createCommunicationTemplateBodyNameMax),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "subject": zod.string().max(createCommunicationTemplateBodySubjectMax).nullish(),
   "body": zod.string().min(1).max(createCommunicationTemplateBodyBodyMax),
   "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])).optional(),
@@ -17441,7 +17507,7 @@ export const CreateCommunicationTemplateResponse = zod.object({
   "templateKey": zod.string(),
   "name": zod.string(),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "subject": zod.string().nullable(),
   "body": zod.string(),
   "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])),
@@ -17472,7 +17538,7 @@ export const updateCommunicationTemplateBodyBodyMax = 5000;
 export const UpdateCommunicationTemplateBody = zod.object({
   "name": zod.string().min(1).max(updateCommunicationTemplateBodyNameMax).optional(),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']).optional(),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']).optional(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']).optional(),
   "subject": zod.string().max(updateCommunicationTemplateBodySubjectMax).nullish(),
   "body": zod.string().min(1).max(updateCommunicationTemplateBodyBodyMax).optional(),
   "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])).optional(),
@@ -17485,7 +17551,7 @@ export const UpdateCommunicationTemplateResponse = zod.object({
   "templateKey": zod.string(),
   "name": zod.string(),
   "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "subject": zod.string().nullable(),
   "body": zod.string(),
   "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])),
@@ -17678,7 +17744,7 @@ export const GetCommunicationAnnouncementResponse = zod.object({
   "status": zod.enum(['QUEUED', 'SENT', 'FAILED', 'SKIPPED']),
   "deliveries": zod.array(zod.object({
   "id": zod.number().int(),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
   "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
   "providerMessageId": zod.string().nullable(),
@@ -17715,7 +17781,7 @@ export const retryCommunicationDeliveryResponseAttemptsMin = 0;
 
 export const RetryCommunicationDeliveryResponse = zod.object({
   "id": zod.number().int(),
-  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM']),
   "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
   "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
   "providerMessageId": zod.string().nullable(),
@@ -17745,7 +17811,7 @@ export const getSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
 
 
 export const GetSchoolCommunicationDefaultsResponse = zod.object({
-  "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(getSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
+  "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])).max(getSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
   "canWrite": zod.boolean(),
   "allowed": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))).optional(),
   "availability": zod.record(zod.string(), zod.boolean()).optional()
@@ -17763,14 +17829,14 @@ export const updateSchoolCommunicationDefaultsBodyMaxOne = 4;
 
 
 
-export const UpdateSchoolCommunicationDefaultsBody = zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(updateSchoolCommunicationDefaultsBodyMaxOne))
+export const UpdateSchoolCommunicationDefaultsBody = zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])).max(updateSchoolCommunicationDefaultsBodyMaxOne))
 
 export const updateSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
 
 
 
 export const UpdateSchoolCommunicationDefaultsResponse = zod.object({
-  "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(updateSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
+  "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])).max(updateSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
   "canWrite": zod.boolean(),
   "allowed": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))).optional(),
   "availability": zod.record(zod.string(), zod.boolean()).optional()

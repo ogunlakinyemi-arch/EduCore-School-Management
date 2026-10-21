@@ -1,0 +1,92 @@
+paths:
+  /communication/telegram/status:
+    get:
+      operationId: getTelegramStatus
+      tags: [communication]
+      parameters:
+        - {name: schoolId, in: query, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Sanitized Development configuration and own-parent linking state; no credentials/chat IDs
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TelegramStatus"}
+  /communication/telegram/health:
+    post:
+      operationId: checkTelegramHealth
+      tags: [communication]
+      responses:
+        "200":
+          description: Owner-only Bot API getMe/getWebhookInfo check; never sends a message
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TelegramStatus"}
+  /communication/telegram/link:
+    post:
+      operationId: createTelegramLink
+      tags: [communication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schoolId, consent]
+              properties:
+                schoolId: {type: integer, minimum: 1}
+                consent: {type: boolean, const: true}
+      responses:
+        "200":
+          description: Single-use ten-minute private-chat start link; confirmation in EduCore is required
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expiresAt]
+                properties:
+                  url: {type: string}
+                  expiresAt: {type: string}
+    delete:
+      operationId: unlinkTelegram
+      tags: [communication]
+      responses:
+        "200":
+          description: Withdraw own consent, revoke pending tokens and cancel queued Telegram deliveries
+          content:
+            application/json:
+              schema: {type: object, required: [unlinked], properties: {unlinked: {type: boolean}}}
+  /communication/telegram/link/confirm:
+    post:
+      operationId: confirmTelegramLink
+      tags: [communication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schoolId]
+              properties:
+                schoolId: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: Authenticated parent confirms the private chat that consumed their token
+          content:
+            application/json:
+              schema: {type: object, required: [linked], properties: {linked: {type: boolean}}}
+components:
+  schemas:
+    TelegramStatus:
+      type: object
+      required: [configured, ready, reason, botUsername, linked, consented, parentEligible, policyAllowed, pending, pendingAccountLabel]
+      properties:
+        configured: {type: boolean}
+        ready: {type: boolean}
+        reason: {type: string}
+        botUsername: {type: [string, "null"]}
+        linked: {type: boolean}
+        consented: {type: boolean}
+        parentEligible: {type: boolean}
+        policyAllowed: {type: boolean}
+        pending: {type: boolean}
+        pendingAccountLabel: {type: [string, "null"]}

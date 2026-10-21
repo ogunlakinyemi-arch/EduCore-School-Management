@@ -9,6 +9,7 @@ import { pushDevices } from './communication-contract';
 import { WebPushControl } from '@/components/web-push-control';
 import { SchoolCommunicationDefaultsControl } from '@/components/school-communication-defaults';
 import { OwnerNotificationPolicyControl } from '@/components/owner-notification-policy';
+import { OwnerTelegramHealth, ParentTelegramControl } from '@/components/telegram-control';
 import { useSchoolAdminAccess } from '@/components/shared';
 
 export function NotificationSettings({ standalone = false, globalOnly = false }: { standalone?: boolean; globalOnly?: boolean }) {
@@ -43,7 +44,7 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
     return acc;
   }, {});
   return <div className={standalone ? 'mx-auto max-w-6xl p-5 md:p-8 fade-up' : 'fade-up'}>
-    {schoolAccess.isPlatformOwner && <OwnerNotificationPolicyControl />}
+    {schoolAccess.isPlatformOwner && <><OwnerTelegramHealth /><OwnerNotificationPolicyControl /></>}
     {schoolId && (schoolAccess.isSchoolAdmin || schoolAccess.isPlatformOwner) && <SchoolCommunicationDefaultsControl key={schoolId} schoolId={schoolId} />}
     <PageHeading eyebrow="Your messages / Controls" title="Notification settings." description="Choose how school updates reach you. Security and account messages may remain required." action={<Link href="/inbox" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-back-inbox"><ArrowLeft size={15} /> Inbox</Link>} />
     {error && <div role="alert" className="mb-5 rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.07)] p-4 text-sm text-[hsl(var(--destructive))]">{error}</div>}
@@ -61,6 +62,7 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
       </section>
       <section className="panel h-fit overflow-hidden">
         <WebPushControl schoolId={schoolId || null} />
+        {schoolId > 0 && !schoolAccess.isPlatformOwner && <div className="p-5 md:p-6"><ParentTelegramControl key={schoolId} schoolId={schoolId} /></div>}
         <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><Smartphone size={22} className="text-[hsl(var(--primary))]" /><h2 className="display-font mt-3 text-xl font-bold">Push device readiness</h2><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Device references are for development testing. Registering one does not subscribe this browser to Web Push or prove that any real notification will arrive.</p></div>
         <div className="p-5 md:p-6">
           <label className="block text-xs font-bold" htmlFor="device-reference">Opaque test device reference</label>

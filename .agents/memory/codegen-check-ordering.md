@@ -11,6 +11,15 @@ Finish API code generation and the shared-library build before checking consumin
 
 ## Referenced OpenAPI schemas
 
+Public SDK type exports must be maintained in the generation workflow, not only
+the generated entrypoint.
+
+**Why:** A later contract regeneration can overwrite manually added public type
+exports and break an unrelated, previously verified feature.
+
+**How to apply:** Update the entrypoint generator when adding a public type
+export and check consumer typechecks after regeneration.
+
 Avoid YAML anchors and aliases in separately referenced OpenAPI files; expand the reused definitions inline.
 
 **Why:** The project's Orval reference resolver failed on anchors in an external Exam/Record contract, while equivalent expanded definitions generated successfully.

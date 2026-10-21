@@ -181,6 +181,8 @@ import type {
   ConfirmAdmissionDocumentUploadParams,
   ConfirmPeopleImportParams,
   ConfirmSchoolLogoUploadBody,
+  ConfirmTelegramLink200,
+  ConfirmTelegramLinkBody,
   ConvertAcceptedAdmissionApplicationParams,
   CreateAcademicAssessmentParams,
   CreateAcademicAssessmentTypeParams,
@@ -207,6 +209,8 @@ import type {
   CreateSubjectParams,
   CreateSubscriptionParams,
   CreateTeacherDutyBody,
+  CreateTelegramLink200,
+  CreateTelegramLinkBody,
   CreateTransportAssignmentParams,
   CreateTransportBusParams,
   CreateTransportRouteParams,
@@ -392,6 +396,7 @@ import type {
   GetStudentPhotoParams,
   GetSubjectParams,
   GetSubscriptionEnforcementOverviewParams,
+  GetTelegramStatusParams,
   GetTransportAssignmentHistoryParams,
   GetTransportAssignmentParams,
   GetTransportRouteHistoryParams,
@@ -800,6 +805,7 @@ import type {
   TeacherClassAssignment,
   TeacherClassAssignmentInput,
   TeacherDuty,
+  TelegramStatus,
   TerminalDirectionConfiguration,
   TerminalDirectionInput,
   TransitionAdmissionApplicationParams,
@@ -831,6 +837,7 @@ import type {
   TransportStudentOption,
   TransportTermInvoiceGeneration,
   UnauthenticatedResponse,
+  UnlinkTelegram200,
   UpdateAcademicAssessmentParams,
   UpdateAcademicAssignmentParams,
   UpdateAcademicGradingRuleParams,
@@ -897,6 +904,384 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetTelegramStatusUrl = (params?: GetTelegramStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/telegram/status?${stringifiedParams}` : `/api/communication/telegram/status`
+}
+
+export const getTelegramStatus = async (params?: GetTelegramStatusParams, options?: Parameters<typeof customFetch>[1]): Promise<TelegramStatus> => {
+
+  return customFetch<TelegramStatus>(getGetTelegramStatusUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTelegramStatusQueryKey = (params?: GetTelegramStatusParams,) => {
+    return [
+    `/api/communication/telegram/status`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTelegramStatusQueryOptions = <TData = Awaited<ReturnType<typeof getTelegramStatus>>, TError = ErrorType<unknown>>(params?: GetTelegramStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelegramStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTelegramStatusQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelegramStatus>>> = ({ signal }) => getTelegramStatus(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTelegramStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTelegramStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getTelegramStatus>>>
+export type GetTelegramStatusQueryError = ErrorType<unknown>
+
+
+
+export function useGetTelegramStatus<TData = Awaited<ReturnType<typeof getTelegramStatus>>, TError = ErrorType<unknown>>(
+ params?: GetTelegramStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelegramStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTelegramStatusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCheckTelegramHealthUrl = () => {
+
+
+
+
+  return `/api/communication/telegram/health`
+}
+
+export const checkTelegramHealth = async ( options?: Parameters<typeof customFetch>[1]): Promise<TelegramStatus> => {
+
+  return customFetch<TelegramStatus>(getCheckTelegramHealthUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckTelegramHealthMutationKey = () => ['checkTelegramHealth'] as const;
+
+export const getCheckTelegramHealthMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkTelegramHealth>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkTelegramHealth>>, TError,void, TContext> => {
+
+const mutationKey = getCheckTelegramHealthMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkTelegramHealth>>, void> = () => {
+
+
+          return  checkTelegramHealth(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckTelegramHealthMutationResult = NonNullable<Awaited<ReturnType<typeof checkTelegramHealth>>>
+
+    export type CheckTelegramHealthMutationError = ErrorType<unknown>
+
+
+    export const useCheckTelegramHealth = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkTelegramHealth>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkTelegramHealth>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCheckTelegramHealthMutationOptions(options));
+    }
+
+export const getCreateTelegramLinkUrl = () => {
+
+
+
+
+  return `/api/communication/telegram/link`
+}
+
+export const createTelegramLink = async (createTelegramLinkBody: CreateTelegramLinkBody, options?: Parameters<typeof customFetch>[1]): Promise<CreateTelegramLink200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CreateTelegramLink200>(getCreateTelegramLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createTelegramLinkBody)
+  }
+);}
+
+
+
+
+
+export const getCreateTelegramLinkMutationKey = () => ['createTelegramLink'] as const;
+
+export const getCreateTelegramLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTelegramLink>>, TError,CreateTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTelegramLink>>, TError,CreateTelegramLinkMutationVariables, TContext> => {
+
+const mutationKey = getCreateTelegramLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTelegramLink>>, CreateTelegramLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTelegramLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTelegramLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createTelegramLink>>>
+    export type CreateTelegramLinkMutationBody = BodyType<CreateTelegramLinkBody>
+    export type CreateTelegramLinkMutationError = ErrorType<unknown>
+    export type CreateTelegramLinkMutationVariables = {data: BodyType<CreateTelegramLinkBody>}
+
+    export const useCreateTelegramLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTelegramLink>>, TError,CreateTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTelegramLink>>,
+        TError,
+        CreateTelegramLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTelegramLinkMutationOptions(options));
+    }
+
+export const getUnlinkTelegramUrl = () => {
+
+
+
+
+  return `/api/communication/telegram/link`
+}
+
+export const unlinkTelegram = async ( options?: Parameters<typeof customFetch>[1]): Promise<UnlinkTelegram200> => {
+
+  return customFetch<UnlinkTelegram200>(getUnlinkTelegramUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnlinkTelegramMutationKey = () => ['unlinkTelegram'] as const;
+
+export const getUnlinkTelegramMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,void, TContext> => {
+
+const mutationKey = getUnlinkTelegramMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkTelegram>>, void> = () => {
+
+
+          return  unlinkTelegram(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkTelegramMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkTelegram>>>
+
+    export type UnlinkTelegramMutationError = ErrorType<unknown>
+
+
+    export const useUnlinkTelegram = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkTelegram>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getUnlinkTelegramMutationOptions(options));
+    }
+
+export const getConfirmTelegramLinkUrl = () => {
+
+
+
+
+  return `/api/communication/telegram/link/confirm`
+}
+
+export const confirmTelegramLink = async (confirmTelegramLinkBody: ConfirmTelegramLinkBody, options?: Parameters<typeof customFetch>[1]): Promise<ConfirmTelegramLink200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ConfirmTelegramLink200>(getConfirmTelegramLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmTelegramLinkBody)
+  }
+);}
+
+
+
+
+
+export const getConfirmTelegramLinkMutationKey = () => ['confirmTelegramLink'] as const;
+
+export const getConfirmTelegramLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmTelegramLink>>, TError,ConfirmTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmTelegramLink>>, TError,ConfirmTelegramLinkMutationVariables, TContext> => {
+
+const mutationKey = getConfirmTelegramLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmTelegramLink>>, ConfirmTelegramLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmTelegramLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmTelegramLinkMutationResult = NonNullable<Awaited<ReturnType<typeof confirmTelegramLink>>>
+    export type ConfirmTelegramLinkMutationBody = BodyType<ConfirmTelegramLinkBody>
+    export type ConfirmTelegramLinkMutationError = ErrorType<unknown>
+    export type ConfirmTelegramLinkMutationVariables = {data: BodyType<ConfirmTelegramLinkBody>}
+
+    export const useConfirmTelegramLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmTelegramLink>>, TError,ConfirmTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmTelegramLink>>,
+        TError,
+        ConfirmTelegramLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmTelegramLinkMutationOptions(options));
+    }
 
 export const getListOwnerAttendanceClassesUrl = (params: ListOwnerAttendanceClassesParams,) => {
   const normalizedParams = new URLSearchParams();

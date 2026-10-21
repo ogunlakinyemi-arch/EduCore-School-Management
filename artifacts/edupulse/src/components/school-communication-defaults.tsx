@@ -17,8 +17,8 @@ export function SchoolCommunicationDefaultsControl({ schoolId }: { schoolId: num
         <legend className="px-1 text-sm font-bold">{category}</legend><div className="flex flex-wrap gap-4">
           {channels.map(channel => <label key={channel} className="flex min-h-11 items-center gap-2 text-sm">
             <input type="checkbox" disabled={!query.data?.canWrite || save.isPending || !query.data?.availability?.[channel] || !query.data?.allowed?.[category]?.includes(channel)}
-              checked={channel!=='TELEGRAM'&&(defaults[category]?.includes(channel)??false)}
-              onChange={e => {if(channel==='TELEGRAM')return;setDraft({ ...defaults, [category]: e.target.checked ? [...(defaults[category] ?? []), channel] :
+              checked={defaults[category]?.includes(channel)??false}
+              onChange={e => {setDraft({ ...defaults, [category]: e.target.checked ? [...(defaults[category] ?? []), channel] :
                 (defaults[category] ?? []).filter(c => c !== channel) });}} />{channel.replace('_',' ')}
             {!query.data?.availability?.[channel] ? <span className="text-xs">Unavailable</span> : !query.data?.allowed?.[category]?.includes(channel) ? <span className="text-xs">Owner restricted</span> : null}
           </label>)}</div>

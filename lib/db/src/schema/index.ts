@@ -25,6 +25,7 @@ export * from "./exam-record";
 export * from "./lesson-note-documents";
 export * from "./finance";
 export * from "./communication";
+export * from "./telegram";
 export * from "./library";
 export * from "./operations";
 export * from "./staff-nfc-billing";

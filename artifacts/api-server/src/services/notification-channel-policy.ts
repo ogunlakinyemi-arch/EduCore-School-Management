@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createEmailProvider, createSmsProvider } from "./communication-providers";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
+import {getTelegramHealth} from "./telegram-provider";
 export const policyEvents = ["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","NFC_REMINDER","SUBSCRIPTION",
   "EMERGENCY","ATTENDANCE","ACADEMIC","ASSIGNMENT","FINANCE","PAYMENT","ANNOUNCEMENT","ACCOUNT","SYSTEM","PARTNER","SECURITY"] as const;
 export const policyChannels = ["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const;
@@ -58,5 +59,5 @@ export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.en
   };
   return {IN_APP:true,SMS:ready("SMS"),EMAIL:ready("EMAIL"),
     PUSH:!developmentPaymentNotificationsSuppressed(env)&&!!(env.VAPID_PUBLIC_KEY&&env.VAPID_PRIVATE_KEY&&/^(mailto:|https:\/\/)/.test(env.VAPID_SUBJECT??"")),
-    TELEGRAM:false}; // No existing Telegram adapter; do not invent delivery.
+    TELEGRAM:getTelegramHealth(env).ready};
 }

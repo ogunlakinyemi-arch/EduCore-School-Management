@@ -1,4 +1,5 @@
 import app from "./app";
+import {startDevelopmentTelegramWorker} from "./services/telegram-worker";
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { dispatchCommunicationDeliveries } from "./services/communication-service";
@@ -19,6 +20,7 @@ app.listen(port, (err) => {
     process.exit(1);
   }
   logger.info({ port }, "Server listening");
+  startDevelopmentTelegramWorker();
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
     void verifyRemovalRuntimeTarget().then((verified) => {
       logger.info({ developmentSettlementRemovalIsolation: verified },

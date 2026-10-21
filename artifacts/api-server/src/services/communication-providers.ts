@@ -1,7 +1,8 @@
 import { logger } from "../lib/logger";
+import {createTelegramProvider,type TelegramProvider} from "./telegram-provider";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 
-export type CommunicationChannel = "sms" | "email" | "push";
+export type CommunicationChannel = "sms" | "email" | "push" | "telegram";
 export type ProviderDeliveryStatus = "SIMULATED" | "ACCEPTED" | "DELIVERED" | "FAILED";
 export type ProviderFailureCategory =
   | "CONFIGURATION"
@@ -16,6 +17,7 @@ export type ProviderFailureCategory =
 export interface ProviderFailure {
   category: ProviderFailureCategory;
   retryable: boolean;
+  retryAfterSeconds?: number;
 }
 
 /**
@@ -64,6 +66,7 @@ export interface CommunicationProviderAdapters {
   sms: SmsProvider;
   email: EmailProvider;
   push?: PushProvider;
+  telegram?: TelegramProvider;
 }
 
 export interface WebPushSubscription {
@@ -588,7 +591,9 @@ export function createCommunicationProviders(
     if (!(error instanceof CommunicationProviderConfigurationError)) throw error;
     email = unavailable("email");
   }
+  const telegram=createTelegramProvider(env);
   return {
+    ...(telegram?{telegram}:{}),
     sms, email,
   };
 }

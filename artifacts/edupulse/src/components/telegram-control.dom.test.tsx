@@ -1,0 +1,80 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+const m = vi.hoisted(() => ({
+  s: {} as any, ctx: {} as any, keys: [] as any[],
+  create: vi.fn(), confirm: vi.fn(), unlink: vi.fn(), health: vi.fn(),
+}));
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
+vi.mock('@workspace/api-client-react', () => ({
+  useGetAuthorizedContext: () => ({ data: m.ctx }),
+  useGetTelegramStatus: (p: any) => ({ data: m.s[p.schoolId], isError: false, refetch: vi.fn() }),
+  getGetTelegramStatusQueryKey: (p: any) => { m.keys.push(p); return ['tg', p]; },
+  useCheckTelegramHealth: () => ({ mutate: m.health, data: undefined, isPending: false, isError: false }),
+  useCreateTelegramLink: () => ({ mutateAsync: m.create, isPending: false }),
+  useConfirmTelegramLink: () => ({ mutateAsync: m.confirm, isPending: false }),
+  useUnlinkTelegram: () => ({ mutateAsync: m.unlink, isPending: false }),
+}));
+import { ParentTelegramControl, OwnerTelegramHealth } from './telegram-control';
+const base = { configured: true, ready: true, reason: 'ok', botUsername: 'b', linked: false, consented: false, parentEligible: true, policyAllowed: true, pending: false, pendingAccountLabel: null };
+let root: Root; let host: HTMLElement;
+const mount = (el: any) => { host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host); act(() => root.render(el)); };
+const id = (s: string) => host.querySelector(`[data-testid="${s}"]`) as any;
+const flush = () => act(async () => { await Promise.resolve(); });
+afterEach(() => { act(() => root.unmount()); host.remove(); vi.clearAllMocks(); });
+const parent = (sid: number) => ({ isPlatformOwner: false, roles: [{ schoolId: sid, role: 'PARENT', status: 'ACTIVE' }] });
+describe('telegram dom flow', () => {
+  it('consent -> create -> pending -> confirm -> unlink, no mutation on mount', async () => {
+    m.ctx = parent(3); m.s = { 3: { ...base } };
+    m.create.mockResolvedValue({ url: 'https://t.me/b?start=x', expiresAt: 'z' });
+    m.confirm.mockResolvedValue({ linked: true }); m.unlink.mockResolvedValue({ unlinked: true });
+    const el = (sid: number) => <ParentTelegramControl key={sid} schoolId={sid} />;
+    mount(el(3));
+    expect(m.create).not.toHaveBeenCalled(); expect(m.unlink).not.toHaveBeenCalled();
+    expect(host.querySelector('input[type=text],input[name*=chat i]')).toBeNull();
+    expect(id('button-telegram-start').disabled).toBe(true);
+    act(() => id('checkbox-telegram-consent').click());
+    expect(id('button-telegram-start').disabled).toBe(false);
+    act(() => id('button-telegram-start').click()); await flush();
+    expect(m.create).toHaveBeenCalledWith({ data: { schoolId: 3, consent: true } });
+    const a = id('link-telegram-bot'); expect(a.rel).toBe('noreferrer noopener');
+    m.s = { 3: { ...base, pending: true, pendingAccountLabel: '@kemi' } };
+    act(() => root.render(el(3)));
+    expect(host.textContent).toContain('@kemi');
+    act(() => id('button-telegram-confirm').click()); await flush();
+    expect(m.confirm).toHaveBeenCalledWith({ data: { schoolId: 3 } });
+    act(() => id('button-telegram-unlink').click()); await flush();
+    expect(m.unlink).toHaveBeenCalledTimes(1);
+  });
+  it('school change resets link and does not show other school status', async () => {
+    m.ctx = { isPlatformOwner: false, roles: [parent(3).roles[0], parent(4).roles[0]] };
+    m.s = { 3: { ...base }, 4: { ...base, pending: true, pendingAccountLabel: '@four' } };
+    m.create.mockResolvedValue({ url: 'https://t.me/b?start=x', expiresAt: 'z' });
+    mount(<ParentTelegramControl schoolId={3} />);
+    act(() => id('checkbox-telegram-consent').click());
+    act(() => id('button-telegram-start').click()); await flush();
+    expect(id('link-telegram-bot')).not.toBeNull();
+    act(() => root.render(<ParentTelegramControl schoolId={4} />));
+    expect(id('link-telegram-bot')).toBeNull();
+    expect(host.textContent).toContain('@four');
+    expect(m.keys.some(k => k?.schoolId === 4)).toBe(true);
+  });
+  it('unavailable: start blocked, withdrawal enabled; non-parent cannot start', () => {
+    m.ctx = parent(3); m.s = { 3: { ...base, ready: false, policyAllowed: false, linked: true, consented: true } };
+    mount(<ParentTelegramControl schoolId={3} />);
+    expect(id('button-telegram-start')).toBeNull();
+    expect(id('button-telegram-unlink').disabled).toBe(false);
+    act(() => root.unmount()); host.remove();
+    m.ctx = { isPlatformOwner: true, roles: [] }; m.s = { 3: { ...base } };
+    mount(<ParentTelegramControl schoolId={3} />);
+    expect(id('button-telegram-start')).toBeNull();
+  });
+  it('owner health only mutates on click', () => {
+    mount(<OwnerTelegramHealth />);
+    expect(m.health).not.toHaveBeenCalled();
+    act(() => id('button-telegram-health').click());
+    expect(m.health).toHaveBeenCalledTimes(1);
+  });
+});

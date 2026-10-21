@@ -14,4 +14,5 @@ export const CommunicationChannel = {
   SMS: 'SMS',
   EMAIL: 'EMAIL',
   PUSH: 'PUSH',
+  TELEGRAM: 'TELEGRAM',
 } as const;

@@ -593,6 +593,7 @@ export const CommunicationChannel = {
   SMS: 'SMS',
   EMAIL: 'EMAIL',
   PUSH: 'PUSH',
+  TELEGRAM: 'TELEGRAM',
 } as const;
 
 export type CommunicationDeliveryStatus = typeof CommunicationDeliveryStatus[keyof typeof CommunicationDeliveryStatus];
@@ -7521,6 +7522,7 @@ export const SchoolCommunicationDefaultsItem = {
   PUSH: 'PUSH',
   SMS: 'SMS',
   EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
 } as const;
 
 export interface SchoolCommunicationDefaults {[key: string]: SchoolCommunicationDefaultsItem[]}
@@ -13386,6 +13388,21 @@ export interface LostCardInput {
      * @maxLength 500
      */
   reason: string;
+}
+
+export interface TelegramStatus {
+  configured: boolean;
+  ready: boolean;
+  reason: string;
+  /** @nullable */
+  botUsername: string | null;
+  linked: boolean;
+  consented: boolean;
+  parentEligible: boolean;
+  policyAllowed: boolean;
+  pending: boolean;
+  /** @nullable */
+  pendingAccountLabel: string | null;
 }
 
 export interface OwnerAttendanceClass {
@@ -21066,6 +21083,7 @@ export const CommunicationChannel4b96100 = {
   SMS: 'SMS',
   EMAIL: 'EMAIL',
   PUSH: 'PUSH',
+  TELEGRAM: 'TELEGRAM',
 } as const;
 
 export type CommunicationOutboundChannel4b96100 = typeof CommunicationOutboundChannel4b96100[keyof typeof CommunicationOutboundChannel4b96100];
@@ -21530,6 +21548,7 @@ export const SchoolCommunicationDefaults4b96100Item = {
   PUSH: 'PUSH',
   SMS: 'SMS',
   EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
 } as const;
 
 export interface SchoolCommunicationDefaults4b96100 {[key: string]: SchoolCommunicationDefaults4b96100Item[]}
@@ -22256,6 +22275,37 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetTelegramStatusParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type CreateTelegramLinkBody = {
+  /** @minimum 1 */
+  schoolId: number;
+  consent: true;
+};
+
+export type CreateTelegramLink200 = {
+  url: string;
+  expiresAt: string;
+};
+
+export type UnlinkTelegram200 = {
+  unlinked: boolean;
+};
+
+export type ConfirmTelegramLinkBody = {
+  /** @minimum 1 */
+  schoolId: number;
+};
+
+export type ConfirmTelegramLink200 = {
+  linked: boolean;
+};
 
 export type ListOwnerAttendanceClassesParams = {
 /**

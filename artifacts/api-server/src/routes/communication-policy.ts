@@ -7,7 +7,7 @@ import { loadNotificationPolicy, notificationPolicySchema, notificationChannelAv
 const router = Router();
 router.use(requireAuthentication());
 const category = z.enum(policyEvents);
-export const channelDefaultsSchema = z.record(category, z.array(z.enum(["IN_APP","PUSH","SMS","EMAIL"])).max(4));
+export const channelDefaultsSchema = z.record(category, z.array(z.enum(["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"])).max(5));
 function ownerContext(req:Parameters<typeof getUserContext>[0]){
   const ctx=getUserContext(req);
   if(!ctx.roles.some(r=>r.role==="PLATFORM_OWNER"&&r.status==="ACTIVE"))throw new AuthError(403,"Owner only");

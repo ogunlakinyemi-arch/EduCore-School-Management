@@ -9,6 +9,8 @@ import { dispatchPushDevices } from "./web-push-dispatch";
 import { WebPushProvider } from "./web-push-provider";
 import { duplicateCampaignDelivery } from "./communication-external-identity";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
+import {telegramRecipient} from "./telegram-links";
+import {createTelegramProvider,getTelegramHealth} from "./telegram-provider";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -23,7 +25,7 @@ export type CommunicationCategory =
   | "PARTNER"
   | "SECURITY";
 
-export type CommunicationDeliveryChannel = "IN_APP" | "SMS" | "EMAIL" | "PUSH";
+export type CommunicationDeliveryChannel = "IN_APP" | "SMS" | "EMAIL" | "PUSH" | "TELEGRAM";
 
 /**
  * Structural pg client contract. Queue callers pass their existing transaction
@@ -90,7 +92,7 @@ export async function emitDomainParentEvent(
   }
   const channels: CommunicationDeliveryChannel[] =
     [...new Set(input.channels ?? ["IN_APP" as const])];
-  if (channels.length === 0 || channels.some(channel => !["IN_APP", "SMS", "EMAIL", "PUSH"].includes(channel))) {
+  if (channels.length === 0 || channels.some(channel => !["IN_APP", "SMS", "EMAIL", "PUSH", "TELEGRAM"].includes(channel))) {
     throw new TypeError("Parent event channels must be IN_APP, SMS, EMAIL or PUSH.");
   }
 
@@ -164,7 +166,7 @@ const categories = new Set<CommunicationCategory>([
   "SECURITY",
 ]);
 
-const channels = new Set<CommunicationDeliveryChannel>(["IN_APP", "SMS", "EMAIL", "PUSH"]);
+const channels = new Set<CommunicationDeliveryChannel>(["IN_APP", "SMS", "EMAIL", "PUSH", "TELEGRAM"]);
 const mandatoryCategories = new Set<CommunicationCategory>(["ACCOUNT", "SECURITY"]);
 const templateVariables = new Set([
   "student_name",
@@ -594,6 +596,8 @@ export interface CommunicationDispatchPool extends CommunicationQueryClient {
 }
 
 export interface DispatchCommunicationOptions {
+  /** Dedicated Development workers must not claim other channels. */
+  channels?: Array<"SMS"|"EMAIL"|"PUSH"|"TELEGRAM">;
   /** Injected providers are primarily useful to isolated tests and explicit workers. */
   providers?: CommunicationProviderAdapters;
   /** External adapters require an explicit opt-in; defaults always simulate. */
@@ -614,13 +618,13 @@ export interface DispatchCommunicationResult {
 
 interface ClaimedDelivery {
   id: number | string;
-  channel: "SMS" | "EMAIL" | "PUSH";
+  channel: "SMS" | "EMAIL" | "PUSH" | "TELEGRAM";
   attempts: number;
 }
 
 interface DispatchRecord {
   id: number | string;
-  channel: "SMS" | "EMAIL" | "PUSH";
+  channel: "SMS" | "EMAIL" | "PUSH" | "TELEGRAM";
   notificationId: number | string;
   recipientUserId: number | string;
   schoolId: number | string | null;
@@ -660,6 +664,7 @@ async function claimCommunicationDeliveries(
   batchLimit: number,
   maxAttempts: number,
   now: Date,
+  selectedChannels: Array<"SMS"|"EMAIL"|"PUSH"|"TELEGRAM">,
 ): Promise<ClaimedDelivery[]> {
   const client = await pool.connect();
   try {
@@ -671,16 +676,16 @@ async function claimCommunicationDeliveries(
            last_error = 'Worker stopped while provider acceptance was unknown; manual reconciliation is required.',
            failed_at = $1,
            updated_at = $1
-       WHERE channel IN ('SMS','EMAIL','PUSH')
+       WHERE channel = ANY($2::text[])
          AND status = 'PROCESSING'
           AND COALESCE(last_attempt_at, updated_at, created_at) < $1::timestamptz - INTERVAL '15 minutes'`,
-      [normalizedDate(now)],
+      [normalizedDate(now),selectedChannels],
     );
     const claimed = await client.query<ClaimedDelivery>(
       `WITH due AS (
          SELECT id
          FROM communication_deliveries
-         WHERE channel IN ('SMS','EMAIL','PUSH')
+         WHERE channel = ANY($4::text[])
            AND attempts < $2
            AND next_attempt_at <= $3
             AND status IN ('QUEUED','FAILED')
@@ -699,7 +704,7 @@ async function claimCommunicationDeliveries(
        FROM due
        WHERE d.id = due.id
        RETURNING d.id, d.channel, d.attempts`,
-      [batchLimit, maxAttempts, normalizedDate(now)],
+      [batchLimit, maxAttempts, normalizedDate(now),selectedChannels],
     );
     await client.query("COMMIT");
     return claimed.rows;
@@ -881,7 +886,7 @@ async function persistProviderOutcome(
   );
   const willRetry = !providerSucceeded && !ambiguous && outcome.retryable && attempt < maxAttempts;
   const nextAttemptAt = willRetry
-    ? new Date(now.getTime() + retryDelayMs(attempt))
+    ? new Date(now.getTime() + Math.max(retryDelayMs(attempt),(result.failure?.retryAfterSeconds??0)*1000))
     : now;
   const providerName = result.provider.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 64) || "provider";
   const lastError = simulated
@@ -949,7 +954,11 @@ export async function dispatchCommunicationDeliveries(
     publicKey: process.env.VAPID_PUBLIC_KEY ?? "", privateKey: process.env.VAPID_PRIVATE_KEY ?? "", subject: process.env.VAPID_SUBJECT ?? "",
   }) : undefined);
   const now = options.now ?? (() => new Date());
-  const claimed = await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now());
+  const telegramProvider=providers.telegram??(options.allowConfiguredProviders?createTelegramProvider():undefined);
+  const selectedChannels=options.channels??["SMS","EMAIL","PUSH","TELEGRAM"];
+  if(!selectedChannels.length||selectedChannels.some(c=>!["SMS","EMAIL","PUSH","TELEGRAM"].includes(c)))
+    throw new TypeError("Invalid dispatch channels");
+  const claimed = await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),selectedChannels);
   const summary: DispatchCommunicationResult = {
     claimed: claimed.length,
     accepted: 0,
@@ -988,7 +997,22 @@ export async function dispatchCommunicationDeliveries(
     }
     if (await duplicateCampaignDelivery(pool, record)) { summary.skipped += 1; continue; }
 
-    const target = delivery.channel === "SMS" ? record.phone : record.email;
+    if(delivery.channel==="TELEGRAM"&&(!telegramProvider||(!providers.telegram&&!getTelegramHealth().ready))){
+      await pool.query(`UPDATE communication_deliveries SET status='FAILED',error_code='TELEGRAM_UNAVAILABLE',
+        last_error='Telegram health/configuration unavailable',attempts=$2,updated_at=$3 WHERE id=$1 AND status='PROCESSING'`,
+        [delivery.id,maxAttempts,normalizedDate(now())]);
+      summary.failed++;continue;
+    }
+    const target = delivery.channel === "TELEGRAM"
+      ? await telegramRecipient(pool,Number(record.recipientUserId),record.schoolId===null?null:Number(record.schoolId),
+        record.subjectStudentId==null?null:Number(record.subjectStudentId),record.category)
+      : delivery.channel === "SMS" ? record.phone : record.email;
+    if(delivery.channel==="TELEGRAM"&&!target){
+      await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='TELEGRAM_LINK_OR_CONSENT_REQUIRED',
+        last_error='Verified parent relationship and Telegram consent required',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
+        [delivery.id,normalizedDate(now())]);
+      summary.skipped++;continue;
+    }
     if (delivery.channel !== "PUSH" && !target?.trim()) {
       await pool.query(
         `UPDATE communication_deliveries
@@ -1007,7 +1031,11 @@ export async function dispatchCommunicationDeliveries(
 
     let outcome: ProviderOutcome;
     try {
-      const providerResult = delivery.channel === "PUSH"
+      const providerResult = delivery.channel === "TELEGRAM"
+        ? await telegramProvider!.send({to:target!,idempotencyKey:`communication-${record.notificationId}-telegram`,
+          body:record.subjectStudentId!=null?`${record.subject??"School update"}\n${record.body}`.slice(0,4096)
+            :`Yetenia EduCore: ${dispatchEvent.replaceAll("_"," ").toLowerCase()} update. Sign in to EduCore to view the details.`})
+        : delivery.channel === "PUSH"
         ? await dispatchPushDevices(pool, record, pushProvider, options.pushSessionActive)
         : delivery.channel === "SMS"
         ? await providers.sms.send({
@@ -1037,8 +1065,8 @@ export async function dispatchCommunicationDeliveries(
     } catch {
       outcome = {
         result: {
-          provider: delivery.channel === "SMS" ? providers.sms.provider : providers.email.provider,
-          channel: delivery.channel === "SMS" ? "sms" : "email",
+          provider: delivery.channel === "TELEGRAM"?"telegram-bot-api":delivery.channel === "SMS" ? providers.sms.provider : providers.email.provider,
+          channel: delivery.channel === "TELEGRAM"?"telegram":delivery.channel === "SMS" ? "sms" : "email",
           status: "FAILED",
           accepted: false,
           delivered: false,

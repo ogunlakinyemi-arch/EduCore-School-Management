@@ -28,7 +28,7 @@ const categories = new Set([
   "ATTENDANCE", "ACADEMIC", "ASSIGNMENT", "FINANCE", "PAYMENT", "ANNOUNCEMENT",
   "ACCOUNT", "SYSTEM", "SUBSCRIPTION", "PARTNER", "SECURITY",
 ]);
-const channels = new Set(["IN_APP", "SMS", "EMAIL", "PUSH"]);
+const channels = new Set(["IN_APP", "SMS", "EMAIL", "PUSH", "TELEGRAM"]);
 const MAX_ACTIVE_PUSH_DEVICES_PER_SCOPE = 10;
 const MAX_PUSH_DEVICE_REGISTRATIONS_PER_MINUTE = 5;
 

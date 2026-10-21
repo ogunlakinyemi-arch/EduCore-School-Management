@@ -20,6 +20,7 @@ export default defineConfig({
       parserOptions: {
         externalRefs: {
           allow: [
+            "./telegram.yaml",
             "./owner-attendance.yaml",
             "./employee-nfc-feedback.yaml",
             "./payroll-settlement-feedback.yaml",
@@ -78,6 +79,7 @@ export default defineConfig({
       parserOptions: {
         externalRefs: {
           allow: [
+            "./telegram.yaml",
             "./owner-attendance.yaml",
             "./platform-workspace.yaml",
             "./employee-nfc-feedback.yaml",

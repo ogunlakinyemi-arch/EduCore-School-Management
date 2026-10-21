@@ -46,3 +46,16 @@ During payment safety testing, an earlier controlled-recipient email approval do
 **Why:** Development can have real Resend delivery configured for approved recipients even while its scheduled worker is paused. Connecting a financial webhook must not implicitly reuse that earlier send approval.
 
 **How to apply:** Keep the lock Development-only, fail without network access or a false delivery claim, and distinguish saved code/configuration from the running server. When restart is forbidden, report activation as blocked rather than claiming the new safeguard is active.
+
+Telegram has a separately authorized Development-only opt-in so the requested
+channel can run without changing existing SMS/email send locks or unpausing
+their workers. Disable that opt-in before any future QA that must suppress
+all external notifications, including Telegram.
+
+**Why:** The user explicitly requested functioning Telegram while preserving
+existing SMS restrictions. The old global worker pause otherwise blocked the
+new independent channel as well.
+
+**How to apply:** Preserve the existing locks. Respect Telegram's explicit
+Development opt-in, live Owner/school policy and confirmed parent consent;
+never treat bot health as recipient-delivery evidence.

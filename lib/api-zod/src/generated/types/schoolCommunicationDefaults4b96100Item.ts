@@ -14,4 +14,5 @@ export const SchoolCommunicationDefaults4b96100Item = {
   PUSH: 'PUSH',
   SMS: 'SMS',
   EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
 } as const;
