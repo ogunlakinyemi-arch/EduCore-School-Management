@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { AuthError, getUserContext, assertSchoolAccess, requireAuthentication } from "../middlewares/auth";
 import { loadNotificationPolicy, notificationPolicySchema, notificationChannelAvailability,
-  allowedNotificationChannels, policyEvents } from "../services/notification-channel-policy";
+  allowedNotificationChannels, policyEvents, policyValidationIssue } from "../services/notification-channel-policy";
 const router = Router();
 router.use(requireAuthentication());
 const category = z.enum(policyEvents);
@@ -66,6 +66,14 @@ router.put("/communication/channel-policy",async(req,res)=>{
     const policy=notificationPolicySchema.parse(req.body);
     c=await pool.connect();
     await c.query("BEGIN");
+    const issue=policyValidationIssue(policy,await loadNotificationPolicy(c),notificationChannelAvailability());
+    if(issue){
+      await c.query("ROLLBACK");
+      res.status(400).json({error:issue==="UNAVAILABLE_DEFAULT"
+        ?"A channel without available delivery cannot become a default"
+        :"School overrides can only include globally allowed channels",code:issue});
+      return;
+    }
     await c.query(`INSERT INTO audit_logs(actor_user_id,"user",role,action,module,event_type,metadata)
       VALUES($1,$2,'PLATFORM_OWNER','Updated event channels and school permissions','NotificationPolicy',
       'GLOBAL_CHANNEL_POLICY_UPDATED',$3::jsonb)`,

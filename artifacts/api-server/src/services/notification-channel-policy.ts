@@ -31,6 +31,30 @@ export async function loadNotificationPolicy(db:Db):Promise<NotificationChannelP
   // Malformed stored policy fails closed rather than reverting to permissive defaults.
   return notificationPolicySchema.parse(r.rows[0].policy);
 }
+export function globallyAllowedChannels(policy:NotificationChannelPolicy):Set<PolicyChannel>{
+  return new Set(Object.values(policy.events).flatMap(rule=>rule?.allowed??[]));
+}
+export type PolicyValidationIssue = "UNAVAILABLE_DEFAULT" | "OVERRIDE_NOT_GLOBALLY_ALLOWED";
+/**
+ * The only savable policy states: a channel may be Allowed while its delivery is
+ * unavailable (permission never activates delivery), but it may not newly become
+ * a Default; a school override may only opt into globally allowed channels.
+ * Entries already saved in the current policy are retained (and removable) so a
+ * changed environment never blocks saving unrelated edits.
+ */
+export function policyValidationIssue(next:NotificationChannelPolicy,current:NotificationChannelPolicy,
+  availability:Record<PolicyChannel,boolean>):PolicyValidationIssue|null{
+  for(const [event,rule] of Object.entries(next.events)){
+    const previous=current.events[event as keyof typeof current.events]?.defaults??[];
+    if(rule?.defaults.some(c=>!availability[c]&&!previous.includes(c)))return "UNAVAILABLE_DEFAULT";
+  }
+  const global=globallyAllowedChannels(next);
+  for(const [id,override] of Object.entries(next.schools)){
+    const previous=current.schools[id]?.allowed??[];
+    if(override.allowed.some(c=>!global.has(c)&&!previous.includes(c)))return "OVERRIDE_NOT_GLOBALLY_ALLOWED";
+  }
+  return null;
+}
 export function notificationEvent(category:string,eventKey:string|null):typeof policyEvents[number] {
   const key=(eventKey??"").toUpperCase();
   if(key.includes("EMERGENCY"))return "EMERGENCY";
