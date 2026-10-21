@@ -18,3 +18,8 @@ describe('navigation model', () => {
     expect(navMode(['TEACHER', 'SCHOOL_ADMIN'], false)).toBe('admin');
   });
 });
+
+import { describe as d2, expect as e2, it as i2 } from 'vitest';
+d2('owner attendance nav', () => {
+  i2('keeps /platform/attendance in flat owner mode', () => { e2(buildNavSections(['/', '/platform/attendance'], 'flat')).toEqual([]); });
+});

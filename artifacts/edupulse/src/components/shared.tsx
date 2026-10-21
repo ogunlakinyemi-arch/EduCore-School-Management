@@ -83,6 +83,7 @@ const nav: NavItem[] = [
   { href: '/communications', label: 'Communications', icon: Bell, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
   { href: '/notification-settings', label: 'Notification settings', icon: Settings2, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
+  { href: '/platform/attendance', label: 'Attendance Monitor', icon: ClipboardCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/library', label: 'Library', icon: Library, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'STUDENT'] },
   { href: '/operations', label: 'Operations', icon: Wrench, roles: ['SCHOOL_ADMIN', 'STAFF'] },
@@ -110,7 +111,7 @@ const ownerNavPaths = new Set([
   '/', '/schools', '/records', '/students', '/company-employees', '/users', '/partners', '/account-applications',
   '/devices', '/subscriptions', '/flutterwave-settlements', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
-  '/curriculum-management', '/results',
+  '/curriculum-management', '/results', '/platform/attendance',
   '/communications',
 ]);
 

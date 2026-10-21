@@ -1,0 +1,93 @@
+paths:
+  /platform/attendance/classes:
+    get:
+      operationId: listOwnerAttendanceClasses
+      tags: [attendance]
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Owner-only school-scoped class directory
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/OwnerAttendanceClass"}
+  /platform/attendance/records:
+    get:
+      operationId: getOwnerAttendanceRecords
+      tags: [attendance]
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: type, in: query, required: true, schema: {type: string, enum: [STUDENT, TEACHER]}}
+        - {name: classId, in: query, schema: {type: integer, minimum: 1}}
+        - {name: from, in: query, required: true, schema: {type: string, format: date}}
+        - {name: to, in: query, required: true, schema: {type: string, format: date}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: format, in: query, schema: {type: string, enum: [JSON, CSV], default: JSON}}
+      responses:
+        "200":
+          description: Read-only daily person records; CSV includes all filtered rows up to 5000, never silent truncation
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OwnerAttendanceReport"}
+            text/csv:
+              schema: {type: string}
+components:
+  schemas:
+    OwnerAttendanceClass:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+    OwnerAttendanceEvidence:
+      type: object
+      required: [eventId, eventType, source, status, result, at]
+      properties:
+        eventId: {type: integer}
+        eventType: {type: string}
+        source: {type: string}
+        status: {type: string}
+        result: {type: string}
+        at: {type: [string, "null"]}
+    OwnerAttendanceRow:
+      type: object
+      required: [personId, name, identifier, date, gateEntries, gateExits, classroom, anomalies, status]
+      properties:
+        personId: {type: integer}
+        name: {type: string}
+        identifier: {type: string}
+        date: {type: string}
+        gateEntries:
+          type: array
+          items: {$ref: "#/components/schemas/OwnerAttendanceEvidence"}
+        gateExits:
+          type: array
+          items: {$ref: "#/components/schemas/OwnerAttendanceEvidence"}
+        classroom:
+          type: array
+          items: {$ref: "#/components/schemas/OwnerAttendanceEvidence"}
+        anomalies: {type: array, items: {type: string}}
+        status: {type: string}
+    OwnerAttendanceReport:
+      type: object
+      required: [school, type, class, from, to, timeZone, generatedAt, page, pageSize, total, rows]
+      properties:
+        school: {$ref: "#/components/schemas/OwnerAttendanceClass"}
+        type: {type: string, enum: [STUDENT, TEACHER]}
+        class:
+          anyOf:
+            - {$ref: "#/components/schemas/OwnerAttendanceClass"}
+            - {type: "null"}
+        from: {type: string}
+        to: {type: string}
+        timeZone: {type: string}
+        generatedAt: {type: string}
+        page: {type: integer}
+        pageSize: {type: integer}
+        total: {type: integer}
+        rows:
+          type: array
+          items: {$ref: "#/components/schemas/OwnerAttendanceRow"}

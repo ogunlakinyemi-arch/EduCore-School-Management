@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import ownerAttendanceRouter from "./owner-attendance";
 import flutterwaveSplitsRouter from "./flutterwave-splits";
 import localSplitSimulationRouter from "./local-split-simulation";
 import { rejectOperationalSimulation } from "../middlewares/local-split-simulation";
@@ -81,6 +82,7 @@ router.use(admissionsExpansionRouter);
 // Device credentials authenticate independently of Clerk. Every human-facing
 // attendance handler applies requireAuthentication() explicitly.
 router.use(attendanceRouter);
+router.use(ownerAttendanceRouter);
 router.use(employeeNfcRouter);
 router.use(nfcPrintableRouter);
 router.use(accountApplicationsRouter);

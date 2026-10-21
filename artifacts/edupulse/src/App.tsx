@@ -71,6 +71,7 @@ import { SettingsPage } from '@/pages/settings';
 import { DevicesPage } from '@/pages/devices';
 import { NotificationsPage } from '@/pages/notifications';
 import { AttendancePage } from '@/pages/attendance';
+import { OwnerAttendancePage } from '@/pages/owner-attendance';
 import { FinancePage, MyFeesPage } from '@/pages/finance';
 import { CommunicationsPage } from '@/pages/communications';
 import { CommunicationInbox } from '@/pages/communication-inbox';
@@ -372,6 +373,7 @@ export function ProtectedRoutes() {
           <Route path="/classes">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView ownerReadOnly><ClassesPage /></RoleGuard>
           </Route>
+          <Route path="/platform/attendance"><RoleGuard isPlatformOwnerOnly><OwnerAttendancePage /></RoleGuard></Route>
           <Route path="/attendance">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView ownerReadOnly><AttendancePage /></RoleGuard>
           </Route>

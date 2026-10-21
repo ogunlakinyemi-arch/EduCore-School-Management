@@ -13388,6 +13388,55 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface OwnerAttendanceClass {
+  id: number;
+  name: string;
+}
+
+export interface OwnerAttendanceEvidence {
+  eventId: number;
+  eventType: string;
+  source: string;
+  status: string;
+  result: string;
+  /** @nullable */
+  at: string | null;
+}
+
+export interface OwnerAttendanceRow {
+  personId: number;
+  name: string;
+  identifier: string;
+  date: string;
+  gateEntries: OwnerAttendanceEvidence[];
+  gateExits: OwnerAttendanceEvidence[];
+  classroom: OwnerAttendanceEvidence[];
+  anomalies: string[];
+  status: string;
+}
+
+export type OwnerAttendanceReportType = typeof OwnerAttendanceReportType[keyof typeof OwnerAttendanceReportType];
+
+
+export const OwnerAttendanceReportType = {
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+} as const;
+
+export interface OwnerAttendanceReport {
+  school: OwnerAttendanceClass;
+  type: OwnerAttendanceReportType;
+  class: OwnerAttendanceClass | null;
+  from: string;
+  to: string;
+  timeZone: string;
+  generatedAt: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  rows: OwnerAttendanceRow[];
+}
+
 export type LocalFlutterwaveSplitSimulationInputMode = typeof LocalFlutterwaveSplitSimulationInputMode[keyof typeof LocalFlutterwaveSplitSimulationInputMode];
 
 
@@ -22207,6 +22256,53 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type ListOwnerAttendanceClassesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetOwnerAttendanceRecordsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+type: GetOwnerAttendanceRecordsType;
+/**
+ * @minimum 1
+ */
+classId?: number;
+from: string;
+to: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+format?: GetOwnerAttendanceRecordsFormat;
+};
+
+export type GetOwnerAttendanceRecordsType = typeof GetOwnerAttendanceRecordsType[keyof typeof GetOwnerAttendanceRecordsType];
+
+
+export const GetOwnerAttendanceRecordsType = {
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+} as const;
+
+export type GetOwnerAttendanceRecordsFormat = typeof GetOwnerAttendanceRecordsFormat[keyof typeof GetOwnerAttendanceRecordsFormat];
+
+
+export const GetOwnerAttendanceRecordsFormat = {
+  JSON: 'JSON',
+  CSV: 'CSV',
+} as const;
 
 export type GetDevelopmentPaymentDiagnosticParams = {
 /**

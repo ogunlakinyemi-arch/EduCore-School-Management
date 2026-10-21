@@ -16,6 +16,16 @@ business policy, not evidence that classroom hardware exists.
 derived daily presence, and retain a future explicit roll-call/device-confirmation
 path. Flag missing or contradictory class evidence rather than inventing proof.
 
+Historical monitoring must distinguish missing evidence from an explicit
+recorded absence. Teacher time-in/out derived from NFC gates are not independent
+clock records or classroom confirmation.
+
+**Why:** The Owner requested separate gate/classroom evidence and explicitly
+prohibited invented teacher classroom evidence or unsupported timestamps.
+
+**How to apply:** Show unsupported evidence as "Not recorded"; preserve each
+record's actual source and timestamp and label derived gate summaries honestly.
+
 Notification governance snapshots must survive future audit-log retention or
 cleanup changes.
 

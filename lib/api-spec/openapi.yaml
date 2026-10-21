@@ -34,6 +34,10 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /platform/attendance/classes:
+    $ref: "./owner-attendance.yaml#/paths/~1platform~1attendance~1classes"
+  /platform/attendance/records:
+    $ref: "./owner-attendance.yaml#/paths/~1platform~1attendance~1records"
   /account-application:
     get:
       operationId: getMyAccountApplication

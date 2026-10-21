@@ -361,6 +361,7 @@ import type {
   GetOfficialCardPreview200,
   GetOfficialCardPreviewParams,
   GetOwnAttendanceParams,
+  GetOwnerAttendanceRecordsParams,
   GetParentChildAttendanceParams,
   GetParentCommunicationThreadParams,
   GetParentFeeInvoicePaymentMethods200Item,
@@ -460,6 +461,7 @@ import type {
   ListMyFeeInvoiceNotificationsParams,
   ListMyFeePaymentNotificationsParams,
   ListMyPayrollPayslipsParams,
+  ListOwnerAttendanceClassesParams,
   ListOwnerSchoolDirectoryParams,
   ListParentChildLinksParams,
   ListParentCommunicationChildren200,
@@ -535,6 +537,8 @@ import type {
   NotificationChannelPolicy,
   NotificationChannelPolicyResponse,
   OwnPayrollPayslip,
+  OwnerAttendanceClass,
+  OwnerAttendanceReport,
   OwnerSchoolDirectory,
   OwnerSchoolOverview,
   Parent,
@@ -893,6 +897,162 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListOwnerAttendanceClassesUrl = (params: ListOwnerAttendanceClassesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/attendance/classes?${stringifiedParams}` : `/api/platform/attendance/classes`
+}
+
+export const listOwnerAttendanceClasses = async (params: ListOwnerAttendanceClassesParams, options?: Parameters<typeof customFetch>[1]): Promise<OwnerAttendanceClass[]> => {
+
+  return customFetch<OwnerAttendanceClass[]>(getListOwnerAttendanceClassesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOwnerAttendanceClassesQueryKey = (params?: ListOwnerAttendanceClassesParams,) => {
+    return [
+    `/api/platform/attendance/classes`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListOwnerAttendanceClassesQueryOptions = <TData = Awaited<ReturnType<typeof listOwnerAttendanceClasses>>, TError = ErrorType<unknown>>(params: ListOwnerAttendanceClassesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOwnerAttendanceClasses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOwnerAttendanceClassesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOwnerAttendanceClasses>>> = ({ signal }) => listOwnerAttendanceClasses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOwnerAttendanceClasses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOwnerAttendanceClassesQueryResult = NonNullable<Awaited<ReturnType<typeof listOwnerAttendanceClasses>>>
+export type ListOwnerAttendanceClassesQueryError = ErrorType<unknown>
+
+
+
+export function useListOwnerAttendanceClasses<TData = Awaited<ReturnType<typeof listOwnerAttendanceClasses>>, TError = ErrorType<unknown>>(
+ params: ListOwnerAttendanceClassesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOwnerAttendanceClasses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOwnerAttendanceClassesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOwnerAttendanceRecordsUrl = (params: GetOwnerAttendanceRecordsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/attendance/records?${stringifiedParams}` : `/api/platform/attendance/records`
+}
+
+export const getOwnerAttendanceRecords = async (params: GetOwnerAttendanceRecordsParams, options?: Parameters<typeof customFetch>[1]): Promise<OwnerAttendanceReport | string> => {
+
+  return customFetch<OwnerAttendanceReport | string>(getGetOwnerAttendanceRecordsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerAttendanceRecordsQueryKey = (params?: GetOwnerAttendanceRecordsParams,) => {
+    return [
+    `/api/platform/attendance/records`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOwnerAttendanceRecordsQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerAttendanceRecords>>, TError = ErrorType<unknown>>(params: GetOwnerAttendanceRecordsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerAttendanceRecords>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerAttendanceRecordsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerAttendanceRecords>>> = ({ signal }) => getOwnerAttendanceRecords(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerAttendanceRecords>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerAttendanceRecordsQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerAttendanceRecords>>>
+export type GetOwnerAttendanceRecordsQueryError = ErrorType<unknown>
+
+
+
+export function useGetOwnerAttendanceRecords<TData = Awaited<ReturnType<typeof getOwnerAttendanceRecords>>, TError = ErrorType<unknown>>(
+ params: GetOwnerAttendanceRecordsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerAttendanceRecords>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerAttendanceRecordsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetMyAccountApplicationUrl = () => {
 

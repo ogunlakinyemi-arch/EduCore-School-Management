@@ -8,6 +8,92 @@
 import * as zod from 'zod';
 
 
+
+
+
+export const ListOwnerAttendanceClassesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListOwnerAttendanceClassesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})
+export const ListOwnerAttendanceClassesResponse = zod.array(ListOwnerAttendanceClassesResponseItem)
+
+
+
+
+export const getOwnerAttendanceRecordsQueryPageDefault = 1;
+
+export const getOwnerAttendanceRecordsQueryPageSizeDefault = 50;
+export const getOwnerAttendanceRecordsQueryPageSizeMax = 100;
+
+export const getOwnerAttendanceRecordsQueryFormatDefault = `JSON`;
+
+export const GetOwnerAttendanceRecordsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "type": zod.enum(['STUDENT', 'TEACHER']),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "from": zod.date(),
+  "to": zod.date(),
+  "page": zod.coerce.number().int().min(1).default(getOwnerAttendanceRecordsQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getOwnerAttendanceRecordsQueryPageSizeMax).default(getOwnerAttendanceRecordsQueryPageSizeDefault),
+  "format": zod.enum(['JSON', 'CSV']).default(getOwnerAttendanceRecordsQueryFormatDefault)
+})
+
+export const GetOwnerAttendanceRecordsResponse = zod.object({
+  "school": zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+}),
+  "type": zod.enum(['STUDENT', 'TEACHER']),
+  "class": zod.union([zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+}),zod.null()]),
+  "from": zod.string(),
+  "to": zod.string(),
+  "timeZone": zod.string(),
+  "generatedAt": zod.string(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int(),
+  "rows": zod.array(zod.object({
+  "personId": zod.number().int(),
+  "name": zod.string(),
+  "identifier": zod.string(),
+  "date": zod.string(),
+  "gateEntries": zod.array(zod.object({
+  "eventId": zod.number().int(),
+  "eventType": zod.string(),
+  "source": zod.string(),
+  "status": zod.string(),
+  "result": zod.string(),
+  "at": zod.string().nullable()
+})),
+  "gateExits": zod.array(zod.object({
+  "eventId": zod.number().int(),
+  "eventType": zod.string(),
+  "source": zod.string(),
+  "status": zod.string(),
+  "result": zod.string(),
+  "at": zod.string().nullable()
+})),
+  "classroom": zod.array(zod.object({
+  "eventId": zod.number().int(),
+  "eventType": zod.string(),
+  "source": zod.string(),
+  "status": zod.string(),
+  "result": zod.string(),
+  "at": zod.string().nullable()
+})),
+  "anomalies": zod.array(zod.string()),
+  "status": zod.string()
+}))
+})
+
+
 export const GetMyAccountApplicationResponse = zod.object({
   "application": zod.union([zod.object({
   "id": zod.number().int(),
