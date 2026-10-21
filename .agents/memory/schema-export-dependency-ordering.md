@@ -36,10 +36,12 @@ key exists.
 synthesizing any key even though the generic historical ownership guard refused
 the source. Treating either result as the other's approval would hide the mismatch.
 
-**How to apply:** Preserve both declarations and guard; report the discrepancy
-and raw-versus-reordered execution separately. A representative rehearsal may
-preserve the identical SQL multiset and verify current key columns, but must not
-waive actual-target catalog, ledger or historical ownership review.
+**How to apply:** Preserve schema declarations and explicit historical ownership
+metadata. A reviewed guard baseline may advance to the exact current declared
+kind, but must still reject unexpected future kind/column changes. Use the
+supported dependency-ordered export, preserving the identical SQL multiset.
+Report raw-versus-ordered execution separately; this does not waive actual-target
+catalog, ledger or historical ownership review.
 
 PostgreSQL-deparsed CHECK DDL is not guaranteed to round-trip to identical expression text.
 

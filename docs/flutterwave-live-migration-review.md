@@ -2,6 +2,35 @@
 
 ## Decision
 
+**Final minimal pass (2026-10-21):** the supported
+`pnpm --filter @workspace/scripts run export:schema:audit --out /tmp/review.sql`
+command now passes its strict current-source key check and emits dependency-ordered
+SQL. The existing ordering algorithm was already correct; its entry guard was
+stale. Three reviewed current UNIQUE constraints are now the exact expected
+owners, with their historical UNIQUE INDEX ownership retained explicitly in
+metadata. No source schema declaration, historical migration or SQL statement
+was changed, added or removed. Unexpected kind/column changes still refuse.
+
+Fresh official export: **1,241 statements, 184 tables, 432 CHECKs, 690 FKs**.
+The duplicate-aware SQL multiset remains
+`1a795752cb552c5ab09d399cf911b0eb1359ea2db8d3432d3a13ea125c97ddf7`.
+Direct upstream raw stdout remains a diagnostic input with its known supporting-key
+ordering defect; the supported export command orders it before use. This does not
+patch upstream Drizzle, run Publish or authorize applying generated SQL.
+
+Focused verification: **25 export/ownership tests passed** and **11 native
+PostgreSQL/HTTP tests passed across two files**;58 other cases were intentionally
+not selected. Native coverage includes full source-schema initialization/FK
+validation and applying all four LIVE drafts, plus recovery/hold checks. Added
+only one ownership regression and one combined operational-recovery regression.
+API and scripts typechecks passed. Prior rollback/history and broader API/frontend
+results below were reused rather than rerun. No runtime app code changed, so no
+API restart or repeated UI/browser testing was needed.
+
+The earlier guard failure recorded below is historical and superseded by this
+explicit current-source baseline correction; historical target ownership still
+needs review before any separately approved application migration.
+
 **PASS on a source-derived representative target; NOT approved for application-target apply.**
 Only disposable Unix-socket PostgreSQL was used. Neither Development application
 nor Production schema/data was queried or migrated during this pass. The drafts

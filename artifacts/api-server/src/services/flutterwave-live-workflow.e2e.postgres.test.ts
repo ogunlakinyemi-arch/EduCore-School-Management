@@ -561,6 +561,40 @@ describe("remaining readiness: real gated API/access consumers, operator recover
     finally{client.release();}
     expect(await count("flutterwave_live_authority_reviews")).toBe(1);
   });
+  it("lost durable commit, duplicate webhook retries and a later hold never acknowledge LIVE processing or erase evidence",async()=>{
+    const intent=await reserve(),body=raw(intent),id=await receive(body);
+    let loseCommit=true;
+    const uncertain={connect:async()=>{
+      const client=await pool.connect();
+      return {release:()=>client.release(),query:async(q:string,args?:unknown[])=>{
+        const result=await client.query(q,args);
+        if(q.trim()==="COMMIT"&&loseCommit){loseCommit=false;throw new Error("Synthetic durable commit response lost");}
+        return result;
+      }};
+    }};
+    await expect(processLiveWorkflow(uncertain,id,body,proof(),capability)).rejects.toThrow("Synthetic durable commit response lost");
+    const original=(await sql("SELECT snapshot FROM flutterwave_live_official_receipts"))[0].snapshot;
+    for(let attempt=0;attempt<2;attempt++){
+      const response=await fetch(base+"/webhook",{method:"POST",
+        headers:{"content-type":"application/json","verif-hash":hash},body});
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({processed:false,operationallyProcessed:false});
+    }
+    const input={receiptId:id,action:"CONFIRM_DURABILITY" as const,reason:"UNCERTAIN_COMMIT" as const,
+      idempotencyKey:"combined-recovery-review-0001"};
+    const confirmed=await reviewLiveReceipt(pool,{actorId:2,merchantScope:merchant,development:true,capability},input);
+    expect(confirmed).toMatchObject({currentOutcome:"RECORDED_UNRELEASED",operationallyProcessed:false});
+    const adverse=raw(intent,"reversed");
+    await processLiveWorkflow(pool,await receive(adverse),adverse,proof(),capability);
+    const replay=await reviewLiveReceipt(pool,{actorId:2,merchantScope:merchant,development:true,capability},input);
+    expect(replay).toMatchObject({duplicate:true,currentOutcome:"HELD_RETAINED",operationallyProcessed:false});
+    expect((await sql("SELECT snapshot FROM flutterwave_live_official_receipts"))[0].snapshot).toEqual(original);
+    expect(await count("flutterwave_live_collection_evidence")).toBe(1);
+    expect(await count("flutterwave_live_official_receipts")).toBe(1);
+    expect(await count("flutterwave_live_operator_reviews")).toBe(1);
+    expect(await count("flutterwave_live_reconciliation_cases")).toBeGreaterThan(0);
+    expect((await sql("SELECT state FROM flutterwave_live_partner_accruals"))[0].state).toBe("HELD");
+  });
 });
 
 describe("gated LIVE family identity and public access contract",()=>{

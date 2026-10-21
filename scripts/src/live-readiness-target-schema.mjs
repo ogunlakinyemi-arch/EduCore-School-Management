@@ -23,15 +23,15 @@ export async function exportLiveRehearsalTarget(output) {
   });
   if(result.status!==0)throw new Error("Offline target export failed");
   const model=await inspectModel(root),plan=orderExport(result.stdout,model);
-  // The generic guard expects historical UNIQUE INDEX ownership. Current source
-  // declares some same-name keys as UNIQUE constraints. Do NOT rewrite either.
+  // Current ownership is checked strictly; historical ownership stays explicit.
   let historicalOwnershipGuard="PASS";
   try{verifyRequiredTenantKeys(model);}catch(error){historicalOwnershipGuard=error.message;}
   const keyOwnership=requiredTenantKeys.map(required=>{
     const key=model.tables.find(t=>t.id===required.table)?.keys.find(k=>k.name===required.name);
     if(!key||JSON.stringify([...key.columns].sort())!==JSON.stringify([...required.columns].sort()))
       throw new Error("Representative target missing required tenant key: "+required.name);
-    return {table:required.table,name:required.name,expectedKind:required.kind,actualKind:key.kind};
+    return {table:required.table,name:required.name,expectedKind:required.kind,actualKind:key.kind,
+      historicalKind:required.historicalKind??required.kind};
   });
   if(fingerprint()!==sourceBefore)throw new Error("Schema source changed during export");
   const ordered=plan.statements.join("\n\n")+"\n";

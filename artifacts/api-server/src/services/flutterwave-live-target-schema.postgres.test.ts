@@ -83,8 +83,9 @@ describe.sequential("source-derived representative target; disposable only, neve
     expect(manifest.statements).toBe(1241);expect(manifest.applicationTargetVerified).toBe(false);
     expect((await rows("SELECT count(*)::integer n FROM pg_tables WHERE schemaname='public'"))[0].n).toBe(manifest.tables);
     expect((await rows("SELECT count(*)::integer n FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype='f' AND convalidated"))[0].n).toBe(manifest.foreignKeys);
-    expect(manifest.historicalOwnershipGuard).toContain("subscriptions_id_school_student_uq");
-    expect(manifest.keyOwnership.filter((k:any)=>k.expectedKind!==k.actualKind)).toHaveLength(3);
+    expect(manifest.historicalOwnershipGuard).toBe("PASS");
+    expect(manifest.keyOwnership.filter((k:any)=>k.expectedKind!==k.actualKind)).toHaveLength(0);
+    expect(manifest.keyOwnership.filter((k:any)=>k.historicalKind!==k.actualKind)).toHaveLength(3);
     // Report untouched raw execution separately from the reordered same-multiset
     // target, rather than claiming this audit fixed the original exporter.
     console.info("LIVE_TARGET_SCHEMA_REHEARSAL",JSON.stringify({...manifest,rawExecution:rawResult}));

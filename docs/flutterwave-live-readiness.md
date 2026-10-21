@@ -1,5 +1,36 @@
 # Flutterwave deferred Partner commissions — Development review
 
+**Final minimal Development pass (2026-10-21):** the standard offline
+`export:schema:audit` command now produces correctly dependency-ordered SQL after
+an explicit current-source ownership-guard correction. Historical UNIQUE INDEX
+versus current UNIQUE constraint ownership remains recorded; **the same1,241 SQL
+statements are preserved**. No schema declaration or historical migration changed.
+
+Fresh acceptance: **25 export tests + 11 focused native PostgreSQL/HTTP tests
+passed**, and API/scripts typechecks and diff checks passed. Added only one
+ownership test and one combined lost-commit/duplicate-webhook/later-hold recovery
+test. Reused the broader results below;58 non-selected native cases were
+deliberately excluded from this small run. Runtime API/UI code did not change,
+so no restart or repeated browser test was needed.
+
+The final native pass verified full source-schema initialization and all four
+LIVE drafts, unchanged multiset/order, recovery durability without false webhook
+acknowledgement, holds and retained original evidence. See
+[final recovery acceptance](flutterwave-live-workflow-review.md#final-export-and-operational-recovery-acceptance)
+and [migration review](flutterwave-live-migration-review.md).
+
+**External evidence remains unverified:** merchant/recipient reporting authority
+and contract, transaction-linked school/main-merchant bank credits, actual costs/
+taxes and the unexplained NGN5.25 discrepancy (**not VAT**), authenticated delivery
+and actual refund/recovery evidence. Application-target inspection/migration
+remains separately approval-gated. No disabled broad rollout is represented as
+operationally accepted. All LIVE checkout, verification/refund transport, webhook
+delivery and flags stay off; no provider call, money movement, application DB
+query/migration, secret/dashboard, Production/Publish or publishing change.
+
+Preserved: NGN5,000 payer charge; NGN1,900 school; NGN3,100 merchant gross before
+costs/taxes; eligible NGN100 internal Partner accrual.
+
 **Latest Development review (2026-10-21):** see
 [target-schema and family contracts](flutterwave-live-workflow-review.md#target-schema-and-family-contracts-2026-10-21)
 and [additive migration review](flutterwave-live-migration-review.md).

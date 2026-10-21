@@ -1,5 +1,11 @@
 # Coordinated LIVE workflow — Development-only review
 
+**Final minimal Development pass (2026-10-21):** see
+“Final export and operational-recovery acceptance” below. Fresh checks:
+**25 export tests and 11 focused native tests passed**, plus API/scripts
+typechecks. The broader results below are reused baseline evidence, not a newly
+rerun broad suite. LIVE remains disabled and settlement remains unverified.
+
 **Latest review (2026-10-21):** see “Target-schema and family contracts” below and
 [migration review](flutterwave-live-migration-review.md). Distinct acceptance:
 **268 API tests / 11 executed files; 55 frontend tests / seven files**, with
@@ -431,3 +437,66 @@ financial recovery/closure and final webhook acknowledgement acceptance remain
 separate gates. Checkout, provider verification/refund transport, webhook delivery
 and every LIVE release flag remain hard-disabled. No secret/dashboard,
 Production/Publish configuration, publishing or GitHub push change.
+
+## Final export and operational-recovery acceptance
+
+### Minimal software correction
+
+The standard offline `export:schema:audit` command already used the existing
+dependency-ordering graph. A stale prerequisite guard stopped it before that
+ordering could run: three current same-name/same-column UNIQUE constraints were
+still expected as historical UNIQUE indexes. Updated only those explicit expected
+kinds, retained `historicalKind: unique_index` metadata, and kept strict rejection
+of missing keys, wrong columns and unexpected future ownership changes. Neither
+database schema declarations nor historical DDL were converted.
+
+The standard command now exports **1,241 statements, 184 tables, 432 CHECKs and
+690 FKs** successfully. All supporting keys precede dependent FKs. The exact
+duplicate-aware statement multiset matches the earlier successful representative
+rehearsal. Direct upstream raw output still has the known ordering defect and is
+diagnostic only; no third-party library or Publish generator was patched.
+
+### Small, targeted acceptance
+
+- **25 tests passed** in the two existing export/required-key test files, including
+  one added historical-ownership regression. Existing tests prove prerequisite
+  order and unchanged statement multiplicity/semantics.
+- **11 native tests passed across two files**;58 non-selected tests were skipped
+  by the name filter, not failed or claimed as newly executed.
+- Two native selections regenerated the full current representative schema,
+  validated all690 canonical FKs, and applied the four drafts with14 LIVE tables,
+  19 validated LIVE FKs and40 LIVE indexes.
+- Nine workflow selections covered concurrent delivery, pending/uncertain review,
+  exact-byte retry protection, operator audit loss before/after COMMIT,
+  refund/reversal/dispute holds, and one new combined recovery case.
+- The new case commits coordinated issuance but loses the COMMIT response.
+  Duplicate HTTP webhook retries still return503 with `processed:false` and
+  `operationallyProcessed:false`; confirmation records durability, not release
+  acknowledgement. A later reversal holds the same liability; replayed review
+  returns current HELD status. One collection, one original receipt and one review
+  remain, unresolved reconciliation evidence is retained, and accrual stays HELD.
+- API and scripts typechecks and diff checks passed. Reused the earlier268 API/
+  55 frontend baseline and full rollback/preservation results; no redundant broad
+  suite or unrelated audit. No runtime API/frontend code or schema draft changed,
+  so the running Development API was not restarted.
+
+### Remaining external inputs and authorization boundaries
+
+For this final narrow scope, export ordering and isolated operational-recovery
+acceptance are complete. External LIVE acceptance still needs authenticated
+merchant/approved-school recipient evidence and the provider-owned transaction/
+recipient reporting contract; transaction-linked school/main-merchant bank credits;
+actual costs/taxes/reserves and an evidenced explanation of the historical
+NGN5.25 discrepancy (**not assumed VAT**); and genuine refund/dispute disbursement/
+recipient recovery and authenticated delivery evidence.
+
+Actual-target catalog/ledger verification and any application migration require
+separate authorization. These are approval boundaries, not proof of a software
+failure. No unimplemented broad rollout is relabelled as an external blocker:
+this pass does not claim provider-backed transport, waiver/persistence rollout
+or LIVE enablement. Their intentional hard-disabled state remains unchanged.
+
+NGN5,000 payer charge, NGN1,900 school, NGN3,100 merchant gross before costs/taxes
+and eligible NGN100 internal Partner liability are unchanged. No application DB
+was queried/migrated; no provider calls, money movement, secret/dashboard changes,
+Production/Publish changes or publishing occurred.
