@@ -9,6 +9,13 @@ import { errMsg } from '@/pages/payroll-common';
 
 type Result = { kind: 'ok' | 'error' | 'info'; message: string };
 
+/** Only the server's allowlisted bank-resolution codes are displayed. */
+function diagnosticCode(error: unknown): string | null {
+  const data = error && typeof error === 'object' && 'data' in error ? error.data : null;
+  const code = data && typeof data === 'object' && 'code' in data ? data.code : null;
+  return typeof code === 'string' && /^BANK_RESOLUTION_[A-Z_]{4,40}$/.test(code) ? code : null;
+}
+
 /** Development presentation only; the existing server remains the verification authority. */
 export function DevelopmentBankVerification({ school, onStart, retained = false }: {
   school: SchoolSettlementSummary; onStart: () => void; retained?: boolean;
@@ -58,9 +65,13 @@ export function DevelopmentBankVerification({ school, onStart, retained = false 
         : { kind: 'error', message: `Server returned bank account verification status ${response.status.replaceAll('_', ' ').toLowerCase()}. Successful verification is not confirmed.` };
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error ? error.status : undefined;
+      const code = diagnosticCode(error);
+      const diagnostic = code
+        ? ` Diagnostic code: ${code}.${code === 'BANK_RESOLUTION_INVALID_BANK_OR_ACCOUNT' ? ' Fictional or test bank details are expected to be rejected by the real provider service.' : ''}`
+        : '';
       outcome = { kind: 'error', message: status === 409
         ? `No new verification was confirmed (HTTP 409 conflict). ${errMsg(error)} The profile may already be verified or its details may have changed; check the refreshed saved status. No automatic retry was made.`
-        : `Bank verification was not confirmed${typeof status === 'number' ? ` (HTTP ${status})` : ''}. ${errMsg(error)} No automatic retry was made.` };
+        : `Bank verification was not confirmed${typeof status === 'number' ? ` (HTTP ${status})` : ''}. ${errMsg(error)}${diagnostic} No automatic retry was made.` };
     } finally {
       // Own cleanup per execution, even if a filtered row unmounts during refetch.
       try {

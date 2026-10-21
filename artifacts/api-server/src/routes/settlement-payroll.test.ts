@@ -56,6 +56,12 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
 });
 
 import settlementPayrollRouter from "./settlement-payroll";
+import {
+  FlutterwavePayrollV3Client,
+  FlutterwaveProviderResponseError,
+  FlutterwaveProviderUncertainError,
+} from "../lib/flutterwave-payroll-v3";
+import { logger } from "../lib/logger";
 
 const app = express();
 app.use(express.json());
@@ -592,5 +598,130 @@ describe("payroll transfer reload and retry continuity", () => {
     });
     expect(db.queries.map((query) => query.sql).join("\n")).not.toContain("INSERT INTO payroll_transfers");
     expect(db.connect).not.toHaveBeenCalled();
+  });
+});
+describe("Owner bank-verification provider diagnostics (mocked provider, no Flutterwave calls)", () => {
+  const accountNumber = "0123456789";
+  const holder = "Fictional Holder 7";
+  const secret = "FLWSECK_TEST-routeleak12345678";
+  const profile = (status = "PENDING_VERIFICATION") => {
+    const encrypted = (field: string, value: string) => encryptPayrollBankValue(value, `settlement:school:7:${field}`);
+    const bank = encrypted("bankName", "Fictional Bank");
+    return {
+      id: 107, oversight_school_id: 7, school_id: 7, school_name: "Fictional School 7", scope: "SCHOOL",
+      business_name: "Fictional School 7", bank_name_encrypted: bank.ciphertext,
+      bank_code_encrypted: encrypted("bankCode", "044").ciphertext,
+      account_name_encrypted: encrypted("accountName", holder).ciphertext,
+      account_number_encrypted: encrypted("accountNumber", accountNumber).ciphertext,
+      account_last4: "6789", encryption_key_version: bank.keyVersion,
+      verification_status: status, last_settlement_status: "NOT_SETTLED",
+      updated_at: new Date("2026-10-01T00:00:00Z"),
+    };
+  };
+  const owner = { "x-test-owner": "true", "Idempotency-Key": "diagnostic-key-0001" };
+  let resolve: ReturnType<typeof vi.spyOn>;
+  let warn: ReturnType<typeof vi.spyOn>;
+  let transactionQueries: Array<{ sql: string; values: unknown[] }>;
+
+  beforeEach(() => {
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", secret);
+    vi.stubGlobal("fetch", ((original) => (input: any, init?: any) => {
+      if (!String(input).startsWith("http://127.0.0.1")) throw new Error("No external requests allowed");
+      return original(input, init);
+    })(globalThis.fetch));
+    resolve = vi.spyOn(FlutterwavePayrollV3Client.prototype, "resolveNigerianAccount");
+    warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined as any);
+    transactionQueries = [];
+    db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      db.queries.push({ sql, values });
+      return { rows: [profile()], rowCount: 1 };
+    });
+    db.connect.mockResolvedValue({
+      query: vi.fn(async (sql: string, values: unknown[] = []) => {
+        transactionQueries.push({ sql, values });
+        return sql.includes("UPDATE settlement_payroll_profiles")
+          ? { rows: [{ ...profile(sql.includes("'VERIFIED'") ? "VERIFIED" : "ACTION_REQUIRED") }], rowCount: 1 }
+          : { rows: [], rowCount: 0 };
+      }),
+      release: vi.fn(),
+    });
+  });
+  afterEach(() => { resolve.mockRestore(); warn.mockRestore(); vi.unstubAllGlobals(); });
+
+  const providerError = (diagnostic: ConstructorParameters<typeof FlutterwaveProviderResponseError>[1], uncertain = false) => {
+    const error = uncertain
+      ? new FlutterwaveProviderUncertainError(diagnostic)
+      : new FlutterwaveProviderResponseError("Flutterwave could not verify", diagnostic);
+    error.operation = "ACCOUNT_RESOLUTION";
+    return error;
+  };
+
+  function expectNoLeaks(text: string) {
+    for (const forbidden of [secret, accountNumber, holder, "encrypted", "Fictional Bank"]) {
+      expect(text).not.toContain(forbidden);
+    }
+  }
+
+  it.each([
+    [{ providerHttpStatus: 401, category: "PROVIDER_AUTH_REJECTED", reason: "CREDENTIAL_REJECTED" }, false, "provider HTTP 401"],
+    [{ providerHttpStatus: 403, category: "PROVIDER_AUTH_REJECTED", reason: "CREDENTIAL_REJECTED" }, false, "provider HTTP 403"],
+    [{ providerHttpStatus: 400, category: "INVALID_BANK_OR_ACCOUNT", reason: "ACCOUNT_NOT_RESOLVED" }, false, "provider HTTP 400"],
+    [{ providerHttpStatus: 429, category: "PROVIDER_RATE_LIMITED", reason: "UNCLASSIFIED" }, false, "provider HTTP 429"],
+    [{ providerHttpStatus: 502, category: "PROVIDER_OUTAGE", reason: "UNCLASSIFIED" }, false, "provider HTTP 502"],
+    [{ providerHttpStatus: 200, category: "UNEXPECTED_PROVIDER_RESPONSE", reason: "MISSING_STATUS_FIELD" }, false, "provider HTTP 200"],
+    [{ providerHttpStatus: null, category: "PROVIDER_TIMEOUT", reason: "UNCLASSIFIED" }, true, "no provider HTTP status"],
+    [{ providerHttpStatus: null, category: "PROVIDER_NETWORK_FAILURE", reason: "UNCLASSIFIED" }, true, "no provider HTTP status"],
+  ] as const)("returns a safe %o diagnostic, keeps the profile pending and writes no audit", async (diagnostic, uncertain, statusText) => {
+    resolve.mockRejectedValue(providerError(diagnostic as any, uncertain));
+    const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
+    const text = await response.text();
+    expect(response.status).toBe(503);
+    const body = JSON.parse(text);
+    expect(body.error.code).toBe(`BANK_RESOLUTION_${diagnostic.category}`);
+    expect(body.error.message).toContain(statusText);
+    expect(body.error.message).toContain("remain unverified");
+    expectNoLeaks(text);
+    expect(resolve).toHaveBeenCalledTimes(1);
+    // Generic provider errors start no transaction: no status update and no success/mismatch audit.
+    expect(db.connect).not.toHaveBeenCalled();
+    expect(db.queries.every(q => q.sql.trim().startsWith("SELECT"))).toBe(true);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const logged = JSON.stringify(warn.mock.calls[0]);
+    expect(logged).toContain(diagnostic.category);
+    expectNoLeaks(logged);
+  });
+
+  it("verifies only on a genuine matching resolution and records the success audit", async () => {
+    resolve.mockResolvedValue({ resolvedAccountNumber: accountNumber, resolvedAccountName: holder });
+    const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
+    expect(response.status).toBe(200);
+    // The existing Owner projection intentionally shows bank name and last four only.
+    const text = await response.text();
+    expect(text).not.toContain(accountNumber);
+    expect(text).not.toContain(secret);
+    expect(transactionQueries.some(q => q.sql.includes("'VERIFIED'") && q.values.includes("6789"))).toBe(true);
+    expect(transactionQueries.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the mismatch path as 409 ACTION_REQUIRED with its own audit", async () => {
+    resolve.mockResolvedValue({ resolvedAccountNumber: accountNumber, resolvedAccountName: "Someone Else Entirely" });
+    const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
+    const text = await response.text();
+    expect(response.status).toBe(409);
+    expect(JSON.parse(text).error.code).toBe("SETTLEMENT_BENEFICIARY_MISMATCH");
+    expectNoLeaks(text);
+    expect(text).not.toContain("Someone Else Entirely");
+    expect(transactionQueries.some(q => q.sql.includes("'ACTION_REQUIRED'"))).toBe(true);
+    expect(transactionQueries.some(q => q.values.includes("SETTLEMENT_ACCOUNT_NAME_MISMATCH"))).toBe(true);
+    expect(transactionQueries.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(false);
+  });
+
+  it("does not apply bank-resolution codes to provider errors from other operations", async () => {
+    resolve.mockRejectedValue(new FlutterwaveProviderResponseError("Flutterwave could not verify", {
+      providerHttpStatus: 500, category: "PROVIDER_OUTAGE", reason: "UNCLASSIFIED",
+    }));
+    const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
+    expect(((await response.json()) as any).error.code).toBe("PAYROLL_PROVIDER_UNAVAILABLE");
   });
 });

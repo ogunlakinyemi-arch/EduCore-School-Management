@@ -108,6 +108,30 @@ describe('Development row-local bank verification (mock API, real React Query)',
     expect(f.verify).toHaveBeenCalledTimes(1);
     expect(f.list).toHaveBeenCalledTimes(2); expect(f.detail).toHaveBeenCalledTimes(2);
   });
+  it.each([
+    ['BANK_RESOLUTION_PROVIDER_AUTH_REJECTED', 'provider HTTP 401', false],
+    ['BANK_RESOLUTION_INVALID_BANK_OR_ACCOUNT', 'provider HTTP 400', true],
+    ['BANK_RESOLUTION_PROVIDER_RATE_LIMITED', 'provider HTTP 429', false],
+    ['BANK_RESOLUTION_PROVIDER_OUTAGE', 'provider HTTP 502', false],
+    ['BANK_RESOLUTION_PROVIDER_TIMEOUT', 'no provider HTTP status', false],
+  ])('shows the safe server diagnostic code %s once, without retrying', async (code, detail, fictionalHint) => {
+    f.verify.mockRejectedValue(Object.assign(new Error(`HTTP 503: Flutterwave did not confirm (${detail}). The bank details remain unverified.`), {
+      status: 503, data: { error: 'safe', code },
+    }));
+    await open(); await click();
+    expect(result().getAttribute('role')).toBe('alert');
+    expect(result().textContent).toContain('HTTP 503');
+    expect(result().textContent).toContain(detail);
+    expect(result().textContent).toContain(`Diagnostic code: ${code}.`);
+    expect(result().textContent?.includes('Fictional or test bank details')).toBe(fictionalHint);
+    expect(node('saved-7').textContent).toBe('PENDING_VERIFICATION');
+    expect(f.verify).toHaveBeenCalledTimes(1);
+  });
+  it('ignores non-allowlisted error codes', async () => {
+    f.verify.mockRejectedValue(Object.assign(new Error('Unavailable'), { status: 503, data: { code: 'PAYROLL_PROVIDER_UNAVAILABLE' } }));
+    await open(); await click();
+    expect(result().textContent).not.toContain('Diagnostic code');
+  });
   it('clears an old error immediately when another intentional attempt begins', async () => {
     const pending = deferred();
     f.verify.mockRejectedValueOnce(new Error('Previous unavailable response')).mockReturnValueOnce(pending.promise);

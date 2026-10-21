@@ -36,6 +36,97 @@ export class FlutterwavePayrollAmbiguousError extends Error {
   }
 }
 
+/**
+ * Sanitized provider-diagnostic categories. These are the only values that
+ * may leave this module: never the raw provider body, message, key or bank data.
+ */
+export type ProviderDiagnosticCategory =
+  | "PROVIDER_AUTH_REJECTED"
+  | "INVALID_BANK_OR_ACCOUNT"
+  | "PROVIDER_RATE_LIMITED"
+  | "PROVIDER_OUTAGE"
+  | "UNEXPECTED_PROVIDER_RESPONSE"
+  | "PROVIDER_TIMEOUT"
+  | "PROVIDER_NETWORK_FAILURE"
+  | "NON_JSON_PROVIDER_RESPONSE";
+
+/** Fixed, allowlisted reason codes derived from (never copied from) provider text. */
+export type ProviderDiagnosticReason =
+  | "CREDENTIAL_REJECTED"
+  | "ACCOUNT_NOT_RESOLVED"
+  | "BANK_NOT_SUPPORTED"
+  | "TEST_MODE_ACCOUNT_RESTRICTION"
+  | "MISSING_STATUS_FIELD"
+  | "RESOLVED_DETAILS_DID_NOT_MATCH"
+  | "UNCLASSIFIED";
+
+export interface ProviderDiagnostic {
+  providerHttpStatus: number | null;
+  category: ProviderDiagnosticCategory;
+  reason: ProviderDiagnosticReason;
+}
+
+const DIAGNOSTIC_REASON_TEXT: Record<ProviderDiagnosticReason, string> = {
+  CREDENTIAL_REJECTED: "the provider rejected the configured credential",
+  ACCOUNT_NOT_RESOLVED: "the provider could not resolve this account number at this bank",
+  BANK_NOT_SUPPORTED: "the provider did not accept this bank code",
+  TEST_MODE_ACCOUNT_RESTRICTION: "the provider's TEST mode does not resolve this account",
+  MISSING_STATUS_FIELD: "the provider response did not include a recognised status",
+  RESOLVED_DETAILS_DID_NOT_MATCH: "the provider did not return matching account details",
+  UNCLASSIFIED: "no further reason could be safely classified",
+};
+
+/** Plain-language, secret-free description of a diagnostic, safe for logs and the Owner UI. */
+export function describeProviderDiagnostic(diagnostic: ProviderDiagnostic): string {
+  const status = diagnostic.providerHttpStatus === null
+    ? "no provider HTTP status"
+    : `provider HTTP ${diagnostic.providerHttpStatus}`;
+  return `${status}; ${DIAGNOSTIC_REASON_TEXT[diagnostic.reason]}`;
+}
+
+function classifyProviderReason(message: unknown, httpStatus: number): ProviderDiagnosticReason {
+  if (httpStatus === 401 || httpStatus === 403) return "CREDENTIAL_REJECTED";
+  // Pattern-match only; the provider text itself is discarded.
+  const text = typeof message === "string" ? message.slice(0, 300).toLowerCase() : "";
+  if (!text) return "UNCLASSIFIED";
+  if (/\b(secret|api) ?key\b|unauthori[sz]ed|invalid authorization/.test(text)) return "CREDENTIAL_REJECTED";
+  if (/test ?mode|sandbox|test account/.test(text)) return "TEST_MODE_ACCOUNT_RESTRICTION";
+  if (/bank/.test(text) && /invalid|not (found|supported|available)|unsupported|unknown/.test(text)) {
+    return "BANK_NOT_SUPPORTED";
+  }
+  if (/account/.test(text) && /could not|cannot|unable|invalid|not (found|valid|resolved)|failed/.test(text)) {
+    return "ACCOUNT_NOT_RESOLVED";
+  }
+  return "UNCLASSIFIED";
+}
+
+function categoryForHttpStatus(httpStatus: number): ProviderDiagnosticCategory {
+  if (httpStatus === 401 || httpStatus === 403) return "PROVIDER_AUTH_REJECTED";
+  if (httpStatus === 429) return "PROVIDER_RATE_LIMITED";
+  if (httpStatus >= 500) return "PROVIDER_OUTAGE";
+  if (httpStatus >= 400) return "INVALID_BANK_OR_ACCOUNT";
+  return "UNEXPECTED_PROVIDER_RESPONSE";
+}
+
+/** A readable provider rejection/unexpected schema, with only sanitized diagnostics. */
+export class FlutterwaveProviderResponseError extends FlutterwavePayrollUnavailableError {
+  /** Set only by read-only bank-account resolution; payroll transfer errors keep their existing handling. */
+  operation: "ACCOUNT_RESOLUTION" | null = null;
+  constructor(message: string, readonly diagnostic: ProviderDiagnostic) {
+    super(message);
+    this.name = "FlutterwaveProviderResponseError";
+  }
+}
+
+/** Transport/parse uncertainty, with only sanitized diagnostics. */
+export class FlutterwaveProviderUncertainError extends FlutterwavePayrollAmbiguousError {
+  operation: "ACCOUNT_RESOLUTION" | null = null;
+  constructor(readonly diagnostic: ProviderDiagnostic) {
+    super();
+    this.name = "FlutterwaveProviderUncertainError";
+  }
+}
+
 export interface BankResolution {
   resolvedAccountNumber: string;
   resolvedAccountName: string;
@@ -183,24 +274,43 @@ async function v3Request(
         ...init.headers,
       },
     });
-  } catch {
+  } catch (error) {
     // Never include the secret, bank details, provider request, or raw SDK
     // exception in client errors, logs, or the durable audit event.
-    throw new FlutterwavePayrollAmbiguousError();
+    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    throw new FlutterwaveProviderUncertainError({
+      providerHttpStatus: null,
+      category: timedOut ? "PROVIDER_TIMEOUT" : "PROVIDER_NETWORK_FAILURE",
+      reason: "UNCLASSIFIED",
+    });
   }
+  const httpStatus = response.status;
   let result: unknown;
   try {
     result = await response.json();
   } catch {
-    throw new FlutterwavePayrollAmbiguousError();
+    throw new FlutterwaveProviderUncertainError({
+      providerHttpStatus: httpStatus,
+      category: "NON_JSON_PROVIDER_RESPONSE",
+      reason: "UNCLASSIFIED",
+    });
   }
   if (!result || typeof result !== "object" || Array.isArray(result)) {
-    throw new FlutterwavePayrollAmbiguousError();
+    throw new FlutterwaveProviderUncertainError({
+      providerHttpStatus: httpStatus,
+      category: "NON_JSON_PROVIDER_RESPONSE",
+      reason: "UNCLASSIFIED",
+    });
   }
   const body = result as JsonObject;
   if (!response.ok || typeof body.status !== "string") {
-    throw new FlutterwavePayrollUnavailableError(
+    throw new FlutterwaveProviderResponseError(
       "Flutterwave could not verify or accept this payroll operation; check the stored provider status before proceeding",
+      {
+        providerHttpStatus: httpStatus,
+        category: response.ok ? "UNEXPECTED_PROVIDER_RESPONSE" : categoryForHttpStatus(httpStatus),
+        reason: response.ok ? "MISSING_STATUS_FIELD" : classifyProviderReason(body.message, httpStatus),
+      },
     );
   }
   return body;
@@ -240,13 +350,21 @@ export class FlutterwavePayrollV3Client {
     }
     // Read-only account resolution must not enable payroll transfers or create subaccounts.
     const key = developmentKey ?? providerKey(this.env, capability.mode as "TEST" | "LIVE");
-    const body = await v3Request("/accounts/resolve", key, {
-      method: "POST",
-      body: JSON.stringify({
-        account_number: input.accountNumber,
-        account_bank: input.bankCode,
-      }),
-    }, this.fetchImpl);
+    let body: JsonObject;
+    try {
+      body = await v3Request("/accounts/resolve", key, {
+        method: "POST",
+        body: JSON.stringify({
+          account_number: input.accountNumber,
+          account_bank: input.bankCode,
+        }),
+      }, this.fetchImpl);
+    } catch (error) {
+      if (error instanceof FlutterwaveProviderResponseError || error instanceof FlutterwaveProviderUncertainError) {
+        error.operation = "ACCOUNT_RESOLUTION";
+      }
+      throw error;
+    }
     const resolved = record(body.data);
     if (
       body.status !== "success" ||
@@ -255,9 +373,16 @@ export class FlutterwavePayrollV3Client {
       resolved.account_number !== input.accountNumber ||
       resolved.account_name.trim().length < 2
     ) {
-      throw new FlutterwavePayrollUnavailableError(
+      const mismatch = new FlutterwaveProviderResponseError(
         "Flutterwave did not return matching verified bank-account details",
+        {
+          providerHttpStatus: 200,
+          category: "UNEXPECTED_PROVIDER_RESPONSE",
+          reason: body.status === "success" ? "RESOLVED_DETAILS_DID_NOT_MATCH" : classifyProviderReason(body.message, 200),
+        },
       );
+      mismatch.operation = "ACCOUNT_RESOLUTION";
+      throw mismatch;
     }
     return {
       resolvedAccountNumber: resolved.account_number,

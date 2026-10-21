@@ -104,3 +104,9 @@ The user relayed Flutterwave Support clarification on 2026-10-13: a collection s
 **Why:** The prior browser observation compared an unlabeled identity row with the synthetic checkout customer/name expectations, without provider evidence establishing whether that row represented the main merchant, customer or subaccount.
 
 **How to apply:** Distinguish main merchant authentication, split-recipient IDs, subaccount labels, bank-holder names and checkout customer/customization fields. Verify main merchant identity independently; do not use cosmetic checkout customization or a subaccount rename as ownership proof. A GET that omits the business email does not establish that the submitted email was deleted or empty.
+
+Bank-resolution failures must preserve the provider HTTP status and a sanitized category/reason, never a generic 503. The user stated on 2026-10-21 that the Development school bank account they entered is fictional, so a real-provider rejection of it is expected, not a defect.
+
+**Why:** A 503 with no detail could not distinguish credential rejection, invalid fictional account data, rate limits, outages or network uncertainty.
+
+**How to apply:** Keep diagnostics allowlisted (fixed reason codes from pattern matching, never echoed provider text). Generic provider errors must not change verification status or write success/mismatch audits. Do not treat a fictional-account rejection as evidence the credential or integration is broken, and never suggest fictional data for LIVE.

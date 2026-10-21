@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   configuredPayrollProviderCapability,
+  describeProviderDiagnostic,
+  FlutterwaveProviderResponseError,
+  FlutterwaveProviderUncertainError,
   FlutterwavePayrollAmbiguousError,
   FlutterwavePayrollPayrollIntegrityError,
   FlutterwavePayrollUnavailableError,
@@ -158,6 +161,74 @@ describe("Flutterwave v3 payroll transfers", () => {
       amountNaira: 25000,
       periodMonth: "2025-03",
     })).rejects.toBeInstanceOf(FlutterwavePayrollAmbiguousError);
+  });
+
+  describe("sanitized bank-resolution diagnostics (mocked HTTP only)", () => {
+    const secret = "FLWSECK_TEST-abcdefgh12345678";
+    const accountNumber = "0123456789";
+    const leakyMessage = (extra: string) =>
+      `${extra} for ${accountNumber} holder Ada Fictional key ${secret} bvn 22222222222`;
+
+    async function diagnose(fetchImpl: typeof fetch) {
+      const client = new FlutterwavePayrollV3Client(testEnv(), fetchImpl);
+      const error = await client.resolveNigerianAccount({ bankCode: "044", accountNumber })
+        .then(() => null, (failure: unknown) => failure);
+      expect(fetchImpl).toHaveBeenCalledTimes(1); // no retries
+      const serialized = JSON.stringify({ error, message: (error as Error).message, diagnostic: (error as any).diagnostic });
+      for (const forbidden of [secret, accountNumber, "Ada Fictional", "22222222222", "holder"]) {
+        expect(serialized).not.toContain(forbidden);
+      }
+      return error as FlutterwaveProviderResponseError | FlutterwaveProviderUncertainError;
+    }
+
+    it.each([
+      [401, "Invalid authorization key", "PROVIDER_AUTH_REJECTED", "CREDENTIAL_REJECTED"],
+      [403, "Forbidden", "PROVIDER_AUTH_REJECTED", "CREDENTIAL_REJECTED"],
+      [400, "Sorry, recipient account could not be validated. Please try again", "INVALID_BANK_OR_ACCOUNT", "ACCOUNT_NOT_RESOLVED"],
+      [400, "Invalid bank code supplied", "INVALID_BANK_OR_ACCOUNT", "BANK_NOT_SUPPORTED"],
+      [422, "Something else entirely", "INVALID_BANK_OR_ACCOUNT", "UNCLASSIFIED"],
+      [429, "Too many requests", "PROVIDER_RATE_LIMITED", "UNCLASSIFIED"],
+      [500, "Internal server error", "PROVIDER_OUTAGE", "UNCLASSIFIED"],
+      [503, "Service unavailable", "PROVIDER_OUTAGE", "UNCLASSIFIED"],
+    ])("HTTP %i keeps provider status with category %s/%s", async (status, message, category, reason) => {
+      const error = await diagnose(vi.fn<typeof fetch>().mockResolvedValue(
+        jsonResponse({ status: "error", message: leakyMessage(message), data: { account_number: accountNumber } }, status),
+      ));
+      expect(error).toBeInstanceOf(FlutterwaveProviderResponseError);
+      expect(error).toBeInstanceOf(FlutterwavePayrollUnavailableError);
+      expect(error.operation).toBe("ACCOUNT_RESOLUTION");
+      expect(error.diagnostic).toEqual({ providerHttpStatus: status, category, reason });
+      expect(describeProviderDiagnostic(error.diagnostic)).toContain(`provider HTTP ${status}`);
+    });
+
+    it("classifies a 200 response without a status field as an unexpected schema", async () => {
+      const error = await diagnose(vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ data: { account_number: accountNumber } })));
+      expect(error.diagnostic).toEqual({
+        providerHttpStatus: 200, category: "UNEXPECTED_PROVIDER_RESPONSE", reason: "MISSING_STATUS_FIELD",
+      });
+    });
+
+    it("classifies a successful response for a different account as unexpected, not verified", async () => {
+      const error = await diagnose(vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({
+        status: "success", data: { account_number: "9999999999", account_name: "Ada Fictional" },
+      })));
+      expect(error).toBeInstanceOf(FlutterwaveProviderResponseError);
+      expect(error.diagnostic.reason).toBe("RESOLVED_DETAILS_DID_NOT_MATCH");
+    });
+
+    it("keeps timeouts, network failures and non-JSON bodies as uncertain", async () => {
+      const timeout = Object.assign(new Error(`timed out ${secret}`), { name: "TimeoutError" });
+      expect((await diagnose(vi.fn<typeof fetch>().mockRejectedValue(timeout))).diagnostic)
+        .toEqual({ providerHttpStatus: null, category: "PROVIDER_TIMEOUT", reason: "UNCLASSIFIED" });
+      const network = await diagnose(vi.fn<typeof fetch>().mockRejectedValue(new Error(`ECONNRESET ${accountNumber}`)));
+      expect(network).toBeInstanceOf(FlutterwaveProviderUncertainError);
+      expect(network).toBeInstanceOf(FlutterwavePayrollAmbiguousError);
+      expect(network.diagnostic.category).toBe("PROVIDER_NETWORK_FAILURE");
+      const html = await diagnose(vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(`<html>${accountNumber}</html>`, { status: 502 }),
+      ));
+      expect(html.diagnostic).toEqual({ providerHttpStatus: 502, category: "NON_JSON_PROVIDER_RESPONSE", reason: "UNCLASSIFIED" });
+    });
   });
 
   it("rejects bank-account mismatches, malformed provider amounts and non-integer transfers", async () => {

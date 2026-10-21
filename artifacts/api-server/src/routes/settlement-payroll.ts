@@ -25,8 +25,13 @@ import {
   payrollIdempotencyDigest,
   PayrollEncryptionConfigurationError,
 } from "../lib/payroll-bank-encryption";
+import { logger } from "../lib/logger";
 import {
   configuredPayrollProviderCapability,
+  describeProviderDiagnostic,
+  FlutterwaveProviderResponseError,
+  FlutterwaveProviderUncertainError,
+  type ProviderDiagnosticCategory,
   FlutterwavePayrollAmbiguousError,
   FlutterwavePayrollPayrollIntegrityError,
   FlutterwavePayrollUnavailableError,
@@ -69,6 +74,36 @@ function run(handler: RequestHandler) {
     void handler(req, res).catch((error: unknown) => next(translateFailure(error)));
 }
 
+const BANK_RESOLUTION_SUMMARY: Record<ProviderDiagnosticCategory, string> = {
+  PROVIDER_AUTH_REJECTED: "Flutterwave rejected the configured credential or its permissions",
+  INVALID_BANK_OR_ACCOUNT: "Flutterwave rejected these bank or account details",
+  PROVIDER_RATE_LIMITED: "Flutterwave rate-limited the bank-verification request",
+  PROVIDER_OUTAGE: "Flutterwave reported a service error",
+  UNEXPECTED_PROVIDER_RESPONSE: "Flutterwave returned an unexpected response",
+  PROVIDER_TIMEOUT: "Flutterwave did not respond before the time limit",
+  PROVIDER_NETWORK_FAILURE: "Flutterwave could not be reached",
+  NON_JSON_PROVIDER_RESPONSE: "Flutterwave returned an unreadable response",
+};
+
+function bankResolutionFailure(diagnostic: FlutterwaveProviderResponseError["diagnostic"]): AuthError {
+  const code = `BANK_RESOLUTION_${diagnostic.category}`;
+  // Only allowlisted diagnostic fields are logged: never keys, bank data or provider bodies.
+  logger.warn({
+    bankResolutionDiagnostic: {
+      code,
+      providerHttpStatus: diagnostic.providerHttpStatus,
+      category: diagnostic.category,
+      reason: diagnostic.reason,
+    },
+  }, "Bank-account resolution was not confirmed by the provider");
+  return new AuthError(
+    503,
+    `${BANK_RESOLUTION_SUMMARY[diagnostic.category]} (${describeProviderDiagnostic(diagnostic)}). ` +
+      "The bank details remain unverified; nothing was marked verified.",
+    code,
+  );
+}
+
 function translateFailure(error: unknown): unknown {
   if (error instanceof AuthError) return error;
   if (error instanceof PayrollEncryptionConfigurationError) {
@@ -77,6 +112,12 @@ function translateFailure(error: unknown): unknown {
       "Secure bank-information encryption is unavailable; no payroll or settlement information was saved",
       "PAYROLL_ENCRYPTION_UNAVAILABLE",
     );
+  }
+  if (
+    (error instanceof FlutterwaveProviderResponseError || error instanceof FlutterwaveProviderUncertainError) &&
+    error.operation === "ACCOUNT_RESOLUTION"
+  ) {
+    return bankResolutionFailure(error.diagnostic);
   }
   if (error instanceof FlutterwavePayrollUnavailableError) {
     return new AuthError(503, error.message, "PAYROLL_PROVIDER_UNAVAILABLE");
