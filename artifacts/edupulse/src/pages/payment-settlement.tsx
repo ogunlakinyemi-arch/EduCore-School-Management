@@ -12,6 +12,7 @@ import type { SchoolSettlementSummary } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, TenantPicker, useTenant, date } from '@/components/shared';
 import { BankFields, Freshness, IdentityBoundary, Notice, ProviderBanner, SettlementHistoryTable, Tabs, entry, errMsg, note, FRESH_MS } from './payroll-common';
 import { SettlementRemovalReviewControl } from '@/components/settlement-removal-review';
+import { DevelopmentBankVerification } from '@/components/development-bank-verification';
 
 type Profile = { status: string; bankName?: string | null; accountName?: string | null; accountLast4?: string | null; updatedAt?: string | null; businessName?: string | null; bankCode?: string | null; businessRegistrationNumber?: string | null; settlementContactEmail?: string | null; settlementContactPhone?: string | null; providerSubaccountId?: string | null };
 
@@ -92,15 +93,22 @@ function SchoolDetail({ s, onClose }: { s: SchoolSettlementSummary; onClose: () 
 }
 
 function OwnerSettlement() {
+  const development = import.meta.env.DEV;
   const qc = useQueryClient();
   const [tab, setTab] = useState<'company' | 'schools' | 'history'>('company');
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState(''); const [fail, setFail] = useState('');
   const [search, setSearch] = useState(''); const [status, setStatus] = useState<'all' | 'NOT_CONFIGURED' | 'PENDING_VERIFICATION' | 'VERIFIED' | 'ACTION_REQUIRED'>('all');
   const [detail, setDetail] = useState<SchoolSettlementSummary | null>(null);
+  const filterKey = JSON.stringify([search, status]);
+  const [retained, setRetained] = useState<{ filter: string; rows: Record<number, SchoolSettlementSummary> }>({ filter: '', rows: {} });
   const company = useGetPlatformPaymentSettlement({ query: { queryKey: getGetPlatformPaymentSettlementQueryKey(), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
   const sp = { status, ...(search.trim() ? { search: search.trim() } : {}), limit: 100 };
   const schools = useListPlatformSchoolSettlements(sp, { query: { enabled: tab === 'schools', queryKey: getListPlatformSchoolSettlementsQueryKey(sp), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
+  // Keep a completed row's result visible if its new status leaves the selected filter.
+  const listedSchools = schools.data ?? [];
+  const displaySchools = development ? [...listedSchools, ...Object.values(retained.filter === filterKey ? retained.rows : {})
+    .filter(row => !listedSchools.some(current => current.schoolId === row.schoolId))] : listedSchools;
   const hp = { limit: 50 };
   const hist = useListPlatformSettlementHistory(hp, { query: { enabled: tab === 'history', queryKey: getListPlatformSettlementHistoryQueryKey(hp), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
   const update = useUpdatePlatformPaymentSettlement();
@@ -131,12 +139,18 @@ function OwnerSettlement() {
     {tab === 'schools' && <section className="panel overflow-hidden"><div className="flex flex-wrap gap-3 border-b border-[hsl(var(--border))] p-4">
       <input className={`${entry} max-w-xs`} placeholder="Search schools" value={search} onChange={e => setSearch(e.target.value)} aria-label="Search schools" />
       <select className={`${entry} max-w-[220px]`} value={status} onChange={e => setStatus(e.target.value as typeof status)} aria-label="Status filter">{['all', 'NOT_CONFIGURED', 'PENDING_VERIFICATION', 'VERIFIED', 'ACTION_REQUIRED'].map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.replaceAll('_', ' ')}</option>)}</select></div>
-      {schools.isLoading ? <SkeletonPage /> : schools.isError ? <ErrorState retry={() => schools.refetch()} /> : !(schools.data ?? []).length ? <EmptyState icon={Landmark} title="No schools match" description="Adjust the filter or search." /> :
-        <div className="divide-y divide-[hsl(var(--border))]">{(schools.data ?? []).map(s => <div key={s.schoolId} className="flex flex-wrap items-center gap-4 p-4" data-testid={`row-school-settlement-${s.schoolId}`}>
+      {development && <p className={`${note} px-4 pb-3`}>Even TEST verification may contact Flutterwave. Only verify intentional test bank data or genuine school details. This does not create a collection subaccount or settle funds.</p>}
+      {schools.isError && development && displaySchools.length > 0 && <ErrorState retry={() => schools.refetch()} />}
+      {schools.isLoading ? <SkeletonPage /> : schools.isError && (!development || !displaySchools.length) ? <ErrorState retry={() => schools.refetch()} /> : !displaySchools.length ? <EmptyState icon={Landmark} title="No schools match" description="Adjust the filter or search." /> :
+        <div className="divide-y divide-[hsl(var(--border))]">{displaySchools.map(s => <div key={s.schoolId} className="flex flex-wrap items-center gap-4 p-4" data-testid={`row-school-settlement-${s.schoolId}`}>
           <div className="min-w-0 flex-1"><div className="font-bold">{s.schoolName}</div><div className={note}>{s.bankName ?? 'No bank'} {s.accountLast4 ? `/ ****${s.accountLast4}` : ''} / {s.capability.mode.replace('_', ' ').toLowerCase()} mode</div></div>
+          {!listedSchools.some(current => current.schoolId === s.schoolId) && <span className={note}>Result retained outside the current filter; badge shows last listed status.</span>}
           <StatusPill value={s.status === 'VERIFIED' ? 'verified' : s.status === 'ACTION_REQUIRED' ? 'failed' : s.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />
           <Button variant="outline" onClick={() => setDetail(s)}>Details</Button>
-          <Button variant="quiet" disabled={verify.isPending || s.status === 'NOT_CONFIGURED' || !(s.capability.collection?.bankAccountVerificationConfigured || ['TEST', 'LIVE'].includes(s.capability.mode))} title="Verify the saved bank account holder only; this does not create a collection subaccount or prove settlement." onClick={() => runVerify(s)} testId={`button-verify-${s.schoolId}`}>Verify bank details</Button>
+          {development ? <DevelopmentBankVerification school={s} retained={!listedSchools.some(current => current.schoolId === s.schoolId)} onStart={() => {
+            setMsg(''); setFail('');
+            setRetained(previous => ({ filter: filterKey, rows: { ...(previous.filter === filterKey ? previous.rows : {}), [s.schoolId]: s } }));
+          }} /> : <Button variant="quiet" disabled={verify.isPending || s.status === 'NOT_CONFIGURED' || !(s.capability.collection?.bankAccountVerificationConfigured || ['TEST', 'LIVE'].includes(s.capability.mode))} title="Verify the saved bank account holder only; this does not create a collection subaccount or prove settlement." onClick={() => runVerify(s)} testId={`button-verify-${s.schoolId}`}>Verify bank details</Button>}
         </div>)}</div>}</section>}
     {tab === 'history' && <section className="panel overflow-hidden">{hist.isLoading ? <SkeletonPage /> : hist.isError ? <ErrorState retry={() => hist.refetch()} /> : <SettlementHistoryTable rows={hist.data ?? []} showSchool />}</section>}
     {editing && <Modal title="Company settlement details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} scope="COMPANY" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}

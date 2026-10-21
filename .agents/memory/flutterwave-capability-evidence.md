@@ -9,6 +9,18 @@ TEST payment collections must be reported independently from payroll/payout conf
 
 **How to apply:** Never implicitly enable transfers from collection readiness. Preserve explicit transfer-mode gates, Development-only credential isolation, independent webhook authentication and provider verification. A credential passing local format validation is not proof Flutterwave accepts it.
 
+Bank-verification UX work and its tests must not implicitly authorize real
+account-resolution requests. Actual verification is only appropriate for
+intentional test bank data or genuine school details.
+
+**Why:** The user explicitly required mock-only verification of the bank-check
+UX and a warning that TEST credentials can still contact Flutterwave's real
+service.
+
+**How to apply:** Use mocked APIs/providers for UI regression checks. Do not
+click the operational verification action or infer permission from the presence
+of configured TEST credentials.
+
 Read-only authentication evidence must not be reported as payment, webhook or settlement evidence. Compare an authenticated read with an unauthenticated control before treating a successful catalog response as proof the credential was accepted.
 
 **Why:** A public catalog could succeed without checking credentials; even authenticated catalog access establishes none of the financial operations.
