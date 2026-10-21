@@ -1,15 +1,24 @@
 import {useState} from 'react';
-import {useGetNotificationChannelPolicy,useUpdateNotificationChannelPolicy} from '@workspace/api-client-react';
+import {useGetNotificationChannelPolicy,useUpdateNotificationChannelPolicy,useListOwnerSchoolDirectory} from '@workspace/api-client-react';
 import type {NotificationChannelPolicy} from '@workspace/api-client-react';
 const channels=['IN_APP','SMS','EMAIL','PUSH','TELEGRAM'] as const;
 export function OwnerNotificationPolicyControl(){
   const query=useGetNotificationChannelPolicy();
   const save=useUpdateNotificationChannelPolicy();
+  const directory=useListOwnerSchoolDirectory({status:'all'});
   const [draft,setDraft]=useState<NotificationChannelPolicy|null>(null);
   const [school,setSchool]=useState('');
+  const [schoolSearch,setSchoolSearch]=useState('');
   const [notice,setNotice]=useState('');
   const policy=draft??query.data?.policy;
   const availability=query.data?.availability??{};
+  const schools=directory.data?.schools??[];
+  const selectedSchool=schools.find(item=>String(item.id)===school);
+  const schoolLabel=(item:typeof schools[number])=>schools.some(other=>other.id!==item.id&&other.name.trim().toLowerCase()===item.name.trim().toLowerCase())
+    ?`${item.name} (reference #${item.id})`:item.name;
+  const visibleSchools=schools.filter(item=>schoolLabel(item).toLowerCase().includes(schoolSearch.trim().toLowerCase()))
+    .slice().sort((a,b)=>a.name.localeCompare(b.name)||a.id-b.id);
+  const schoolPickerDisabled=save.isPending||directory.isLoading||directory.isError||schools.length===0;
   const change=(event:string,channel:typeof channels[number],kind:'allowed'|'defaults',checked:boolean)=>{
     if(!policy)return;
     const rule=policy.events[event];
@@ -36,11 +45,28 @@ export function OwnerNotificationPolicyControl(){
       </fieldset>)}</div>
       <h3 className="font-bold">School-level permissions</h3>
       <p className="text-xs">Schools without an override inherit global rules. Overrides can only restrict global channels, never expand them.</p>
-      <label className="flex flex-wrap items-center gap-2 text-sm">School ID<input aria-label="School permission ID" type="number" min="1" className="rounded border p-2" value={school} onChange={e=>setSchool(e.target.value)}/>
-        <button type="button" className="rounded border px-3 py-2" disabled={!Number.isSafeInteger(Number(school))||Number(school)<1||save.isPending}
-          onClick={()=>{setDraft({...policy,schools:{...policy.schools,[String(Number(school))]:{enabled:true,allowed:[...channels]}}});setSchool('');}}>Add override</button></label>
+      {directory.isLoading?<p role="status">Loading schools…</p>:directory.isError?
+        <p role="alert">Could not load schools. <button type="button" onClick={()=>void directory.refetch()}>Retry school list</button></p>:
+        schools.length===0?<p role="status">No schools are available to your Owner account.</p>:null}
+      <div className="flex flex-wrap items-end gap-2 text-sm">
+        <label className="flex min-w-0 flex-col gap-1">Search schools
+          <input type="search" className="rounded border p-2" value={schoolSearch} disabled={schoolPickerDisabled}
+            onChange={e=>{setSchoolSearch(e.target.value);setSchool('');}}/></label>
+        <label className="flex min-w-0 flex-col gap-1">School
+          <select className="max-w-full rounded border p-2" value={selectedSchool?school:''} disabled={schoolPickerDisabled}
+            onChange={e=>setSchool(e.target.value)}>
+            <option value="">Select a school</option>
+            {visibleSchools.map(item=><option key={item.id} value={String(item.id)}>{schoolLabel(item)}</option>)}
+          </select></label>
+        <button type="button" className="rounded border px-3 py-2"
+          disabled={schoolPickerDisabled||directory.isFetching||!selectedSchool}
+          onClick={()=>{if(!selectedSchool||schoolPickerDisabled||directory.isFetching)return;
+            setDraft({...policy,schools:{...policy.schools,[String(selectedSchool.id)]:{enabled:true,allowed:[...channels]}}});
+            setSchool('');setSchoolSearch('');}}>Add override</button>
+      </div>
+      {!schoolPickerDisabled&&visibleSchools.length===0&&<p role="status">No schools match your search.</p>}
       {Object.entries(policy.schools).map(([id,permission])=><fieldset key={id} className="rounded border p-3">
-        <legend>School {id}</legend>
+        <legend>{schools.find(item=>String(item.id)===id)?schoolLabel(schools.find(item=>String(item.id)===id)!):`School not in current directory (reference #${id})`}</legend>
         <label className="mr-4 inline-flex min-h-10 items-center gap-2"><input type="checkbox" checked={permission.enabled} disabled={save.isPending}
           onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,enabled:e.target.checked}}})}/>Notifications permitted</label>
         {channels.map(channel=><label key={channel} className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" disabled={save.isPending||channel==='TELEGRAM'} checked={permission.allowed.includes(channel)}
