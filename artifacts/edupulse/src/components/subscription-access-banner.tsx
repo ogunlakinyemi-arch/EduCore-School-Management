@@ -2,6 +2,7 @@ import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { getGetMySubscriptionEnforcementQueryKey, useGetMySubscriptionEnforcement } from '@workspace/api-client-react';
 import type { SubscriptionAccessStatus } from '@workspace/api-client-react';
 import { date } from '@/components/shared';
+import { LiveSubscriptionAccessStatus } from './live-subscription-access-status';
 
 export type BannerAudience = 'teacher' | 'student' | 'parent';
 
@@ -20,6 +21,10 @@ export function SubscriptionAccessBanner({ audience }: { audience: BannerAudienc
   const items = query.data ?? [];
   const { restricted, active } = describeAccess(items, audience);
   if (query.isError) return <p role="status" className="mb-4 text-sm">Subscription status is unavailable. <button type="button" className="underline" onClick={() => void query.refetch()}>Retry</button></p>;
+  if (audience !== 'teacher' && items.some(item=>item.environment==='LIVE')) {
+    // Once LIVE is selected, never render the legacy unpaid/active explanation.
+    return <LiveSubscriptionAccessStatus items={items} audience={audience} />;
+  }
   if (!restricted.length) return null;
   const copy = (i: SubscriptionAccessStatus) => {
     const manual = i.restrictionReason === 'SCHOOL_SUBSCRIPTION_LOCKED';

@@ -25,12 +25,36 @@ paths:
       tags: [SubscriptionEnforcement]
       responses:
         '200':
-          description: Own student or related child access; no financial information
+          description: Own student or related child access. Server-selected LIVE never falls back to TEST; LIVE unavailable records grant no entitlement.
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/SubscriptionAccessStatus' }
+  /subscription-enforcement/live/me:
+    get:
+      operationId: getMyLiveSubscriptionAccess
+      tags: [SubscriptionEnforcement]
+      description: Development-only, hard-disabled release gate. Canonical identity and merchant scope are server-owned. No shared payment/subscription IDs or checkout capability.
+      parameters:
+        - in: query
+          name: studentId
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+        - in: query
+          name: audience
+          schema: { type: string, enum: [student, parent] }
+      responses:
+        '200':
+          description: Authorized children only. FAILED means an authenticated failure report, not independent financial verification. REFUNDED_REVERSED means a protective hold, not settled refund or recovery.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SubscriptionAccessStatus' }
+        '400': { description: Invalid selection or forbidden financial/tenant identifiers }
+        '401': { description: Sign-in required }
+        '404': { description: 'Selected student unavailable, including unauthorized identities' }
+        '503': { description: LIVE path disabled or temporarily unavailable; no TEST fallback }
   /subscription-enforcement/lock:
     post:
       operationId: lockSchoolSubscriptions
@@ -169,6 +193,16 @@ components:
       type: object
       required: [schoolId, studentId, schoolName, termName, startDate, enforcementDate, state, restricted]
       properties:
+        environment: { type: string, enum: [LIVE] }
+        audiences:
+          type: array
+          items: { type: string, enum: [student, parent] }
+        liveStatus:
+          type: string
+          enum: [PENDING, VERIFIED_ACTIVE, FAILED, REFUNDED_REVERSED, UNAVAILABLE]
+        entitled: { type: boolean }
+        studentName: { type: string }
+        receiptNumber: { type: [string, 'null'] }
         schoolId: { type: integer }
         studentId: { type: [integer, 'null'] }
         schoolName: { type: string }

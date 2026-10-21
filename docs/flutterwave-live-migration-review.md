@@ -1,8 +1,8 @@
-# LIVE readiness additive migration review — 2026-10-20
+# LIVE readiness additive migration review — 2026-10-21
 
 ## Decision
 
-**PASS for isolated fixture rehearsal; NOT approved for application-target apply.**
+**PASS on a source-derived representative target; NOT approved for application-target apply.**
 Only disposable Unix-socket PostgreSQL was used. Neither Development application
 nor Production schema/data was queried or migrated during this pass. The drafts
 are not registered in the automatic migration journal.
@@ -56,6 +56,12 @@ indexes. Existing primary/unique keys already cover activation/official-receipt/
 collection/accrual intent lookups, batch items and operator key replay. New parent
 unique keys support the exact composite FK column order.
 
+The family contract adds a non-unique partial expression index,
+`live_family_receipt_reference_idx`, on LIVE inbox environment and diagnostic
+reference where signature verification is true. It supports failure-report
+presentation only, never verified entitlement or financial attribution. It does
+not compete with the existing authenticated-inbox upsert uniqueness arbiter.
+
 The bounded review list is newest-first and limits100 rows; exact-receipt review
 uses a primary-key predicate, not a search through only the latest100. Unmatched
 receipts remain unassigned; the Owner's selected review namespace is not a claim
@@ -69,8 +75,9 @@ storage. Only fingerprint-bound action/reason/outcome metadata is retained.
 There are no Paid, transfer, refund-completed or hold-release review actions.
 
 Stage4 down locks the affected evidence roots and refuses any retained intents,
-receipts, authority reviews or operator audits. Empty reverse stage4 → stage3 and
-reapply were executed. No CASCADE drop or history deletion is used by down scripts.
+receipts, authority reviews or operator audits. Empty reverse stage4 → stage1 and
+full reapply were executed on the representative target. All four down drafts
+refused retained evidence. No CASCADE drop or history deletion is used by down scripts.
 `TRUNCATE ... CASCADE` occurs only in the disposable test fixture reset, never as
 an application recovery or migration operation.
 
@@ -82,26 +89,64 @@ creation cannot simply be changed to CONCURRENTLY inside this transaction.
 
 ## Executed compatibility checks and limits
 
-The corrected stage1–4 stack executed on disposable PostgreSQL alongside canonical
-identity/calendar fixtures and retained shared/SANDBOX history sentinels.
-Catalog checks showed new FKs validated and expected indexes present.
-Cross-school reviewed authority, invented collection identity and unauthenticated
-event source were rejected. Concurrent receipt delivery, full finalization,
-approval/export, adverse events, access reads and operator retries passed.
-No shared historical sentinel changed. Empty reverse/reapply passed; retained
-evidence refused rollback.
+The earlier minimal fixture remains useful workflow evidence. This pass additionally
+generated the **complete current declared schema** offline and initialized a new
+Unix-socket PostgreSQL cluster from its dependency-ordered statements:
 
-This is **not** a rehearsal of the complete current application or Production
-schema, data volume or drift. A verified historical/schema export, collision and
-existing-row CHECK/FK validation, migration-ledger comparison, lock rehearsal and
-separate apply approval remain required. The existing columns queried by the new
-consumers were exercised in fixtures, not assumed to certify every target schema.
-No claim is made that missing source uniqueness in an unrelated hardware-test
-export is fixed by these LIVE-only drafts.
+- **184 canonical tables, 690 validated canonical FKs, 1,241 statements.**
+- Schema-source fingerprint:
+  `948384891604f45539958c884bacf1ee28112e8ab99f8f82a4e46cd48924bfde`.
+- Unchanged raw export execution: **FAIL**, “there is no unique constraint matching
+  given keys for referenced table `staff_nfc_subscriptions`”.
+- Dependency-ordered export: **PASS**, preserving the exact duplicate-aware
+  statement multiset; **no supporting keys or constraints were synthesized**.
+  Multiset fingerprint:
+  `1a795752cb552c5ab09d399cf911b0eb1359ea2db8d3432d3a13ea125c97ddf7`.
+- The generic export guard separately remains **non-green**: it expects UNIQUE
+  INDEX ownership for `subscriptions_id_school_student_uq`,
+  `school_partner_attributions_id_partner_uq` and `parents_id_school_unique`.
+  Current source declares those same-name/same-column keys as UNIQUE constraints.
+  This is not absence of usable uniqueness. Neither source ownership nor the
+  generic guard was rewritten. The scoped rehearsal records this discrepancy;
+  it does not waive provenance review for an application target.
+- Four LIVE drafts added **14 tables, 19 validated FKs and 40 total LIVE indexes**
+  (including constraint-owned indexes). Wrong ordering failed atomically.
+  Duplicate up applies refused as one-shot drafts without partial schema changes.
+- Empty full reverse/reapply passed. A populated earlier-draft upgrade preserved
+  an authenticated diagnostic receipt and a legacy design intent; new authority
+  columns stayed null and state stayed PENDING. No activation was manufactured.
+- Cross-school authority, wrong environment/fixed amounts, audit UPDATE/DELETE
+  and retained-evidence rollback were refused.
+- All canonical column/default, constraint/validation and index definitions,
+  and all fields of fictional shared user/school/student/subscription sentinels,
+  matched the pre-migration snapshots. No shared historical record was rewritten.
+
+Reproduce without application credentials:
+`pnpm --filter @workspace/api-server exec vitest run src/services/flutterwave-live-target-schema.postgres.test.ts`.
+The test regenerates SQL from current source, uses constructor-only isolated DB
+access and removes the cluster. The exporter has no application-connection or
+migration/push capability.
+
+This is a representative **source-model** target, not an inspected live Development
+or Production catalog, historical dump, migration ledger, existing business-data
+volume, or historical trigger/function inventory. Actual-target drift/collisions,
+existing-row CHECK/FK compatibility, historical key ownership/provenance, lock/
+timeout windows, preservation/recovery plans and separate apply approval remain
+required. The unrelated NFC hardware-test export failure was not repaired or
+restarted. No application-target database was queried or migrated.
 
 ## Acceptance references
 
-Final relevant suite:221 tests across nine files, including41 coordinated
-workflow/application/operator/migration tests; API/frontend typechecks and diff
-checks passed. See `flutterwave-live-workflow-review.md` for exact counts and the
-provider/bank evidence that remains unavailable.
+Current distinct acceptance: **268 API tests across 11 executed files**, including
+60 coordinated tests and eight representative-target tests; **55 frontend tests
+across seven files**. Another 38 existing application-database opt-in tests stayed
+skipped; they were not redirected to an application database.
+
+The selected API full pass completed all 268 assertions but initially exceeded
+the representative fixture's default ten-second teardown deadline. Only that
+test-only cleanup deadline was extended to60 seconds; the affected eight-test
+suite was rerun successfully. Passing application suites were not repeated.
+API/frontend typechecks, Development API build/restart and diff checks passed.
+The public sign-in screenshot is not authenticated LIVE browser acceptance.
+See `flutterwave-live-workflow-review.md` for the exact coverage and remaining
+provider/bank blockers. This review authorizes no migration or LIVE operation.

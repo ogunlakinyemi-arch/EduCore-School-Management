@@ -353,6 +353,7 @@ import type {
   GetLibraryPermissions200,
   GetLibraryPermissionsParams,
   GetMyAcademicTimetableParams,
+  GetMyLiveSubscriptionAccessParams,
   GetMyPartnerNfcCardsParams,
   GetMyPartnerNfcStudentsParams,
   GetMyStaffNfcPartnerCommissionsParams,
@@ -31630,6 +31631,87 @@ export function useGetMySubscriptionEnforcement<TData = Awaited<ReturnType<typeo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMySubscriptionEnforcementQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyLiveSubscriptionAccessUrl = (params?: GetMyLiveSubscriptionAccessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/subscription-enforcement/live/me?${stringifiedParams}` : `/api/subscription-enforcement/live/me`
+}
+
+/**
+ * Development-only, hard-disabled release gate. Canonical identity and merchant scope are server-owned. No shared payment/subscription IDs or checkout capability.
+ */
+export const getMyLiveSubscriptionAccess = async (params?: GetMyLiveSubscriptionAccessParams, options?: Parameters<typeof customFetch>[1]): Promise<SubscriptionAccessStatus[]> => {
+
+  return customFetch<SubscriptionAccessStatus[]>(getGetMyLiveSubscriptionAccessUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyLiveSubscriptionAccessQueryKey = (params?: GetMyLiveSubscriptionAccessParams,) => {
+    return [
+    `/api/subscription-enforcement/live/me`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyLiveSubscriptionAccessQueryOptions = <TData = Awaited<ReturnType<typeof getMyLiveSubscriptionAccess>>, TError = ErrorType<void>>(params?: GetMyLiveSubscriptionAccessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyLiveSubscriptionAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyLiveSubscriptionAccessQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyLiveSubscriptionAccess>>> = ({ signal }) => getMyLiveSubscriptionAccess(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyLiveSubscriptionAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyLiveSubscriptionAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getMyLiveSubscriptionAccess>>>
+export type GetMyLiveSubscriptionAccessQueryError = ErrorType<void>
+
+
+
+export function useGetMyLiveSubscriptionAccess<TData = Awaited<ReturnType<typeof getMyLiveSubscriptionAccess>>, TError = ErrorType<void>>(
+ params?: GetMyLiveSubscriptionAccessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyLiveSubscriptionAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyLiveSubscriptionAccessQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

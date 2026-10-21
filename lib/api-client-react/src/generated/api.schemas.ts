@@ -14477,6 +14477,32 @@ export interface SchoolSubscriptionSummary {
   outstandingMinor?: number;
 }
 
+export type SubscriptionAccessStatusEnvironment = typeof SubscriptionAccessStatusEnvironment[keyof typeof SubscriptionAccessStatusEnvironment];
+
+
+export const SubscriptionAccessStatusEnvironment = {
+  LIVE: 'LIVE',
+} as const;
+
+export type SubscriptionAccessStatusAudiencesItem = typeof SubscriptionAccessStatusAudiencesItem[keyof typeof SubscriptionAccessStatusAudiencesItem];
+
+
+export const SubscriptionAccessStatusAudiencesItem = {
+  student: 'student',
+  parent: 'parent',
+} as const;
+
+export type SubscriptionAccessStatusLiveStatus = typeof SubscriptionAccessStatusLiveStatus[keyof typeof SubscriptionAccessStatusLiveStatus];
+
+
+export const SubscriptionAccessStatusLiveStatus = {
+  PENDING: 'PENDING',
+  VERIFIED_ACTIVE: 'VERIFIED_ACTIVE',
+  FAILED: 'FAILED',
+  REFUNDED_REVERSED: 'REFUNDED_REVERSED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
 /**
  * @nullable
  */
@@ -14489,6 +14515,13 @@ export const SubscriptionAccessStatusRestrictionReason = {
 } as const;
 
 export interface SubscriptionAccessStatus {
+  environment?: SubscriptionAccessStatusEnvironment;
+  audiences?: SubscriptionAccessStatusAudiencesItem[];
+  liveStatus?: SubscriptionAccessStatusLiveStatus;
+  entitled?: boolean;
+  studentName?: string;
+  /** @nullable */
+  receiptNumber?: string | null;
   schoolId: number;
   /** @nullable */
   studentId: number | null;
@@ -23702,6 +23735,23 @@ export type GetSubscriptionEnforcementOverviewParams = {
  */
 schoolId?: number;
 };
+
+export type GetMyLiveSubscriptionAccessParams = {
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+studentId?: number;
+audience?: GetMyLiveSubscriptionAccessAudience;
+};
+
+export type GetMyLiveSubscriptionAccessAudience = typeof GetMyLiveSubscriptionAccessAudience[keyof typeof GetMyLiveSubscriptionAccessAudience];
+
+
+export const GetMyLiveSubscriptionAccessAudience = {
+  student: 'student',
+  parent: 'parent',
+} as const;
 
 export type GetSchoolSubscriptionAuditParams = {
 /**

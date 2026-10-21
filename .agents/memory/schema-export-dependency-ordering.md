@@ -27,6 +27,20 @@ Treat the original failed Publish payload, the standalone ORM export and a depen
 
 **How to apply:** Locate the saved error and SQL together, check equivalent keys as well as names, and separate a confirmed missing usable key from a potential later blocker. An absent CREATE statement is not itself a defect if the same attempt's target already had a suitable key; do not infer the target's current state from older saved evidence.
 
+A historical required-key guard can report “missing or changed uniqueness” when
+the current source has the same-name/same-column UNIQUE constraint instead of its
+expected UNIQUE INDEX. That is ownership/provenance drift, not proof that no usable
+key exists.
+
+**Why:** A scoped source-model rehearsal could validate all foreign keys without
+synthesizing any key even though the generic historical ownership guard refused
+the source. Treating either result as the other's approval would hide the mismatch.
+
+**How to apply:** Preserve both declarations and guard; report the discrepancy
+and raw-versus-reordered execution separately. A representative rehearsal may
+preserve the identical SQL multiset and verify current key columns, but must not
+waive actual-target catalog, ledger or historical ownership review.
+
 PostgreSQL-deparsed CHECK DDL is not guaranteed to round-trip to identical expression text.
 
 **Why:** PostgreSQL 16 reparsing of its own constraint DDL flattened nested Boolean AND grouping in two checks without changing the literals or operations.

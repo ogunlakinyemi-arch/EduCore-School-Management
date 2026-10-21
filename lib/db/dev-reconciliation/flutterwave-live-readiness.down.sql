@@ -12,7 +12,7 @@ DO $$ BEGIN
 END $$;
 DROP TABLE flutterwave_live_operator_reviews;
 DROP INDEX live_authority_lookup_idx,live_application_scope_idx,live_intent_authority_fk_idx,
- live_receipt_result_event_idx,live_event_source_idx,live_workflow_audit_batch_idx;
+  live_receipt_result_event_idx,live_event_source_idx,live_family_receipt_reference_idx,live_workflow_audit_batch_idx;
 ALTER TABLE flutterwave_live_commission_batches DROP CONSTRAINT live_batch_scope_ck,
  DROP CONSTRAINT live_batch_request_hash_ck,DROP CONSTRAINT live_batch_snapshot_ck;
 ALTER TABLE flutterwave_live_finalization_events DROP CONSTRAINT live_event_verified_identity_fk,

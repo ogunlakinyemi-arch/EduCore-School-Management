@@ -29,6 +29,8 @@ CREATE INDEX live_application_scope_idx ON flutterwave_live_subscription_intents
 CREATE INDEX live_intent_authority_fk_idx ON flutterwave_live_subscription_intents(authority_review_id);
 CREATE INDEX live_receipt_result_event_idx ON flutterwave_live_receipt_results(event_id);
 CREATE INDEX live_event_source_idx ON flutterwave_live_finalization_events(environment,source_payload_sha256);
+CREATE INDEX live_family_receipt_reference_idx ON flutterwave_live_webhook_receipts(environment,(claims->>'reference'))
+ WHERE signature_verified=true;
 CREATE INDEX live_workflow_audit_batch_idx ON flutterwave_live_workflow_audits(batch_id);
 CREATE TABLE flutterwave_live_operator_reviews (
  id bigserial PRIMARY KEY,

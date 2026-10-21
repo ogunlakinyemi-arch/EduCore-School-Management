@@ -5,9 +5,19 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { SubscriptionAccessStatusAudiencesItem } from './subscriptionAccessStatusAudiencesItem';
+import type { SubscriptionAccessStatusEnvironment } from './subscriptionAccessStatusEnvironment';
+import type { SubscriptionAccessStatusLiveStatus } from './subscriptionAccessStatusLiveStatus';
 import type { SubscriptionAccessStatusRestrictionReason } from './subscriptionAccessStatusRestrictionReason';
 
 export interface SubscriptionAccessStatus {
+  environment?: SubscriptionAccessStatusEnvironment;
+  audiences?: SubscriptionAccessStatusAudiencesItem[];
+  liveStatus?: SubscriptionAccessStatusLiveStatus;
+  entitled?: boolean;
+  studentName?: string;
+  /** @nullable */
+  receiptNumber?: string | null;
   schoolId: number;
   /** @nullable */
   studentId: number | null;

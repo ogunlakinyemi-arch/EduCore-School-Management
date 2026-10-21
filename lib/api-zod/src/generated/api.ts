@@ -13703,6 +13703,12 @@ export const GetSubscriptionEnforcementOverviewResponse = zod.array(GetSubscript
 
 
 export const GetMySubscriptionEnforcementResponseItem = zod.object({
+  "environment": zod.enum(['LIVE']).optional(),
+  "audiences": zod.array(zod.enum(['student', 'parent'])).optional(),
+  "liveStatus": zod.enum(['PENDING', 'VERIFIED_ACTIVE', 'FAILED', 'REFUNDED_REVERSED', 'UNAVAILABLE']).optional(),
+  "entitled": zod.boolean().optional(),
+  "studentName": zod.string().optional(),
+  "receiptNumber": zod.string().nullish(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullable(),
   "schoolName": zod.string(),
@@ -13714,6 +13720,38 @@ export const GetMySubscriptionEnforcementResponseItem = zod.object({
   "restrictionReason": zod.union([zod.literal('SCHOOL_SUBSCRIPTION_LOCKED'),zod.literal('SUBSCRIPTION_RESTRICTED'),zod.literal(null)]).nullish()
 })
 export const GetMySubscriptionEnforcementResponse = zod.array(GetMySubscriptionEnforcementResponseItem)
+
+
+/**
+ * Development-only, hard-disabled release gate. Canonical identity and merchant scope are server-owned. No shared payment/subscription IDs or checkout capability.
+ */
+export const getMyLiveSubscriptionAccessQueryStudentIdMax = 2147483647;
+
+
+
+export const GetMyLiveSubscriptionAccessQueryParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1).max(getMyLiveSubscriptionAccessQueryStudentIdMax).optional(),
+  "audience": zod.enum(['student', 'parent']).optional()
+})
+
+export const GetMyLiveSubscriptionAccessResponseItem = zod.object({
+  "environment": zod.enum(['LIVE']).optional(),
+  "audiences": zod.array(zod.enum(['student', 'parent'])).optional(),
+  "liveStatus": zod.enum(['PENDING', 'VERIFIED_ACTIVE', 'FAILED', 'REFUNDED_REVERSED', 'UNAVAILABLE']).optional(),
+  "entitled": zod.boolean().optional(),
+  "studentName": zod.string().optional(),
+  "receiptNumber": zod.string().nullish(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "schoolName": zod.string(),
+  "termName": zod.string().nullable(),
+  "startDate": zod.string().nullable(),
+  "enforcementDate": zod.string().nullable(),
+  "state": zod.string(),
+  "restricted": zod.boolean(),
+  "restrictionReason": zod.union([zod.literal('SCHOOL_SUBSCRIPTION_LOCKED'),zod.literal('SUBSCRIPTION_RESTRICTED'),zod.literal(null)]).nullish()
+})
+export const GetMyLiveSubscriptionAccessResponse = zod.array(GetMyLiveSubscriptionAccessResponseItem)
 
 
 export const lockSchoolSubscriptionsBodyReasonMax = 500;

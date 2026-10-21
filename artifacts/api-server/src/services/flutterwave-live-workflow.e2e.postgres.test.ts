@@ -30,6 +30,7 @@ import { createLiveReadinessRouter } from "../routes/flutterwave-live-readiness"
 import { listLiveOperatorReceipts,reviewLiveReceipt } from "./flutterwave-live-operator";
 import { readLiveApplicationReceipt,readLiveSchoolSubscriptionStudents } from "./flutterwave-live-application";
 import { readSchoolSubscription,assertSubscriptionAccess } from "./subscription-enforcement";
+import { createLiveFamilyAccessRouter } from "../routes/flutterwave-live-family-access";
 
 // Fixture capability is NEVER mounted in the app, stored in env or exported.
 const capability={enabled:true},merchant="merchant_fixture_live",school="RS_FictionalSchool123",hash="fictional-workflow-live-verifier";
@@ -63,6 +64,7 @@ CREATE TABLE employee_nfc_card_bindings(nfc_card_id integer,school_id integer,st
 CREATE TABLE platform_devices(school_id integer,status text);
 CREATE TABLE parents(id integer,user_id integer,school_id integer,status text);
 CREATE TABLE parent_student_relationships(parent_id integer,student_id integer,status text);
+ALTER TABLE students ADD COLUMN user_id integer;
 `;
 function proof(scope=merchant):LiveCollectionVerifier{return {enabled:true,environment:"LIVE",merchantScope:scope,verify:vi.fn(async input=>
   normalizeLiveIndependentRead({id:Number(input.transactionId),tx_ref:input.reference,flw_ref:`FLW-${input.transactionId}`,
@@ -111,6 +113,10 @@ beforeAll(async()=>{
     FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-fictional-workflow-only",FLUTTERWAVE_WEBHOOK_VERIF_HASH:hash});
   // Actual isolated HTTP/kernel pipeline, NOT the mounted app route or browser auth.
   const app=express();
+  app.use("/family-disabled",createLiveFamilyAccessRouter({pool,development:true}));
+  app.use("/family-non-development",createLiveFamilyAccessRouter({pool,development:false,
+    context:()=>({merchantScope:merchant,capability})}));
+  app.use(createLiveFamilyAccessRouter({pool,development:true,context:()=>({merchantScope:merchant,capability})}));
   app.use("/disabled",createLiveReadinessRouter({pool,development:true}));
   app.use("/non-development",createLiveReadinessRouter({pool,development:false,capability}));
   app.use(createLiveReadinessRouter({pool,development:true,capability,verifier:proof()}));
@@ -138,7 +144,7 @@ beforeEach(async()=>{
    flutterwave_live_webhook_receipts,school_memberships,app_users,academic_terms,academic_sessions,
    schools,students,partner_profiles,school_partner_attributions,commission_rules,school_subscription_manual_locks RESTART IDENTITY CASCADE`);
   await pool.query(`INSERT INTO schools(id,name) VALUES(10,'Original School'),(20,'Other School');
-   INSERT INTO students VALUES(1,10,'Student','One','active'),(2,10,'Student','Two','active');
+   INSERT INTO students(id,school_id,first_name,last_name,status) VALUES(1,10,'Student','One','active'),(2,10,'Student','Two','active');
    INSERT INTO academic_sessions(id,school_id,name) VALUES(1,10,'2026/2027');
    INSERT INTO academic_terms(id,school_id,academic_session_id,name,end_date) VALUES(1,10,1,'First Term',CURRENT_DATE-1);
    INSERT INTO app_users(id,status) VALUES(1,'ACTIVE'),(2,'ACTIVE'),(3,'ACTIVE');
@@ -554,5 +560,159 @@ describe("remaining readiness: real gated API/access consumers, operator recover
     try{await expect(client.query(readinessDown)).rejects.toThrow("preservation review");await client.query("ROLLBACK");}
     finally{client.release();}
     expect(await count("flutterwave_live_authority_reviews")).toBe(1);
+  });
+});
+
+describe("gated LIVE family identity and public access contract",()=>{
+  const path="/subscription-enforcement/live/me";
+  const get=(actor=5,suffix="",prefix="")=>fetch(base+prefix+path+suffix,{headers:{"x-test-actor":String(actor)}});
+  async function items(actor=5,suffix=""){
+    const response=await get(actor,suffix);expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    return response.json() as Promise<any[]>;
+  }
+  beforeEach(async()=>{
+    await sql(`TRUNCATE parents,parent_student_relationships;
+      INSERT INTO app_users(id,status) VALUES(4,'ACTIVE'),(5,'ACTIVE'),(6,'ACTIVE');
+      UPDATE students SET user_id=4 WHERE id=1;
+      INSERT INTO parents VALUES(1,5,10,'ACTIVE'),(2,6,20,'ACTIVE');
+      INSERT INTO parent_student_relationships VALUES(1,1,'ACTIVE'),(1,2,'ACTIVE');
+      UPDATE academic_terms SET end_date=CURRENT_DATE+28;`);
+  });
+  it("does not acquire DB for disabled or non-Development LIVE endpoints",async()=>{
+    const connect=vi.spyOn(pool,"connect");
+    for(const prefix of ["/family-disabled","/family-non-development"]){
+      const response=await get(5,"?enabled=true&environment=LIVE",prefix);
+      expect(response.status).toBe(503);expect(response.headers.get("cache-control")).toContain("no-store");
+    }
+    expect(connect).not.toHaveBeenCalled();
+  });
+  it("denies anonymous, foreign child and invented/shared financial selectors",async()=>{
+    expect((await fetch(base+path,{headers:{"x-test-role":"ANONYMOUS"}})).status).toBe(401);
+    expect((await get(6,"?studentId=1")).status).toBe(404);
+    expect((await get(5,"?studentId=99999")).status).toBe(404);
+    for(const query of ["?merchantScope=forged_scope","?schoolId=10","?paymentId=1","?subscriptionId=1","?studentId=0"]){
+      expect((await get(5,query)).status).toBe(400);
+    }
+  });
+  it("matches self and canonical parent relations without leaking other children",async()=>{
+    const self=await items(4);expect(self.map(i=>i.studentId)).toEqual([1]);expect(self[0].audiences).toEqual(["student"]);
+    const parent=await items();expect(parent.map(i=>i.studentId)).toEqual([1,2]);expect(parent[0].audiences).toEqual(["parent"]);
+    expect(await items(4,"?audience=parent")).toEqual([]);
+    expect(await items(5,"?audience=student")).toEqual([]);
+    expect(parent.every(i=>i.liveStatus==="UNAVAILABLE"&&!i.entitled)).toBe(true);
+  });
+  it("pending and authenticated receipt-only success do not grant entitlement",async()=>{
+    const intent=await reserve();await receive(raw(intent));
+    const row=(await items())[0];expect(row.liveStatus).toBe("PENDING");expect(row.entitled).toBe(false);
+    expect(row.restricted).toBe(true);expect(row.receiptNumber).toBeNull();
+  });
+  it("reports failure without mislabelling a diagnostic as independent verification",async()=>{
+    const intent=await reserve();await receive(raw(intent,"failed"));
+    const row=(await items())[0];expect(row.liveStatus).toBe("FAILED");expect(row.entitled).toBe(false);
+    expect(await count("flutterwave_live_collection_evidence")).toBe(0);
+  });
+  it("requires complete verified issuance; normal /me shares the exact LIVE contract",async()=>{
+    const intent=await reserve();await complete(intent);
+    const row=(await items())[0];expect(row.liveStatus).toBe("VERIFIED_ACTIVE");expect(row.entitled).toBe(true);
+    expect(row.restricted).toBe(false);expect(row.receiptNumber).toContain("LIVE-STUDENT-");
+    expect((await items())[1].entitled).toBe(false);
+    const response=await fetch(base+"/subscription-enforcement/me",{headers:{"x-test-actor":"5"}});
+    expect(await response.json()).toEqual(await items());
+    expect(JSON.stringify(row)).not.toMatch(/merchantScope|partner|schoolMinor|payload_sha256|transactionId/);
+  });
+  it("preserves independent manual locks even for verified LIVE students",async()=>{
+    const intent=await reserve();await complete(intent);
+    await sql("INSERT INTO school_subscription_manual_locks(school_id,locked,version) VALUES(10,true,1)");
+    const row=(await items())[0];expect(row.entitled).toBe(true);expect(row.restricted).toBe(true);
+    expect(row.restrictionReason).toBe("SCHOOL_SUBSCRIPTION_LOCKED");
+  });
+  it.each(["reversed","refund","dispute"])("retains receipts and refuses entitlement after %s",async kind=>{
+    const intent=await reserve();await complete(intent);
+    const body=kind==="refund"?Buffer.from(JSON.stringify({
+      TransactionId:123456,FlwRef:"FLW-123456",status:"completed",AmountRefunded:5000}))
+      :kind==="dispute"?Buffer.from(JSON.stringify({event:"chargeback.initiated",data:{id:123456,tx_ref:intent.reference,flw_ref:"FLW-123456"}}))
+      :raw(intent,"reversed");
+    await processLiveWorkflow(pool,await receive(body),body,proof(),capability);
+    const row=(await items())[0];expect(row.liveStatus).toBe("REFUNDED_REVERSED");expect(row.entitled).toBe(false);
+    expect(row.restricted).toBe(true);expect(row.receiptNumber).toContain("LIVE-STUDENT-");
+    await complete(intent);expect((await items())[0].entitled).toBe(false);
+  });
+  it("never uses other-merchant financial evidence",async()=>{
+    await sql(`INSERT INTO flutterwave_live_authority_reviews(merchant_scope,school_id,school_subaccount_id,evidence_sha256,reviewed_by,expires_at)
+      VALUES('other_merchant_live',10,$1,repeat('b',64),2,now()+interval '1 day')`,[school]);
+    const intent=await issueLiveIntent(pool,{actorId:1,schoolId:10,studentId:1,termId:1,merchantScope:"other_merchant_live",idempotencyKey:"other-merchant-key-0001"},capability);
+    await complete(intent,"successful",proof("other_merchant_live"));
+    expect((await items())[0].liveStatus).toBe("UNAVAILABLE");
+  });
+  it("checks cross-school membership and relationship status separately",async()=>{
+    await sql("UPDATE students SET school_id=20 WHERE id=2");
+    expect((await items()).map(i=>i.studentId)).toEqual([1]);
+    await sql("INSERT INTO school_memberships VALUES(5,20,'PARENT','ACTIVE')");
+    expect((await items()).map(i=>i.studentId)).toEqual([1,2]);
+    await sql("UPDATE parent_student_relationships SET status='INACTIVE' WHERE student_id=2");
+    expect((await items()).map(i=>i.studentId)).toEqual([1]);
+    await sql("UPDATE parents SET status='INACTIVE' WHERE user_id=5");
+    expect(await items()).toEqual([]);
+  });
+  it("does not move original-school verified history when a student transfers",async()=>{
+    const intent=await reserve();await complete(intent);
+    await sql(`UPDATE students SET school_id=20 WHERE id=1;
+      INSERT INTO school_memberships VALUES(5,20,'PARENT','ACTIVE');
+      INSERT INTO academic_sessions(id,school_id,name) VALUES(2,20,'2026/2027');
+      INSERT INTO academic_terms(id,school_id,academic_session_id,name,end_date) VALUES(2,20,2,'First Term',CURRENT_DATE+28)`);
+    const row=(await items())[0];expect(row.schoolId).toBe(20);expect(row.liveStatus).toBe("UNAVAILABLE");
+    expect(row.entitled).toBe(false);expect(row.receiptNumber).toBeNull();
+    expect((await sql("SELECT school_id FROM flutterwave_live_subscription_intents"))[0].school_id).toBe(10);
+    expect(await count("flutterwave_live_official_receipts")).toBe(1);
+  });
+  it("fails closed for missing, ambiguous or mismatched current calendars",async()=>{
+    const intent=await reserve();await complete(intent);
+    await sql("UPDATE academic_terms SET is_current=false");
+    expect((await items())[0].liveStatus).toBe("UNAVAILABLE");
+    await sql(`UPDATE academic_terms SET is_current=true;
+      INSERT INTO academic_terms(id,school_id,academic_session_id,name,end_date) VALUES(2,10,1,'Duplicate current',CURRENT_DATE+28)`);
+    expect((await items())[0].liveStatus).toBe("UNAVAILABLE");
+    await sql(`DELETE FROM academic_terms WHERE id=2;
+      INSERT INTO academic_sessions(id,school_id,name) VALUES(2,10,'Other session');
+      UPDATE academic_terms SET academic_session_id=2`);
+    expect((await items())[0].entitled).toBe(false);
+  });
+  it("does not grant collection-only, incomplete or duplicate LIVE issuance",async()=>{
+    const intent=await reserve(),body=raw(intent);
+    await finalizeLiveSubscriptionDesign(pool,await receive(body),body,proof());
+    expect((await items())[0].liveStatus).toBe("UNAVAILABLE");
+    await complete(intent);
+    expect((await items())[0].entitled).toBe(true);
+    // Corrupt duplicate term binding in disposable fixture only: detect ambiguity
+    // even if different session IDs evade the per-session database uniqueness.
+    await sql(`INSERT INTO flutterwave_live_subscription_intents(merchant_scope,reference,school_id,student_id,session_id,term_id,term_end_date,
+      school_subaccount_id,partner_accrual_minor) VALUES($1,'SCV3_duplicate_fixture_123',10,1,999,1,CURRENT_DATE+28,$2,0)`,[merchant,school]);
+    expect((await items())[0].liveStatus).toBe("UNAVAILABLE");
+    expect((await readLiveSchoolSubscriptionStudents(pool,10,1,{merchantScope:merchant,capability})).rows[0].paid).toBe(false);
+  });
+  it("does not extend frozen expired activations after calendar edits",async()=>{
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE-1");
+    const intent=await reserve();await complete(intent);
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28");
+    const row=(await items())[0];expect(row.liveStatus).toBe("UNAVAILABLE");expect(row.entitled).toBe(false);
+  });
+  it("requires complete matching receipt snapshots, not just a receipt row",async()=>{
+    const intent=await reserve();await complete(intent);
+    // Deliberate corruption in disposable fixtures only, not an application repair.
+    await sql(`TRUNCATE flutterwave_live_official_receipts;
+      INSERT INTO flutterwave_live_official_receipts(intent_id,receipt_number,snapshot)
+      VALUES(${Number(intent.id)},'LIVE-STUDENT-incomplete-fixture','{}')`);
+    const row=(await items())[0];expect(row.liveStatus).toBe("UNAVAILABLE");expect(row.entitled).toBe(false);
+    expect((await readLiveSchoolSubscriptionStudents(pool,10,1,{merchantScope:merchant,capability})).rows[0].paid).toBe(false);
+  });
+  it("returns unavailable on missing LIVE schema without using retained TEST history",async()=>{
+    await sql("ALTER TABLE flutterwave_live_subscription_intents RENAME TO fixture_missing_live_intents");
+    try{const rows=await items();expect(rows.every(i=>i.liveStatus==="UNAVAILABLE"&&!i.entitled)).toBe(true);}
+    finally{await sql("ALTER TABLE fixture_missing_live_intents RENAME TO flutterwave_live_subscription_intents");}
+  });
+  it("does not trust stale authentication context after canonical deactivation",async()=>{
+    const intent=await reserve();await complete(intent);await sql("UPDATE app_users SET status='INACTIVE' WHERE id=5");
+    expect(await items()).toEqual([]);expect((await get(5,"?studentId=1")).status).toBe(404);
   });
 });

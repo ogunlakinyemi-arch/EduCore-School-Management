@@ -1,11 +1,53 @@
 # Flutterwave deferred Partner commissions — Development review
 
-**Latest remaining-workstreams review (2026-10-20):** see
-[coordinated workstreams 1–5](flutterwave-live-workflow-review.md#remaining-workstreams-15--2026-10-20)
+**Latest Development review (2026-10-21):** see
+[target-schema and family contracts](flutterwave-live-workflow-review.md#target-schema-and-family-contracts-2026-10-21)
 and [additive migration review](flutterwave-live-migration-review.md).
-Current isolated acceptance is **221 tests across nine files**; actual LIVE
+Current distinct acceptance is **268 API tests / 11 executed files** and
+**55 frontend tests / seven files**;38 existing application-DB opt-in cases
+remain skipped. The representative suite's cleanup-timeout correction and
+successful eight-test rerun are recorded in both reviews. Actual LIVE
 settlement is **UNVERIFIED** and release/transport/dashboard delivery remain off.
 Older dated inventories below are historical, not fresh database/provider reads.
+
+### Latest narrow scope and remaining gates
+
+- Rehearsed all four migration drafts against disposable PostgreSQL initialized
+  from the full **current source model**:184 tables,690 FKs,1,241 identical
+  dependency-ordered statements. All14 LIVE tables,19 new FKs and40 LIVE indexes
+  validated; ordering, duplicate-up refusal, empty reverse/reapply, retained-evidence
+  rollback refusal and canonical/shared-history preservation passed.
+- Raw source export execution still failed on supporting-key ordering. The
+  generic guard's historical UNIQUE INDEX versus current UNIQUE constraint
+  ownership discrepancy remains explicit; it was not bypassed for a target apply.
+  A source-derived representative is not an inspected application catalog,
+  historical dump or migration ledger. Actual-target verification, preservation/
+  lock review and separately approved migrations remain required.
+- Added authenticated family LIVE read and existing-banner contracts for pending,
+  verified/active, failure reported, refunded/reversed protective hold and
+  unavailable. Exact canonical own-child/parent/tenant/session/term matching,
+  complete immutable proof and unexpired activation control entitlement. No
+  receipt-only/pending/duplicate/incomplete record, TEST payment or shared waiver
+  supplies verified LIVE access. Original receipts remain visible after holds.
+- The explicit LIVE endpoint refuses503 while disabled, before any LIVE financial
+  DB connection; normal authentication still applies.
+  The ordinary family endpoint selects LIVE only through its hard-disabled
+  server-owned selector. No browser scope/financial IDs or flag can enable it.
+  Gated UI contracts are complete; broad operational checkout, waivers,
+  isolated enforcement persistence and real signed-in LIVE acceptance are not.
+- Codegen, API/frontend typechecks and diff checks passed; Development API
+  rebuilt/restarted and public sign-in rendering was checked. No application
+  database was queried/migrated and no provider request was made in this pass.
+- No new bank evidence exists. The historical NGN5.25 discrepancy is still
+  unexplained, **not VAT**. Exact transaction-linked school NGN1,900/main-merchant
+  credits, actual fee/tax reconciliation, reviewed LIVE recipients, a real
+  independent recipient reader and evidenced recovery/closure remain blockers.
+  NGN5,000 payer charge, NGN1,900 school, NGN3,100 merchant gross before costs/
+  taxes and eligible NGN100 internal Partner accrual remain unchanged.
+
+All LIVE checkout/transport/delivery/release gates stay disabled. No payments,
+refunds, transfers, secrets, dashboard, Production/Publish settings or publishing
+were changed by this continuation.
 
 ## Status: NOT authorized or ready for live activation
 

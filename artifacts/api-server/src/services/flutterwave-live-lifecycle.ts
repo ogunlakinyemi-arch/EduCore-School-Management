@@ -3,6 +3,7 @@ import type { StudentSubscriptionSqlClient, StudentSubscriptionSqlPool } from ".
 import { blockedLiveWorkflow, requireLiveWorkflow, type LiveWorkflowCapability } from "../lib/flutterwave-live-workflow-gate";
 import { blockedLiveCollectionVerifier, LiveFinalizationBlocked, type LiveCollectionVerifier } from "../lib/flutterwave-live-verification";
 import { finalizeLiveSubscriptionDesign } from "./flutterwave-live-finalization-design";
+import { liveVerifiedIssuance } from "./flutterwave-live-application";
 
 async function collection(client: StudentSubscriptionSqlClient,intent: any) {
   if(!intent.issued_by || !intent.issuer_key || !intent.authority_snapshot)
@@ -85,9 +86,8 @@ export async function hasLiveTermEntitlement(pool: StudentSubscriptionSqlPool,sc
     throw new LiveFinalizationBlocked("LIVE_ENTITLEMENT_SCOPE_INVALID");
   const client=await pool.connect();
   try{
-    return Boolean((await client.query(`SELECT a.intent_id FROM flutterwave_live_subscription_activations a
-      JOIN flutterwave_live_subscription_intents i ON i.id=a.intent_id AND i.environment='LIVE'
-      WHERE a.environment='LIVE' AND a.status='ACTIVE' AND a.expires_at>now() AND NOT i.on_hold
+    return Boolean((await client.query(`SELECT i.id FROM flutterwave_live_subscription_intents i
+      WHERE ${liveVerifiedIssuance}
        AND i.merchant_scope=$1 AND i.school_id=$2 AND i.student_id=$3 AND i.term_id=$4`,
       [scope.merchantScope,scope.schoolId,scope.studentId,scope.termId])).rows[0]);
   }finally{client.release();}

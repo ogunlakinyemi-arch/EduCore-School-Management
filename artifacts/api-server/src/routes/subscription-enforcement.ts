@@ -5,8 +5,10 @@ import { AuthError, assertSchoolOperationalAccess, getUserContext, isPlatformOwn
 import { readSchoolSubscription, readSchoolEnforcementSummary } from "../services/subscription-enforcement";
 import { readManualSchoolState, changeManualSchoolLock } from "../services/school-subscription-lock";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
+import { createLiveFamilyAccessRouter } from "./flutterwave-live-family-access";
 
 const router = Router();
+router.use(createLiveFamilyAccessRouter({pool}));
 router.use("/subscription-enforcement", requireAuthentication());
 const positive = z.coerce.number().int().positive();
 

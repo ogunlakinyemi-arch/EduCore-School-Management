@@ -1,10 +1,10 @@
 # Coordinated LIVE workflow — Development-only review
 
-**Latest review:** see “Remaining workstreams 1–5” below and
-[migration review](flutterwave-live-migration-review.md). Current acceptance:
-**221 tests across nine files**. The earlier inventory and180-test result below
-are retained as historical preparation evidence, not the latest implementation
-inventory or permission to enable LIVE operations.
+**Latest review (2026-10-21):** see “Target-schema and family contracts” below and
+[migration review](flutterwave-live-migration-review.md). Distinct acceptance:
+**268 API tests / 11 executed files; 55 frontend tests / seven files**, with
+38 existing opt-in API cases skipped. The earlier inventories and180/221-test
+results below are historical preparation evidence, not current release permission.
 
 ## Not an operational release
 
@@ -96,6 +96,7 @@ Order:
 1. `lib/db/dev-reconciliation/flutterwave-live-webhook-inbox.up.sql`
 2. `lib/db/dev-reconciliation/flutterwave-live-finalization.up.sql`
 3. `lib/db/dev-reconciliation/flutterwave-live-workflow.up.sql`
+4. `lib/db/dev-reconciliation/flutterwave-live-readiness.up.sql`
 
 These drafts are not in the automatic migration journal. The third is additive:
 new isolated authority reviews, activation/receipt/case/batch/audit tables and
@@ -286,3 +287,147 @@ identity/UI/waiver/enforcement-persistence contracts; independently evidenced
 financial case closure/recovery and final webhook acknowledgement acceptance.
 Checkout, outbound verification/refund transport, dashboard delivery and LIVE flags
 remain disabled. No secret, Production/Publish configuration or publishing change.
+
+## Target-schema and family contracts (2026-10-21)
+
+### Representative target migration safety
+
+The new eight-test native suite initializes disposable PostgreSQL from the full
+current source model: **184 tables, 690 FKs, 1,241 statements**. This replaces the
+minimal-only compatibility gap with a source-derived representative rehearsal,
+not certification of any application's actual catalog or migration ledger.
+
+Untouched raw SQL **failed** at the `staff_nfc_subscriptions` supporting key.
+Reordering the identical statement multiset passed. The separate historical
+ownership guard still rejects three expected UNIQUE INDEX declarations now
+declared as same-name/same-column UNIQUE constraints. Neither source declarations
+nor that generic guard was changed. Exact fingerprints and limits are in
+`flutterwave-live-migration-review.md`.
+
+The four-stage stack adds14 LIVE tables,19 validated FKs and40 LIVE indexes.
+Wrong ordering and duplicate up applies fail atomically; these remain one-shot,
+unjournalled drafts. Empty stage4 → stage1 reverse/reapply passed. Retained
+receipt/design-intent upgrade preserved all prior values, leaving new authority
+fields null. All four downs refused retained evidence, and immutable review
+audits refused update/deletion. Canonical columns/defaults, constraints/validation,
+indexes and fictional shared history rows remained identical.
+
+No application database was queried or migrated. Real target catalog/ledger/
+historical-key compatibility and lock/preservation review still require a
+separately authorized procedure and approval.
+
+### Authenticated student/parent LIVE contracts
+
+New explicit read: `GET /subscription-enforcement/live/me`, relative to API base.
+The existing `GET /subscription-enforcement/me` uses the same contract **only**
+when its server-owned source selects LIVE. The released selector still returns
+no LIVE context. Requests, environment variables and dashboard settings cannot
+enable it. An explicit disabled LIVE read returns503 before acquiring the LIVE
+financial reader's DB connection; normal authentication still applies. It does
+not dispatch to TEST.
+
+Optional `studentId` and `audience=student|parent` narrow selection only. Browser
+school/merchant/session/term/intent/shared-payment/shared-subscription IDs are
+not accepted. Positive current canonical authority is mandatory: active app user;
+own active student profile, or active parent profile and active child relationship.
+Cross-school children additionally require the existing active PARENT membership
+rule. Inaccessible and invented selected children both return404.
+
+A pinned repeatable-read, read-only transaction binds identity, the child's
+current-school/current-session/term, LIVE proof and manual lock. Missing or
+ambiguous calendars, mismatched session, incomplete/missing/duplicate financial
+records or missing LIVE schema cannot grant entitlement. School transfers never
+move original-school money or receipts. Missing schema returns explicit unavailable
+children without shared financial reads. Reads are no-store.
+
+Family, school-enforcement and internal term-entitlement readers now share the
+same proof predicate: one unambiguous LIVE intent in exact merchant/school/student/
+term scope; matching canonical session and frozen authority; matching verified
+collection amounts/reference; complete matching immutable official-receipt
+snapshot; authenticated coordinated event/result; unexpired ACTIVE activation
+and no hold. Neither an authenticated success receipt alone nor a collection-only
+row is sufficient. Eligible Partner accounting remains in the atomic kernel.
+
+Response extends the existing access DTO with explicit LIVE namespace, authorized
+audiences, student name, `liveStatus`, `entitled` and payer-safe retained receipt
+number. It does not expose provider IDs, fingerprints, merchant allocation,
+Partner details or other children. Identity remains canonical student identity;
+no legacy numeric payment/subscription ID translation was introduced.
+
+| LIVE state | Meaning and UI behavior |
+| --- | --- |
+| PENDING | Authoritative intent awaiting complete verification; no paid entitlement; no “pay again” action |
+| VERIFIED_ACTIVE | Full proof succeeds; independent manual school lock can still restrict use |
+| FAILED | Authenticated failure **report** matching the intent reference; not independent financial verification, and never paid entitlement |
+| REFUNDED_REVERSED | Adverse-event protective hold, including disputes; retained original receipt remains visible; not evidence of refund disbursement/recovery |
+| UNAVAILABLE | Missing/ambiguous/incomplete/expired identity/calendar/proof/schema; cannot confirm verified entitlement |
+
+The existing Student and Parent banner now renders these LIVE-specific states
+instead of legacy unpaid/fully-active copy once LIVE data is selected. Audience
+filtering uses server-authorized audiences. Query errors show unavailable and
+hide stale success; existing refetch-on-mount/polling refreshes external changes.
+Receipts alone never produce success. There is no checkout or retry-payment button.
+Seven-day policy grace remains distinct from paid entitlement; manual locks still
+win. No shared TEST waiver or persistent enforcement record supplies LIVE access.
+
+This completes the **gated read-only family identity/state UI contract**, not an
+operational public checkout/issuer, receipt PDF, LIVE waiver system or broad
+school/Owner/Partner dashboard rollout. The shared automatic-enforcement writer
+remains blocked for future LIVE selection until isolated persistence is approved.
+
+### Exact verification
+
+| API suite | Passed |
+| --- | ---: |
+| Coordinated workflow/application/operator/family PostgreSQL + HTTP | 60 |
+| Representative target-schema migration PostgreSQL | 8 |
+| LIVE finalization PostgreSQL | 20 |
+| LIVE inbox PostgreSQL/HTTP | 12 |
+| LIVE configuration/transport guards | 34 |
+| Subscription billing | 42 |
+| Existing subscription webhooks | 6 |
+| Provider readiness | 10 |
+| Deferred commissions PostgreSQL/HTTP | 34 |
+| Term-enforcement policy | 22 |
+| Existing enforcement routes | 20 |
+| **Distinct API total** | **268** |
+
+Nineteen new family tests cover self/parent matching, canonical deactivation,
+cross-school memberships, relationship status, inaccessible404 masking, forbidden
+selectors, disabled/non-Development/anonymous paths, proof completion, sibling/
+merchant isolation, manual locks, refund/reversal/dispute holds and retained
+receipts, transfer history, ambiguous calendars, wrong sessions, duplicate intents,
+expiry, incomplete receipt snapshots and missing schema.
+
+The selected twelve-file API run passed all268 assertions but the representative
+suite exceeded its default ten-second cleanup hook. The test-only teardown
+deadline was extended to60 seconds and its eight tests reran successfully; the
+ten unaffected passing suites were not rerun. The twelfth file contains38 existing
+application-database opt-in cases, deliberately skipped without enabling its
+application-pool fixture.
+
+Frontend: **55 tests across seven files**: seven LIVE state tests, four existing
+banner tests,14 enforcement render tests, five enforcement helper tests,11 Parent
+routing tests, nine subscriptions tests and five payment-helper tests. LIVE cases
+include both audiences, contradictory entitlement, retained receipts, manual
+locks, TEST exclusion, refreshed adverse status and query-error stale-data refusal.
+
+Codegen, API/frontend typechecks, diff checks and Development API build/restart
+passed. Public Development sign-in rendering was checked; no real signed-in
+LIVE browser-finance flow or bank/provider acceptance is claimed.
+
+### Unchanged external and release gates
+
+No provider calls or new settlement evidence. The historical NGN5.25 difference
+remains unexplained, **not VAT**. Required bank/provider evidence remains linked
+school NGN1,900 and merchant credits, transaction/settlement IDs, actual fee/tax/
+reserve reconciliation from NGN3,100 gross, merchant-specific fee ordering,
+reviewed recipient authority and independently evidenced refund/recovery closure.
+
+NGN5,000 payer charge, NGN1,900 school, NGN3,100 merchant gross before costs/taxes
+and eligible NGN100 internal Partner accrual remain unchanged. Actual-target
+migration approval, real recipient reader, operational enforcement/waiver policy,
+financial recovery/closure and final webhook acknowledgement acceptance remain
+separate gates. Checkout, provider verification/refund transport, webhook delivery
+and every LIVE release flag remain hard-disabled. No secret/dashboard,
+Production/Publish configuration, publishing or GitHub push change.

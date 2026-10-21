@@ -4037,6 +4037,8 @@ paths:
     $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement'
   /subscription-enforcement/me:
     $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1me'
+  /subscription-enforcement/live/me:
+    $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1live~1me'
   /subscription-enforcement/lock:
     $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1lock'
   /subscription-enforcement/unlock:
