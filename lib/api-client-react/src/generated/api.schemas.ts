@@ -5181,6 +5181,7 @@ export type IdentificationMethod = typeof IdentificationMethod[keyof typeof Iden
 
 export const IdentificationMethod = {
   NFC: 'NFC',
+  NFC_GATE_AUTO: 'NFC_GATE_AUTO',
   FINGERPRINT: 'FINGERPRINT',
   MANUAL: 'MANUAL',
   DEVICE_API: 'DEVICE_API',
@@ -7524,9 +7525,83 @@ export const SchoolCommunicationDefaultsItem = {
 
 export interface SchoolCommunicationDefaults {[key: string]: SchoolCommunicationDefaultsItem[]}
 
+export type NotificationAllowedChannelsItem = typeof NotificationAllowedChannelsItem[keyof typeof NotificationAllowedChannelsItem];
+
+
+export const NotificationAllowedChannelsItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export interface NotificationAllowedChannels {[key: string]: NotificationAllowedChannelsItem[]}
+
+export interface NotificationChannelAvailability {[key: string]: boolean}
+
 export interface SchoolCommunicationDefaultsResponse {
   defaults: SchoolCommunicationDefaults;
   canWrite: boolean;
+  allowed?: NotificationAllowedChannels;
+  availability?: NotificationChannelAvailability;
+}
+
+export type NotificationChannelPolicyRuleAllowedItem = typeof NotificationChannelPolicyRuleAllowedItem[keyof typeof NotificationChannelPolicyRuleAllowedItem];
+
+
+export const NotificationChannelPolicyRuleAllowedItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export type NotificationChannelPolicyRuleDefaultsItem = typeof NotificationChannelPolicyRuleDefaultsItem[keyof typeof NotificationChannelPolicyRuleDefaultsItem];
+
+
+export const NotificationChannelPolicyRuleDefaultsItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export interface NotificationChannelPolicyRule {
+  allowed: NotificationChannelPolicyRuleAllowedItem[];
+  defaults: NotificationChannelPolicyRuleDefaultsItem[];
+}
+
+export type NotificationSchoolPermissionAllowedItem = typeof NotificationSchoolPermissionAllowedItem[keyof typeof NotificationSchoolPermissionAllowedItem];
+
+
+export const NotificationSchoolPermissionAllowedItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export interface NotificationSchoolPermission {
+  enabled: boolean;
+  allowed: NotificationSchoolPermissionAllowedItem[];
+}
+
+export type NotificationChannelPolicyEvents = {[key: string]: NotificationChannelPolicyRule};
+
+export type NotificationChannelPolicySchools = {[key: string]: NotificationSchoolPermission};
+
+export interface NotificationChannelPolicy {
+  events: NotificationChannelPolicyEvents;
+  schools: NotificationChannelPolicySchools;
+}
+
+export interface NotificationChannelPolicyResponse {
+  policy: NotificationChannelPolicy;
+  availability: NotificationChannelAvailability;
 }
 
 export interface ActivationSchool {
@@ -18950,6 +19025,7 @@ export type IdentificationMethod4b96100 = typeof IdentificationMethod4b96100[key
 
 export const IdentificationMethod4b96100 = {
   NFC: 'NFC',
+  NFC_GATE_AUTO: 'NFC_GATE_AUTO',
   FINGERPRINT: 'FINGERPRINT',
   MANUAL: 'MANUAL',
   DEVICE_API: 'DEVICE_API',
@@ -21407,9 +21483,83 @@ export const SchoolCommunicationDefaults4b96100Item = {
 
 export interface SchoolCommunicationDefaults4b96100 {[key: string]: SchoolCommunicationDefaults4b96100Item[]}
 
+export type NotificationAllowedChannels4b96100Item = typeof NotificationAllowedChannels4b96100Item[keyof typeof NotificationAllowedChannels4b96100Item];
+
+
+export const NotificationAllowedChannels4b96100Item = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export interface NotificationAllowedChannels4b96100 {[key: string]: NotificationAllowedChannels4b96100Item[]}
+
+export interface NotificationChannelAvailability4b96100 {[key: string]: boolean}
+
 export interface SchoolCommunicationDefaultsResponse4b96100 {
   defaults: SchoolCommunicationDefaults4b96100;
   canWrite: boolean;
+  allowed?: NotificationAllowedChannels4b96100;
+  availability?: NotificationChannelAvailability4b96100;
+}
+
+export type NotificationChannelPolicyRule4b96100AllowedItem = typeof NotificationChannelPolicyRule4b96100AllowedItem[keyof typeof NotificationChannelPolicyRule4b96100AllowedItem];
+
+
+export const NotificationChannelPolicyRule4b96100AllowedItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export type NotificationChannelPolicyRule4b96100DefaultsItem = typeof NotificationChannelPolicyRule4b96100DefaultsItem[keyof typeof NotificationChannelPolicyRule4b96100DefaultsItem];
+
+
+export const NotificationChannelPolicyRule4b96100DefaultsItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export interface NotificationChannelPolicyRule4b96100 {
+  allowed: NotificationChannelPolicyRule4b96100AllowedItem[];
+  defaults: NotificationChannelPolicyRule4b96100DefaultsItem[];
+}
+
+export type NotificationSchoolPermission4b96100AllowedItem = typeof NotificationSchoolPermission4b96100AllowedItem[keyof typeof NotificationSchoolPermission4b96100AllowedItem];
+
+
+export const NotificationSchoolPermission4b96100AllowedItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
+} as const;
+
+export interface NotificationSchoolPermission4b96100 {
+  enabled: boolean;
+  allowed: NotificationSchoolPermission4b96100AllowedItem[];
+}
+
+export type NotificationChannelPolicy4b96100Events = {[key: string]: NotificationChannelPolicyRule4b96100};
+
+export type NotificationChannelPolicy4b96100Schools = {[key: string]: NotificationSchoolPermission4b96100};
+
+export interface NotificationChannelPolicy4b96100 {
+  events: NotificationChannelPolicy4b96100Events;
+  schools: NotificationChannelPolicy4b96100Schools;
+}
+
+export interface NotificationChannelPolicyResponse4b96100 {
+  policy: NotificationChannelPolicy4b96100;
+  availability: NotificationChannelAvailability4b96100;
 }
 
 export interface ActivationSchool4b96100 {

@@ -430,12 +430,16 @@ function SummaryTab({ schoolId }: { schoolId: number }) {
   const [month, setMonth] = useState(monthNow);
   const daily = useGetSchoolEmployeeNfcAttendanceDaily(schoolId, { date: day }, { query: { ...FRESH } as never });
   const monthly = useGetSchoolEmployeeNfcAttendanceMonthly(schoolId, { month }, { query: { ...FRESH, enabled: /^\d{4}-(0[1-9]|1[0-2])$/.test(month) } as never });
+  const [reportRole,setReportRole]=useState('');
   const d = daily.data;
   return (
     <div className="p-5">
       <div className="mb-4 flex flex-wrap gap-3 text-xs font-semibold">
         <label className="flex items-center gap-2">Day <input type="date" value={day} onChange={e => e.target.value && setDay(e.target.value)} /></label>
         <label className="flex items-center gap-2">Month <input type="month" value={month} onChange={e => e.target.value && setMonth(e.target.value)} /></label>
+        <label className="flex items-center gap-2">Monthly report role<select aria-label="Monthly attendance role" value={reportRole} onChange={e=>setReportRole(e.target.value)}>
+          <option value="">Teachers and other staff</option><option value="TEACHER">Teachers</option><option value="STAFF">Other staff</option></select></label>
+        <p className="w-full text-xs">Daily metrics summarize the school. Monthly rows below separate Entry / Tag-in and Exit / Tag-out totals by employee role. Gate presence is not classroom or biometric confirmation.</p>
       </div>
       {daily.isError ? <ErrorState retry={() => daily.refetch()} /> : daily.isLoading ? <div className="h-32 animate-pulse rounded-2xl bg-[hsl(var(--muted))]" /> : d && (
         <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -453,7 +457,7 @@ function SummaryTab({ schoolId }: { schoolId: number }) {
           <table className="w-full text-left text-sm">
             <thead className="bg-[hsl(var(--muted)/.4)] text-xs uppercase tracking-wider text-[hsl(var(--muted-foreground))]"><tr>{['Employee', 'Days', 'Late', 'Early departures', 'Check-ins', 'Check-outs'].map(h => <th key={h} className="px-4 py-3">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-[hsl(var(--border)/.6)]">
-              {(monthly.data ?? []).map(r => <tr key={r.employeeId}><td className="px-4 py-3 font-semibold">{r.employeeName}<div className="text-xs font-normal text-[hsl(var(--muted-foreground))]">{r.employeeNo} · {r.personType}</div></td><td className="px-4 py-3">{r.attendanceDays}</td><td className="px-4 py-3">{r.late}</td><td className="px-4 py-3">{r.earlyDeparture}</td><td className="px-4 py-3">{r.entries}</td><td className="px-4 py-3">{r.exits}</td></tr>)}
+              {(monthly.data ?? []).filter(r=>!reportRole||r.personType===reportRole).map(r => <tr key={r.employeeId}><td className="px-4 py-3 font-semibold">{r.employeeName}<div className="text-xs font-normal text-[hsl(var(--muted-foreground))]">{r.employeeNo} · {r.personType}</div></td><td className="px-4 py-3">{r.attendanceDays}</td><td className="px-4 py-3">{r.late}</td><td className="px-4 py-3">{r.earlyDeparture}</td><td className="px-4 py-3">{r.entries}</td><td className="px-4 py-3">{r.exits}</td></tr>)}
             </tbody>
           </table>
         </div>

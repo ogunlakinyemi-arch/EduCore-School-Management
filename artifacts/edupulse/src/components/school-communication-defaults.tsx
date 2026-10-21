@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useGetSchoolCommunicationDefaults, useUpdateSchoolCommunicationDefaults } from '@workspace/api-client-react';
 import type { SchoolCommunicationDefaults } from '@workspace/api-client-react';
-const categories = ['ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT','ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'];
-const channels = ['IN_APP','PUSH','SMS','EMAIL'] as const;
+const categories = ['ATTENDANCE_ENTRY','ATTENDANCE_EXIT','ATTENDANCE_ABSENCE','NFC_REMINDER','EMERGENCY','ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT','ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'];
+const channels = ['IN_APP','PUSH','SMS','EMAIL','TELEGRAM'] as const;
 export function SchoolCommunicationDefaultsControl({ schoolId }: { schoolId: number }) {
   const query = useGetSchoolCommunicationDefaults(schoolId);
   const save = useUpdateSchoolCommunicationDefaults();
@@ -16,11 +16,17 @@ export function SchoolCommunicationDefaultsControl({ schoolId }: { schoolId: num
       <div className="space-y-3">{categories.map(category => <fieldset key={category} className="rounded-xl border p-3">
         <legend className="px-1 text-sm font-bold">{category}</legend><div className="flex flex-wrap gap-4">
           {channels.map(channel => <label key={channel} className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="checkbox" disabled={!query.data?.canWrite || save.isPending} checked={defaults[category]?.includes(channel) ?? false}
-              onChange={e => setDraft({ ...defaults, [category]: e.target.checked ? [...(defaults[category] ?? []), channel] :
-                (defaults[category] ?? []).filter(c => c !== channel) })} />{channel.replace('_',' ')}
+            <input type="checkbox" disabled={!query.data?.canWrite || save.isPending || !query.data?.availability?.[channel] || !query.data?.allowed?.[category]?.includes(channel)}
+              checked={channel!=='TELEGRAM'&&(defaults[category]?.includes(channel)??false)}
+              onChange={e => {if(channel==='TELEGRAM')return;setDraft({ ...defaults, [category]: e.target.checked ? [...(defaults[category] ?? []), channel] :
+                (defaults[category] ?? []).filter(c => c !== channel) });}} />{channel.replace('_',' ')}
+            {!query.data?.availability?.[channel] ? <span className="text-xs">Unavailable</span> : !query.data?.allowed?.[category]?.includes(channel) ? <span className="text-xs">Owner restricted</span> : null}
           </label>)}</div>
       </fieldset>)}</div>}
+    {query.data?.canWrite && <button type="button" disabled={save.isPending} className="min-h-11 rounded-lg border px-4"
+      onClick={()=>{setDraft(Object.fromEntries(Object.entries(defaults).map(([event,selected])=>[event,
+        (selected??[]).filter(c=>query.data?.availability?.[c]&&query.data?.allowed?.[event]?.includes(c))])));
+        setNotice('Blocked or unavailable selections removed from the draft. Save to confirm.');}}>Clear blocked selections</button>}
     {query.data?.canWrite && <button type="button" disabled={!draft || save.isPending} className="min-h-11 rounded-lg border px-4 disabled:opacity-50"
       onClick={() => void save.mutateAsync({ schoolId, data: defaults }).then(async () => {
         await query.refetch(); setDraft(null); setNotice('School defaults saved.');

@@ -8,6 +8,7 @@ import { PageHeading, Button, EmptyState, ErrorState, SkeletonPage, StatusPill, 
 import { pushDevices } from './communication-contract';
 import { WebPushControl } from '@/components/web-push-control';
 import { SchoolCommunicationDefaultsControl } from '@/components/school-communication-defaults';
+import { OwnerNotificationPolicyControl } from '@/components/owner-notification-policy';
 import { useSchoolAdminAccess } from '@/components/shared';
 
 export function NotificationSettings({ standalone = false, globalOnly = false }: { standalone?: boolean; globalOnly?: boolean }) {
@@ -42,7 +43,8 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
     return acc;
   }, {});
   return <div className={standalone ? 'mx-auto max-w-6xl p-5 md:p-8 fade-up' : 'fade-up'}>
-    {schoolId && (schoolAccess.isSchoolAdmin || schoolAccess.isPlatformOwner) && <SchoolCommunicationDefaultsControl schoolId={schoolId} />}
+    {schoolAccess.isPlatformOwner && <OwnerNotificationPolicyControl />}
+    {schoolId && (schoolAccess.isSchoolAdmin || schoolAccess.isPlatformOwner) && <SchoolCommunicationDefaultsControl key={schoolId} schoolId={schoolId} />}
     <PageHeading eyebrow="Your messages / Controls" title="Notification settings." description="Choose how school updates reach you. Security and account messages may remain required." action={<Link href="/inbox" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-back-inbox"><ArrowLeft size={15} /> Inbox</Link>} />
     {error && <div role="alert" className="mb-5 rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.07)] p-4 text-sm text-[hsl(var(--destructive))]">{error}</div>}
     <div className="grid gap-6 xl:grid-cols-[1.4fr_.8fr]">

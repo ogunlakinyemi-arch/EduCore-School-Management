@@ -532,6 +532,8 @@ import type {
   NfcPaymentToken,
   NfcPermissionInput,
   NotFoundResponse,
+  NotificationChannelPolicy,
+  NotificationChannelPolicyResponse,
   OwnPayrollPayslip,
   OwnerSchoolDirectory,
   OwnerSchoolOverview,
@@ -40532,6 +40534,159 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUpdateSchoolCommunicationDefaultsMutationOptions(options));
+    }
+
+export const getGetNotificationChannelPolicyUrl = () => {
+
+
+
+
+  return `/api/communication/channel-policy`
+}
+
+export const getNotificationChannelPolicy = async ( options?: Parameters<typeof customFetch>[1]): Promise<NotificationChannelPolicyResponse> => {
+
+  return customFetch<NotificationChannelPolicyResponse>(getGetNotificationChannelPolicyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNotificationChannelPolicyQueryKey = () => {
+    return [
+    `/api/communication/channel-policy`
+    ] as const;
+    }
+
+
+export const getGetNotificationChannelPolicyQueryOptions = <TData = Awaited<ReturnType<typeof getNotificationChannelPolicy>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationChannelPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNotificationChannelPolicyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNotificationChannelPolicy>>> = ({ signal }) => getNotificationChannelPolicy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNotificationChannelPolicy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNotificationChannelPolicyQueryResult = NonNullable<Awaited<ReturnType<typeof getNotificationChannelPolicy>>>
+export type GetNotificationChannelPolicyQueryError = ErrorType<unknown>
+
+
+
+export function useGetNotificationChannelPolicy<TData = Awaited<ReturnType<typeof getNotificationChannelPolicy>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationChannelPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNotificationChannelPolicyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateNotificationChannelPolicyUrl = () => {
+
+
+
+
+  return `/api/communication/channel-policy`
+}
+
+export const updateNotificationChannelPolicy = async (notificationChannelPolicy: NotificationChannelPolicy, options?: Parameters<typeof customFetch>[1]): Promise<NotificationChannelPolicyResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NotificationChannelPolicyResponse>(getUpdateNotificationChannelPolicyUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationChannelPolicy)
+  }
+);}
+
+
+
+
+
+export const getUpdateNotificationChannelPolicyMutationKey = () => ['updateNotificationChannelPolicy'] as const;
+
+export const getUpdateNotificationChannelPolicyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNotificationChannelPolicy>>, TError,UpdateNotificationChannelPolicyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateNotificationChannelPolicy>>, TError,UpdateNotificationChannelPolicyMutationVariables, TContext> => {
+
+const mutationKey = getUpdateNotificationChannelPolicyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateNotificationChannelPolicy>>, UpdateNotificationChannelPolicyMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateNotificationChannelPolicy(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateNotificationChannelPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof updateNotificationChannelPolicy>>>
+    export type UpdateNotificationChannelPolicyMutationBody = BodyType<NotificationChannelPolicy>
+    export type UpdateNotificationChannelPolicyMutationError = ErrorType<unknown>
+    export type UpdateNotificationChannelPolicyMutationVariables = {data: BodyType<NotificationChannelPolicy>}
+
+    export const useUpdateNotificationChannelPolicy = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNotificationChannelPolicy>>, TError,UpdateNotificationChannelPolicyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateNotificationChannelPolicy>>,
+        TError,
+        UpdateNotificationChannelPolicyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateNotificationChannelPolicyMutationOptions(options));
     }
 
 export const getGetCommunicationPushConfigurationUrl = () => {

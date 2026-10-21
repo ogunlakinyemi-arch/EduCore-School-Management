@@ -11,6 +11,7 @@ export type IdentificationMethod4b96100 = typeof IdentificationMethod4b96100[key
 
 export const IdentificationMethod4b96100 = {
   NFC: 'NFC',
+  NFC_GATE_AUTO: 'NFC_GATE_AUTO',
   FINGERPRINT: 'FINGERPRINT',
   MANUAL: 'MANUAL',
   DEVICE_API: 'DEVICE_API',

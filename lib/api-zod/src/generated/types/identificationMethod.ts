@@ -11,6 +11,7 @@ export type IdentificationMethod = typeof IdentificationMethod[keyof typeof Iden
 
 export const IdentificationMethod = {
   NFC: 'NFC',
+  NFC_GATE_AUTO: 'NFC_GATE_AUTO',
   FINGERPRINT: 'FINGERPRINT',
   MANUAL: 'MANUAL',
   DEVICE_API: 'DEVICE_API',

@@ -5626,6 +5626,30 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolCommunicationDefaultsResponse" }
+  /communication/channel-policy:
+    get:
+      operationId: getNotificationChannelPolicy
+      tags: [Communication]
+      responses:
+        "200":
+          description: Owner-only global event channel and school permissions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationChannelPolicyResponse" }
+    put:
+      operationId: updateNotificationChannelPolicy
+      tags: [Communication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationChannelPolicy" }
+      responses:
+        "200":
+          description: Audited Owner policy; never sends notifications
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationChannelPolicyResponse" }
   /communication/push-configuration:
     get:
       operationId: getCommunicationPushConfiguration
@@ -8486,7 +8510,7 @@ components:
       enum: [PRESENT, ABSENT, LATE, LEFT_EARLY, EXCUSED, UNKNOWN, MISMATCH]
     IdentificationMethod:
       type: string
-      enum: [NFC, FINGERPRINT, MANUAL, DEVICE_API, OTHER_SUPPORTED_METHOD]
+      enum: [NFC, NFC_GATE_AUTO, FINGERPRINT, MANUAL, DEVICE_API, OTHER_SUPPORTED_METHOD]
     AttendanceEvent:
       type: object
       required: [id, schoolId, deviceId, eventType, identificationMethod, occurredAt, status, createdAt]
@@ -9899,6 +9923,50 @@ components:
       properties:
         defaults: { $ref: "#/components/schemas/SchoolCommunicationDefaults" }
         canWrite: { type: boolean }
+        allowed: { $ref: "#/components/schemas/NotificationAllowedChannels" }
+        availability: { $ref: "#/components/schemas/NotificationChannelAvailability" }
+    NotificationAllowedChannels:
+      type: object
+      additionalProperties:
+        type: array
+        items: { type: string, enum: [IN_APP, PUSH, SMS, EMAIL, TELEGRAM] }
+    NotificationChannelAvailability:
+      type: object
+      additionalProperties: { type: boolean }
+    NotificationChannelPolicyRule:
+      type: object
+      required: [allowed, defaults]
+      properties:
+        allowed:
+          type: array
+          items: { type: string, enum: [IN_APP, PUSH, SMS, EMAIL, TELEGRAM] }
+        defaults:
+          type: array
+          items: { type: string, enum: [IN_APP, PUSH, SMS, EMAIL, TELEGRAM] }
+    NotificationSchoolPermission:
+      type: object
+      required: [enabled, allowed]
+      properties:
+        enabled: { type: boolean }
+        allowed:
+          type: array
+          items: { type: string, enum: [IN_APP, PUSH, SMS, EMAIL, TELEGRAM] }
+    NotificationChannelPolicy:
+      type: object
+      required: [events, schools]
+      properties:
+        events:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/NotificationChannelPolicyRule" }
+        schools:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/NotificationSchoolPermission" }
+    NotificationChannelPolicyResponse:
+      type: object
+      required: [policy, availability]
+      properties:
+        policy: { $ref: "#/components/schemas/NotificationChannelPolicy" }
+        availability: { $ref: "#/components/schemas/NotificationChannelAvailability" }
     ActivationSchool:
       type: object
       required: [id, name, code, city, state, logo]

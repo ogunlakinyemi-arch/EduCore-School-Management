@@ -8769,7 +8769,7 @@ export const GetParentChildAttendanceResponseItem = zod.object({
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "occurredAt": zod.coerce.date(),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "discrepancyStatus": zod.union([zod.literal('OPEN'),zod.literal('RESOLVED'),zod.literal('DISMISSED'),zod.literal(null)]).nullish()
 })
 export const GetParentChildAttendanceResponse = zod.array(GetParentChildAttendanceResponseItem)
@@ -8791,7 +8791,7 @@ export const GetOwnAttendanceResponseItem = zod.object({
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "occurredAt": zod.coerce.date(),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "discrepancyStatus": zod.union([zod.literal('OPEN'),zod.literal('RESOLVED'),zod.literal('DISMISSED'),zod.literal(null)]).nullish()
 })
 export const GetOwnAttendanceResponse = zod.array(GetOwnAttendanceResponseItem)
@@ -8820,7 +8820,7 @@ export const GetStudentOwnAttendanceByIdResponseItem = zod.object({
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "occurredAt": zod.coerce.date(),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "discrepancyStatus": zod.union([zod.literal('OPEN'),zod.literal('RESOLVED'),zod.literal('DISMISSED'),zod.literal(null)]).nullish()
 })
 export const GetStudentOwnAttendanceByIdResponse = zod.array(GetStudentOwnAttendanceByIdResponseItem)
@@ -9974,7 +9974,7 @@ export const ListSchoolAttendanceEventsQueryParams = zod.object({
   "to": zod.date().optional(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']).optional(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']).optional(),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']).optional()
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']).optional()
 })
 
 export const ListSchoolAttendanceEventsResponseItem = zod.object({
@@ -9986,7 +9986,7 @@ export const ListSchoolAttendanceEventsResponseItem = zod.object({
   "classId": zod.number().int().nullish(),
   "section": zod.string().nullish(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
@@ -10026,7 +10026,7 @@ export const GetStudentAttendanceResponseItem = zod.object({
   "classId": zod.number().int().nullish(),
   "section": zod.string().nullish(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
@@ -10065,7 +10065,7 @@ export const GetClassAttendanceResponseItem = zod.object({
   "classId": zod.number().int().nullish(),
   "section": zod.string().nullish(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
@@ -10192,7 +10192,7 @@ export const CreateManualAttendanceResponse = zod.object({
   "classId": zod.number().int().nullish(),
   "section": zod.string().nullish(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
@@ -10236,7 +10236,7 @@ export const CorrectAttendanceResponse = zod.object({
   "classId": zod.number().int().nullish(),
   "section": zod.string().nullish(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
@@ -10289,7 +10289,7 @@ export const IngestDeviceAttendanceEventResponse = zod.object({
   "classId": zod.number().int().nullish(),
   "section": zod.string().nullable(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
@@ -10449,7 +10449,7 @@ export const IngestBiometricProviderEventResponse = zod.object({
   "classId": zod.number().int().nullish(),
   "section": zod.string().nullish(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
-  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "identificationMethod": zod.enum(['NFC', 'NFC_GATE_AUTO', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
   "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
   "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
@@ -17654,7 +17654,9 @@ export const getSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
 
 export const GetSchoolCommunicationDefaultsResponse = zod.object({
   "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(getSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
-  "canWrite": zod.boolean()
+  "canWrite": zod.boolean(),
+  "allowed": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))).optional(),
+  "availability": zod.record(zod.string(), zod.boolean()).optional()
 })
 
 
@@ -17677,7 +17679,50 @@ export const updateSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
 
 export const UpdateSchoolCommunicationDefaultsResponse = zod.object({
   "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(updateSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
-  "canWrite": zod.boolean()
+  "canWrite": zod.boolean(),
+  "allowed": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))).optional(),
+  "availability": zod.record(zod.string(), zod.boolean()).optional()
+})
+
+
+export const GetNotificationChannelPolicyResponse = zod.object({
+  "policy": zod.object({
+  "events": zod.record(zod.string(), zod.object({
+  "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])),
+  "defaults": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
+})),
+  "schools": zod.record(zod.string(), zod.object({
+  "enabled": zod.boolean(),
+  "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
+}))
+}),
+  "availability": zod.record(zod.string(), zod.boolean())
+})
+
+
+export const UpdateNotificationChannelPolicyBody = zod.object({
+  "events": zod.record(zod.string(), zod.object({
+  "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])),
+  "defaults": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
+})),
+  "schools": zod.record(zod.string(), zod.object({
+  "enabled": zod.boolean(),
+  "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
+}))
+})
+
+export const UpdateNotificationChannelPolicyResponse = zod.object({
+  "policy": zod.object({
+  "events": zod.record(zod.string(), zod.object({
+  "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])),
+  "defaults": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
+})),
+  "schools": zod.record(zod.string(), zod.object({
+  "enabled": zod.boolean(),
+  "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
+}))
+}),
+  "availability": zod.record(zod.string(), zod.boolean())
 })
 
 

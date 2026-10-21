@@ -778,7 +778,7 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
           recipientUserId: item.recipient.userId,
           schoolId: body.schoolId,
           category: body.category as CommunicationCategory,
-          eventKey: `COMMUNICATION_CAMPAIGN:${campaign.id}:${item.recipient.userId}:STUDENT:${item.recipient.subjectStudentId ?? 'NONE'}:CLASS:${item.recipient.subjectClassId ?? 'NONE'}`,
+          eventKey: `COMMUNICATION_CAMPAIGN:${campaign.id}:${item.recipient.userId}:STUDENT:${item.recipient.subjectStudentId ?? 'NONE'}:CLASS:${item.recipient.subjectClassId ?? 'NONE'}${isEmergency ? ':EMERGENCY' : ''}`,
           subject: item.subject,
           body: item.body,
           link: null,

@@ -5,9 +5,13 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { NotificationAllowedChannels } from './notificationAllowedChannels';
+import type { NotificationChannelAvailability } from './notificationChannelAvailability';
 import type { SchoolCommunicationDefaults } from './schoolCommunicationDefaults';
 
 export interface SchoolCommunicationDefaultsResponse {
   defaults: SchoolCommunicationDefaults;
   canWrite: boolean;
+  allowed?: NotificationAllowedChannels;
+  availability?: NotificationChannelAvailability;
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import {defaultNotificationPolicy} from "./notification-channel-policy";
 import type {
   CommunicationProviderAdapters,
   ProviderSendResult,
@@ -82,6 +83,8 @@ function queueClient(options: {
 function dispatchPool(options: {
   claimed?: Array<{ id: number; channel: "SMS" | "EMAIL"; attempts: number }>;
   record?: Record<string, unknown> | null;
+  policy?: ReturnType<typeof defaultNotificationPolicy>;
+  schoolChoices?: Record<string,string[]>;
 } = {}) {
   const calls: Array<{ sql: string; values?: unknown[] }> = [];
   let committed = false;
@@ -100,6 +103,8 @@ function dispatchPool(options: {
     connect: vi.fn(async () => claimClient),
     query: vi.fn(async <Row,>(sql: string, values?: unknown[]) => {
       calls.push({ sql, values });
+      if(sql.includes("FROM audit_logs"))return {rows:(options.policy?[{policy:options.policy}]:[]) as Row[]};
+      if(sql.includes("communication_defaults"))return {rows:[{defaults:options.schoolChoices??{}}] as Row[]};
       if (sql.includes("FROM communication_deliveries d")) {
         return {
           rows: (options.record === null
@@ -112,7 +117,7 @@ function dispatchPool(options: {
               schoolId: 9,
               subjectStudentId: null,
               subjectClassId: null,
-              category: "ANNOUNCEMENT",
+              category: "ATTENDANCE",
               eventKey: "campaign-9-1-user-17",
               subject: "School update",
               body: "School closes early today.",
@@ -637,11 +642,25 @@ describe("communication delivery dispatcher", () => {
     expect(update?.values?.[11]).toBe("2026-08-01T10:00:30.000Z");
   });
 
+  it("rechecks Owner policy before dispatch of an already queued SMS",async()=>{
+    const policy=defaultNotificationPolicy();policy.events.ATTENDANCE!.allowed=["IN_APP"];
+    const {pool,calls}=dispatchPool({policy});
+    const send=vi.fn(async()=>({provider:"test",channel:"sms" as const,status:"SIMULATED" as const,accepted:false,delivered:false}));
+    expect((await dispatchCommunicationDeliveries(pool,5,{providers:testProviders(send)})).skipped).toBe(1);
+    expect(send).not.toHaveBeenCalled();
+    expect(calls.some(c=>c.sql.includes("OWNER_CHANNEL_POLICY"))).toBe(true);
+  });
+  it("rechecks school channel choices before dispatch of queued attendance SMS",async()=>{
+    const {pool}=dispatchPool({schoolChoices:{ATTENDANCE:["IN_APP"]}});
+    const send=vi.fn(async()=>({provider:"test",channel:"sms" as const,status:"SIMULATED" as const,accepted:false,delivered:false}));
+    expect((await dispatchCommunicationDeliveries(pool,5,{providers:testProviders(send)})).skipped).toBe(1);
+    expect(send).not.toHaveBeenCalled();
+  });
   it("does not schedule retries for an invalid Termii recipient", async () => {
     const { pool, calls } = dispatchPool({
       record: {
         id: 42, channel: "SMS", notificationId: 33, recipientUserId: 17, schoolId: 9,
-        subjectStudentId: null, subjectClassId: null, category: "ANNOUNCEMENT",
+        subjectStudentId: null, subjectClassId: null, category: "ATTENDANCE",
         eventKey: "campaign-9-1-user-17", subject: "Update", body: "Message",
         email: null, phone: "not-a-phone", schoolAuthorized: true, userStatus: "ACTIVE",
       },

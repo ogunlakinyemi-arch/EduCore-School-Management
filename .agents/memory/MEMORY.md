@@ -80,3 +80,4 @@
 - [Public registration policy](public-registration-policy.md) — only School Admin/Partner applications; Owner approval before operational access; preserve existing users.
 - [Application decision confirmation](application-decision-confirmation.md) — transport failure is not rollback; reconcile status without repeating decisions or notifications.
 - [Admin form presentation](admin-form-presentation-policy.md) — opt confirmed Owner/Admin forms into viewport dialogs without changing authorization, saving or unrelated financial flows.
+- [Provisional attendance](attendance-notification-controls.md) — morning Tag-in is provisional class presence, never biometric proof; retain notification governance snapshots.

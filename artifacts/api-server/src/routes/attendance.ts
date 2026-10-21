@@ -1,3 +1,4 @@
+import { markClassFromGate } from "../services/gate-class-attendance";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { pool, type DatabasePoolClient } from "@workspace/db";
@@ -577,9 +578,11 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
     );
     if (!currentStudent.rows[0]) throw new AuthError(404, "Student not found for this NFC device");
    await reconcileAttendance(client, result.rows[0]);
-    if (!options.suppressNotifications) await reconcileMissingClass(device.schoolId, eventDate, client);
    const securityRecorded = method === "NFC" && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)
      ? await joinSecurityAttendance(client, Number(result.rows[0].id), options.suppressNotifications === true) : false;
+   // Same transaction, after security acceptance. Exit can never create class presence.
+   if(method==="NFC"&&eventType==="SCHOOL_ENTRY")await markClassFromGate(client, Number(result.rows[0].id));
+   if (!options.suppressNotifications) await reconcileMissingClass(device.schoolId, eventDate, client);
    if (!securityRecorded && !options.suppressNotifications) await queueAttendanceCommunicationBestEffort(
       client,
       req,

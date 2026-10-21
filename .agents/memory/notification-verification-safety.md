@@ -27,11 +27,19 @@ An HTTP 401 from Resend domain listing does not alone establish an invalid sendi
 
 **How to apply:** Inspect the sanitized provider error category, not just the HTTP status. Keep domain verification and sending verification separate; use an explicitly approved controlled-recipient send to establish sending access.
 
-The intended communication policy reserves SMS for critical or explicitly urgent events, including genuine student absences. Routine results, fees, receipts, announcements and attendance summaries use email alongside existing in-app/push.
+The current default communication policy permits SMS for attendance (including
+configured gate entry/exit and genuine absences) and emergencies. Other categories,
+including card/subscription reminders, require an explicit Platform Owner policy
+change. School choices cannot expand Owner permissions.
 
-**Why:** The user explicitly stated this channel policy and prohibited introducing daily SMS while integrating Resend.
+**Why:** The user subsequently explicitly requested full Owner category/channel
+control and school choices constrained by that authority, while forbidding real
+test messages in this Development implementation.
 
-**How to apply:** Do not add automatic routine/daily SMS jobs when enabling email. Preserve recipient checks, preferences and stable event deduplication for absence alerts; review legacy channel behavior explicitly rather than replacing the communication architecture.
+**How to apply:** Enforce current policy at queueing and dispatch. Preserve
+recipient checks, consent, stable event deduplication and Development send locks.
+Do not introduce routine SMS jobs, real sends or provider enablement merely
+because a category or credential is configured.
 
 During payment safety testing, an earlier controlled-recipient email approval does not authorize sending notifications. Keep payment-test suppression independent of recipient allowlists and scheduler pauses, and cover manual dispatch and direct real-provider transports too.
 
