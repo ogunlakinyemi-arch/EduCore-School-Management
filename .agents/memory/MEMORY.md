@@ -81,3 +81,4 @@
 - [Application decision confirmation](application-decision-confirmation.md) — transport failure is not rollback; reconcile status without repeating decisions or notifications.
 - [Admin form presentation](admin-form-presentation-policy.md) — opt confirmed Owner/Admin forms into viewport dialogs without changing authorization, saving or unrelated financial flows.
 - [Provisional attendance](attendance-notification-controls.md) — morning Tag-in is provisional class presence, never biometric proof; retain notification governance snapshots.
+- [Telegram invitation authority](telegram-invitation-authority.md) — Admin-known links start onboarding only; final chat binding requires a fresh parent-owned token and consent.

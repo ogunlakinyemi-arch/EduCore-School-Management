@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { TelegramStatusPhoneCheck } from './telegramStatusPhoneCheck';
 
 export interface TelegramStatus {
   configured: boolean;
@@ -19,4 +20,10 @@ export interface TelegramStatus {
   pending: boolean;
   /** @nullable */
   pendingAccountLabel: string | null;
+  /** @nullable */
+  schoolName?: string | null;
+  children?: string[];
+  /** @nullable */
+  phoneCheck?: TelegramStatusPhoneCheck;
+  invitationOnly?: boolean;
 }

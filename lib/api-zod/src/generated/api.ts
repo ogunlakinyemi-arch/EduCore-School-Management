@@ -25,7 +25,11 @@ export const GetTelegramStatusResponse = zod.object({
   "parentEligible": zod.boolean(),
   "policyAllowed": zod.boolean(),
   "pending": zod.boolean(),
-  "pendingAccountLabel": zod.string().nullable()
+  "pendingAccountLabel": zod.string().nullable(),
+  "schoolName": zod.string().nullish(),
+  "children": zod.array(zod.string()).optional(),
+  "phoneCheck": zod.union([zod.literal('MATCH'),zod.literal('MISMATCH'),zod.literal(null)]).nullish(),
+  "invitationOnly": zod.boolean().optional()
 })
 
 
@@ -39,7 +43,11 @@ export const CheckTelegramHealthResponse = zod.object({
   "parentEligible": zod.boolean(),
   "policyAllowed": zod.boolean(),
   "pending": zod.boolean(),
-  "pendingAccountLabel": zod.string().nullable()
+  "pendingAccountLabel": zod.string().nullable(),
+  "schoolName": zod.string().nullish(),
+  "children": zod.array(zod.string()).optional(),
+  "phoneCheck": zod.union([zod.literal('MATCH'),zod.literal('MISMATCH'),zod.literal(null)]).nullish(),
+  "invitationOnly": zod.boolean().optional()
 })
 
 
@@ -66,12 +74,59 @@ export const UnlinkTelegramResponse = zod.object({
 
 
 export const ConfirmTelegramLinkBody = zod.object({
-  "schoolId": zod.number().int().min(1)
+  "schoolId": zod.number().int().min(1),
+  "consent": zod.literal(true)
 })
 
 export const ConfirmTelegramLinkResponse = zod.object({
   "linked": zod.boolean()
 })
+
+
+
+
+
+export const GetParentTelegramInvitationParams = zod.object({
+  "parentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetParentTelegramInvitationQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetParentTelegramInvitationResponse = zod.object({
+  "status": zod.enum(['Not invited', 'Invitation pending', 'Linked', 'Disabled/consent withdrawn', 'Delivery unavailable']),
+  "canInvite": zod.boolean(),
+  "expiresAt": zod.string().nullable(),
+  "pushAvailable": zod.boolean()
+})
+
+
+
+
+
+export const CreateParentTelegramInvitationParams = zod.object({
+  "parentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const CreateParentTelegramInvitationBody = zod.object({
+  "schoolId": zod.number().int().min(1)
+})
+
+export const CreateParentTelegramInvitationResponse = zod.object({
+  "status": zod.enum(['Not invited', 'Invitation pending', 'Linked', 'Disabled/consent withdrawn', 'Delivery unavailable']),
+  "canInvite": zod.boolean(),
+  "expiresAt": zod.string().nullable(),
+  "pushAvailable": zod.boolean()
+}).and(zod.object({
+  "url": zod.string()
+}))
 
 
 

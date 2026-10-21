@@ -9,14 +9,20 @@ const key=(env:NodeJS.ProcessEnv)=> {
   return createHash("sha256").update("educore/telegram-chat/v1:").update(env.SESSION_SECRET).digest();
 };
 export const telegramTokenHash=(token:string)=>createHash("sha256").update(token).digest("hex");
+export async function isAdminTelegramInvitation(db:Db,tokenHash:string){
+  return (await db.query(`SELECT 1 FROM audit_logs WHERE module='Communication'
+    AND event_type='TELEGRAM_PARENT_INVITED' AND role='SCHOOL_ADMIN'
+    AND metadata->>'telegramInvitationHash'=$1 LIMIT 1`,[tokenHash])).rows.length>0;
+}
 export const telegramChatHash=(chat:string,env:NodeJS.ProcessEnv=process.env)=>createHmac("sha256",key(env)).update(chat).digest("hex");
-export function sealTelegramChat(parentId:number,payload:{chatId:string;label:string},env:NodeJS.ProcessEnv=process.env){
+export interface TelegramChatBinding {chatId:string;label:string;phoneMatch?:boolean;phoneDigest?:string}
+export function sealTelegramChat(parentId:number,payload:TelegramChatBinding,env:NodeJS.ProcessEnv=process.env){
   const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",key(env),iv);
   cipher.setAAD(Buffer.from(String(parentId)));
   const encrypted=Buffer.concat([cipher.update(JSON.stringify(payload),"utf8"),cipher.final()]);
   return ["v1",iv.toString("base64url"),cipher.getAuthTag().toString("base64url"),encrypted.toString("base64url")].join(".");
 }
-export function openTelegramChat(parentId:number,sealed:string,env:NodeJS.ProcessEnv=process.env):{chatId:string;label:string}{
+export function openTelegramChat(parentId:number,sealed:string,env:NodeJS.ProcessEnv=process.env):TelegramChatBinding{
   const [version,iv,tag,data]=sealed.split(".");
   if(version!=="v1")throw new Error("Telegram binding unavailable");
   const decipher=createDecipheriv("aes-256-gcm",key(env),Buffer.from(iv,"base64url"));
@@ -24,6 +30,23 @@ export function openTelegramChat(parentId:number,sealed:string,env:NodeJS.Proces
   const parsed=JSON.parse(Buffer.concat([decipher.update(Buffer.from(data,"base64url")),decipher.final()]).toString("utf8"));
   if(!/^[1-9]\d{0,15}$/.test(parsed.chatId)||typeof parsed.label!=="string")throw new Error("Telegram binding unavailable");
   return parsed;
+}
+/** Optional contact comparison only; never identity-provider authentication. */
+export function normalizeTelegramPhone(value:unknown):string|null{
+  if(typeof value!=="string"||!/^[+\d\s().-]+$/.test(value))return null;
+  let digits=value.replace(/\D/g,"");
+  if(/^0\d{10}$/.test(digits))digits=`234${digits.slice(1)}`;
+  return /^[1-9]\d{6,14}$/.test(digits)?digits:null;
+}
+const phoneDigest=(phone:string,env:NodeJS.ProcessEnv)=>createHmac("sha256",key(env)).update(`phone:${phone}`).digest("hex");
+export async function telegramPhoneCheck(db:Db,parentId:number,binding:TelegramChatBinding,env:NodeJS.ProcessEnv=process.env){
+  if(binding.phoneMatch===undefined)return null;
+  if(!binding.phoneDigest)return "MISMATCH" as const;
+  const row=(await db.query(`SELECT p.phone AS "parentPhone",u.phone AS "userPhone"
+    FROM parents p JOIN app_users u ON u.id=p.user_id WHERE p.id=$1`,[parentId])).rows[0];
+  return [row?.parentPhone,row?.userPhone].some(value=>{
+    const normalized=normalizeTelegramPhone(value);return normalized&&phoneDigest(normalized,env)===binding.phoneDigest;
+  })?"MATCH" as const:"MISMATCH" as const;
 }
 export async function eligibleTelegramParent(db:Db,userId:number,schoolId:number,studentId?:number|null){
   return (await db.query(`SELECT DISTINCT p.id,p.user_id AS "userId" FROM parents p
@@ -67,8 +90,28 @@ export async function createParentTelegramChallenge(db:Db,userId:number,schoolId
 export async function acceptTelegramUpdate(db:Db,update:any,env:NodeJS.ProcessEnv=process.env){
   const message=update?.message,health=getTelegramHealth(env);
   if(!health.ready||message?.chat?.type!=="private"||!Number.isSafeInteger(message.chat.id)||message.chat.id<=0
-    ||message.from?.id!==message.chat.id||message.from?.is_bot===true||typeof message.text!=="string")return false;
+    ||message.from?.id!==message.chat.id||message.from?.is_bot===true)return false;
   const chat=String(message.chat.id),hash=telegramChatHash(chat,env);
+  if(message.contact){
+    // Only a user's explicitly shared OWN contact is eligible for comparison.
+    if(message.contact.user_id!==message.from.id)return false;
+    const pending=(await db.query(`SELECT c.id,c.parent_id AS "parentId",c.school_id AS "schoolId",c.pending_ciphertext,p.user_id AS "userId"
+      FROM telegram_link_challenges c JOIN parents p ON p.id=c.parent_id
+      WHERE c.chat_hash=$1 AND c.bot_id=$2 AND c.expires_at>now() AND c.claimed_at IS NOT NULL
+      AND c.confirmed_at IS NULL AND c.revoked_at IS NULL ORDER BY c.id DESC LIMIT 1`,[hash,health.botId])).rows[0];
+    if(!pending)return false;
+    await db.query("SELECT pg_advisory_xact_lock(31972,$1)",[pending.userId]);
+    if(!await eligibleTelegramParent(db,pending.userId,pending.schoolId)||!await telegramSchoolAllowed(db,pending.schoolId))return false;
+    const binding=openTelegramChat(pending.parentId,pending.pending_ciphertext,env);
+    const phone=normalizeTelegramPhone(message.contact.phone_number);
+    binding.phoneMatch=false;binding.phoneDigest=phone?phoneDigest(phone,env):undefined;
+    binding.phoneMatch=(await telegramPhoneCheck(db,pending.parentId,binding,env))==="MATCH";
+    const updated=await db.query(`UPDATE telegram_link_challenges SET pending_ciphertext=$2 WHERE id=$1
+      AND expires_at>now() AND confirmed_at IS NULL AND revoked_at IS NULL RETURNING id`,
+      [pending.id,sealTelegramChat(pending.parentId,binding,env)]);
+    return updated.rows.length>0;
+  }
+  if(typeof message.text!=="string")return false;
   if(/^\/(stop|unlink)$/.test(message.text)){
     const owners=(await db.query(`SELECT DISTINCT p.user_id FROM parents p WHERE p.id IN (
       SELECT parent_id FROM parent_telegram_links WHERE chat_hash=$1 AND bot_id=$2
@@ -90,7 +133,7 @@ export async function acceptTelegramUpdate(db:Db,update:any,env:NodeJS.ProcessEn
   if(!row)return false;
   const owner=(await db.query("SELECT user_id FROM parents WHERE id=$1",[row.parentId])).rows[0];
   if(owner)await db.query("SELECT pg_advisory_xact_lock(31972,$1)",[owner.user_id]);
-  if(!owner||!await eligibleTelegramParent(db,owner.user_id,row.schoolId))return false;
+  if(!owner||!await eligibleTelegramParent(db,owner.user_id,row.schoolId)||!await telegramSchoolAllowed(db,row.schoolId))return false;
   const label=typeof message.from.username==="string"&&/^[A-Za-z0-9_]{1,32}$/.test(message.from.username)
     ?`@${message.from.username}`:"Private Telegram account";
   const claimed=await db.query(`UPDATE telegram_link_challenges SET claimed_at=now(),pending_ciphertext=$2,chat_hash=$3
@@ -106,7 +149,11 @@ export async function confirmParentTelegramLink(db:Db,userId:number,schoolId:num
     AND bot_id=$3 AND expires_at>now() AND claimed_at IS NOT NULL AND confirmed_at IS NULL
     AND revoked_at IS NULL ORDER BY id DESC LIMIT 1 FOR UPDATE`,[parent.id,schoolId,health.botId])).rows[0];
   if(!row)throw new AuthError(409,"Start the bot using your current link before confirming");
-  openTelegramChat(parent.id,row.pending_ciphertext);
+  if(await isAdminTelegramInvitation(db,row.token_hash))
+    throw new AuthError(409,"Create your personal Telegram link in the signed-in Parent Portal, then start the bot and confirm. A school invitation cannot link an account.");
+  const binding=openTelegramChat(parent.id,row.pending_ciphertext);
+  if(await telegramPhoneCheck(db,parent.id,binding)==="MISMATCH")
+    throw new AuthError(409,"Shared contact does not match your account. Share your own matching contact or start a new invitation without contact sharing.");
   await db.query(`INSERT INTO parent_telegram_links(parent_id,bot_id,chat_ciphertext,chat_hash,consented_at)
     VALUES($1,$2,$3,$4,now()) ON CONFLICT(parent_id) DO UPDATE SET bot_id=excluded.bot_id,
     chat_ciphertext=excluded.chat_ciphertext,chat_hash=excluded.chat_hash,consented_at=now(),revoked_at=NULL,updated_at=now()`,

@@ -165,3 +165,100 @@ existing bot webhook before choosing polling; the app does not take it over.
 For `DEVELOPMENT_SEND_LOCK`, explicitly enable the separate Telegram Development
 opt-in; do not lift SMS/email locks. No Production enablement or publishing is
 included.
+
+## Parent onboarding and School Admin invitations
+
+This extension reuses the existing challenge, consent and audit storage.
+**No new migration is required or applied. Application database migrations require
+explicit approval.** Isolated SQL tests create disposable fictional databases;
+they do not apply DDL to the application's Development or Production database.
+
+### School Admin directory
+
+In **Parents & Guardians**, select the correct school and open a parent's
+**Telegram status**. Status loads on demand and refreshes while open:
+
+- **Not invited:** no current invitation or valid confirmed link.
+- **Invitation pending:** an unexpired invitation exists; generating a refresh
+  revokes the previous pending token. The URL is returned once only.
+- **Linked:** the parent has completed personal linking and consent. This is not
+  proof of receipt.
+- **Disabled/consent withdrawn:** only the parent can restart linking; an Admin
+  cannot override withdrawal.
+- **Delivery unavailable:** current health/policy or the latest delivery failure
+  prevents readiness. Resolve the actual cause; do not lift unrelated locks.
+
+Only an active School Admin for that school can generate/copy/refresh invitations.
+Platform Owner, Teacher, Parent, other-school and unrelated-parent requests cannot
+perform these operations. The parent needs an active EduCore account and live
+child relationship in that school. URLs and locally rendered QR codes contain
+only the bot's public username and a 32-byte random opaque start token, never
+internal school/parent/student IDs, bot tokens or reusable credentials. Server
+storage contains its hash only. Tokens expire after ten minutes and cannot be
+replayed; refreshing revokes older pending invitations. Generated URLs are held
+only in browser memory and removed on expiry or scope change.
+
+### An Admin invitation is not a chat-binding credential
+
+The Admin necessarily knows the link they generated. It must not let the Admin
+prepare their own Telegram account for accidental binding to a parent.
+
+1. An Admin invitation/QR can start onboarding in a private bot chat, but cannot
+   complete account linking, even with a later direct confirmation request.
+2. The parent signs in to EduCore and selects the correct linked child/school.
+   The **Connect Telegram** header action opens Communication centre →
+   Preferences. School and child context is displayed only after authenticated,
+   live parent-relationship verification; it is never sent to an unauthenticated
+   bot chat or exposed by a public token-lookup endpoint.
+3. The parent checks consent and creates a **personal** link. This replaces the
+   Admin-known pending invitation with a fresh token available only to that
+   signed-in parent. Open that link/QR, press Start in the private bot chat, then
+   return to EduCore. If arriving through an Admin QR first, this is a second,
+   intentionally required bot start.
+4. Review the pending account and school/child context, check the separate final
+   consent box and confirm. Starting the bot, scanning a QR, matching a phone or
+   an Admin action alone cannot link the account. Existing consent covers this
+   parent's verified linked children, with each school's current policy and
+   relationships rechecked before sending.
+
+The bot sends no automatic onboarding acknowledgement, school/child detail or
+test message. Parent Portal instructions explain the return-and-confirm step.
+Admin refresh requests reserve part of the parent's link-request quota so that
+repeated Admin refreshes cannot consume all personal-link attempts.
+
+### Optional contact comparison
+
+Parents may optionally share their **own** Telegram contact during personal
+linking. Another person's contact is ignored. An optional phone comparison
+accepts international formatting and equivalent Nigerian local/international
+formats, comparing against the saved parent/account phone. It does not discover
+whether a number uses Telegram and never messages a phone number.
+
+Only an encrypted comparison fingerprint/result is retained, not the shared
+contact's raw phone number. A mismatch blocks confirmation and is shown in the
+authenticated portal. The parent can supply their own matching contact or
+create a fresh personal link without sharing a contact. A match is never proof
+of identity; authenticated parent access, live relationships and final consent
+are still mandatory. The comparison is revalidated at confirmation.
+
+### In-app notice and conditional push
+
+Creating/refreshing a directory invitation queues a generic parent-facing
+in-app notification under current SYSTEM policy. Refreshes within the same
+ten-minute window reuse its stable event identity. Its link opens the signed-in
+Parent Portal preferences; it contains no invitation token or internal IDs.
+
+Push is offered only when existing VAPID configuration is valid, Development
+send locks permit it, Owner policy permits SYSTEM/PUSH and the parent has an
+active valid saved push subscription. The existing dispatcher still checks
+device/session authorization before sending. Push content remains generic;
+configuration or provider acknowledgement does not establish physical receipt.
+The immediate push attempt is scoped to this invitation's notification ID and
+cannot drain unrelated queued messages. Existing delivery records, retry and
+unknown-outcome protection remain authoritative.
+
+When these conditions are absent the UI explicitly reports push unavailable.
+No push configuration is enabled by this feature, no SMS/email fallback is used,
+and their existing credentials, send restrictions and paused workers are unchanged.
+No real test message is sent, no Production/Publish setting is changed, and
+nothing is published.

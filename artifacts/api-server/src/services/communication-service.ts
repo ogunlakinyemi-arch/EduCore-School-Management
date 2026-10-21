@@ -596,6 +596,8 @@ export interface CommunicationDispatchPool extends CommunicationQueryClient {
 }
 
 export interface DispatchCommunicationOptions {
+  /** Optional bounded scope for user-initiated invitation push; never drain old work. */
+  notificationIds?: number[];
   /** Dedicated Development workers must not claim other channels. */
   channels?: Array<"SMS"|"EMAIL"|"PUSH"|"TELEGRAM">;
   /** Injected providers are primarily useful to isolated tests and explicit workers. */
@@ -665,6 +667,7 @@ async function claimCommunicationDeliveries(
   maxAttempts: number,
   now: Date,
   selectedChannels: Array<"SMS"|"EMAIL"|"PUSH"|"TELEGRAM">,
+  notificationIds?: number[],
 ): Promise<ClaimedDelivery[]> {
   const client = await pool.connect();
   try {
@@ -677,15 +680,17 @@ async function claimCommunicationDeliveries(
            failed_at = $1,
            updated_at = $1
        WHERE channel = ANY($2::text[])
-         AND status = 'PROCESSING'
+          AND ($3::int[] IS NULL OR notification_id=ANY($3::int[]))
+          AND status = 'PROCESSING'
           AND COALESCE(last_attempt_at, updated_at, created_at) < $1::timestamptz - INTERVAL '15 minutes'`,
-      [normalizedDate(now),selectedChannels],
+      [normalizedDate(now),selectedChannels,notificationIds??null],
     );
     const claimed = await client.query<ClaimedDelivery>(
       `WITH due AS (
          SELECT id
          FROM communication_deliveries
          WHERE channel = ANY($4::text[])
+            AND ($5::int[] IS NULL OR notification_id=ANY($5::int[]))
            AND attempts < $2
            AND next_attempt_at <= $3
             AND status IN ('QUEUED','FAILED')
@@ -704,7 +709,7 @@ async function claimCommunicationDeliveries(
        FROM due
        WHERE d.id = due.id
        RETURNING d.id, d.channel, d.attempts`,
-      [batchLimit, maxAttempts, normalizedDate(now),selectedChannels],
+      [batchLimit, maxAttempts, normalizedDate(now),selectedChannels,notificationIds??null],
     );
     await client.query("COMMIT");
     return claimed.rows;
@@ -958,7 +963,9 @@ export async function dispatchCommunicationDeliveries(
   const selectedChannels=options.channels??["SMS","EMAIL","PUSH","TELEGRAM"];
   if(!selectedChannels.length||selectedChannels.some(c=>!["SMS","EMAIL","PUSH","TELEGRAM"].includes(c)))
     throw new TypeError("Invalid dispatch channels");
-  const claimed = await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),selectedChannels);
+  if(options.notificationIds&&(!options.notificationIds.length||options.notificationIds.length>500||
+    options.notificationIds.some(id=>!Number.isSafeInteger(id)||id<1)))throw new TypeError("Invalid notification scope");
+  const claimed = await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),selectedChannels,options.notificationIds);
   const summary: DispatchCommunicationResult = {
     claimed: claimed.length,
     accepted: 0,

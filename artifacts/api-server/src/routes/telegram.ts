@@ -4,7 +4,10 @@ import {pool} from "@workspace/db";
 import {AuthError,getUserContext,requireAuthentication} from "../middlewares/auth";
 import {getTelegramHealth,telegramDevelopment} from "../services/telegram-provider";
 import {eligibleTelegramParent,telegramSchoolAllowed,checkTelegramRuntimeHealth,createParentTelegramChallenge,
-  confirmParentTelegramLink,revokeParentTelegramLink,openTelegramChat} from "../services/telegram-links";
+  confirmParentTelegramLink,revokeParentTelegramLink,openTelegramChat,telegramPhoneCheck,isAdminTelegramInvitation} from "../services/telegram-links";
+import {parentTelegramInvitationStatus,telegramDirectoryParent,createTelegramDirectoryInvitation} from "../services/telegram-onboarding";
+import {dispatchCommunicationDeliveries} from "../services/communication-service";
+import {logger} from "../lib/logger";
 const router=Router();
 router.use(requireAuthentication());
 router.use((_req,res,next)=>telegramDevelopment(process.env)?next():res.status(404).json({error:"Development channel only"}));
@@ -29,7 +32,8 @@ function sameOrigin(req:Request){
 async function audit(db:any,userId:number,schoolId:number|null,event:string){
   await db.query(`INSERT INTO audit_logs(actor_user_id,"user",role,school_id,action,module,event_type,result,metadata)
     SELECT id,email,$4,$2,$3,'Communication',$3,'SUCCESS','{}'::jsonb FROM app_users WHERE id=$1`,
-    [userId,schoolId,event,event==="TELEGRAM_CONFIGURATION_CHECK"?"PLATFORM_OWNER":"PARENT"]);
+    [userId,schoolId,event,event==="TELEGRAM_CONFIGURATION_CHECK"?"PLATFORM_OWNER":
+      event==="TELEGRAM_PARENT_INVITED"?"SCHOOL_ADMIN":"PARENT"]);
 }
 async function transaction(userId:number,fn:(db:any)=>Promise<any>){
   const db=await pool.connect();
@@ -47,15 +51,24 @@ router.get("/status",run(async(req,res)=>{
   // Own account revocation stays available after relationships/health are withdrawn.
   const own=isOwner(req)?null:(await pool.query("SELECT id FROM parents WHERE user_id=$1",[userId])).rows[0];
   const link=own?(await pool.query(`SELECT consented_at,bot_id,chat_ciphertext FROM parent_telegram_links WHERE parent_id=$1`,[own.id])).rows[0]:null;
-  const pending=parent&&h.ready?(await pool.query(`SELECT pending_ciphertext FROM telegram_link_challenges WHERE parent_id=$1
+  const pending=parent&&h.ready?(await pool.query(`SELECT pending_ciphertext,token_hash FROM telegram_link_challenges WHERE parent_id=$1
     AND school_id=$2 AND bot_id=$3 AND expires_at>now() AND claimed_at IS NOT NULL AND confirmed_at IS NULL
     AND revoked_at IS NULL ORDER BY id DESC LIMIT 1`,[parent.id,schoolId,h.botId])).rows[0]:null;
-  let label=null;try{if(pending)label=openTelegramChat(parent.id,pending.pending_ciphertext).label;}catch{}
+  let label=null,phoneCheck:null|"MATCH"|"MISMATCH"=null;
+  try{if(pending){const binding=openTelegramChat(parent.id,pending.pending_ciphertext);label=binding.label;
+    phoneCheck=await telegramPhoneCheck(pool,parent.id,binding);}}catch{}
+  const context=parent?(await pool.query(`SELECT school.name AS "schoolName",
+    array_agg(DISTINCT trim(concat(s.first_name,' ',s.last_name))) AS children
+    FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id AND upper(r.status)='ACTIVE'
+    JOIN students s ON s.id=r.student_id AND s.school_id=$2 AND upper(s.status)='ACTIVE'
+    JOIN schools school ON school.id=s.school_id WHERE p.id=$1 GROUP BY school.name`,[parent.id,schoolId])).rows[0]:null;
+  const invitationOnly=!!pending&&await isAdminTelegramInvitation(pool,pending.token_hash);
   let linked=false;
   try{if(link?.consented_at&&link.bot_id===h.botId&&own){openTelegramChat(own.id,link.chat_ciphertext);linked=true;}}catch{}
   res.set("Cache-Control","no-store").json({...safe,linked,consented:!!link?.consented_at,
     parentEligible:eligible,policyAllowed:!!schoolId&&await telegramSchoolAllowed(pool,schoolId),
-    pending:!!label,pendingAccountLabel:label});
+     pending:!!label,pendingAccountLabel:invitationOnly?null:label,schoolName:context?.schoolName??null,children:context?.children??[],
+     phoneCheck:invitationOnly?null:phoneCheck,invitationOnly});
 }));
 let lastOwnerCheck=0;
 router.post("/health",run(async(req,res)=>{
@@ -79,7 +92,7 @@ router.post("/link",run(async(req,res)=>{
 }));
 router.post("/link/confirm",run(async(req,res)=>{
   sameOrigin(req);const userId=parentSession(req);
-  const q=z.object({schoolId:z.number().int().positive()}).strict().parse(req.body);
+  const q=z.object({schoolId:z.number().int().positive(),consent:z.literal(true)}).strict().parse(req.body);
   await transaction(userId,async db=>{
     await confirmParentTelegramLink(db,userId,q.schoolId);
     await audit(db,userId,q.schoolId,"TELEGRAM_ACCOUNT_LINKED");
@@ -92,5 +105,31 @@ router.delete("/link",run(async(req,res)=>{
     await revokeParentTelegramLink(db,userId);await audit(db,userId,null,"TELEGRAM_CONSENT_WITHDRAWN");
   });
   res.set("Cache-Control","no-store").json({unlinked:true});
+}));
+function schoolAdmin(req:Request,schoolId:number){
+  if(isOwner(req)||!getUserContext(req).roles.some(r=>r.role==="SCHOOL_ADMIN"&&r.status==="ACTIVE"&&r.schoolId===schoolId))
+    throw new AuthError(403,"Active School Admin for this school required");
+}
+router.get("/parents/:parentId",run(async(req,res)=>{
+  const parentId=z.coerce.number().int().positive().parse(req.params.parentId);
+  const {schoolId}=z.object({schoolId:z.coerce.number().int().positive()}).strict().parse(req.query);
+  schoolAdmin(req,schoolId);
+  res.set("Cache-Control","no-store").json(await parentTelegramInvitationStatus(pool,parentId,schoolId));
+}));
+router.post("/parents/:parentId/invitation",run(async(req,res)=>{
+  sameOrigin(req);
+  const parentId=z.coerce.number().int().positive().parse(req.params.parentId);
+  const {schoolId}=z.object({schoolId:z.number().int().positive()}).strict().parse(req.body);
+  schoolAdmin(req,schoolId);
+  const parent=await telegramDirectoryParent(pool,parentId,schoolId);
+  const result=await transaction(parent.userId,async db=>{
+    return createTelegramDirectoryInvitation(db,parentId,schoolId,getUserContext(req).user.id);
+  });
+  // Dispatch only this invitation's push, never other queued notifications.
+  if(result.pushAvailable&&result.noticeId)
+    void dispatchCommunicationDeliveries(pool,1,{allowConfiguredProviders:true,channels:["PUSH"],notificationIds:[Number(result.noticeId)]})
+      .catch(()=>logger.warn({category:"TELEGRAM_INVITATION_PUSH_UNAVAILABLE"},"Invitation push dispatch unavailable"));
+  const {noticeId:_noticeId,...safe}=result;
+  res.set("Cache-Control","no-store").json(safe);
 }));
 export default router;

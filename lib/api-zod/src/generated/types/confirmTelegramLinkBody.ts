@@ -9,4 +9,5 @@
 export type ConfirmTelegramLinkBody = {
   /** @minimum 1 */
   schoolId: number;
+  consent: true;
 };

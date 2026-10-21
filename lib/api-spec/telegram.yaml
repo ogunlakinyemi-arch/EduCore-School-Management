@@ -65,15 +65,52 @@ paths:
           application/json:
             schema:
               type: object
-              required: [schoolId]
+              required: [schoolId, consent]
               properties:
                 schoolId: {type: integer, minimum: 1}
+                consent: {type: boolean, enum: [true]}
       responses:
         "200":
           description: Authenticated parent confirms the private chat that consumed their token
           content:
             application/json:
               schema: {type: object, required: [linked], properties: {linked: {type: boolean}}}
+  /communication/telegram/parents/{parentId}:
+    get:
+      operationId: getParentTelegramInvitation
+      tags: [communication]
+      parameters:
+        - {name: parentId, in: path, required: true, schema: {type: integer, minimum: 1}}
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: School Admin status only; no chat identifiers or reusable links
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ParentTelegramInvitation"}
+  /communication/telegram/parents/{parentId}/invitation:
+    post:
+      operationId: createParentTelegramInvitation
+      tags: [communication]
+      parameters:
+        - {name: parentId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TelegramInvitationInput"}
+      responses:
+        "200":
+          description: New single-use invitation, returned only once; refresh revokes previous pending invitation
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: "#/components/schemas/ParentTelegramInvitation"}
+                  - type: object
+                    required: [url]
+                    properties:
+                      url: {type: string}
 components:
   schemas:
     TelegramStatus:
@@ -90,3 +127,25 @@ components:
         policyAllowed: {type: boolean}
         pending: {type: boolean}
         pendingAccountLabel: {type: [string, "null"]}
+        schoolName: {type: [string, "null"]}
+        children:
+          type: array
+          items: {type: string}
+        phoneCheck: {type: [string, "null"], enum: [MATCH, MISMATCH, null]}
+        invitationOnly: {type: boolean}
+    TelegramInvitationInput:
+      type: object
+      additionalProperties: false
+      required: [schoolId]
+      properties:
+        schoolId: {type: integer, minimum: 1}
+    ParentTelegramInvitation:
+      type: object
+      required: [status, canInvite, expiresAt, pushAvailable]
+      properties:
+        status:
+          type: string
+          enum: [Not invited, Invitation pending, Linked, Disabled/consent withdrawn, Delivery unavailable]
+        canInvite: {type: boolean}
+        expiresAt: {type: [string, "null"]}
+        pushAvailable: {type: boolean}

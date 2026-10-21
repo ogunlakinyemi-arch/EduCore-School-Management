@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearch } from 'wouter';
 import { useListParentCommunicationChildren, getListParentCommunicationChildrenQueryKey } from '@workspace/api-client-react';
 import { EmptyState, ErrorState, PageHeading, SkeletonPage } from '@/components/shared';
 import { Users } from 'lucide-react';
@@ -14,7 +15,12 @@ type Tab = 'inbox' | 'messages' | 'announcements' | 'security' | 'history' | 'pr
 export default function ParentCommunicationCentre({ standalone = true }: { standalone?: boolean }) {
   const q = useListParentCommunicationChildren(undefined, { query: { queryKey: getListParentCommunicationChildrenQueryKey(), staleTime: 60000 } });
   const kids = q.data?.children ?? [];
-  const [sid, setSid] = useState(0); const [tab, setTab] = useState<Tab>('inbox');
+  const search = useSearch();
+  const [sid, setSid] = useState(0); const [tab, setTab] = useState<Tab>(() =>
+    new URLSearchParams(search).get('tab') === 'preferences' ? 'preferences' : 'inbox');
+  useEffect(() => {
+    if (new URLSearchParams(search).get('tab') === 'preferences') setTab('preferences');
+  }, [search]);
   useEffect(() => { if (!sid && kids.length) setSid(kids[0].studentId); }, [kids, sid]);
   const child = kids.find(k => k.studentId === sid);
   const options = kids.map(k => ({ studentId: k.studentId, label: `${k.firstName} ${k.lastName} (${k.schoolName})` }));

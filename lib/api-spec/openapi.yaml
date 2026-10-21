@@ -42,6 +42,10 @@ paths:
     $ref: "./telegram.yaml#/paths/~1communication~1telegram~1link"
   /communication/telegram/link/confirm:
     $ref: "./telegram.yaml#/paths/~1communication~1telegram~1link~1confirm"
+  /communication/telegram/parents/{parentId}:
+    $ref: "./telegram.yaml#/paths/~1communication~1telegram~1parents~1{parentId}"
+  /communication/telegram/parents/{parentId}/invitation:
+    $ref: "./telegram.yaml#/paths/~1communication~1telegram~1parents~1{parentId}~1invitation"
   /platform/attendance/classes:
     $ref: "./owner-attendance.yaml#/paths/~1platform~1attendance~1classes"
   /platform/attendance/records:

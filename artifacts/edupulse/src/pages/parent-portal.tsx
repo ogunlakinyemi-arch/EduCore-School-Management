@@ -48,6 +48,7 @@ function PortalHeader() {
       </div>
       <nav aria-label="Family navigation" className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto border-t border-[hsl(var(--border)/.6)] px-5 py-2 text-xs font-bold text-[hsl(var(--primary))]">
         <Link href="/parent/communication" data-testid="link-parent-communication" className="whitespace-nowrap hover:underline">Communication centre</Link>
+        <Link href="/parent/communication?tab=preferences" data-testid="link-connect-telegram" className="whitespace-nowrap hover:underline">Connect Telegram</Link>
         <Link href="/my-transport" data-testid="link-parent-transport" className="whitespace-nowrap hover:underline">My transport</Link>
         <Link href="/academic-calendar" data-testid="link-parent-academic-calendar" className="whitespace-nowrap hover:underline">Academic calendar</Link>
         <Link href="/parent/timetable" data-testid="link-parent-timetable" className="whitespace-nowrap hover:underline">Timetables</Link>

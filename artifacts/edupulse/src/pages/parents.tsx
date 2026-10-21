@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { UsersRound, Plus, Search, Pencil, ArrowRight } from 'lucide-react';
+import { ParentTelegramDirectory } from '@/components/parent-telegram-directory';
 import { DirectoryExport } from '@/components/directory-export';
 import { 
   useListParents, useCreateParent, useUpdateParent, getListParentsQueryKey,
@@ -88,6 +89,7 @@ export function ParentsPage() {
                 <div>
                   <div className="text-sm font-medium">{parent.email}</div>
                   <div className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 font-mono">{parent.phone}</div>
+                  {canManageSchool && <div className="mt-1"><ParentTelegramDirectory key={`${schoolId}-${parent.id}`} parentId={parent.id} schoolId={schoolId} /></div>}
                 </div>
                 <div>
                   <div className="text-sm font-bold flex items-center gap-1.5">

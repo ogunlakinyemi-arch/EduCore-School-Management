@@ -13390,6 +13390,17 @@ export interface LostCardInput {
   reason: string;
 }
 
+/**
+ * @nullable
+ */
+export type TelegramStatusPhoneCheck = typeof TelegramStatusPhoneCheck[keyof typeof TelegramStatusPhoneCheck] | null;
+
+
+export const TelegramStatusPhoneCheck = {
+  MATCH: 'MATCH',
+  MISMATCH: 'MISMATCH',
+} as const;
+
 export interface TelegramStatus {
   configured: boolean;
   ready: boolean;
@@ -13403,6 +13414,36 @@ export interface TelegramStatus {
   pending: boolean;
   /** @nullable */
   pendingAccountLabel: string | null;
+  /** @nullable */
+  schoolName?: string | null;
+  children?: string[];
+  /** @nullable */
+  phoneCheck?: TelegramStatusPhoneCheck;
+  invitationOnly?: boolean;
+}
+
+export interface TelegramInvitationInput {
+  /** @minimum 1 */
+  schoolId: number;
+}
+
+export type ParentTelegramInvitationStatus = typeof ParentTelegramInvitationStatus[keyof typeof ParentTelegramInvitationStatus];
+
+
+export const ParentTelegramInvitationStatus = {
+  Not_invited: 'Not invited',
+  Invitation_pending: 'Invitation pending',
+  Linked: 'Linked',
+  'Disabled/consent_withdrawn': 'Disabled/consent withdrawn',
+  Delivery_unavailable: 'Delivery unavailable',
+} as const;
+
+export interface ParentTelegramInvitation {
+  status: ParentTelegramInvitationStatus;
+  canInvite: boolean;
+  /** @nullable */
+  expiresAt: string | null;
+  pushAvailable: boolean;
 }
 
 export interface OwnerAttendanceClass {
@@ -22301,10 +22342,22 @@ export type UnlinkTelegram200 = {
 export type ConfirmTelegramLinkBody = {
   /** @minimum 1 */
   schoolId: number;
+  consent: true;
 };
 
 export type ConfirmTelegramLink200 = {
   linked: boolean;
+};
+
+export type GetParentTelegramInvitationParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type CreateParentTelegramInvitation200 = ParentTelegramInvitation & {
+  url: string;
 };
 
 export type ListOwnerAttendanceClassesParams = {
