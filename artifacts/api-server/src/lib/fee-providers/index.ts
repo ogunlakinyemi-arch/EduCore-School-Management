@@ -77,6 +77,8 @@ export interface PaymentProviderAdapter {
   verifyPayment(input: VerifyPaymentInput): Promise<VerifiedPayment>;
   verifyCheckoutStatus(input: ExpectedPayment): Promise<VerifiedPayment>;
   handleWebhook(input: WebhookInput): Promise<WebhookResult>;
+  /** Available on providers with a pre-persistence signature gate. */
+  authenticateWebhook?(headers: WebhookInput["headers"]): void;
   getPaymentStatus(input: VerifyPaymentInput): Promise<FeePaymentStatus>;
   generateReference(): string;
   validateAmount(amountMinor: number, currency: string): boolean;
@@ -423,14 +425,19 @@ abstract class FlutterwaveV3Adapter extends HttpPaymentAdapter {
           || s.transaction_charge !== (i === 0 ? studentAllocationPolicy(input.reference).schoolMinor / 100 : 100)))) {
       throw new PaymentProviderError("Invalid Development split instructions");
     }
-    // A valid local flat_subaccount payload is not proof of effective post-fee
-    // payouts. Recipient verification does not validate dashboard split settings,
-    // and no supported adapter supplies complete recipient allocation evidence.
-    // Do not guess percentages, fall back to platform-only, or retry an old charge.
-    if (studentAllocationPolicy(input.reference).version >= 2) {
+    // The confirmed SCV3 TEST model is a fixed school subaccount charge with
+    // Merchant-borne fees and an internal Partner payable. SCV2 remains blocked:
+    // its legacy Partner checkout allocation is not the current policy.
+    if (studentAllocationPolicy(input.reference).version === 2) {
       throw new PaymentProviderError(
-        "Current-policy TEST checkout is blocked: exact post-fee recipient payouts and a nonzero merchant remainder are not independently established. SCV3 requires only the school checkout recipient, not a Partner subaccount. Review Flutterwave TEST split configuration; do not pay again for an existing charge.",
+        "SCV2 TEST checkout remains blocked; existing SCV2 payments keep their original allocation and must not be retried as SCV3.",
       );
+    }
+    if (studentAllocationPolicy(input.reference).deferredPartner
+        && (!input.subaccounts || input.subaccounts.length !== 1
+          || Object.keys(input.subaccounts[0]).some(key =>
+            !["id", "transaction_charge_type", "transaction_charge"].includes(key)))) {
+      throw new PaymentProviderError("SCV3 requires exactly one school flat_subaccount instruction and no Partner or ratio field");
     }
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {
       throw new PaymentProviderError("Payment customer email or return URL is invalid");

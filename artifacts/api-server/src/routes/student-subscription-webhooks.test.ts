@@ -7,6 +7,7 @@ const fake = vi.hoisted(() => ({
   termConflict: null as Record<string, any> | null,
   allocations: [] as unknown[][],
   receipt: null as Record<string, any> | null,
+  webhookEvents: new Map<string, Record<string, any>>(),
   calls: [] as string[],
   transactionTail: Promise.resolve() as Promise<void>,
   beginCount: 0,
@@ -59,11 +60,11 @@ const webhookBody = JSON.stringify({
   data: { id: 812345, tx_ref: reference },
 });
 
-function signedWebhook() {
+function signedWebhook(body = webhookBody) {
   return httpFetch(`${baseUrl}/webhook/`, {
     method: "POST",
     headers: { "content-type": "application/json", "verif-hash": webhookSecret },
-    body: webhookBody,
+    body,
   });
 }
 
@@ -100,6 +101,7 @@ beforeEach(() => {
   fake.termConflict = null;
   fake.allocations = [];
   fake.receipt = null;
+  fake.webhookEvents.clear();
   fake.calls = [];
   fake.transactionTail = Promise.resolve();
   fake.beginCount = 0;
@@ -135,6 +137,15 @@ beforeEach(() => {
         fake.payment.status = "RECONCILIATION_REQUIRED";
       }
       return { rows: [] };
+    }
+    if (sql.includes("UPDATE fee_provider_webhook_events")) {
+      const event = fake.webhookEvents.get(String(values[3]));
+      if (!event) return { rows: [] };
+      Object.assign(event, {
+        status: values[0], error_message: values[1],
+        verified_transaction_id: values[2] ?? event.verified_transaction_id,
+      });
+      return { rows: [{ id: 1 }] };
     }
     if (sql.includes("FROM student_subscription_payments p") && sql.includes("WHERE p.id=$1")) {
       return { rows: [{
@@ -206,6 +217,39 @@ beforeEach(() => {
         if (sql === "COMMIT" || sql === "ROLLBACK") {
           releaseTransaction?.();
           releaseTransaction = undefined;
+          return { rows: [] };
+        }
+        if (sql.includes("SELECT school_id FROM student_subscription_payments")
+            && sql.includes("provider_mode='SANDBOX'")) {
+          return { rows: String(values[0]) === fake.payment.reference
+            ? [{ school_id: fake.payment.schoolId }] : [] };
+        }
+        if (sql.includes("INSERT INTO fee_provider_webhook_events")) {
+          const [eventId,schoolId,providerReference,transactionId,payloadSha256] = values;
+          if (!fake.webhookEvents.has(String(eventId))) {
+            fake.webhookEvents.set(String(eventId), {
+              event_id:eventId,school_id:schoolId,provider_reference:providerReference,
+              webhook_transaction_id:transactionId,payload_sha256:payloadSha256,
+              status:"RECEIVED",signature_verified:true,verified_transaction_id:null,
+            });
+          }
+          return { rows: [] };
+        }
+        if (sql.includes("FROM fee_provider_webhook_events")
+            && sql.includes("FOR UPDATE")) {
+          const event = fake.webhookEvents.get(String(values[0]));
+          return { rows: event ? [event] : [] };
+        }
+        if (sql.includes("UPDATE fee_provider_webhook_events SET status='RECEIVED'")) {
+          const event = fake.webhookEvents.get(String(values[0]));
+          if (event) Object.assign(event,{status:"RECEIVED",error_message:null});
+          return { rows: [] };
+        }
+        if (sql.includes("UPDATE fee_provider_webhook_events")) {
+          const eventId = String(values[0]);
+          const event = fake.webhookEvents.get(eventId);
+          if (event) Object.assign(event, {status:"RECONCILIATION_REQUIRED",
+            error_message:"Signed delivery fingerprint conflicts with the stored event"});
           return { rows: [] };
         }
         if (sql.includes("FROM subscriptions sub") && sql.includes("WHERE sub.id=$1")) {
@@ -303,14 +347,17 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 
 describe("public student subscription Flutterwave webhook", () => {
   it("settles and creates the immutable receipt without any browser callback", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => providerResponse({ status: "success", data: {
-      id: 812345,
-      status: "successful",
-      tx_ref: reference,
-      amount: 5_000,
-      currency: "NGN",
-      created_at: "2026-01-30T10:00:00.000Z",
-    } })));
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      expect([...fake.webhookEvents.values()].some(event => event.status === "RECEIVED")).toBe(true);
+      return providerResponse({ status: "success", data: {
+        id: 812345,
+        status: "successful",
+        tx_ref: reference,
+        amount: 5_000,
+        currency: "NGN",
+        created_at: "2026-01-30T10:00:00.000Z",
+      } });
+    }));
 
     const response = await signedWebhook();
     expect(response.status).toBe(200);
@@ -318,6 +365,91 @@ describe("public student subscription Flutterwave webhook", () => {
     expect(fake.payment.status).toBe("PAID");
     expect(fake.allocations).toHaveLength(2);
     expect(fake.receipt?.receiptNumber).toBe(`STUDENT-${reference}`);
+    expect([...fake.webhookEvents.values()][0]).toMatchObject({
+      status:"VERIFIED",signature_verified:true,webhook_transaction_id:"812345",
+    });
+    expect([...fake.webhookEvents.values()][0]).not.toHaveProperty("raw_body");
+  });
+
+  it("acknowledges an identical verified retry without another provider read or allocation", async () => {
+    const providerFetch = vi.fn(async () => providerResponse({ status: "success", data: {
+      id: 812345, status: "successful", tx_ref: reference, amount: 5_000, currency: "NGN",
+    } }));
+    vi.stubGlobal("fetch", providerFetch);
+    const first = await signedWebhook();
+    const retry = await signedWebhook();
+    expect(first.status).toBe(200);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toEqual({ received:true,outcome:"duplicate" });
+    expect(providerFetch).toHaveBeenCalledTimes(1);
+    expect(fake.allocations).toHaveLength(2);
+  });
+
+  it("keeps delayed provider-pending events non-paid, then finalizes a later verified success", async () => {
+    const responses = [
+      providerResponse({ status:"success",data:{
+        id:812345,status:"pending",tx_ref:reference,amount:5_000,currency:"NGN",
+      } }),
+      providerResponse({ status:"success",data:{
+        id:812345,status:"successful",tx_ref:reference,amount:5_000,currency:"NGN",
+      } }),
+    ];
+    const providerFetch = vi.fn(async () => responses.shift()!);
+    vi.stubGlobal("fetch",providerFetch);
+    const pendingBody = JSON.stringify({event:"charge.completed",data:{id:812345,tx_ref:reference,status:"pending"}});
+    const completedBody = JSON.stringify({event:"charge.completed",data:{id:812345,tx_ref:reference,status:"successful"}});
+    const pending = await signedWebhook(pendingBody);
+    expect(pending.status).toBe(202);
+    expect(await pending.json()).toMatchObject({outcome:"pending"});
+    expect([...fake.webhookEvents.values()][0]?.status).toBe("PENDING");
+    expect(fake.payment.status).not.toBe("PAID");
+    expect(fake.allocations).toEqual([]);
+
+    const completed = await signedWebhook(completedBody);
+    expect(completed.status).toBe(200);
+    expect(await completed.json()).toMatchObject({outcome:"paid"});
+    expect(fake.payment.status).toBe("PAID");
+    expect(fake.allocations).toHaveLength(2);
+    expect(providerFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("records a signed failed event and makes identical retries idempotent", async () => {
+    const providerFetch = vi.fn(async () => providerResponse({ status:"success",data:{
+      id:812346,status:"failed",tx_ref:reference,amount:5_000,currency:"NGN",
+    } }));
+    vi.stubGlobal("fetch",providerFetch);
+    const failedBody = JSON.stringify({event:"charge.completed",data:{id:812346,tx_ref:reference,status:"failed"}});
+    const first = await signedWebhook(failedBody);
+    const retry = await signedWebhook(failedBody);
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({outcome:"failed"});
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toEqual({received:true,outcome:"duplicate"});
+    expect([...fake.webhookEvents.values()][0]?.status).toBe("FAILED");
+    expect(providerFetch).toHaveBeenCalledTimes(1);
+    expect(fake.allocations).toEqual([]);
+  });
+
+  it.each(["reversed","refunded"])("persists a signed %s event as reconciliation, never as a successful collection", async adverseStatus => {
+    const currentReference = fake.payment.reference;
+    fake.payment.reference = `SCV3_${reference}`;
+    const providerFetch = vi.fn(async () => {
+      throw new Error("An adverse charge must not trigger provider verification");
+    });
+    vi.stubGlobal("fetch",providerFetch);
+    const reversedBody = JSON.stringify({event:"charge.completed",data:{
+      id:812347,tx_ref:fake.payment.reference,status:adverseStatus,
+    }});
+    const response = await signedWebhook(reversedBody);
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({outcome:"reconciliation_required"});
+    expect([...fake.webhookEvents.values()][0]).toMatchObject({
+      status:"RECONCILIATION_REQUIRED",signature_verified:true,
+    });
+    expect(fake.payment.status).toBe("RECONCILIATION_REQUIRED");
+    expect(fake.allocations).toEqual([]);
+    expect(providerFetch).not.toHaveBeenCalled();
+    fake.payment.reference = currentReference;
   });
 
   it("rejects an invalid raw signature without querying or changing a payment", async () => {

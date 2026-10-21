@@ -62,7 +62,8 @@ router.get("/flutterwave/split-dashboard",run(async(req,res) => {
     [scope.owner,scope.schoolIds,scope.partnerIds,schoolId],
   )).rows : [];
   res.set("Cache-Control","no-store").json({
-    developmentOnly:true,mode:"TEST",currency:"NGN",feeBearer:"PLATFORM",isOwner:scope.owner,
+    developmentOnly:true,mode:"TEST",currency:"NGN",feeBearer:"MERCHANT",
+    feeBearerSettingVerified:false,isOwner:scope.owner,
     currentAllocationPolicy:scope.owner ? currentStudentAllocationPolicy() : null,
     testCredentialConfigured:!!developmentFlutterwaveCredential().secret,scopes:scope.items,recipients,
     schools:scope.schoolIds.map(s => settings.find(r => r.schoolId === s) ?? {schoolId:s,enabled:false,testSplitVerificationAuthorized:false}),

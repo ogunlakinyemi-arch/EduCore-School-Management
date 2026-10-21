@@ -13759,6 +13759,38 @@ export interface FlutterwaveRecipient {
   lastError?: string | null;
 }
 
+export type FlutterwaveSplitPaymentMerchantNetStatus = typeof FlutterwaveSplitPaymentMerchantNetStatus[keyof typeof FlutterwaveSplitPaymentMerchantNetStatus];
+
+
+export const FlutterwaveSplitPaymentMerchantNetStatus = {
+  PROVIDER_COSTS_INCOMPLETE: 'PROVIDER_COSTS_INCOMPLETE',
+  CALCULATED_BEFORE_REFUNDS_NOT_BANK_SETTLEMENT: 'CALCULATED_BEFORE_REFUNDS_NOT_BANK_SETTLEMENT',
+} as const;
+
+export type FlutterwaveStudentSubscriptionWebhookEventStatus = typeof FlutterwaveStudentSubscriptionWebhookEventStatus[keyof typeof FlutterwaveStudentSubscriptionWebhookEventStatus];
+
+
+export const FlutterwaveStudentSubscriptionWebhookEventStatus = {
+  RECEIVED: 'RECEIVED',
+  VERIFIED: 'VERIFIED',
+  PENDING: 'PENDING',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface FlutterwaveStudentSubscriptionWebhookEvent {
+  eventId: string;
+  /** @nullable */
+  transactionId: string | null;
+  status: FlutterwaveStudentSubscriptionWebhookEventStatus;
+  signatureVerified: boolean;
+  payloadSha256: string;
+  receivedAt: string;
+  updatedAt: string;
+  /** @nullable */
+  error: string | null;
+}
+
 export interface FlutterwaveRecipientSettlement {
   recipientId: number;
   expectedAmountMinor: number;
@@ -13804,7 +13836,30 @@ export interface FlutterwaveSplitPayment {
   /** @nullable */
   providerAdditionalFeeMinor?: number | null;
   /** @nullable */
+  providerFeesMinor: number | null;
+  /**
+     * Taxes are not separately identified by the current verified transaction fields; null is not zero.
+     * @nullable
+     */
+  providerTaxMinor: number | null;
+  merchantGrossMinor: number;
+  /**
+     * Calculated merchant gross less reported provider costs; not a bank-credit claim and excludes refunds.
+     * @nullable
+     */
+  merchantNetMinor: number | null;
+  merchantNetStatus: FlutterwaveSplitPaymentMerchantNetStatus;
+  /**
+     * Provider-reported transaction amount only; not bank-settlement evidence.
+     * @nullable
+     */
+  providerSettlementAmountMinor: number | null;
+  confirmedRefundMinor: number;
+  internalPartnerAccrualMinor: number;
+  internalPartnerAccrualStatus: string;
+  /** @nullable */
   platformNetMinor?: number | null;
+  webhookEvents: FlutterwaveStudentSubscriptionWebhookEvent[];
   currency: string;
   /** @nullable */
   reconciliationNote: string | null;
@@ -13883,7 +13938,7 @@ export type FlutterwaveSplitDashboardFeeBearer = typeof FlutterwaveSplitDashboar
 
 
 export const FlutterwaveSplitDashboardFeeBearer = {
-  PLATFORM: 'PLATFORM',
+  MERCHANT: 'MERCHANT',
 } as const;
 
 export interface FlutterwaveSplitDashboard {
@@ -13891,6 +13946,8 @@ export interface FlutterwaveSplitDashboard {
   mode: FlutterwaveSplitDashboardMode;
   currency: FlutterwaveSplitDashboardCurrency;
   feeBearer: FlutterwaveSplitDashboardFeeBearer;
+  /** Support-confirmed model only; the actual merchant dashboard setting has not been inspected. */
+  feeBearerSettingVerified: false;
   isOwner: boolean;
   /** Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only. */
   currentAllocationPolicy: FlutterwaveCurrentAllocationPolicy | null;

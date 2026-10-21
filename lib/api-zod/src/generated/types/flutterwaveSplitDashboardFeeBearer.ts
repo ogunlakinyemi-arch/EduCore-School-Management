@@ -10,5 +10,5 @@ export type FlutterwaveSplitDashboardFeeBearer = typeof FlutterwaveSplitDashboar
 
 
 export const FlutterwaveSplitDashboardFeeBearer = {
-  PLATFORM: 'PLATFORM',
+  MERCHANT: 'MERCHANT',
 } as const;

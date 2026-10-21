@@ -6,21 +6,74 @@ import { decryptSplitBank } from "./flutterwave-split-crypto";
 import { splitProvider } from "./flutterwave-split-provider";
 import { adjustmentView } from "./flutterwave-split-refunds";
 
+export function splitFinancialSummary(payment: any, adjustments: any[], partnerAccrual: any) {
+  const policy = studentAllocationPolicy(payment.reference);
+  const feeComponentsComplete = payment.provider_fee_minor != null
+    && payment.provider_additional_fee_minor != null;
+  const providerFeesMinor = feeComponentsComplete
+    ? Number(payment.provider_fee_minor) + Number(payment.provider_additional_fee_minor) : null;
+  const merchantGrossMinor = Number(payment.platform_amount_minor)
+    + (policy.deferredPartner ? Number(payment.partner_amount_minor) : 0);
+  const confirmedRefundMinor = adjustments.filter(a => a.status === "CONFIRMED")
+    .reduce((sum,a) => sum + Number(a.amount_minor),0);
+  const partnerEligible = policy.deferredPartner && payment.partner_profile_id != null;
+  const partnerAccrualMatches = partnerEligible && partnerAccrual
+    && Number(partnerAccrual.amount) === 100 && String(partnerAccrual.currency).toUpperCase() === "NGN";
+  return {
+    providerFeesMinor,
+    providerTaxMinor: null as number | null,
+    merchantGrossMinor,
+    merchantNetMinor: providerFeesMinor === null ? null : merchantGrossMinor-providerFeesMinor,
+    merchantNetStatus: providerFeesMinor === null
+      ? "PROVIDER_COSTS_INCOMPLETE" as const
+      : "CALCULATED_BEFORE_REFUNDS_NOT_BANK_SETTLEMENT" as const,
+    confirmedRefundMinor,
+    internalPartnerAccrualMinor: partnerEligible ? 10_000 : 0,
+    internalPartnerAccrualStatus: !policy.deferredPartner ? "NOT_CURRENT_POLICY"
+      : !partnerEligible ? "NOT_ELIGIBLE"
+      : partnerAccrualMatches ? String(partnerAccrual.status) : "MISSING_OR_MISMATCHED",
+    platformNetMinor: providerFeesMinor === null ? null
+      : Number(payment.platform_amount_minor)-providerFeesMinor
+        - adjustments.filter(a => a.status === "CONFIRMED")
+          .reduce((sum,a) => sum + Number(a.platform_reversal_minor ?? 0),0),
+  };
+}
+
 export async function splitPaymentView(paymentId: number) {
   const r = (await pool.query(
-    `SELECT s.*,p.status collection_status FROM flutterwave_split_payments s
+    `SELECT s.*,p.status collection_status,p.settlement_amount_minor
+       FROM flutterwave_split_payments s
      JOIN student_subscription_payments p ON p.id=s.payment_id WHERE s.payment_id=$1`, [paymentId],
   )).rows[0];
   if (!r) throw new AuthError(404, "Split payment not found");
   const adjustments = (await pool.query("SELECT * FROM flutterwave_split_adjustments WHERE payment_id=$1 ORDER BY id", [paymentId])).rows;
-  const reversal = adjustments.filter(a => a.status === "CONFIRMED").reduce((sum,a) => sum + Number(a.platform_reversal_minor ?? 0),0);
+  const policy = studentAllocationPolicy(r.reference);
+  const partnerAccrual = policy.deferredPartner && r.partner_profile_id != null
+    ? (await pool.query(
+      `SELECT amount,currency,status FROM commission_ledger
+        WHERE payment_id=$1 AND partner_profile_id=$2 ORDER BY id DESC LIMIT 1`,
+      [paymentId,r.partner_profile_id],
+    )).rows[0] ?? null
+    : null;
+  const summary = splitFinancialSummary(r,adjustments,partnerAccrual);
+  const webhookEvents = (await pool.query(
+    `SELECT event_id AS "eventId",webhook_transaction_id AS "transactionId",status,
+            signature_verified AS "signatureVerified",payload_sha256 AS "payloadSha256",
+            received_at AS "receivedAt",updated_at AS "updatedAt",error_message AS "error"
+       FROM fee_provider_webhook_events
+      WHERE provider='FLUTTERWAVE' AND provider_reference=$1
+        AND event_id LIKE 'flutterwave:student-subscription:%'
+      ORDER BY received_at DESC LIMIT 10`,
+    [r.reference],
+  )).rows;
   return {
     paymentId:r.payment_id,schoolId:r.school_id,studentId:r.student_id,termId:r.term_id,reference:r.reference,
     status:r.status,collectionStatus:r.collection_status,grossAmountMinor:500000,
     schoolAmountMinor:r.school_amount_minor,partnerAmountMinor:r.partner_amount_minor,platformAmountMinor:r.platform_amount_minor,
     providerFeeMinor:r.provider_fee_minor,providerAdditionalFeeMinor:r.provider_additional_fee_minor,
-    platformNetMinor:r.provider_fee_minor === null || r.provider_additional_fee_minor === null ? null
-      : r.platform_amount_minor-r.provider_fee_minor-r.provider_additional_fee_minor-reversal,
+    ...summary,
+    providerSettlementAmountMinor:r.settlement_amount_minor ?? null,
+    webhookEvents,
     currency:r.currency,reconciliationNote:r.reconciliation_note,
     recipients:(await pool.query(
       `SELECT recipient_id AS "recipientId",expected_amount_minor AS "expectedAmountMinor",

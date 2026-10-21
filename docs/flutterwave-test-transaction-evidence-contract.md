@@ -59,41 +59,53 @@ its TEST report status is not promoted to complete transaction allocation proof.
 | `MISMATCH` | `MISMATCH` | An observed contradiction in identity, charge, currency, amounts or normalized allocation; or inconsistent frozen policy |
 | `COMPLETE_VERIFIED` | `CONFIRMED` | Reserved for a future substantiated complete independent allocation report plus matching charge/cost evidence |
 
-The **current provider adapter cannot emit `COMPLETE_VERIFIED` or `CONFIRMED`**.
+The transaction-verification endpoint cannot emit `COMPLETE_VERIFIED` or `CONFIRMED`.
 The internal normalized comparator can exercise those cases with explicitly
 synthetic unit inputs. Its `completeRecipientSet` flag is not a Flutterwave
 field, not an HTTP input, and is never constructed by the current adapter.
-Passing synthetic tests is not evidence of provider allocation.
-`bankSettlementVerified` always remains false.
+Passing synthetic tests is not evidence of provider allocation. A separate TEST
+settlement-report reader may return `TEST_PROVIDER_REPORTED_COMPLETE` after exact
+recipient/transaction matching; that label is provider-reported TEST evidence,
+not actual bank credit. `bankSettlementVerified` always remains false.
 
 ## Evidence to obtain from Flutterwave before extending the mapper
 
-Under separate authorization, obtain official API/report documentation and a
-redacted genuine TEST transaction-linked allocation report establishing:
+Before treating report mapping as independently verified, obtain official
+API/report documentation and a redacted genuine TEST transaction-linked report
+establishing:
 
 1. Its provider-owned transaction ID and reference and NGN currency.
-2. The unique school/eligible Partner subaccount identities and fixed allocated
-   amounts, plus the merchant's own gross remainder or documented accounting
-   identity establishing that remainder from a genuinely complete recipient set.
+2. For current SCV3, the unique school subaccount and fixed NGN 1,900 allocation,
+   with no Partner checkout recipient; plus the NGN 3,100 merchant gross remainder
+   from a genuinely complete recipient set. Historical SCV2 records remain separate.
 3. A documented guarantee of complete recipient coverage (including pagination,
    extra/duplicate recipients and reversals), not an inferred completeness flag.
-4. Exact payer charge and separately defined fee/merchant-cost/VAT treatment,
-   fee bearer and any deductions affecting recipient shares.
+4. Exact payer charge, merchant-borne provider costs, and separately defined tax
+   treatment. Support confirms the Merchant-borne fee model; the account's actual
+   dashboard setting and whether tax is included remain unverified.
 5. Report provenance and unambiguous distinction between allocated amount,
    settlement-net amount, refund/reversal and actual bank disbursement status.
 
-A merchant dashboard export or Support statement can guide investigation, but
-must not be automatically ingested until its format, authority, completeness
-and transaction linkage are documented and implemented with negative tests.
+A Support statement confirms the relevant report capabilities, but it does not
+establish the exact record format or a specific transaction's allocations. A
+merchant dashboard export must not be automatically ingested until its format,
+authority, completeness and transaction linkage are documented and implemented
+with negative tests.
 Do not enable positive confirmation by simply accepting echoed `subaccounts`
 or setting an internal completeness boolean to true.
 
 ## Fixed policy and permissions
 
-Payer total remains NGN 5,000: school gross NGN 2,000; eligible Partner NGN 100
-and platform gross NGN 2,900; without an eligible Partner, platform gross
-NGN 3,000. Reported costs are separate platform expenses. No reader accounting,
-allocation, receipt or payment-history writes occur.
+Current SCV3 payer total remains NGN 5,000: school fixed checkout allocation
+NGN 1,900 and merchant gross remainder NGN 3,100 before costs. An eligible
+Partner's NGN 100 is an internal accrued payable, not a checkout recipient or
+immediate payout; Owner economic share before provider costs is NGN 3,000 with
+an eligible Partner and NGN 3,100 without one. Provider costs are Merchant-borne
+per written support confirmation. The app does not inspect the actual merchant
+dashboard setting or infer tax/VAT when it is not reported. Historical SCV2
+allocations are preserved and are not reinterpreted as SCV3.
+Support describes local settlement as typically T+1; this is a timing estimate,
+not a guarantee or evidence that a specific bank credit arrived.
 
 Authentication and Development gates precede access. Owner can read TEST
 evidence; school financial readers are restricted to their school's payment.
@@ -110,11 +122,12 @@ rewritten. No migration is needed.
 
 Offline React DOM tests render the actual screen with mocked signed-in identities
 and API responses, exercising its query/cache and interaction behavior. Route
-tests invoke Express in-process with synthetic identity and mocked persistence.
-Neither is real Clerk/browser acceptance or proof of provider/bank behavior.
-Services, external calls and database writes remain prohibited in this task.
-Actual signed-in browser acceptance requires separate permission to run services
-and approved identities/fixtures; genuine TEST payment authorization is separate.
+tests invoke Express in-process with synthetic identity, mocked persistence and
+mocked provider responses. No Flutterwave calls, transactions, refunds, transfers,
+application database writes or migrations were performed. Neither test type is
+real Clerk/browser acceptance or proof of provider/bank behavior. The queried
+Development schema was not independently matched to the running app's pool
+target; verify that target and schema before any migration approval.
 The UI also rejects unexpected/cached `CONFIRMED` or `COMPLETE_VERIFIED` results
 from this collection-only contract, and hides stale details during refresh or
 read failure. A future supported complete-report mapper requires explicit UI

@@ -19,6 +19,8 @@ export interface FlutterwaveSplitDashboard {
   mode: FlutterwaveSplitDashboardMode;
   currency: FlutterwaveSplitDashboardCurrency;
   feeBearer: FlutterwaveSplitDashboardFeeBearer;
+  /** Support-confirmed model only; the actual merchant dashboard setting has not been inspected. */
+  feeBearerSettingVerified: false;
   isOwner: boolean;
   /** Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only. */
   currentAllocationPolicy: FlutterwaveCurrentAllocationPolicy | null;

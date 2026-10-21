@@ -164,6 +164,34 @@ No Flutterwave API, real checkout, refund or transfer is used by focused tests.
 Native workflow tests use an isolated fictional PostgreSQL cluster and injected
 fictional verification evidence, never the application database.
 
+## Development TEST integration update — 2026-10-21
+
+The current Development adapter now accepts only the SCV3 checkout instruction:
+NGN 5,000 total, one fixed school subaccount at NGN 1,900 using
+`flat_subaccount`, with no Partner recipient and no `transaction_split_ratio`.
+SCV2 remains blocked for new checkout attempts and its historical allocations
+are preserved. The eligible Partner's NGN 100 remains an internal accrued
+payable. Written support confirms Merchant-borne provider fees; the actual
+merchant dashboard setting has not been inspected. Missing tax evidence remains
+unknown, and calculated merchant net is not bank-credit evidence.
+
+The TEST subscription webhook now persists the signed receipt before provider
+verification, does not save raw webhook bytes, de-duplicates terminal event
+retries, leaves pending events non-paid, and routes failed/refunded/reversed
+events to safe failure or reconciliation handling. Payment finalization remains
+idempotent. The Owner reconciliation view distinguishes merchant gross, known
+provider costs, calculated net, confirmed refunds, internal Partner accrual,
+provider-reported settlement and signed webhook status; it does not claim a bank
+deposit. The split settlement reader remains provider-report evidence, not proof
+of actual bank credit.
+
+These changes used only mocked provider responses. No transaction, refund,
+transfer, migration, LIVE gate, dashboard setting, secret, or deployment was
+changed. The application DB pool target was not independently matched to the
+read-only Development schema query. A genuine redacted transaction-linked
+settlement report and verified database target remain evidence prerequisites;
+the existing four LIVE migration drafts remain unapplied.
+
 ## Focused verification — 2026-10-21
 
 - 56 unit/configuration cases passed across
@@ -185,3 +213,18 @@ fictional verification evidence, never the application database.
   DOM and isolated SQL evidence are not presented as that acceptance.
 - No new application migration, actual provider interaction or real-money
   acceptance is established by these results.
+
+## Development TEST implementation verification — 2026-10-21
+
+- Focused API suites: 44 tests passed across SCV2/SCV3 provider behavior,
+  checkout snapshots, signed subscription webhooks and financial summaries.
+- Owner settlements DOM suite: 35 tests passed, including merchant-net,
+  internal Partner payable, tax-unknown and durable receipt presentation.
+- API and frontend TypeScript checks passed. OpenAPI codegen and shared-library
+  typecheck passed.
+- API server build passed. Frontend production build passed with the artifact's
+  `PORT` and `BASE_PATH` supplied; Vite reported sourcemap/chunk-size warnings.
+- `git diff --check` passed. The API workflow restarted and reported listening;
+  the preview screenshot shows the Clerk sign-in page, so the authenticated
+  Owner screen was not visually verified. No provider request, transaction,
+  application database write, migration or publication was performed.

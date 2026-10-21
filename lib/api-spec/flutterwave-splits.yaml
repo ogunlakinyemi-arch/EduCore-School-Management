@@ -267,7 +267,7 @@ components:
         lastError: { type: ["string", "null"] }
     FlutterwaveSplitPayment:
       type: object
-      required: [paymentId, schoolId, studentId, termId, reference, status, collectionStatus, grossAmountMinor, schoolAmountMinor, partnerAmountMinor, platformAmountMinor, currency, reconciliationNote, recipients, adjustments]
+      required: [paymentId, schoolId, studentId, termId, reference, status, collectionStatus, grossAmountMinor, schoolAmountMinor, partnerAmountMinor, platformAmountMinor, providerFeesMinor, providerTaxMinor, merchantGrossMinor, merchantNetMinor, merchantNetStatus, providerSettlementAmountMinor, confirmedRefundMinor, internalPartnerAccrualMinor, internalPartnerAccrualStatus, webhookEvents, currency, reconciliationNote, recipients, adjustments]
       properties:
         paymentId: { type: integer }
         schoolId: { type: integer }
@@ -282,7 +282,19 @@ components:
         platformAmountMinor: { type: integer }
         providerFeeMinor: { type: ["integer", "null"] }
         providerAdditionalFeeMinor: { type: ["integer", "null"] }
+        providerFeesMinor: { type: ["integer", "null"] }
+        providerTaxMinor: { type: ["integer", "null"], description: "Taxes are not separately identified by the current verified transaction fields; null is not zero." }
+        merchantGrossMinor: { type: integer }
+        merchantNetMinor: { type: ["integer", "null"], description: "Calculated merchant gross less reported provider costs; not a bank-credit claim and excludes refunds." }
+        merchantNetStatus: { type: string, enum: [PROVIDER_COSTS_INCOMPLETE, CALCULATED_BEFORE_REFUNDS_NOT_BANK_SETTLEMENT] }
+        providerSettlementAmountMinor: { type: ["integer", "null"], description: "Provider-reported transaction amount only; not bank-settlement evidence." }
+        confirmedRefundMinor: { type: integer }
+        internalPartnerAccrualMinor: { type: integer }
+        internalPartnerAccrualStatus: { type: string }
         platformNetMinor: { type: ["integer", "null"] }
+        webhookEvents:
+          type: array
+          items: { $ref: "#/components/schemas/FlutterwaveStudentSubscriptionWebhookEvent" }
         currency: { type: string }
         reconciliationNote: { type: ["string", "null"] }
         recipients:
@@ -342,12 +354,13 @@ components:
         deferredPartner: { type: boolean, description: V3 accrues eligible Partner commission internally rather than adding a Partner checkout subaccount. }
     FlutterwaveSplitDashboard:
       type: object
-      required: [developmentOnly, mode, currency, feeBearer, isOwner, currentAllocationPolicy, testCredentialConfigured, scopes, recipients, schools, payments]
+      required: [developmentOnly, mode, currency, feeBearer, feeBearerSettingVerified, isOwner, currentAllocationPolicy, testCredentialConfigured, scopes, recipients, schools, payments]
       properties:
         developmentOnly: { type: boolean }
         mode: { type: string, enum: [TEST] }
         currency: { type: string, enum: [NGN] }
-        feeBearer: { type: string, enum: [PLATFORM] }
+        feeBearer: { type: string, enum: [MERCHANT] }
+        feeBearerSettingVerified: { type: boolean, enum: [false], description: "Support-confirmed model only; the actual merchant dashboard setting has not been inspected." }
         isOwner: { type: boolean }
         currentAllocationPolicy:
           description: Owner-only current policy. Null for other roles; complete historical payment breakdowns are also Owner-only.
@@ -367,3 +380,15 @@ components:
         payments:
           type: array
           items: { $ref: "#/components/schemas/FlutterwaveSplitPayment" }
+    FlutterwaveStudentSubscriptionWebhookEvent:
+      type: object
+      required: [eventId, transactionId, status, signatureVerified, payloadSha256, receivedAt, updatedAt, error]
+      properties:
+        eventId: { type: string }
+        transactionId: { type: ["string", "null"] }
+        status: { type: string, enum: [RECEIVED, VERIFIED, PENDING, FAILED, RECONCILIATION_REQUIRED] }
+        signatureVerified: { type: boolean }
+        payloadSha256: { type: string }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        error: { type: ["string", "null"] }

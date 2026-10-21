@@ -53,7 +53,8 @@ CREATE TABLE subscriptions(id integer PRIMARY KEY,status text,verification_statu
 CREATE TABLE student_subscription_payments(
  id integer PRIMARY KEY,reference text,school_id integer,student_id integer,subscription_id integer,
  academic_session_id integer,academic_term_id integer,status text,provider_transaction_id text,
- reconciliation_status text,provider text,provider_mode text,gross_amount_minor integer,currency text,settlement_status text);
+ reconciliation_status text,failure_code text,provider text,provider_mode text,gross_amount_minor integer,
+ currency text,settlement_status text,updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE flutterwave_split_payments(
  payment_id integer PRIMARY KEY,reference text,school_id integer,student_id integer,subscription_id integer,
  session_id integer,term_id integer,school_recipient_id integer,partner_recipient_id integer,partner_profile_id integer,
@@ -77,6 +78,14 @@ CREATE TABLE commission_ledger(
  UNIQUE(subscription_id,term));
 CREATE TABLE audit_logs(
  id serial PRIMARY KEY,"user" text,role text,actor_user_id integer,action text,module text,record_id integer,metadata jsonb);
+CREATE TABLE fee_provider_webhook_events(
+ id serial PRIMARY KEY,provider text NOT NULL,event_id text NOT NULL,payment_id integer,school_id integer,
+ provider_reference text,webhook_transaction_id text,verified_transaction_id text,
+ status text NOT NULL DEFAULT 'RECEIVED'
+   CHECK(status IN('RECEIVED','VERIFIED','PENDING','FAILED','RECONCILIATION_REQUIRED')),
+ signature_verified boolean NOT NULL DEFAULT false,payload_sha256 text NOT NULL,error_message text,
+ received_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),resolved_at timestamptz,
+ UNIQUE(provider,event_id));
 `;
 async function payment(id: number, partnerId: number | null = 1, termId = 1, reference = `SCV3_fixture_payment_${id}`) {
   const version3 = reference.startsWith("SCV3_");
@@ -84,7 +93,10 @@ async function payment(id: number, partnerId: number | null = 1, termId = 1, ref
   const term = termId === 1 ? "First Term" : "Second Term";
   await state.pool.query(`INSERT INTO subscriptions VALUES($1,'active','verified',$2);
   `, [id,reference]);
-  await state.pool.query(`INSERT INTO student_subscription_payments VALUES
+  await state.pool.query(`INSERT INTO student_subscription_payments
+    (id,reference,school_id,student_id,subscription_id,academic_session_id,academic_term_id,status,
+     provider_transaction_id,reconciliation_status,provider,provider_mode,gross_amount_minor,currency,settlement_status)
+    VALUES
     ($1,$2,10,$1,$1,1,$3,'PAID',$4,'RECONCILED','FLUTTERWAVE','SANDBOX',500000,'NGN','PENDING')`,
     [id,reference,termId,`transaction-${id}`]);
   await state.pool.query(`INSERT INTO flutterwave_split_payments VALUES

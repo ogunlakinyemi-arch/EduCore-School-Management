@@ -60,11 +60,15 @@ const recipient = {
 const payment = {
   paymentId: 40, reference: 'unit-payment', status: 'COLLECTION_PAID', collectionStatus: 'PAID',
   grossAmountMinor: 500000, schoolAmountMinor: 200000, partnerAmountMinor: 10000, platformAmountMinor: 290000,
-  providerFeeMinor: null, providerAdditionalFeeMinor: null, platformNetMinor: null,
+  providerFeeMinor: null, providerAdditionalFeeMinor: null, providerFeesMinor: null, providerTaxMinor: null,
+  merchantGrossMinor: 290000, merchantNetMinor: null, merchantNetStatus:'PROVIDER_COSTS_INCOMPLETE',
+  providerSettlementAmountMinor:null,confirmedRefundMinor:0,internalPartnerAccrualMinor:0,
+  internalPartnerAccrualStatus:'NOT_CURRENT_POLICY',platformNetMinor:null,webhookEvents:[],
   refundedAmountMinor: 0, recipients: [], adjustments: [],
 };
 const dashboard = () => ({
-  developmentOnly: true, mode: 'TEST', currency: 'NGN', feeBearer: 'PLATFORM', isOwner: true,
+  developmentOnly: true, mode: 'TEST', currency: 'NGN', feeBearer: 'MERCHANT',
+  feeBearerSettingVerified:false,isOwner: true,
   testCredentialConfigured: true, scopes: [{ kind: 'SCHOOL', id: 1, name: 'UNIT SCHOOL' }],
   recipients: [{ ...recipient }], schools: [{ schoolId: 1, enabled: false, testSplitVerificationAuthorized: false }],
   payments: [{ ...payment }],
@@ -135,10 +139,43 @@ describe('Offline signed-in TEST verification screen (mock identity/API, real Re
     expect(rules).toContain('Provider processing fees and any evidenced taxes are Merchant expenses, deducted once');
     expect(rules).not.toMatch(/Partner receives|Platform Owner receives/);
     expect(rules).not.toMatch(/NGN 2,000|NGN 2,900/);
-    expect(f.dashboardOptions.queryKey).toContain('owner-policy-v2');
+    expect(f.dashboardOptions.queryKey).toContain('owner-policy-v3-merchant-net');
     expect(f.evidence).not.toHaveBeenCalled();
     expect(f.evidenceOptions.enabled).toBe(false);
     expect(f.evidenceOptions.queryKey.at(-1)).toBe('unit-owner');
+  });
+  it('labels merchant net, reported costs, the internal Partner payable, and durable webhook state without claiming a bank credit', async () => {
+    f.dashboard.mockResolvedValue({
+      ...dashboard(),
+      payments:[{
+        ...payment,
+        reference:'SCV3_financial_summary_fixture',
+        schoolAmountMinor:190000,partnerAmountMinor:10000,platformAmountMinor:300000,
+        providerFeeMinor:5000,providerAdditionalFeeMinor:2000,providerFeesMinor:7000,
+        providerTaxMinor:null,merchantGrossMinor:310000,merchantNetMinor:303000,
+        merchantNetStatus:'CALCULATED_BEFORE_REFUNDS_NOT_BANK_SETTLEMENT',
+        providerSettlementAmountMinor:303000,confirmedRefundMinor:0,
+        internalPartnerAccrualMinor:10000,internalPartnerAccrualStatus:'PENDING',
+        webhookEvents:[{
+          eventId:'fixture-event',transactionId:'812345',status:'VERIFIED',
+          signatureVerified:true,payloadSha256:'a'.repeat(64),
+          receivedAt:'2026-01-30T10:00:00.000Z',updatedAt:'2026-01-30T10:00:02.000Z',error:null,
+        }],
+      }],
+    });
+    await render();
+    expect(host.textContent).toContain('Merchant gross before costs');
+    expect(host.textContent).toContain('NGN 3,100');
+    expect(host.textContent).toContain('NGN 3,030');
+    expect(host.textContent).toContain('Partner internal accrued payable');
+    expect(host.textContent).toContain('NGN 100');
+    expect(host.textContent).toContain('Provider fees total');
+    expect(host.textContent).toContain('NGN 70');
+    expect(host.textContent).toContain('Tax/VAT separately identified');
+    expect(host.textContent).toContain('not bank-credit proof');
+    expect(host.textContent).toContain('verified · transaction 812345 · signature verified');
+    expect(node('webhook-events-40')).not.toBeNull();
+    expect(host.textContent).toContain('not verified');
   });
   it('offers an explicit read-only LIVE link near the top of the TEST page without provider reads', async () => {
     await render();

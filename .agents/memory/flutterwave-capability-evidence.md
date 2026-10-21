@@ -93,11 +93,15 @@ Treat an unexpected or unidentifiable merchant identity on a hosted TEST checkou
 
 **How to apply:** Confirm the authorized merchant's registered TEST/trading identity through the user's authenticated Flutterwave dashboard before using the existing link. A returned hosted link only proves checkout initialization; it does not prove payment, split allocation, webhook receipt or settlement.
 
-Support's general statement that transaction/webhook fields may report split details does not establish their exact schema, transaction linkage or complete recipient coverage.
+On 2026-10-21 the user relayed Flutterwave Support confirmation that
+`charge.completed` and transaction/settlement reports support reconciliation,
+with local settlement typically T+1. This confirms available capabilities and a
+usual timeline, not the exact report schema, transaction linkage, recipient
+coverage or an individual bank credit.
 
 **Why:** The restricted offline investigation could not substantiate a complete allocation response/report contract. That is an evidence gap, not proof that Flutterwave never offers one; synthetic normalized comparisons cannot close it.
 
-**How to apply:** Consult `docs/flutterwave-test-transaction-evidence-contract.md`. Obtain official schema/completeness semantics and authorized genuine redacted evidence before adding a complete-allocation mapper; collection success alone remains insufficient.
+**How to apply:** Consult `docs/flutterwave-test-transaction-evidence-contract.md`. Use signed completion events and strictly matched transaction/settlement reports for reconciliation, but obtain the exact documented schema and authorized genuine redacted evidence before asserting complete allocation or bank settlement. T+1 is an estimate, never proof; collection success alone remains insufficient.
 
 The user relayed Flutterwave Support clarification on 2026-10-13: a collection subaccount's business name is separate from the main merchant's business name. An unfamiliar checkout identity does not, by itself, justify renaming a matching TEST subaccount.
 

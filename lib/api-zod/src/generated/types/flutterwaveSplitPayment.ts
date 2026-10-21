@@ -7,6 +7,8 @@
  */
 import type { FlutterwaveRecipientSettlement } from './flutterwaveRecipientSettlement';
 import type { FlutterwaveSplitAdjustment } from './flutterwaveSplitAdjustment';
+import type { FlutterwaveSplitPaymentMerchantNetStatus } from './flutterwaveSplitPaymentMerchantNetStatus';
+import type { FlutterwaveStudentSubscriptionWebhookEvent } from './flutterwaveStudentSubscriptionWebhookEvent';
 
 export interface FlutterwaveSplitPayment {
   paymentId: number;
@@ -25,7 +27,30 @@ export interface FlutterwaveSplitPayment {
   /** @nullable */
   providerAdditionalFeeMinor?: number | null;
   /** @nullable */
+  providerFeesMinor: number | null;
+  /**
+     * Taxes are not separately identified by the current verified transaction fields; null is not zero.
+     * @nullable
+     */
+  providerTaxMinor: number | null;
+  merchantGrossMinor: number;
+  /**
+     * Calculated merchant gross less reported provider costs; not a bank-credit claim and excludes refunds.
+     * @nullable
+     */
+  merchantNetMinor: number | null;
+  merchantNetStatus: FlutterwaveSplitPaymentMerchantNetStatus;
+  /**
+     * Provider-reported transaction amount only; not bank-settlement evidence.
+     * @nullable
+     */
+  providerSettlementAmountMinor: number | null;
+  confirmedRefundMinor: number;
+  internalPartnerAccrualMinor: number;
+  internalPartnerAccrualStatus: string;
+  /** @nullable */
   platformNetMinor?: number | null;
+  webhookEvents: FlutterwaveStudentSubscriptionWebhookEvent[];
   currency: string;
   /** @nullable */
   reconciliationNote: string | null;

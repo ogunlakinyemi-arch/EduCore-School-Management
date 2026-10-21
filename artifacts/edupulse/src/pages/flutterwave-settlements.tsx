@@ -209,8 +209,13 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
       onError: e => onMsg({ tone: 'error', text: `${errText(e)} The idempotency key is kept so a deliberate retry cannot duplicate the refund.` }),
     });
   };
+  const currentPolicy = p.reference.startsWith('SCV3_');
   const lines: [string, number | null | undefined][] = [
-    ['School', p.schoolAmountMinor], ['Partner', p.partnerAmountMinor], ['Platform gross', p.platformAmountMinor],
+    ['School fixed allocation', p.schoolAmountMinor],
+    ['Merchant gross before costs', p.merchantGrossMinor],
+    ['Merchant net after reported costs (before refunds)', p.merchantNetMinor],
+    [currentPolicy ? 'Partner internal accrued payable' : 'Historical Partner allocation', currentPolicy ? p.internalPartnerAccrualMinor : p.partnerAmountMinor],
+    ['Owner economic share after costs/reversals', p.platformNetMinor],
   ];
   return (
     <div className="panel p-5" data-testid={`split-payment-${p.paymentId}`}>
@@ -218,16 +223,29 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
         <div className="text-sm font-bold">Payment #{p.paymentId} <span className="font-mono text-xs font-normal">{p.reference}</span></div>
         <div className="flex gap-2"><StatusPill value={p.status} /><StatusPill value={p.collectionStatus} /></div>
       </div>
-      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
         <div><span className={note}>Gross collected</span><div className="font-bold">{naira(p.grossAmountMinor)}</div></div>
         {lines.map(([l, v]) => <div key={l}><span className={note}>{l} (server-computed)</span><div className="font-bold">{naira(v)}</div></div>)}
       </div>
-      <div className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
-        <div><span className={note}>Provider fee</span><div>{naira(p.providerFeeMinor)}</div></div>
-        <div><span className={note}>Other reported provider fees</span><div>{naira(p.providerAdditionalFeeMinor)}</div></div>
-        <div><span className={note}>Net platform allocation after costs/reversals</span><div>{naira(p.platformNetMinor)}</div></div>
+      <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+        <div><span className={note}>Reported app fee</span><div>{naira(p.providerFeeMinor)}</div></div>
+        <div><span className={note}>Other reported provider fee</span><div>{naira(p.providerAdditionalFeeMinor)}</div></div>
+        <div><span className={note}>Provider fees total</span><div>{naira(p.providerFeesMinor)}</div></div>
+        <div><span className={note}>Tax/VAT separately identified</span><div>{naira(p.providerTaxMinor)}</div></div>
+        <div><span className={note}>Provider-reported settlement amount</span><div>{naira(p.providerSettlementAmountMinor)}</div></div>
+        <div><span className={note}>Confirmed customer refunds</span><div>{naira(p.confirmedRefundMinor)}</div></div>
+        <div><span className={note}>Partner accrual status</span><div>{label(p.internalPartnerAccrualStatus)}</div></div>
       </div>
-      <p className={`mt-1 ${note}`}>Net allocation is not a verified merchant cash balance; recipient refund recovery may still be outstanding.</p>
+      <p className={`mt-1 ${note}`}>Merchant net is calculated before refunds and is not bank-credit proof. Taxes are not separately identified here; no VAT amount is inferred. Provider-reported settlement and school recipient reports are not proof of bank credit. Recipient recovery after refunds remains separate.</p>
+      {p.webhookEvents.length > 0 && <div className="mt-3 rounded-lg border border-[hsl(var(--border))] p-3 text-xs" data-testid={`webhook-events-${p.paymentId}`}>
+        <strong>Durable signed webhook receipts</strong>
+        <ul className="mt-2 space-y-1">
+          {p.webhookEvents.map(event => <li key={event.eventId}>
+            {label(event.status)} · transaction {event.transactionId ?? 'unmatched'} · signature {event.signatureVerified ? 'verified' : 'unverified'} · {new Date(event.receivedAt).toLocaleString()}
+            {event.error ? ` · ${event.error}` : ''}
+          </li>)}
+        </ul>
+      </div>}
       <div className="mt-3 rounded-lg border border-[hsl(var(--border))] p-3 text-xs" data-testid={`transaction-evidence-${p.paymentId}`}>
         <strong>Provider transaction split verification: {evidence.isError || evidence.isFetching || unsupportedConfirmation ? 'UNCONFIRMED' : evidence.data?.status ?? 'UNCONFIRMED — not checked'}</strong>
         <p>{evidence.isFetching ? 'Reading provider evidence; a previous result is not current confirmation.' : evidence.isError ? 'Provider read-back unavailable; any previous reading is not current confirmation.' : unsupportedConfirmation ? 'Complete allocation confirmation is unsupported by this collection-only reader; no confirmation is accepted.' : evidence.data?.reason ?? 'Server-computed shares and a paid collection are not proof of provider split allocation.'}</p>
@@ -280,7 +298,7 @@ export function FlutterwaveSettlementsPage() {
   const { schoolId } = useTenant();
   const params = schoolId ? { schoolId } : undefined;
   const q = useGetFlutterwaveSplitDashboard(params, { query: {
-    queryKey: [...getGetFlutterwaveSplitDashboardQueryKey(params),'owner-policy-v2',userId],
+    queryKey: [...getGetFlutterwaveSplitDashboardQueryKey(params),'owner-policy-v3-merchant-net',userId],
     enabled:isLoaded && !!userId,
     refetchOnMount: 'always', refetchInterval: 30_000, retry: false,
   } });
@@ -304,7 +322,7 @@ export function FlutterwaveSettlementsPage() {
       <LiveReadinessAccess isOwner={d.isOwner} />
       <Banner tone="warn">Split Settlements is Development TEST-only. This page does not activate LIVE. LIVE readiness is a separate read-only Owner evidence preview, not permission to create a LIVE payment.</Banner>
       {d.isOwner && <div className="panel mb-5 p-4 text-sm"><Link href="/flutterwave-split-simulation" className="font-bold underline">Open separate local simulation — TEST / NOT REAL</Link><p>No saved recipients, settings, payments or provider calls. This does not enable operational splits.</p></div>}
-      <Banner tone="warn">TEST mode, {d.currency}, provider fees borne by the {d.feeBearer.toLowerCase()}. No real transfers are made. Existing paid receipts are never changed. Fees and applicable VAT are platform expenses. Only provider-reported costs appear below; confirm VAT inclusion against provider statements.</Banner>
+      <Banner tone="warn">TEST mode, {d.currency}. Written support confirms Merchant-borne fees for the fixed-subaccount model; this app has not inspected the merchant dashboard setting ({d.feeBearerSettingVerified ? 'verified' : 'not verified'}). No real transfers are made. Existing paid receipts are never changed. Reported provider costs are shown separately; taxes are not assumed to be VAT and are not inferred when missing.</Banner>
       {!d.testCredentialConfigured && <Banner tone="error">The TEST credential format is not configured. Recipient creation will fail until it is. This reflects configuration format, not permissions.</Banner>}
       {msg && <Banner tone={msg.tone}>{msg.text}</Banner>}
       {d.isOwner && <div className="panel mb-6 p-5 text-xs leading-6" data-testid="text-split-rules">
