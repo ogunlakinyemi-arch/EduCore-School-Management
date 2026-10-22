@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from "vitest";
-import {previewLiveEvidence,livePreviewTables} from "./flutterwave-live-evidence-preview";
+import {previewLiveEvidence,livePreviewTables,livePreviewColumns} from "./flutterwave-live-evidence-preview";
 
 const input={merchantScope:"fictional_merchant",schoolId:10,reviewId:1,authorityEvidence:{}};
 const authorityColumns=["id","environment","merchant_scope","school_id","school_subaccount_id","evidence_sha256","expires_at","reviewed_by"];
@@ -29,7 +29,7 @@ describe("LIVE preview is read-only and never infers target approval from partia
     expect(f.query.mock.calls.some(([sql])=>sql.includes("FROM flutterwave_live_authority_reviews"))).toBe(false);
   });
   it("never labels mere table existence as migration approval or webhook authentication",async()=>{
-    const metadata=livePreviewTables.flatMap(name=>(name==="flutterwave_live_authority_reviews"?authorityColumns:["id"])
+    const metadata=livePreviewTables.flatMap(name=>livePreviewColumns[name]
       .map(column_name=>({table_name:name,column_name})));
     const f=fake(metadata);
     const report=await previewLiveEvidence(f.pool,input);
@@ -39,6 +39,16 @@ describe("LIVE preview is read-only and never infers target approval from partia
       expect(report.checks).toContainEqual(expect.objectContaining({key,status:"UNVERIFIED"}));
     expect(report.checks).toContainEqual(expect.objectContaining({key:"TARGET_SCHEMA",status:"TABLES_OBSERVED_ONLY"}));
     expect(report.approved).toBe(false);
+  });
+  it("reports partial non-authority tables as incomplete, without treating table presence as release evidence",async()=>{
+    const metadata=livePreviewTables.flatMap(table=>livePreviewColumns[table]
+      .filter(column=>!(table==="flutterwave_live_webhook_receipts"&&column==="signature_verified"))
+      .map(column_name=>({table_name:table,column_name})));
+    const report=await previewLiveEvidence(fake(metadata).pool,input);
+    expect(report.missingTables).toEqual([]);
+    expect(report.checks).toContainEqual(expect.objectContaining({key:"TARGET_SCHEMA",status:"INCOMPLETE",
+      detail:expect.stringContaining("flutterwave_live_webhook_receipts.signature_verified")}));
+    expect(report.activationReady).toBe(false);
   });
   it("fails rather than returning a successful report after a schema read failure",async()=>{
     const f=fake([],[],true);

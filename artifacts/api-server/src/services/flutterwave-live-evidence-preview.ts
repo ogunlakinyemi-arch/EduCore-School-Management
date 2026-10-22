@@ -11,6 +11,24 @@ export const livePreviewTables=[
   "flutterwave_live_commission_batches","flutterwave_live_commission_items",
   "flutterwave_live_workflow_audits","flutterwave_live_operator_reviews",
 ] as const;
+/** Critical read/processing columns only; this is deliberately not a DDL,
+ * constraint, index, ledger or actual-target migration certification. */
+export const livePreviewColumns: Record<(typeof livePreviewTables)[number],readonly string[]> = {
+  flutterwave_live_webhook_receipts:["id","environment","provider","payload_sha256","signature_verified","processing_status"],
+  flutterwave_live_subscription_intents:["id","environment","merchant_scope","reference","school_id","school_subaccount_id","authority_review_id","authority_snapshot"],
+  flutterwave_live_collection_evidence:["intent_id","environment","merchant_scope","transaction_id","school_minor"],
+  flutterwave_live_finalization_events:["id","environment","intent_id","semantic_key"],
+  flutterwave_live_receipt_results:["receipt_id","environment","event_id"],
+  flutterwave_live_partner_accruals:["intent_id","environment","partner_profile_id","amount_minor","state"],
+  flutterwave_live_authority_reviews:["id","environment","merchant_scope","school_id","school_subaccount_id","evidence_sha256","expires_at","reviewed_by"],
+  flutterwave_live_subscription_activations:["intent_id","environment","status","expires_at"],
+  flutterwave_live_official_receipts:["intent_id","environment","receipt_number","snapshot"],
+  flutterwave_live_reconciliation_cases:["environment","receipt_id"],
+  flutterwave_live_commission_batches:["id","environment"],
+  flutterwave_live_commission_items:["intent_id","batch_id"],
+  flutterwave_live_workflow_audits:["id","environment","actor_id"],
+  flutterwave_live_operator_reviews:["id","environment","receipt_id","idempotency_key"],
+};
 
 /** Read-only preview, not approval/import/persistence or an activation decision.
  * Never inspects credentials, contacts providers, or accepts client release flags.
@@ -26,7 +44,10 @@ export async function previewLiveEvidence(pool:StudentSubscriptionSqlPool,input:
       WHERE table_schema='public' AND table_name=ANY($1::text[])`,[livePreviewTables])).rows;
     const present=new Set(columns.map(row=>row.table_name));
     const missingTables=livePreviewTables.filter(name=>!present.has(name));
-    const required=["id","environment","merchant_scope","school_id","school_subaccount_id","evidence_sha256","expires_at","reviewed_by"];
+    const missingColumns=livePreviewTables.flatMap(table=>livePreviewColumns[table]
+      .filter(column=>!columns.some(row=>row.table_name===table&&row.column_name===column))
+      .map(column=>`${table}.${column}`));
+    const required=livePreviewColumns.flutterwave_live_authority_reviews;
     const reviewColumns=new Set(columns.filter(row=>row.table_name==="flutterwave_live_authority_reviews").map(row=>row.column_name));
     const reviewReadable=required.every(name=>reviewColumns.has(name));
     let evidenceStatus="AUTHORITY_SCHEMA_UNAVAILABLE",allocationPreview=null,reviewHash:string|null=null;
@@ -59,12 +80,14 @@ export async function previewLiveEvidence(pool:StudentSubscriptionSqlPool,input:
       checks:[
         {key:"MERCHANT_FEE_BEARER",status:evidenceValid?"BOUND_TO_REVIEW":"UNVERIFIED",detail:"Merchant dashboard evidence must match the immutable reviewed document; this is not a dashboard inspection."},
         {key:"LIVE_SCHOOL_OWNERSHIP_ASSOCIATION",status:evidenceValid?"BOUND_TO_REVIEW":"UNVERIFIED",detail:"Exact LIVE merchant/school/subaccount tuple and ownership evidence; an RS_ prefix alone proves neither environment nor ownership."},
-        {key:"TARGET_SCHEMA",status:missingTables.length||!reviewReadable?"INCOMPLETE":"TABLES_OBSERVED_ONLY",detail:"Read-only table/authority-column observation is not complete DDL, constraint, index or migration-ledger acceptance."},
+        {key:"TARGET_SCHEMA",status:missingTables.length||missingColumns.length?"INCOMPLETE":"TABLES_OBSERVED_ONLY",
+          detail:`Read-only critical-column observation is not DDL, constraint, index or migration-ledger acceptance. Missing critical columns: ${missingColumns.length?missingColumns.join(", "):"none observed"}.`},
         {key:"MIGRATION_APPROVAL",status:"UNVERIFIED",detail:"Independently verify target/schema/ledger and approve inbox → finalization → workflow → readiness drafts before any application DDL."},
         {key:"WEBHOOK_ENVIRONMENT_AUTHENTICATION",status:"UNVERIFIED",detail:"No secrets inspected. Operator must confirm LIVE verifier binding, authentication/version, public HTTPS routes, TEST separation and adverse-event configuration."},
         {key:"CHECKOUT_VERIFICATION_WORKFLOW",status:"HARD_DISABLED",detail:"No LIVE checkout, outbound verification or enabled workflow capability is supplied by this preview."},
         {key:"DURABLE_WEBHOOK_RELEASE",status:"NOT_RELEASED",detail:"Actual ingress remains HTTP 503 / processed:false; isolated lifecycle acceptance does not authorize delivery or financial acknowledgement."},
         {key:"EXPLICIT_RELEASE_AUTHORIZATION",status:"NOT_GRANTED",detail:"Separate real-money release and controlled transaction/settlement acceptance approval remain required."},
+        {key:"HISTORICAL_ALLOCATION_POLICY",status:"PRESERVE_SCV2_SCV3",detail:"No historical rewrite. SCV3: NGN 5,000 checkout, one school flat_subaccount NGN 1,900, no split ratio, no Partner checkout recipient; eligible NGN 100 is internal accrued payable only."},
       ],
       missingTables,
     };

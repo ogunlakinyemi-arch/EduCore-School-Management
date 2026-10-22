@@ -1,4 +1,5 @@
 import pg from "pg";
+import { createHash } from "node:crypto";
 
 /**
  * Connection resilience for the shared application pool.
@@ -29,6 +30,7 @@ export interface DatabaseErrorDiagnostic {
   category: DatabaseErrorCategory;
   message: string;
   transientConnectFailure: boolean;
+  authorizationReason: "PASSWORD_REJECTED" | "ROLE_UNAVAILABLE" | "ACCESS_RULE_REJECTED" | "UNSPECIFIED" | null;
 }
 
 const CATEGORY_MESSAGE: Record<DatabaseErrorCategory, string> = {
@@ -76,6 +78,12 @@ export function classifyDatabaseError(error: unknown): DatabaseErrorDiagnostic {
     networkCode,
     category,
     message: CATEGORY_MESSAGE[category],
+    // Match known driver/server wording internally; never copy it into logs.
+    authorizationReason: category !== "AUTHENTICATION_REJECTED" ? null
+      : /password authentication failed/i.test(text) ? "PASSWORD_REJECTED"
+      : /role .*does not exist|role .*not permitted to log in/i.test(text) ? "ROLE_UNAVAILABLE"
+      : /no pg_hba.conf entry|pg_hba.conf rejects connection/i.test(text) ? "ACCESS_RULE_REJECTED"
+      : "UNSPECIFIED",
     // A timeout has already waited the full bound, so it is not retried.
     transientConnectFailure: category === "CONNECTION_TERMINATED" || category === "CONNECTION_UNAVAILABLE",
   };
@@ -161,8 +169,10 @@ export async function connectWithRetry(
 
 /** Pool whose promise-form connect() retries transient establishment failures. */
 export class ResilientPool extends pg.Pool {
+  readonly targetDiagnostic: ReturnType<typeof databaseTargetDiagnostic>;
   constructor(options: pg.PoolConfig) {
     super({ connectionTimeoutMillis: CONNECT_TIMEOUT_MS, ...options });
+    this.targetDiagnostic = databaseTargetDiagnostic(options);
     attachPoolErrorHandler(this);
   }
 
@@ -173,5 +183,29 @@ export class ResilientPool extends pg.Pool {
     // single statements are never replayed by this layer.
     if (callback) return super.connect(callback);
     return connectWithRetry(() => super.connect());
+  }
+}
+
+/** Resolves the same pg configuration without connecting or reading passwords.
+ * Only public routing fields enter the digest. No URL, hostname, database/user
+ * name or credential is returned; this identifies configuration, not DB health.
+ */
+export function databaseTargetDiagnostic(options: pg.PoolConfig) {
+  try {
+    const parameters = (new pg.Client(options) as pg.Client & {
+      connectionParameters: {host: string; port: number; database: string};
+    }).connectionParameters;
+    const host = String(parameters.host);
+    return Object.freeze({
+      targetFingerprint: createHash("sha256").update(JSON.stringify([
+        host.toLowerCase(), Number(parameters.port), String(parameters.database),
+      ])).digest("hex").slice(0,24),
+      endpointType: host.startsWith("/") ? "UNIX_SOCKET" : "TCP",
+      providerHint: /(?:^|\.)neon\.tech$/i.test(host) ? "NEON_HOSTNAME" : "UNDETERMINED",
+      connectedTargetVerified: false as const,
+    });
+  } catch {
+    return Object.freeze({targetFingerprint:null,endpointType:"UNAVAILABLE",
+      providerHint:"UNDETERMINED",connectedTargetVerified:false as const});
   }
 }

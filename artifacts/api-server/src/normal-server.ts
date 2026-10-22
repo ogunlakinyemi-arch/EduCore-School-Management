@@ -28,6 +28,11 @@ app.listen(port, (err) => {
     process.exit(1);
   }
   logger.info({ port }, "Server listening");
+  if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
+    logger.info({databaseTarget:pool.targetDiagnostic,configurationSource:
+      process.env.EDUCORE_TERMINAL_TEST_MODE !== undefined ? "EXPLICIT_TERMINAL_TEST_TARGET" : "DATABASE_URL_PG_RESOLUTION",
+      communicationWorkerUsesApiPool:true}, "Development database configuration provenance");
+  }
   startDevelopmentTelegramWorker();
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
     void verifyRemovalRuntimeTarget().then((verified) => {

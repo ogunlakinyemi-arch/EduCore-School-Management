@@ -35,7 +35,7 @@ export default function LiveReadinessPage() {
     gen.current += 1;
     setReport(null); setError(''); setFileError(''); setBusy(false);
     setScope(''); setSchoolId(''); setReviewId(''); setEvidence('');
-  }, [ctx.isLoading, ctx.data?.isPlatformOwner]);
+  }, [ctx.isLoading, ctx.data?.isPlatformOwner, ctx.data?.user?.id]);
 
   if (ctx.isLoading) return <div data-testid="live-readiness-loading" className="text-sm">Checking access...</div>;
   if (ctx.data?.isPlatformOwner !== true) return <div data-testid="live-readiness-denied" role="alert" className="text-sm font-bold">Owner access is required.</div>;

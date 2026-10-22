@@ -6,6 +6,7 @@ import {
   CONNECT_TIMEOUT_MS,
   ResilientPool,
   setDatabaseDiagnosticReporter,
+  databaseTargetDiagnostic,
 } from "@workspace/db/connection-resilience";
 import { createGuardedBackgroundTask } from "./background-task";
 
@@ -172,6 +173,7 @@ describe("guarded background task diagnostics", () => {
     expect(logger.error).toHaveBeenCalledWith({
       task: "Communication delivery worker", sqlstate: "28000", networkCode: null,
       category: "AUTHENTICATION_REJECTED", reason: "The database rejected the connection's authorization",
+      authorizationReason: "UNSPECIFIED",
     }, "Communication delivery worker failed");
     expectSanitized(logger.error.mock.calls);
     // No in-tick retry; the next scheduled tick is the recovery path.
@@ -192,5 +194,40 @@ describe("guarded background task diagnostics", () => {
     await expect(tick()).resolves.toBe("failed");
     run.mockResolvedValueOnce(undefined);
     await expect(tick()).resolves.toBe("succeeded");
+  });
+});
+
+describe("sanitized target and authorization diagnostics",()=>{
+  it("fingerprints routing consistently without returning credentials or routing names",()=>{
+    const config={host:SENSITIVE[0],database:"fictional_application",user:SENSITIVE[1],password:SENSITIVE[2],port:5432};
+    const first=databaseTargetDiagnostic(config);
+    expect(first.targetFingerprint).toMatch(/^[a-f0-9]{24}$/);
+    expect(first.connectedTargetVerified).toBe(false);
+    expect(databaseTargetDiagnostic({...config,password:"different_password"})).toEqual(first);
+    expect(databaseTargetDiagnostic({...config,database:"other_database"}).targetFingerprint).not.toBe(first.targetFingerprint);
+    expectSanitized(first);
+    expect(JSON.stringify(first)).not.toContain("fictional_application");
+  });
+  it.each([
+    ["password authentication failed for user app_role_user","PASSWORD_REJECTED"],
+    ['role "app_role_user" does not exist',"ROLE_UNAVAILABLE"],
+    ['no pg_hba.conf entry for host db-host.internal.example',"ACCESS_RULE_REJECTED"],
+    ["unknown backend rejection s3cret-pass","UNSPECIFIED"],
+  ])("classifies authorization without copying raw reason: %s",(message,expected)=>{
+    const d=classifyDatabaseError(pgError("28000",message));
+    expect(d.authorizationReason).toBe(expected);
+    expect(d.transientConnectFailure).toBe(false);expectSanitized(d);
+  });
+  it("never replays a completed job after a later job's auth failure",async()=>{
+    const completed=new Set<string>();
+    const write=vi.fn(async()=>{completed.add("fictional-job");});
+    let fail=true;
+    const run=async()=>{
+      if(!completed.has("fictional-job"))await write();
+      if(fail)throw pgError("28000");
+    };
+    const tick=createGuardedBackgroundTask("Communication delivery worker",run,{error:vi.fn()});
+    expect(await tick()).toBe("failed");fail=false;
+    expect(await tick()).toBe("succeeded");expect(write).toHaveBeenCalledOnce();
   });
 });

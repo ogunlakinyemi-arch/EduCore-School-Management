@@ -48,6 +48,17 @@ afterEach(() => { act(() => root.unmount()); host.remove(); });
 const render = () => act(async () => root.render(<LiveReadinessPage />));
 
 describe('live readiness', () => {
+  it('clears Owner evidence/report when switching between two authenticated Owner identities',async()=>{
+    m.ctx.mockReturnValue({data:{isPlatformOwner:true,user:{id:1}},isLoading:false});
+    m.mutateAsync.mockResolvedValue(report());
+    await render();await fill();await run();
+    expect(q('text-review-hash').textContent).toContain('abc123');
+    m.ctx.mockReturnValue({data:{isPlatformOwner:true,user:{id:2}},isLoading:false});
+    await render();
+    expect(q('text-review-hash')).toBeNull();
+    expect((q('input-merchant-scope') as HTMLInputElement).value).toBe('');
+    expect((q('input-evidence') as HTMLTextAreaElement).value).toBe('');
+  });
   it('denies non-owners and does not mutate while loading', async () => {
     m.ctx.mockReturnValue({ data: { isPlatformOwner: false }, isLoading: false });
     await render();

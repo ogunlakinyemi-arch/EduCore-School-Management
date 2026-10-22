@@ -27,6 +27,7 @@ export function createGuardedBackgroundTask(
         sqlstate: diagnostic.sqlstate,
         networkCode: diagnostic.networkCode,
         category: diagnostic.category,
+        authorizationReason: diagnostic.authorizationReason,
         reason: diagnostic.message,
       }, `${name} failed`);
       return "failed";

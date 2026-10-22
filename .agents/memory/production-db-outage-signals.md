@@ -11,3 +11,15 @@ An administrator-terminated idle PostgreSQL connection can crash the published A
 
 Production recovered on its own by 12:31 UTC the same day (database-backed Owner pages returned 200/304). The Development resilience fix keeps SQLSTATE class 28/42501 non-retryable on purpose; only pre-SQL connection establishment is retried.
 **Why:** Retrying authorization failures would hide a real credential/role problem, and replaying statements could duplicate writes.
+
+Historical deployment authorization failures must not be relabelled as current
+Development failures. A configured routing fingerprint establishes neither a
+successful connection nor the historical deployed credential/target.
+
+**Why:** The later Development investigation found deployment `28000` evidence
+while Development workers were paused; there was no evidence of an independent
+worker URL or a currently failing Development worker authentication attempt.
+
+**How to apply:** Verify log environment, pause state and configuration provenance
+before proposing a credential/source change. Preserve unknown root causes as
+unknown; never test recovery by unpausing queues without sending authorization.
