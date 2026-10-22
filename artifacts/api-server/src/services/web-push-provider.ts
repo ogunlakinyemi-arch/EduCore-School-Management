@@ -1,6 +1,7 @@
 import webPush from "web-push";
 import { z } from "zod";
 import { ECDH } from "node:crypto";
+import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import type { PushProvider, ProviderSendResult, WebPushSubscription } from "./communication-providers";
 
 // Do not permit arbitrary HTTPS targets: subscriptions are server-side egress credentials.
@@ -34,6 +35,9 @@ export class WebPushProvider implements PushProvider {
   async send(message: { subscription: WebPushSubscription; idempotencyKey: string }): Promise<ProviderSendResult> {
     const failed = (category: "CONFIGURATION" | "INVALID_REQUEST" | "NETWORK" | "RATE_LIMITED" | "PROVIDER_REJECTED", retryable = false): ProviderSendResult =>
       ({ provider: this.provider, channel: this.channel, status: "FAILED", accepted: false, delivered: false, failure: { category, retryable } });
+    if (developmentPaymentNotificationsSuppressed() ||
+        (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
+          && process.env.EDUCORE_DEVELOPMENT_PUSH_ENABLED !== "true")) return failed("CONFIGURATION");
     if (!this.config.publicKey || !this.config.privateKey || !/^(mailto:|https:\/\/)/.test(this.config.subject)) return failed("CONFIGURATION");
     const parsed = pushSubscriptionSchema.safeParse(message.subscription);
     if (!parsed.success || (parsed.data.expirationTime && parsed.data.expirationTime <= Date.now())) return failed("INVALID_REQUEST");

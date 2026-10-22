@@ -23,6 +23,21 @@ durably persisted adverse hold as handled; keep unmatched and uncertain financia
 outcomes for independent reconciliation. Never automatically release a hold on
 a later successful collection notification.
 
+A standalone refund's `id` identifies the refund, while `TransactionId` identifies
+the original collection. Do not interpret all webhook `id` fields as collection
+transaction IDs or assume a shared event-ID contract across charge/refund/transfer
+notifications.
+
+**Why:** Different signed adverse notifications can carry the same refund ID while
+disagreeing about the original collection. Collapsing them before checking all
+identifiers can block a later valid protective hold; trusting either blindly can
+hold the wrong payment.
+
+**How to apply:** Parse identity by documented event type. Preserve exact signed
+delivery fingerprints for non-charge notifications when semantic event uniqueness
+is unsubstantiated. Independently bind every supplied original-payment identifier;
+delivery deduplication must never become collection or refund-completion evidence.
+
 A verifier confirmed for TEST must not be treated as confirmed for LIVE. When
 preparing separate environments, preserve TEST verification independently before
 assigning a shared configuration slot to LIVE. An operator's environment label

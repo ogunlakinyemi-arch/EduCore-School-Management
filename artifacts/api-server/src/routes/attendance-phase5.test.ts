@@ -100,6 +100,12 @@ const poolMock = vi.hoisted(() => {
 
   const client = {
     query: vi.fn(async (text: string, values: unknown[] = []) => {
+      if (text.includes("SELECT metadata FROM audit_logs") || text.includes("terminalDirection") ||
+          text.includes("UPDATE attendance_discrepancies")) return result([]);
+      if (text.includes('event_type AS "eventType",occurred_at AS "occurredAt"')) {
+        return result(state.events.filter(e=>e.schoolId===Number(values[0]) && e.studentId===Number(values[1]))
+          .sort((a,b)=>new Date(b.occurredAt).getTime()-new Date(a.occurredAt).getTime()).slice(0,1));
+      }
       if (text.includes("FROM school_subscription_manual_locks")) return result([]);
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(text) || text.includes("pg_advisory_xact_lock")) {
         return result([]);
@@ -259,13 +265,13 @@ beforeEach(() => {
 });
 
 describe("Phase 5 device attendance behavior", () => {
-  it("accepts one unchanged Student card on two school readers and a newly linked third reader",async()=>{
+  it("recognizes an unchanged card across readers but suppresses repeated same-day gate state",async()=>{
     const before=JSON.stringify(state.cards);
     for(const deviceId of [100,101,102]) {
       state.credential.deviceId=deviceId;
-      expect((await request(event())).status).toBe(201);
+      expect((await request(event())).status).toBe(deviceId===100?201:409);
     }
-    expect(state.events.map(e=>e.deviceId)).toEqual([100,101,102]);
+    expect(state.events.map(e=>e.deviceId)).toEqual([100]);
     expect(JSON.stringify(state.cards)).toBe(before);
   });
   it.each(["inactive","unlinked"])("rejects scans after a reader becomes %s without changing the Student card",async change=>{
@@ -368,7 +374,7 @@ describe("Phase 5 device attendance behavior", () => {
   });
 
   it("accepts school entry and exit and queues their notifications", async () => {
-    const entry = await request(event({ occurredAt: new Date(Date.now() - 2_000).toISOString() }));
+    const entry = await request(event({ occurredAt: new Date(Date.now() - 120_000).toISOString() }));
     const exit = await request(event({
       eventType: "SCHOOL_EXIT",
       occurredAt: new Date(Date.now() - 1_000).toISOString(),
@@ -417,6 +423,7 @@ describe("Phase 5 device attendance behavior", () => {
     };
     const secondResponse = await request(event({
       studentId: undefined,
+      eventType: "CLASSROOM_ENTRY",
       occurredAt: new Date(firstTime.getTime() + 61_000).toISOString(),
     }));
 
@@ -435,11 +442,11 @@ describe("Phase 5 device attendance behavior", () => {
     expect(state.events[0]).toEqual(originalEvent);
   });
 
-  it("accepts an entry, suppresses a rolling-window duplicate, then accepts after the window", async () => {
+  it("suppresses a rolling-window classroom duplicate, then accepts after the window", async () => {
     const firstTime = new Date(Date.now() - 30_000);
-    expect((await request(event({ occurredAt: firstTime.toISOString() }))).status).toBe(201);
-    expect((await request(event({ occurredAt: new Date(firstTime.getTime() + 30_000).toISOString() }))).status).toBe(409);
-    expect((await request(event({ occurredAt: new Date(firstTime.getTime() + 61_000).toISOString() }))).status).toBe(201);
+    expect((await request(event({ eventType:"CLASSROOM_ENTRY",occurredAt: firstTime.toISOString() }))).status).toBe(201);
+    expect((await request(event({ eventType:"CLASSROOM_ENTRY",occurredAt: new Date(firstTime.getTime() + 30_000).toISOString() }))).status).toBe(409);
+    expect((await request(event({ eventType:"CLASSROOM_ENTRY",occurredAt: new Date(firstTime.getTime() + 61_000).toISOString() }))).status).toBe(201);
     expect(state.events).toHaveLength(2);
   });
 

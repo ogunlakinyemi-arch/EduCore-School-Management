@@ -955,7 +955,9 @@ export async function dispatchCommunicationDeliveries(
   const providers = options.providers ?? createCommunicationProviders(
     options.allowConfiguredProviders === true ? process.env : {},
   );
-  const pushProvider = providers.push ?? (options.allowConfiguredProviders ? new WebPushProvider({
+  const pushProvider = providers.push ?? (options.allowConfiguredProviders ||
+    (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
+      && process.env.EDUCORE_DEVELOPMENT_PUSH_ENABLED === "true") ? new WebPushProvider({
     publicKey: process.env.VAPID_PUBLIC_KEY ?? "", privateKey: process.env.VAPID_PRIVATE_KEY ?? "", subject: process.env.VAPID_SUBJECT ?? "",
   }) : undefined);
   const now = options.now ?? (() => new Date());

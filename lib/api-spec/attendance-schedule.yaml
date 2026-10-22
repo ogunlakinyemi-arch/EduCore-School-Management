@@ -1,0 +1,123 @@
+paths:
+  /school/attendance/schedule:
+    get:
+      operationId: getSchoolAttendanceSchedule
+      tags: [attendance]
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: School-specific attendance policy, revision and enforced rule precedence
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SchoolAttendanceScheduleView"}
+    put:
+      operationId: updateSchoolAttendanceSchedule
+      tags: [attendance]
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revision, schedule, reason]
+              properties:
+                revision: {type: integer, minimum: 0}
+                schedule: {$ref: "#/components/schemas/SchoolAttendanceSchedule"}
+                reason: {type: string, minLength: 3, maxLength: 500}
+      responses:
+        "200":
+          description: Audited school-admin policy update
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SchoolAttendanceScheduleView"}
+  /school/attendance/assess:
+    post:
+      operationId: assessSchoolAttendance
+      tags: [attendance]
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                afterStudentId: {type: integer, minimum: 0, default: 0}
+      responses:
+        "200":
+          description: Idempotent current-school-day reviews; not physical absence assertions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [date, reviewed, created, nextAfterStudentId]
+                properties:
+                  date: {type: string}
+                  reviewed: {type: integer}
+                  created: {type: integer}
+                  nextAfterStudentId: {type: integer, nullable: true}
+components:
+  schemas:
+    SchoolAttendanceScheduleView:
+      type: object
+      required: [schedule, revision, precedence]
+      properties:
+        schedule: {$ref: "#/components/schemas/SchoolAttendanceSchedule"}
+        revision: {type: integer}
+        precedence: {type: array, items: {type: string}}
+    SchoolAttendanceSchedule:
+      type: object
+      additionalProperties: false
+      required: [timezone, operatingDays, arrivalStart, arrivalEnd, lateCutoff, absenceAssessment, weekdaysClosing, fridayClosing, missingTagOutStart, missingTagOutEnd, fridayMissingTagOut, classroomDeadline, duplicateSeconds, offlineMaxHours, closures, exemptions, rules]
+      properties:
+        timezone: {type: string, default: Africa/Lagos}
+        operatingDays: {type: array, items: {type: integer, minimum: 1, maximum: 7}}
+        arrivalStart: {type: string, default: "06:45"}
+        arrivalEnd: {type: string, default: "07:45"}
+        lateCutoff: {type: string, default: "08:00"}
+        absenceAssessment: {type: string, default: "10:00"}
+        weekdaysClosing: {type: string, default: "14:00"}
+        fridayClosing: {type: string, default: "13:00"}
+        missingTagOutStart: {type: string, default: "14:00"}
+        missingTagOutEnd: {type: string, default: "16:00"}
+        fridayMissingTagOut: {type: string, default: "14:00"}
+        classroomDeadline: {type: string, default: "08:15"}
+        duplicateSeconds: {type: integer, minimum: 5, maximum: 600}
+        offlineMaxHours: {type: integer, minimum: 1, maximum: 8784}
+        closures:
+          type: array
+          items:
+            type: object
+            required: [date, reason]
+            properties:
+              date: {type: string, format: date}
+              reason: {type: string}
+        exemptions:
+          type: array
+          items:
+            type: object
+            required: [studentId, from, to, reason]
+            properties:
+              studentId: {type: integer}
+              from: {type: string, format: date}
+              to: {type: string, format: date}
+              reason: {type: string}
+        rules:
+          type: object
+          additionalProperties: false
+          required: [entryEnabled, exitEnabled, lateness, absenceReview, classroomAnomalies, missingTagOut, offlineSync, notifications, allowEarlyExit, allowReentry, provisionalClassPresence]
+          properties:
+            entryEnabled: {type: boolean}
+            exitEnabled: {type: boolean}
+            lateness: {type: boolean}
+            absenceReview: {type: boolean}
+            classroomAnomalies: {type: boolean}
+            missingTagOut: {type: boolean}
+            offlineSync: {type: boolean}
+            notifications: {type: boolean}
+            allowEarlyExit: {type: boolean}
+            allowReentry: {type: boolean}
+            provisionalClassPresence: {type: boolean}

@@ -194,7 +194,10 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
       (partner_profile_id,school_id,student_id,subscription_id,academic_session_id,term,amount,currency,status,payment_id)
       SELECT partner_profile_id,school_id,student_id,subscription_id,academic_session_id,term,amount,currency,status,payment_id
       FROM commission_ledger WHERE id=1`)).rejects.toMatchObject({code:"23505"});
-    await state.pool.query(`INSERT INTO student_subscription_payments SELECT 2,'SCV3_other_reference',school_id,student_id,2,
+    await state.pool.query(`INSERT INTO student_subscription_payments
+      (id,reference,school_id,student_id,subscription_id,academic_session_id,academic_term_id,status,
+       provider_transaction_id,reconciliation_status,provider,provider_mode,gross_amount_minor,currency,settlement_status)
+      SELECT 2,'SCV3_other_reference',school_id,student_id,2,
       academic_session_id,academic_term_id,status,'other-txn',reconciliation_status,provider,provider_mode,gross_amount_minor,currency,settlement_status
       FROM student_subscription_payments WHERE id=1`);
     await expect(state.pool.query(`INSERT INTO commission_ledger

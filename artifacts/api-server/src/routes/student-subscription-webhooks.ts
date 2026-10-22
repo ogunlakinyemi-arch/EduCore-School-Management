@@ -26,18 +26,24 @@ function signedWebhookIdentity(rawBody: Buffer): SignedWebhookIdentity {
     const row = event as Record<string, unknown>;
     const data = typeof row.data === "object" && row.data !== null
       ? row.data as Record<string, unknown> : row;
-    const eventName = typeof row.event === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(row.event)
-      ? row.event : null;
+    const standaloneRefund = row.event === undefined && row.data === undefined
+      && row.TransactionId != null && row.AmountRefunded != null && typeof row.status === "string";
+    const eventName = standaloneRefund ? "refund.notification"
+      : typeof row.event === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(row.event) ? row.event : null;
     const eventStatus = typeof data.status === "string" && /^[A-Za-z0-9_.-]{1,40}$/.test(data.status)
       ? data.status.toLowerCase() : null;
     const rawReference = data.tx_ref ?? data.reference;
     const reference = typeof rawReference === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(rawReference)
       ? rawReference : null;
-    const rawId = data.id ?? data.transaction_id ?? data.refund_id;
+    // Refund IDs are not collection transaction IDs. Non-charge notifications
+    // have no established provider event-ID contract, so deduplicate exact
+    // signed deliveries rather than collapsing distinct refunds/holds.
+    const rawId = standaloneRefund ? data.TransactionId
+      : eventName === "charge.completed" ? data.id : data.transaction_id ?? data.TransactionId;
     const transactionId = (typeof rawId === "number" && Number.isSafeInteger(rawId) && rawId > 0)
       ? String(rawId)
       : typeof rawId === "string" && /^[1-9][0-9]{0,15}$/.test(rawId) ? rawId : null;
-    const eventId = transactionId
+    const eventId = eventName === "charge.completed" && transactionId
       ? `flutterwave:student-subscription:${eventName ?? "unknown"}:${transactionId}:${eventStatus ?? "unknown"}`
       : `flutterwave:student-subscription:payload:${payloadSha256}`;
     return { eventId, eventName, eventStatus, reference, transactionId, payloadSha256 };

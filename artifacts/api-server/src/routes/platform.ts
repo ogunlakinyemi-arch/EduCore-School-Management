@@ -215,8 +215,8 @@ router.put("/platform/devices/:deviceId/terminal-direction", run(async (req, res
   assertRoles(req, ["PLATFORM_OWNER"]);
   const deviceId = Number(req.params.deviceId);
   const direction = req.body?.direction;
-  if (!Number.isSafeInteger(deviceId) || deviceId < 1 || !["ENTRY", "EXIT"].includes(direction)) {
-    throw new AuthError(400, "A valid deviceId and ENTRY or EXIT direction are required");
+  if (!Number.isSafeInteger(deviceId) || deviceId < 1 || !["ENTRY", "EXIT", "ENTRY_EXIT"].includes(direction)) {
+    throw new AuthError(400, "A valid deviceId and Entry Only, Exit Only, or Entry and Exit mode are required");
   }
   const client = await pool.connect();
   try {

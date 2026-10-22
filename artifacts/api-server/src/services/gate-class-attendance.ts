@@ -1,4 +1,5 @@
 /** Existing attendance ledger is the source and audit trail; no biometric claim. */
+import { attendanceDayOpen, schoolClock, type AttendanceSchedule } from "./attendance-schedule";
 type Db = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> };
 export function isMorningGateEntry(event: { eventType: string; identificationMethod: string; result: string; occurredAt: string | Date },
   start = "05:00:00", end = "12:00:00") {
@@ -8,7 +9,7 @@ export function isMorningGateEntry(event: { eventType: string; identificationMet
   return event.eventType === "SCHOOL_ENTRY" && event.identificationMethod === "NFC" && event.result === "ACCEPTED"
     && time >= start && time <= end && time < "12:00:00";
 }
-export async function markClassFromGate(db: Db, eventId: number) {
+export async function markClassFromGate(db: Db, eventId: number, schedule?: AttendanceSchedule) {
   const found = await db.query(`SELECT e.*,e.event_date::text AS event_date,s.entry_window_start,s.entry_window_end
     FROM attendance_events e LEFT JOIN attendance_settings s ON s.school_id=e.school_id
     WHERE e.id=$1 AND e.student_id IS NOT NULL`, [eventId]);
@@ -38,8 +39,12 @@ export async function markClassFromGate(db: Db, eventId: number) {
       AND (a.end_date IS NULL OR a.end_date>=$4::date)
     ORDER BY a.created_at DESC,a.id DESC LIMIT 1`, [e.school_id,e.student_id,e.occurred_at,e.event_date]);
   const a = assignment.rows[0];
-  const morning = isMorningGateEntry({eventType:e.event_type,identificationMethod:e.identification_method,
-    result:e.result,occurredAt:e.occurred_at}, e.entry_window_start ?? undefined,e.entry_window_end ?? undefined);
+  const clock = schedule ? schoolClock(new Date(e.occurred_at),schedule.timezone) : null;
+  const morning = schedule && clock
+    ? schedule.rules.provisionalClassPresence && attendanceDayOpen(schedule,clock.date,clock.weekday,e.student_id)
+      && clock.time >= schedule.arrivalStart && clock.time < schedule.absenceAssessment
+    : isMorningGateEntry({eventType:e.event_type,identificationMethod:e.identification_method,
+      result:e.result,occurredAt:e.occurred_at}, e.entry_window_start ?? undefined,e.entry_window_end ?? undefined);
   if (!a || !morning) {
     await db.query(`INSERT INTO attendance_discrepancies(school_id,student_id,attendance_event_id,discrepancy_type,details)
       SELECT $1,$2,$3,'SCHOOL_WITHOUT_CLASS',jsonb_build_object('note',$4::text)
@@ -54,12 +59,12 @@ export async function markClassFromGate(db: Db, eventId: number) {
   await db.query(`INSERT INTO attendance_events(school_id,student_id,device_id,nfc_card_id,identification_method,
     event_type,result,attendance_status,event_date,occurred_at,academic_session_id,academic_term_id,
     school_class_id,class_name_snapshot,section_snapshot,reason,actor_user_id,dedupe_key)
-    SELECT $1,$2,$3,$4,'NFC_GATE_AUTO','CLASSROOM_ENTRY','ACCEPTED','PRESENT',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
+    SELECT $1,$2,$3,$4,'NFC_GATE_AUTO','CLASSROOM_ENTRY','ACCEPTED',$15,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
     WHERE NOT EXISTS(SELECT 1 FROM attendance_events WHERE school_id=$1 AND student_id=$2 AND event_date=$5
       AND event_type='CLASSROOM_ENTRY' AND result='ACCEPTED')
     ON CONFLICT(school_id,dedupe_key) DO NOTHING`,
     [e.school_id,e.student_id,e.device_id,e.nfc_card_id,e.event_date,e.occurred_at,
       e.academic_session_id,e.academic_term_id,a.school_class_id,a.name,a.section,
       `Provisional classroom presence from accepted gate event ${e.id}; source=NFC_GATE_AUTO; not biometric or teacher confirmation`,
-      e.actor_user_id,key]);
+      e.actor_user_id,key,e.attendance_status==="LATE"?"LATE":"PRESENT"]);
 }

@@ -10,4 +10,6 @@ export type GetCommunicationPushConfiguration200 = {
   configured: boolean;
   /** @nullable */
   publicKey: string | null;
+  /** False when Development sending is not explicitly authorized for this user */
+  deliveryEnabled: boolean;
 };

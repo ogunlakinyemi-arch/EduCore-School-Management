@@ -82,8 +82,8 @@ describe("attendance communication queueing", () => {
     });
 
     expect(state.queued.map(item => item.recipientUserId).sort((a, b) => a - b)).toEqual([101, 102, 111]);
-    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS"]);
-    expect(state.queued.find(item => item.recipientUserId === 111)?.channels).toEqual(["IN_APP"]);
+    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS", "PUSH"]);
+    expect(state.queued.find(item => item.recipientUserId === 111)?.channels).toEqual(["IN_APP", "PUSH"]);
     expect(state.queued.every(item => item.subjectStudentId === 11)).toBe(true);
     expect(state.queued.every(item => item.subjectClassId === 31)).toBe(true);
     const recipientQuery = state.queries[0];
@@ -147,7 +147,7 @@ describe("attendance communication queueing", () => {
     expect(state.queued.every(item => item.category === "ATTENDANCE"
       && item.eventKey === "attendance:1:305:ABSENT"
       && item.subject === "Student absence recorded")).toBe(true);
-    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS"]);
+    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS", "PUSH"]);
   });
 
   it("does not add absence SMS for ordinary attendance or employee events", async () => {

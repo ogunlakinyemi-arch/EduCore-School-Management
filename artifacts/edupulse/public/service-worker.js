@@ -166,10 +166,15 @@ self.addEventListener('fetch', (event) => {
 
 // Do not persist payloads or accept payload-supplied navigation URLs.
 self.addEventListener('push', (event) => {
+  let tag = 'educore-notification';
+  try {
+    const value = event.data?.json();
+    if (typeof value?.tag === 'string' && /^communication-\d+-push-\d+$/.test(value.tag)) tag = value.tag;
+  } catch { /* Keep generic content even when an external push payload is malformed. */ }
   event.waitUntil(self.registration.showNotification('Yetenia EduCore', {
     body: 'You have a new notification. Open EduCore for details.',
     icon: scopedUrl('icons/educore-192.png'),
-    tag: 'educore-notification',
+    tag,
   }));
 });
 self.addEventListener('notificationclick', (event) => {

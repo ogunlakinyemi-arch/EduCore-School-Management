@@ -34,6 +34,10 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /school/attendance/schedule:
+    $ref: "./attendance-schedule.yaml#/paths/~1school~1attendance~1schedule"
+  /school/attendance/assess:
+    $ref: "./attendance-schedule.yaml#/paths/~1school~1attendance~1assess"
   /communication/telegram/status:
     $ref: "./telegram.yaml#/paths/~1communication~1telegram~1status"
   /communication/telegram/health:
@@ -5679,10 +5683,11 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [configured, publicKey]
+                required: [configured, publicKey, deliveryEnabled]
                 properties:
                   configured: { type: boolean }
                   publicKey: { type: ["string", "null"] }
+                  deliveryEnabled: {type: boolean, description: False when Development sending is not explicitly authorized for this user}
   /communication/push-devices/revoke-session:
     post:
       operationId: revokeCommunicationPushSession
@@ -6247,12 +6252,12 @@ components:
       additionalProperties: false
       required: [direction]
       properties:
-        direction: { type: string, enum: [ENTRY, EXIT] }
+        direction: { type: string, enum: [ENTRY, EXIT, ENTRY_EXIT] }
     TerminalDirectionConfiguration:
       type: object
       required: [direction]
       properties:
-        direction: { type: [string, "null"], enum: [ENTRY, EXIT, null] }
+        direction: { type: [string, "null"], enum: [ENTRY, EXIT, ENTRY_EXIT, null] }
     VendorTerminalEvent:
       type: object
       additionalProperties: false

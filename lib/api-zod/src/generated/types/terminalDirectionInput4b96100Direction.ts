@@ -12,4 +12,5 @@ export type TerminalDirectionInput4b96100Direction = typeof TerminalDirectionInp
 export const TerminalDirectionInput4b96100Direction = {
   ENTRY: 'ENTRY',
   EXIT: 'EXIT',
+  ENTRY_EXIT: 'ENTRY_EXIT',
 } as const;

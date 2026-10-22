@@ -1071,6 +1071,7 @@ export async function recordSecurityEventFromAttendance(
   client: SecurityDb,
   attendanceEventId: number,
   validateOnly = false,
+  suppressNotifications = false,
 ) {
   const found = await client.query<any>(
     `SELECT a.id,a.school_id AS "schoolId",a.student_id AS "studentId",a.employee_id AS "employeeId",
@@ -1251,7 +1252,7 @@ export async function recordSecurityEventFromAttendance(
     const alertAllowed = type === "ENTRY"
       ? settings.rows[0]?.entryAlerts !== false
       : settings.rows[0]?.exitAlerts !== false;
-    if (studentId !== null && alertAllowed) {
+    if (studentId !== null && alertAllowed && !suppressNotifications) {
       const verb = type === "ENTRY" ? "arrived at school" : "left school";
       const body = `${verb} at ${occurredAt.toISOString()}${row.locationName ? ` (${row.locationName})` : ""}.`;
       await emitDomainParentEvent(client, {
@@ -1264,7 +1265,7 @@ export async function recordSecurityEventFromAttendance(
         body,
         privacy: "PARENT_SAFE",
         link: "/parent/communication",
-        channels: ["IN_APP"],
+        channels: ["IN_APP", "PUSH"],
       });
     }
   }

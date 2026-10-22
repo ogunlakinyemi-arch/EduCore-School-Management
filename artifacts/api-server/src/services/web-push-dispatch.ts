@@ -1,6 +1,7 @@
 import type { CommunicationDispatchPool } from "./communication-service";
 import type { PushProvider, ProviderSendResult, WebPushSubscription } from "./communication-providers";
 import { clerkClient } from "@clerk/express";
+import { developmentPushAllowed } from "../lib/development-push-policy";
 
 type Device = { id: number; subscription: WebPushSubscription; sessionId: string | null };
 type State = { status: string; retryable?: boolean };
@@ -16,6 +17,8 @@ export async function dispatchPushDevices(pool: CommunicationDispatchPool, recor
     ({ provider: provider?.provider ?? "web-push", channel: "push", status: "FAILED", accepted: false, delivered: false,
       failure: { category, retryable } });
   if (!provider) return failure("CONFIGURATION");
+  if (provider.provider === "web-push" && !developmentPushAllowed(record.recipientUserId))
+    return failure("CONFIGURATION");
   if ("configured" in provider && !provider.configured) return failure("CONFIGURATION");
   const saved = await pool.query<{ pushAttempts: Record<string, State> }>(
     `SELECT push_attempts AS "pushAttempts" FROM communication_deliveries WHERE id=$1 AND status='PROCESSING'`, [record.id]);
@@ -40,7 +43,9 @@ export async function dispatchPushDevices(pool: CommunicationDispatchPool, recor
     // Durable per-device claim before the external request. Never reset after a crash.
     const claim = await pool.query(`UPDATE communication_deliveries
       SET push_attempts=jsonb_set(push_attempts,ARRAY[$2::text], '{"status":"PROCESSING"}'::jsonb,true)
-      WHERE id=$1 AND status='PROCESSING' RETURNING id`, [record.id, String(device.id)]);
+      WHERE id=$1 AND status='PROCESSING'
+        AND COALESCE(push_attempts->$2::text->>'status','') IN ('','RETRY')
+      RETURNING id`, [record.id, String(device.id)]);
     if (!claim.rows.length) { uncertain = true; break; }
     let result: ProviderSendResult;
     try { result = await provider.send({ subscription: device.subscription,

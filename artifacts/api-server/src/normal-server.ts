@@ -8,6 +8,8 @@ import { createDevelopmentCommunicationProviders } from "./services/communicatio
 import { reconcileFinanceCommunicationIntents } from "./routes/finance-communication-service";
 import { evaluateSubscriptionSchools } from "./services/subscription-enforcement";
 import { developmentWorkersPaused } from "./lib/development-worker-policy";
+import { assessDevelopmentSchools } from "./services/attendance-scheduler";
+import { queueStudentAttendanceCommunication } from "./routes/attendance";
 import { verifyRemovalRuntimeTarget } from "./services/development-settlement-removal";
 
 // Route sanitized pool diagnostics (SQLSTATE/category only) into structured logs.
@@ -42,6 +44,7 @@ app.listen(port, (err) => {
   const dispatch = createGuardedBackgroundTask("Communication delivery worker", async () => {
     if (Date.now() - lastSubscriptionEvaluation >= 60_000) {
       await evaluateSubscriptionSchools();
+      await assessDevelopmentSchools(queueStudentAttendanceCommunication);
       lastSubscriptionEvaluation = Date.now();
     }
     await reconcileFinanceCommunicationIntents(pool, 50);

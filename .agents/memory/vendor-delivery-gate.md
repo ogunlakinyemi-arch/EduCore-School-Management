@@ -2,7 +2,7 @@
 name: Vendor delivery gate
 description: User's delivery prerequisite for physical NFC/GPS/device integrations and vendor-dependent verification.
 ---
-The user reports that the vendor tested its own terminal side, not against EduCore. Real terminal delivery, staging connectivity and end-to-end acceptance remain unconfirmed. The user subsequently authorized software-only NFC Terminal API compatibility and safe local focused tests, with fixed ENTRY or EXIT direction assigned to each terminal (never inferred by alternating scans).
+The user reports that the vendor tested its own terminal side, not against EduCore. Real terminal delivery, staging connectivity and end-to-end acceptance remain unconfirmed. Software-only NFC compatibility is authorized. The later combined-attendance request explicitly permits Entry Only, Exit Only, and Entry and Exit on one reader, superseding the earlier fixed-direction-only limitation. Combined direction must follow recorded school-day state and reviewed rules, never blindly alternate on every tap.
 
 **Why:** The user explicitly separated software implementation from physical/vendor acceptance and prohibited Production, live-secret/payment changes, real external hardware/API calls and publication for the compatibility work.
 

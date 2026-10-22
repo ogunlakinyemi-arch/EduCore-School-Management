@@ -1,0 +1,117 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+
+const base = {
+  timezone: 'Africa/Lagos', operatingDays: [1, 2, 3, 4, 5], arrivalStart: '06:30', arrivalEnd: '08:00', lateCutoff: '08:15',
+  absenceAssessment: '10:00', weekdaysClosing: '15:00', fridayClosing: '13:00', missingTagOutStart: '15:30', missingTagOutEnd: '18:00',
+  fridayMissingTagOut: '13:30', classroomDeadline: '09:00', duplicateSeconds: 30, offlineMaxHours: 48, closures: [], exemptions: [],
+  rules: { entryEnabled: true, exitEnabled: true, lateness: true, absenceReview: true, classroomAnomalies: true, missingTagOut: true, offlineSync: true, notifications: false, allowEarlyExit: false, allowReentry: true, provisionalClassPresence: true },
+};
+const st = vi.hoisted(() => ({ data: null as any, isError: false, mutate: vi.fn(), assess: vi.fn(), invalidate: vi.fn(), keys: [] as any[] }));
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: st.invalidate }) }));
+vi.mock('@workspace/api-client-react', () => ({
+  getGetSchoolAttendanceScheduleQueryKey: (p: any) => ['/api/school/attendance/schedule', p],
+  useGetSchoolAttendanceSchedule: (p: any) => { st.keys.push(p.schoolId); return { data: st.isError ? undefined : st.data, isLoading: false, isError: st.isError, error: new Error('boom'), refetch: vi.fn() }; },
+  useUpdateSchoolAttendanceSchedule: () => ({ mutate: st.mutate, isPending: false }),
+  useAssessSchoolAttendance: () => ({ mutate: st.assess, isPending: false }),
+}));
+vi.mock('@/components/shared', () => ({
+  Button: ({ children, onClick, type = 'button', disabled, testId }: any) => <button type={type} onClick={onClick} disabled={disabled} data-testid={testId}>{children}</button>,
+  Field: ({ label, children }: any) => <label><span>{label}</span>{children}</label>,
+  ErrorState: ({ message, retry }: any) => <div role="alert">{message}<button onClick={retry}>Retry</button></div>,
+}));
+import { SchoolAttendanceSchedulePanel } from './school-attendance-schedule';
+
+let root: Root; let box: HTMLDivElement;
+const render = (schoolId: number, canEdit: boolean) => act(() => root.render(<SchoolAttendanceSchedulePanel schoolId={schoolId} canEdit={canEdit} />));
+const q = (s: string) => box.querySelector(s) as HTMLElement;
+function type(el: HTMLInputElement | HTMLTextAreaElement, v: string) {
+  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  act(() => { Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); });
+}
+const click = (el: HTMLElement) => act(() => { el.click(); });
+
+beforeEach(() => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  st.data = { schedule: structuredClone(base), revision: 4, precedence: ['Closure', 'Approved correction', 'Exemption'] };
+  st.isError = false; st.mutate.mockReset(); st.assess.mockReset(); st.invalidate.mockReset();
+  box = document.createElement('div'); document.body.appendChild(box); root = createRoot(box);
+});
+afterEach(() => { act(() => root.unmount()); box.remove(); });
+
+describe('school attendance schedule', () => {
+  it('shows defaults, precedence and revision', () => {
+    render(1, true);
+    expect((box.querySelector('input[type=time]') as HTMLInputElement).value).toBe('06:30');
+    expect(q('[data-testid=text-precedence]').textContent).toContain('Closure → Approved correction');
+    expect(q('[data-testid=text-schedule-revision]').textContent).toContain('4');
+    expect((q('input[aria-label="Operating day Sat"]') as HTMLInputElement).checked).toBe(false);
+  });
+  it('saves with revision and reason, then invalidates the tenant query', () => {
+    render(7, true);
+    click(q('input[aria-label=Notifications]'));
+    click(Array.from(box.querySelectorAll('button')).find(b => b.textContent === 'Add closure')!);
+    type(q('input[type=date]') as HTMLInputElement, '2025-12-25');
+    type(box.querySelector('input[type=date]')!.closest('label')!.parentElement!.querySelectorAll('input')[1] as HTMLInputElement, 'Christmas');
+    expect(q('[data-testid=status-schedule-dirty]')).toBeTruthy();
+    type(q('textarea') as HTMLTextAreaElement, 'Term calendar');
+    act(() => { q('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    const arg = st.mutate.mock.calls[0][0];
+    expect(arg.params).toEqual({ schoolId: 7 });
+    expect(arg.data.revision).toBe(4);
+    expect(arg.data.reason).toBe('Term calendar');
+    expect(arg.data.schedule.rules.notifications).toBe(true);
+    expect(arg.data.schedule.closures).toEqual([{ date: '2025-12-25', reason: 'Christmas' }]);
+    act(() => st.mutate.mock.calls[0][1].onSuccess({}));
+    expect(st.invalidate).toHaveBeenCalledWith({ queryKey: ['/api/school/attendance/schedule', { schoolId: 7 }] });
+  });
+  it('blocks save without reason and shows validation', () => {
+    render(1, true);
+    click(q('input[aria-label=Lateness]'));
+    act(() => { q('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(st.mutate).not.toHaveBeenCalled();
+    expect(q('[data-testid=list-schedule-errors]').textContent).toContain('Reason');
+  });
+  it('shows server save error', () => {
+    render(1, true);
+    click(q('input[aria-label=Lateness]'));
+    type(q('textarea') as HTMLTextAreaElement, 'Fix');
+    act(() => { q('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    act(() => st.mutate.mock.calls[0][1].onError(new Error('Revision conflict')));
+    expect(q('[data-testid=text-save-error]').textContent).toContain('Revision conflict');
+  });
+  it('is read-only without edit access', () => {
+    render(1, false);
+    expect(q('[data-testid=text-schedule-readonly]')).toBeTruthy();
+    expect(q('[data-testid=button-save-schedule]')).toBeNull();
+    expect(q('[data-testid=button-run-assessment]')).toBeNull();
+    expect(box.querySelectorAll('fieldset[disabled]').length).toBeGreaterThan(0);
+  });
+  it('shows load error with retry', () => {
+    st.isError = true; render(1, true);
+    expect(q('[role=alert]').textContent).toContain('could not be loaded');
+  });
+  it('resets draft on tenant change and ignores late response from old tenant', () => {
+    render(1, true);
+    click(q('input[aria-label=Lateness]'));
+    type(q('textarea') as HTMLTextAreaElement, 'Old tenant');
+    act(() => { q('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    const lateError = st.mutate.mock.calls[0][1].onError;
+    st.data = { schedule: structuredClone(base), revision: 9, precedence: [] };
+    render(2, true);
+    expect(q('[data-testid=status-schedule-dirty]')).toBeNull();
+    expect(q('[data-testid=text-schedule-revision]').textContent).toContain('9');
+    act(() => lateError(new Error('stale')));
+    expect(q('[data-testid=text-save-error]')).toBeNull();
+  });
+  it('continues assessment batches while cursor is present', () => {
+    render(1, true);
+    click(q('[data-testid=button-run-assessment]'));
+    expect(st.assess.mock.calls[0][0]).toEqual({ params: { schoolId: 1 }, data: { afterStudentId: 0 } });
+    act(() => st.assess.mock.calls[0][1].onSuccess({ date: '2025-01-06', reviewed: 100, created: 3, nextAfterStudentId: 100 }));
+    click(q('[data-testid=button-continue-assessment]'));
+    expect(st.assess.mock.calls[1][0].data.afterStudentId).toBe(100);
+  });
+});

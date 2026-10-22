@@ -13,9 +13,10 @@ import {
   Button, EmptyState, ErrorState, Field, Metric, Modal, PageHeading, SkeletonPage,
   StatusPill, TenantPicker, useTenant, cx, time,
 } from '@/components/shared';
+import { SchoolAttendanceSchedulePanel } from '@/components/school-attendance-schedule';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 
-type Tab = 'events' | 'history' | 'reports' | 'discrepancies';
+type Tab = 'events' | 'history' | 'reports' | 'discrepancies' | 'schedule';
 
 export function AttendancePage() {
   const { schoolId } = useTenant();
@@ -78,13 +79,14 @@ export function AttendancePage() {
           <div className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Metric label="School entries" value={summary?.entries ?? summary?.schoolEntries ?? 'Not available'} detail="Selected day" icon={ClipboardCheck} accent />
             <Metric label="School exits" value={summary?.exits ?? summary?.schoolExits ?? 'Not available'} detail="Selected day" icon={Activity} />
-            <Metric label="Currently present" value={summary?.present ?? summary?.studentsPresent ?? 'Not available'} detail="From recorded events" icon={Clock3} accent />
+            <Metric label="Awaiting exit scan" value={summary?.present ?? summary?.studentsPresent ?? 'Not available'} detail="Recorded gate state, not location proof" icon={Clock3} accent />
             <Metric label="Discrepancies" value={summary?.discrepancies ?? summary?.mismatches ?? 'Not available'} detail="Requires review" icon={AlertTriangle} />
           </div>
-          <div className="panel overflow-hidden">
+          {tab === 'schedule' && <div className="mb-4 flex gap-1 rounded-xl bg-[hsl(var(--muted)/.45)] p-1">{(['events', 'history', 'reports', 'discrepancies', 'schedule'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={cx('rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors', tab === item ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}>{item}</button>)}</div>}
+          {tab === 'schedule' ? <SchoolAttendanceSchedulePanel key={schoolId} schoolId={schoolId} canEdit={canCorrect} /> : <div className="panel overflow-hidden">
             <div className="flex flex-col gap-4 border-b border-[hsl(var(--border))] p-5 md:flex-row md:items-center md:justify-between">
               <div className="flex gap-1 rounded-xl bg-[hsl(var(--muted)/.45)] p-1">
-                {(['events', 'history', 'reports', 'discrepancies'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={cx('rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors', tab === item ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}>{item}</button>)}
+                {(['events', 'history', 'reports', 'discrepancies', 'schedule'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={cx('rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors', tab === item ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}>{item}</button>)}
               </div>
               <div className="flex flex-wrap gap-2">
                 {tab === 'events' ? <label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">School day <input type="date" value={date} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setDate(e.target.value); }} aria-label="School day" /></label> : <><label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">From <input type="date" value={fromDate} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setFromDate(e.target.value); }} aria-label="History start date" /></label><label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">To <input type="date" value={toDate} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setToDate(e.target.value); }} aria-label="History end date" /></label></>}
@@ -105,7 +107,7 @@ export function AttendancePage() {
               </div>
             </div>
             <AttendanceTable rows={rows} discrepancy={tab === 'discrepancies'} canCorrect={canCorrect} loading={events.isLoading || discrepancies.isLoading} onCorrect={row => setModal({ correction: row })} onResolve={row => setModal({ discrepancy: row })} />
-          </div>
+          </div>}
         </>
       )}
       {canWrite && modal === 'manual' && <Modal title="Record attendance event" eyebrow="Audited manual event" onClose={() => setModal(null)}><ManualForm schoolId={schoolId} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}

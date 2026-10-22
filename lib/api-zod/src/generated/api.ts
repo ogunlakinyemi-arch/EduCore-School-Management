@@ -11,6 +11,243 @@ import * as zod from 'zod';
 
 
 
+export const GetSchoolAttendanceScheduleQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const getSchoolAttendanceScheduleResponseScheduleTimezoneDefault = `Africa/Lagos`;
+export const getSchoolAttendanceScheduleResponseScheduleOperatingDaysItemMax = 7;
+
+export const getSchoolAttendanceScheduleResponseScheduleArrivalStartDefault = `06:45`;
+export const getSchoolAttendanceScheduleResponseScheduleArrivalEndDefault = `07:45`;
+export const getSchoolAttendanceScheduleResponseScheduleLateCutoffDefault = `08:00`;
+export const getSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault = `10:00`;
+export const getSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault = `14:00`;
+export const getSchoolAttendanceScheduleResponseScheduleFridayClosingDefault = `13:00`;
+export const getSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault = `14:00`;
+export const getSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault = `16:00`;
+export const getSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault = `14:00`;
+export const getSchoolAttendanceScheduleResponseScheduleClassroomDeadlineDefault = `08:15`;
+export const getSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMin = 5;
+export const getSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMax = 600;
+
+export const getSchoolAttendanceScheduleResponseScheduleOfflineMaxHoursMax = 8784;
+
+
+
+export const GetSchoolAttendanceScheduleResponse = zod.object({
+  "schedule": zod.object({
+  "timezone": zod.string().default(getSchoolAttendanceScheduleResponseScheduleTimezoneDefault),
+  "operatingDays": zod.array(zod.number().int().min(1).max(getSchoolAttendanceScheduleResponseScheduleOperatingDaysItemMax)),
+  "arrivalStart": zod.string().default(getSchoolAttendanceScheduleResponseScheduleArrivalStartDefault),
+  "arrivalEnd": zod.string().default(getSchoolAttendanceScheduleResponseScheduleArrivalEndDefault),
+  "lateCutoff": zod.string().default(getSchoolAttendanceScheduleResponseScheduleLateCutoffDefault),
+  "absenceAssessment": zod.string().default(getSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault),
+  "weekdaysClosing": zod.string().default(getSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault),
+  "fridayClosing": zod.string().default(getSchoolAttendanceScheduleResponseScheduleFridayClosingDefault),
+  "missingTagOutStart": zod.string().default(getSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault),
+  "missingTagOutEnd": zod.string().default(getSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault),
+  "fridayMissingTagOut": zod.string().default(getSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault),
+  "classroomDeadline": zod.string().default(getSchoolAttendanceScheduleResponseScheduleClassroomDeadlineDefault),
+  "duplicateSeconds": zod.number().int().min(getSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMin).max(getSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMax),
+  "offlineMaxHours": zod.number().int().min(1).max(getSchoolAttendanceScheduleResponseScheduleOfflineMaxHoursMax),
+  "closures": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "reason": zod.string()
+})),
+  "exemptions": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date(),
+  "reason": zod.string()
+})),
+  "rules": zod.object({
+  "entryEnabled": zod.boolean(),
+  "exitEnabled": zod.boolean(),
+  "lateness": zod.boolean(),
+  "absenceReview": zod.boolean(),
+  "classroomAnomalies": zod.boolean(),
+  "missingTagOut": zod.boolean(),
+  "offlineSync": zod.boolean(),
+  "notifications": zod.boolean(),
+  "allowEarlyExit": zod.boolean(),
+  "allowReentry": zod.boolean(),
+  "provisionalClassPresence": zod.boolean()
+})
+}),
+  "revision": zod.number().int(),
+  "precedence": zod.array(zod.string())
+})
+
+
+
+
+
+export const UpdateSchoolAttendanceScheduleQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const updateSchoolAttendanceScheduleBodyRevisionMin = 0;
+
+export const updateSchoolAttendanceScheduleBodyScheduleTimezoneDefault = `Africa/Lagos`;
+export const updateSchoolAttendanceScheduleBodyScheduleOperatingDaysItemMax = 7;
+
+export const updateSchoolAttendanceScheduleBodyScheduleArrivalStartDefault = `06:45`;
+export const updateSchoolAttendanceScheduleBodyScheduleArrivalEndDefault = `07:45`;
+export const updateSchoolAttendanceScheduleBodyScheduleLateCutoffDefault = `08:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleAbsenceAssessmentDefault = `10:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleWeekdaysClosingDefault = `14:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleFridayClosingDefault = `13:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleMissingTagOutStartDefault = `14:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleMissingTagOutEndDefault = `16:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleFridayMissingTagOutDefault = `14:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleClassroomDeadlineDefault = `08:15`;
+export const updateSchoolAttendanceScheduleBodyScheduleDuplicateSecondsMin = 5;
+export const updateSchoolAttendanceScheduleBodyScheduleDuplicateSecondsMax = 600;
+
+export const updateSchoolAttendanceScheduleBodyScheduleOfflineMaxHoursMax = 8784;
+
+export const updateSchoolAttendanceScheduleBodyReasonMin = 3;
+export const updateSchoolAttendanceScheduleBodyReasonMax = 500;
+
+
+
+export const UpdateSchoolAttendanceScheduleBody = zod.object({
+  "revision": zod.number().int().min(updateSchoolAttendanceScheduleBodyRevisionMin),
+  "schedule": zod.object({
+  "timezone": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleTimezoneDefault),
+  "operatingDays": zod.array(zod.number().int().min(1).max(updateSchoolAttendanceScheduleBodyScheduleOperatingDaysItemMax)),
+  "arrivalStart": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleArrivalStartDefault),
+  "arrivalEnd": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleArrivalEndDefault),
+  "lateCutoff": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleLateCutoffDefault),
+  "absenceAssessment": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleAbsenceAssessmentDefault),
+  "weekdaysClosing": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleWeekdaysClosingDefault),
+  "fridayClosing": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleFridayClosingDefault),
+  "missingTagOutStart": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleMissingTagOutStartDefault),
+  "missingTagOutEnd": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleMissingTagOutEndDefault),
+  "fridayMissingTagOut": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleFridayMissingTagOutDefault),
+  "classroomDeadline": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleClassroomDeadlineDefault),
+  "duplicateSeconds": zod.number().int().min(updateSchoolAttendanceScheduleBodyScheduleDuplicateSecondsMin).max(updateSchoolAttendanceScheduleBodyScheduleDuplicateSecondsMax),
+  "offlineMaxHours": zod.number().int().min(1).max(updateSchoolAttendanceScheduleBodyScheduleOfflineMaxHoursMax),
+  "closures": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "reason": zod.string()
+})),
+  "exemptions": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date(),
+  "reason": zod.string()
+})),
+  "rules": zod.object({
+  "entryEnabled": zod.boolean(),
+  "exitEnabled": zod.boolean(),
+  "lateness": zod.boolean(),
+  "absenceReview": zod.boolean(),
+  "classroomAnomalies": zod.boolean(),
+  "missingTagOut": zod.boolean(),
+  "offlineSync": zod.boolean(),
+  "notifications": zod.boolean(),
+  "allowEarlyExit": zod.boolean(),
+  "allowReentry": zod.boolean(),
+  "provisionalClassPresence": zod.boolean()
+})
+}),
+  "reason": zod.string().min(updateSchoolAttendanceScheduleBodyReasonMin).max(updateSchoolAttendanceScheduleBodyReasonMax)
+})
+
+export const updateSchoolAttendanceScheduleResponseScheduleTimezoneDefault = `Africa/Lagos`;
+export const updateSchoolAttendanceScheduleResponseScheduleOperatingDaysItemMax = 7;
+
+export const updateSchoolAttendanceScheduleResponseScheduleArrivalStartDefault = `06:45`;
+export const updateSchoolAttendanceScheduleResponseScheduleArrivalEndDefault = `07:45`;
+export const updateSchoolAttendanceScheduleResponseScheduleLateCutoffDefault = `08:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault = `10:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault = `14:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleFridayClosingDefault = `13:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault = `14:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault = `16:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault = `14:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleClassroomDeadlineDefault = `08:15`;
+export const updateSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMin = 5;
+export const updateSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMax = 600;
+
+export const updateSchoolAttendanceScheduleResponseScheduleOfflineMaxHoursMax = 8784;
+
+
+
+export const UpdateSchoolAttendanceScheduleResponse = zod.object({
+  "schedule": zod.object({
+  "timezone": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleTimezoneDefault),
+  "operatingDays": zod.array(zod.number().int().min(1).max(updateSchoolAttendanceScheduleResponseScheduleOperatingDaysItemMax)),
+  "arrivalStart": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleArrivalStartDefault),
+  "arrivalEnd": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleArrivalEndDefault),
+  "lateCutoff": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleLateCutoffDefault),
+  "absenceAssessment": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault),
+  "weekdaysClosing": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault),
+  "fridayClosing": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleFridayClosingDefault),
+  "missingTagOutStart": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault),
+  "missingTagOutEnd": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault),
+  "fridayMissingTagOut": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault),
+  "classroomDeadline": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleClassroomDeadlineDefault),
+  "duplicateSeconds": zod.number().int().min(updateSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMin).max(updateSchoolAttendanceScheduleResponseScheduleDuplicateSecondsMax),
+  "offlineMaxHours": zod.number().int().min(1).max(updateSchoolAttendanceScheduleResponseScheduleOfflineMaxHoursMax),
+  "closures": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "reason": zod.string()
+})),
+  "exemptions": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date(),
+  "reason": zod.string()
+})),
+  "rules": zod.object({
+  "entryEnabled": zod.boolean(),
+  "exitEnabled": zod.boolean(),
+  "lateness": zod.boolean(),
+  "absenceReview": zod.boolean(),
+  "classroomAnomalies": zod.boolean(),
+  "missingTagOut": zod.boolean(),
+  "offlineSync": zod.boolean(),
+  "notifications": zod.boolean(),
+  "allowEarlyExit": zod.boolean(),
+  "allowReentry": zod.boolean(),
+  "provisionalClassPresence": zod.boolean()
+})
+}),
+  "revision": zod.number().int(),
+  "precedence": zod.array(zod.string())
+})
+
+
+
+
+
+export const AssessSchoolAttendanceQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const assessSchoolAttendanceBodyAfterStudentIdDefault = 0;
+export const assessSchoolAttendanceBodyAfterStudentIdMin = 0;
+
+
+
+export const AssessSchoolAttendanceBody = zod.object({
+  "afterStudentId": zod.number().int().min(assessSchoolAttendanceBodyAfterStudentIdMin).default(assessSchoolAttendanceBodyAfterStudentIdDefault)
+})
+
+export const AssessSchoolAttendanceResponse = zod.object({
+  "date": zod.string(),
+  "reviewed": zod.number().int(),
+  "created": zod.number().int(),
+  "nextAfterStudentId": zod.number().int().nullable()
+})
+
+
+
+
+
 export const GetTelegramStatusQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).optional()
 })
@@ -528,7 +765,7 @@ export const GetTerminalDirectionParams = zod.object({
 })
 
 export const GetTerminalDirectionResponse = zod.object({
-  "direction": zod.union([zod.literal('ENTRY'),zod.literal('EXIT'),zod.literal(null)]).nullable()
+  "direction": zod.union([zod.literal('ENTRY'),zod.literal('EXIT'),zod.literal('ENTRY_EXIT'),zod.literal(null)]).nullable()
 })
 
 
@@ -540,11 +777,11 @@ export const SetTerminalDirectionParams = zod.object({
 })
 
 export const SetTerminalDirectionBody = zod.object({
-  "direction": zod.enum(['ENTRY', 'EXIT'])
+  "direction": zod.enum(['ENTRY', 'EXIT', 'ENTRY_EXIT'])
 })
 
 export const SetTerminalDirectionResponse = zod.object({
-  "direction": zod.union([zod.literal('ENTRY'),zod.literal('EXIT'),zod.literal(null)]).nullable()
+  "direction": zod.union([zod.literal('ENTRY'),zod.literal('EXIT'),zod.literal('ENTRY_EXIT'),zod.literal(null)]).nullable()
 })
 
 
@@ -18035,7 +18272,8 @@ export const UpdateNotificationChannelPolicyResponse = zod.object({
 
 export const GetCommunicationPushConfigurationResponse = zod.object({
   "configured": zod.boolean(),
-  "publicKey": zod.string().nullable()
+  "publicKey": zod.string().nullable(),
+  "deliveryEnabled": zod.boolean().describe('False when Development sending is not explicitly authorized for this user')
 })
 
 

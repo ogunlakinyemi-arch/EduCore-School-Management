@@ -106,6 +106,7 @@ beforeEach(() => {
     if (sql.includes("SELECT id FROM students")) return result([{ id: 501 }]);
     if (sql.includes("FROM student_identification_policies")) return result([{ policy: fixture.policy }]);
     if (sql.includes("FROM attendance_settings")) return result([{ seconds: 30 }]);
+    if (sql.includes("SELECT e.*,e.event_date::text")) return result([]);
     if (sql.includes("FROM students st") && sql.includes("student_class_assignments")) return result([{
       studentId: 501, studentName: "Synthetic Student", className: "JSS1", section: "A",
     }]);
@@ -113,6 +114,11 @@ beforeEach(() => {
       return result(fixture.events.filter(item => item.dedupeKey === values[2]));
     }
     if (sql.includes("SELECT EXISTS(")) return result([{ present: true }]);
+    if (sql.includes("event_type AS \"eventType\",occurred_at AS \"occurredAt\"")) {
+      return result(fixture.events.filter(e=>e.schoolId===values[0] && e.studentId===values[1])
+        .sort((a,b)=>new Date(b.occurredAt).getTime()-new Date(a.occurredAt).getTime()).slice(0,1));
+    }
+    if (sql.includes("UPDATE attendance_discrepancies")) return result([]);
     if (sql.includes("FROM attendance_events") && sql.includes("BETWEEN")) {
       return result(fixture.events.filter(item => item.eventType === values[3] &&
         Math.abs(new Date(item.occurredAt).getTime() - new Date(values[4]).getTime()) <= Number(values[5]) * 1000));
@@ -121,7 +127,7 @@ beforeEach(() => {
       const item = { id: fixture.events.length + 1, schoolId: values[0], studentId: values[1],
         deviceId: values[2], nfcCardId: values[3], schoolClassId: values[4],
         identificationMethod: values[5], eventType: values[6], occurredAt: values[8], dedupeKey: values[9],
-        result: "ACCEPTED", status: "PRESENT" };
+        result: "ACCEPTED", status: values[10] ?? "PRESENT" };
       fixture.events.push(item); fixture.dates.push(values[7]); return result([item]);
     }
     if (sql.includes("WITH missing AS") || sql.includes("INSERT INTO attendance_notification_events")) return result([]);
@@ -212,12 +218,14 @@ describe("vendor terminal endpoint with the existing attendance handler (mocked 
     expect(fixture.events).toHaveLength(1);
   });
   it("stores Lagos calendar date for timezone-free midnight and suppresses historical notifications", async () => {
-    const day = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+    // Use a previous school-local day that is safely within the configured
+    // 72-hour window, including when this test runs near UTC midnight.
+    const day = lagosDate(new Date(Date.now() - 86_400_000));
     const request = payload({ timestamp: `${day}T00:30:00` });
     expect((await send(request)).body.success).toBe(true);
     expect(fixture.events[0].occurredAt).toBe(new Date(`${day}T00:30:00+01:00`).toISOString());
     expect(fixture.dates).toEqual([day]);
-    expect(mocks.security.mock.calls[0][2]).toBe(true);
+    expect(mocks.security.mock.calls[0].slice(2)).toEqual([false,true]);
     expect(mocks.notifications).not.toHaveBeenCalled();
   });
   it.each(["X1234567", "1234", "A1:B2:C3:D4", "A".repeat(16)])("rejects UID %s", async uid => {

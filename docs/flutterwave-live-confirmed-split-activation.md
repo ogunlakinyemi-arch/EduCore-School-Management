@@ -216,8 +216,14 @@ the existing four LIVE migration drafts remain unapplied.
 
 ## Development TEST implementation verification — 2026-10-21
 
-- Focused API suites: 44 tests passed across SCV2/SCV3 provider behavior,
-  checkout snapshots, signed subscription webhooks and financial summaries.
+- Final extended API run: **95 passed, 0 failed across five files**, including
+  34 native PostgreSQL/HTTP commission, refund and adverse-event cases against a
+  disposable fictional database. The remaining cases cover SCV2/SCV3 provider
+  behavior, signed subscription webhooks, split services and financial summaries.
+- Disposable fixtures now include the existing shared receipt table and payment
+  uncertainty columns; no application migration was added or applied. Standalone
+  refund IDs remain separate from collection `TransactionId` values, and repeated
+  durable adverse holds return HTTP 200 without creating another liability.
 - Owner settlements DOM suite: 35 tests passed, including merchant-net,
   internal Partner payable, tax-unknown and durable receipt presentation.
 - API and frontend TypeScript checks passed. OpenAPI codegen and shared-library

@@ -176,6 +176,7 @@ export type TerminalDirectionInputDirection = typeof TerminalDirectionInputDirec
 export const TerminalDirectionInputDirection = {
   ENTRY: 'ENTRY',
   EXIT: 'EXIT',
+  ENTRY_EXIT: 'ENTRY_EXIT',
 } as const;
 
 export interface TerminalDirectionInput {
@@ -191,6 +192,7 @@ export type TerminalDirectionConfigurationDirection = typeof TerminalDirectionCo
 export const TerminalDirectionConfigurationDirection = {
   ENTRY: 'ENTRY',
   EXIT: 'EXIT',
+  ENTRY_EXIT: 'ENTRY_EXIT',
 } as const;
 
 export interface TerminalDirectionConfiguration {
@@ -13390,6 +13392,70 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type SchoolAttendanceScheduleClosuresItem = {
+  date: string;
+  reason: string;
+};
+
+export type SchoolAttendanceScheduleExemptionsItem = {
+  studentId: number;
+  from: string;
+  to: string;
+  reason: string;
+};
+
+export type SchoolAttendanceScheduleRules = {
+  entryEnabled: boolean;
+  exitEnabled: boolean;
+  lateness: boolean;
+  absenceReview: boolean;
+  classroomAnomalies: boolean;
+  missingTagOut: boolean;
+  offlineSync: boolean;
+  notifications: boolean;
+  allowEarlyExit: boolean;
+  allowReentry: boolean;
+  provisionalClassPresence: boolean;
+};
+
+export interface SchoolAttendanceSchedule {
+  timezone: string;
+  /**
+     * @items.minimum 1
+     * @items.maximum 7
+     */
+  operatingDays: number[];
+  arrivalStart: string;
+  arrivalEnd: string;
+  lateCutoff: string;
+  absenceAssessment: string;
+  weekdaysClosing: string;
+  fridayClosing: string;
+  missingTagOutStart: string;
+  missingTagOutEnd: string;
+  fridayMissingTagOut: string;
+  classroomDeadline: string;
+  /**
+     * @minimum 5
+     * @maximum 600
+     */
+  duplicateSeconds: number;
+  /**
+     * @minimum 1
+     * @maximum 8784
+     */
+  offlineMaxHours: number;
+  closures: SchoolAttendanceScheduleClosuresItem[];
+  exemptions: SchoolAttendanceScheduleExemptionsItem[];
+  rules: SchoolAttendanceScheduleRules;
+}
+
+export interface SchoolAttendanceScheduleView {
+  schedule: SchoolAttendanceSchedule;
+  revision: number;
+  precedence: string[];
+}
+
 /**
  * @nullable
  */
@@ -15243,6 +15309,7 @@ export type TerminalDirectionInput4b96100Direction = typeof TerminalDirectionInp
 export const TerminalDirectionInput4b96100Direction = {
   ENTRY: 'ENTRY',
   EXIT: 'EXIT',
+  ENTRY_EXIT: 'ENTRY_EXIT',
 } as const;
 
 export interface TerminalDirectionInput4b96100 {
@@ -15258,6 +15325,7 @@ export type TerminalDirectionConfiguration4b96100Direction = typeof TerminalDire
 export const TerminalDirectionConfiguration4b96100Direction = {
   ENTRY: 'ENTRY',
   EXIT: 'EXIT',
+  ENTRY_EXIT: 'ENTRY_EXIT',
 } as const;
 
 export interface TerminalDirectionConfiguration4b96100 {
@@ -22464,6 +22532,50 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type GetSchoolAttendanceScheduleParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateSchoolAttendanceScheduleParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateSchoolAttendanceScheduleBody = {
+  /** @minimum 0 */
+  revision: number;
+  schedule: SchoolAttendanceSchedule;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+};
+
+export type AssessSchoolAttendanceParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type AssessSchoolAttendanceBody = {
+  /** @minimum 0 */
+  afterStudentId?: number;
+};
+
+export type AssessSchoolAttendance200 = {
+  date: string;
+  reviewed: number;
+  created: number;
+  nextAfterStudentId: number | null;
+};
+
 export type GetTelegramStatusParams = {
 /**
  * @minimum 1
@@ -24729,6 +24841,8 @@ export type GetCommunicationPushConfiguration200 = {
   configured: boolean;
   /** @nullable */
   publicKey: string | null;
+  /** False when Development sending is not explicitly authorized for this user */
+  deliveryEnabled: boolean;
 };
 
 export type ListCommunicationPushDevicesParams = {

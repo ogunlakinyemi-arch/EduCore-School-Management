@@ -4,14 +4,14 @@ import { AuthError } from "../middlewares/auth";
 export const TERMINAL_MAX_AGE_MS = 366 * 86_400_000;
 export const TERMINAL_DIRECTION_ACTION = "Configured NFC terminal direction";
 export const TERMINAL_RECEIPT_ACTION = "NFC terminal event receipt";
-export type TerminalDirection = "ENTRY" | "EXIT";
+export type TerminalDirection = "ENTRY" | "EXIT" | "ENTRY_EXIT";
 export type TerminalReceipt = {
   success: boolean;
   duplicate: boolean;
   retryable: boolean;
   message: string;
   student_name: string | null;
-  action: TerminalDirection | "DENIED" | null;
+  action: "ENTRY" | "EXIT" | "DENIED" | null;
 };
 
 export function lagosDate(date: Date) {

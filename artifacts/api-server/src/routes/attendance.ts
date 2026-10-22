@@ -20,6 +20,9 @@ import { logger } from "../lib/logger";
 import {studentNfcCardLookupSql} from "../lib/nfc-device-first";
 import employeeNfcRouter from "./employee-nfc";
 import { assertSubscriptionAccess } from "../services/subscription-enforcement";
+import { readAttendanceSchedule, schoolClock, decideGateTransition, attendanceDayOpen } from "../services/attendance-schedule";
+import { terminalDirectionSql, type TerminalDirection } from "../lib/terminal-contract";
+import { createAttendanceScheduleRouter } from "./attendance-schedule";
 
 const router = Router();
 const run = (handler: (req: Request, res: Response) => Promise<void>) =>
@@ -214,7 +217,7 @@ export async function queueStudentAttendanceCommunication(
       subject: input.subject,
       body: input.body,
       link: input.link ?? "/",
-      channels: recipient.recipientRole === "PARENT" ? ["IN_APP", "SMS"] : ["IN_APP"],
+      channels: recipient.recipientRole === "PARENT" ? ["IN_APP", "SMS", "PUSH"] : ["IN_APP", "PUSH"],
     });
   }
 }
@@ -375,6 +378,7 @@ function hasSchoolWideAttendanceRead(context: ReturnType<typeof getUserContext>,
 }
 
 export type DeviceAttendanceOptions = {
+  mode?: TerminalDirection;
   device?: Awaited<ReturnType<typeof deviceAuth>>;
   client?: DatabasePoolClient;
   maxAgeMs?: number;
@@ -398,7 +402,7 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
       (typeof idempotencyKey !== "string" || idempotencyKey.length < 8 || idempotencyKey.length > 128)) {
     throw new AuthError(400, "idempotencyKey must be a string between 8 and 128 characters");
   }
-  const eventType = String(body.eventType ?? "").toUpperCase();
+  let eventType = String(body.eventType ?? "").toUpperCase();
   const method = String(body.identificationMethod ?? "NFC").toUpperCase();
   if((body.schoolId!==undefined && Number(body.schoolId)!==device.schoolId) ||
     (body.deviceId!==undefined && Number(body.deviceId)!==device.deviceId)) {
@@ -408,7 +412,7 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
   if ((body.studentId != null &&
        (!Number.isSafeInteger(suppliedStudentId) || Number(suppliedStudentId) < 1)) ||
       (method === "FINGERPRINT" && suppliedStudentId == null) ||
-      !["SCHOOL_ENTRY", "SCHOOL_EXIT", "CLASSROOM_ENTRY"].includes(eventType) ||
+      !["SCHOOL_ENTRY", "SCHOOL_EXIT", "SCHOOL_AUTO", "CLASSROOM_ENTRY"].includes(eventType) ||
        !["NFC", "FINGERPRINT"].includes(method)) {
     throw new AuthError(400, "A valid studentId (required for fingerprint), eventType, and identificationMethod are required");
   }
@@ -459,8 +463,8 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
   const occurredAt = body.occurredAt ? new Date(body.occurredAt) : new Date();
   const validationNow = options.nowMs ?? Date.now();
   if (Number.isNaN(occurredAt.getTime()) || occurredAt.getTime() > validationNow + 5 * 60_000 ||
-      occurredAt.getTime() < validationNow - (options.maxAgeMs ?? 24 * 60 * 60_000)) throw new AuthError(400, "occurredAt is outside the allowed time window");
-  const eventDate = options.eventDate ?? occurredAt.toISOString().slice(0, 10);
+      occurredAt.getTime() < validationNow - (options.maxAgeMs ?? 366 * 24 * 60 * 60_000)) throw new AuthError(400, "occurredAt is outside the allowed time window");
+  let eventDate = options.eventDate ?? occurredAt.toISOString().slice(0, 10);
   if (eventType === "CLASSROOM_ENTRY") {
     const assignment = await db.query(
       `SELECT a.school_class_id AS "classId", d.school_class_id AS "deviceClassId"
@@ -503,6 +507,11 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
      [device.deviceId, device.schoolId, device.credentialId,method],
    );
    if (!current.rows[0]) throw new AuthError(401, "Invalid or inactive device credential");
+   await client.query("SELECT pg_advisory_xact_lock_shared(hashtextextended($1,0))",
+     [`attendance-schedule:${device.schoolId}`]);
+   const { schedule } = await readAttendanceSchedule(client, device.schoolId);
+   const clock = schoolClock(occurredAt, schedule.timezone);
+   eventDate = clock.date;
    if (idempotencyKey !== undefined) {
      await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [dedupeKey]);
      const previous = await client.query(
@@ -521,7 +530,8 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
        // Compare the normalized attendance action, not optional client assertions.
        // Every normal card/device/student/policy/time check above still applies.
        if (prior.studentId !== studentId || prior.nfcCardId !== cardId ||
-           prior.schoolClassId !== schoolClassId || prior.eventType !== eventType ||
+           prior.schoolClassId !== schoolClassId ||
+           (eventType === "SCHOOL_AUTO" ? !["SCHOOL_ENTRY","SCHOOL_EXIT"].includes(prior.eventType) : prior.eventType !== eventType) ||
            prior.identificationMethod !== method || prior.result !== "ACCEPTED" ||
            new Date(prior.occurredAt).getTime() !== occurredAt.getTime()) {
          throw new AuthError(409, "idempotencyKey was already used for a different attendance event",
@@ -530,7 +540,7 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
        const studentRecord = await client.query(currentNfcStudentRecordQuery, [device.schoolId, studentId]);
        if (!studentRecord.rows[0]) throw new AuthError(404, "Student not found for this NFC device");
        // Recheck existing reader/card/placement rules in validation-only mode.
-       if (method === "NFC" && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)) {
+       if (method === "NFC" && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(prior.eventType)) {
          await joinSecurityAttendance(client, Number(prior.id), true);
        }
        await transaction("COMMIT");
@@ -538,6 +548,30 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
        res.status(200).json({ ...receipt, ...studentRecord.rows[0] });
        return;
      }
+   }
+   const delayed = validationNow - occurredAt.getTime() > 5 * 60_000;
+   if (delayed && (!schedule.rules.offlineSync ||
+       validationNow - occurredAt.getTime() > schedule.offlineMaxHours * 3_600_000))
+     throw new AuthError(409, "Offline synchronization exceeds the school's permitted window; review is required");
+   if (delayed && !idempotencyKey) throw new AuthError(400, "Offline scans require a stable idempotencyKey");
+   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [`attendance-state:${device.schoolId}:${studentId}:${eventDate}`]);
+   let attendanceStatus = "PRESENT";
+   if (["SCHOOL_ENTRY","SCHOOL_EXIT","SCHOOL_AUTO"].includes(eventType)) {
+     const configured = options.mode ?? (await client.query(terminalDirectionSql,
+       [device.deviceId, device.schoolId])).rows[0]?.direction;
+     if (eventType === "SCHOOL_AUTO" && !["ENTRY","EXIT","ENTRY_EXIT"].includes(configured))
+       throw new AuthError(409, "Configure this reader before using automatic direction");
+     const mode = configured ?? (eventType === "SCHOOL_EXIT" ? "EXIT" : "ENTRY");
+     const state = (await client.query(`SELECT event_type AS "eventType",occurred_at AS "occurredAt"
+       FROM attendance_events WHERE school_id=$1 AND student_id=$2 AND event_date=$3
+         AND event_type IN ('SCHOOL_ENTRY','SCHOOL_EXIT') AND result='ACCEPTED'
+         AND attendance_status IN ('PRESENT','LATE') ORDER BY occurred_at DESC,id DESC LIMIT 1`,
+     [device.schoolId, studentId, eventDate])).rows[0] ?? null;
+     const transition = decideGateTransition({mode, requested:eventType, latest:state, occurredAt,
+       schedule, hasLaterEvent:Boolean(state && new Date(state.occurredAt).getTime() > occurredAt.getTime())});
+     eventType = transition.eventType;
+     attendanceStatus = transition.status;
    }
    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [lockKey]);
    const recent = await client.query(
@@ -556,7 +590,7 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
     `INSERT INTO attendance_events
       (school_id,student_id,device_id,nfc_card_id,school_class_id,identification_method,event_type,result,
        attendance_status,event_date,occurred_at,dedupe_key,section_snapshot)
-     VALUES($1,$2,$3,$4,$5,$6,$7,'ACCEPTED','PRESENT',$8,$9,$10,
+     VALUES($1,$2,$3,$4,$5,$6,$7,'ACCEPTED',$11,$8,$9,$10,
        (SELECT a.section FROM student_class_assignments a
         WHERE a.school_id=$1 AND a.student_id=$2
           AND ($5::int IS NULL OR a.school_class_id=$5)
@@ -569,7 +603,7 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
        event_type AS "eventType",identification_method AS "identificationMethod",
         attendance_status AS status,result,failure_reason AS "failureReason",occurred_at AS "occurredAt",created_at AS "createdAt"`,
       [device.schoolId, studentId, device.deviceId, cardId, schoolClassId, method, eventType,
-       eventDate, occurredAt.toISOString(), dedupeKey],
+       eventDate, occurredAt.toISOString(), dedupeKey, attendanceStatus],
    );
    if (!result.rows[0]) { await transaction("ROLLBACK"); res.status(409).json({ error: "Duplicate event" }); return; }
     currentStudent = await client.query(
@@ -578,18 +612,26 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
     );
     if (!currentStudent.rows[0]) throw new AuthError(404, "Student not found for this NFC device");
    await reconcileAttendance(client, result.rows[0]);
+   const suppressNotices = options.suppressNotifications || delayed || !schedule.rules.notifications;
    const securityRecorded = method === "NFC" && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)
-     ? await joinSecurityAttendance(client, Number(result.rows[0].id), options.suppressNotifications === true) : false;
+     ? await joinSecurityAttendance(client, Number(result.rows[0].id), false, suppressNotices) : false;
    // Same transaction, after security acceptance. Exit can never create class presence.
-   if(method==="NFC"&&eventType==="SCHOOL_ENTRY")await markClassFromGate(client, Number(result.rows[0].id));
-   if (!options.suppressNotifications) await reconcileMissingClass(device.schoolId, eventDate, client);
-   if (!securityRecorded && !options.suppressNotifications) await queueAttendanceCommunicationBestEffort(
+   if(method==="NFC"&&eventType==="SCHOOL_ENTRY" && schedule.rules.provisionalClassPresence)
+     await markClassFromGate(client, Number(result.rows[0].id), schedule);
+   if (eventType === "SCHOOL_ENTRY" || eventType === "SCHOOL_EXIT") await client.query(
+     `UPDATE attendance_discrepancies SET status='RESOLVED',resolved_at=NOW(),
+       details=details || '{"resolution":"Synchronized gate evidence received"}'::jsonb
+      WHERE school_id=$1 AND student_id=$2 AND status='OPEN'
+        AND details->>'source'='SCHOOL_SCHEDULE' AND details->>'assessmentDate'=$3
+        AND discrepancy_type=$4`,
+     [device.schoolId,studentId,eventDate,eventType==="SCHOOL_ENTRY"?"ABSENCE_REVIEW":"MISSING_TAG_OUT"]);
+   if (!securityRecorded && !suppressNotices) await queueAttendanceCommunicationBestEffort(
       client,
       req,
       () => queueSchoolEntryExitCommunication(client, result.rows[0]),
       { schoolId: device.schoolId, eventType },
     );
-   if (!options.suppressNotifications) await client.query(`INSERT INTO attendance_notification_events(school_id,attendance_event_id,notification_type,channel,status,payload)
+   if (!suppressNotices) await client.query(`INSERT INTO attendance_notification_events(school_id,attendance_event_id,notification_type,channel,status,payload)
       SELECT $1::int,$2::int,x,'IN_APP','PENDING',jsonb_build_object('studentId',$3::int)
        FROM unnest(ARRAY['SCHOOL_ENTRY','SCHOOL_EXIT']::text[]) x
        WHERE ($4::text='SCHOOL_ENTRY' AND x='SCHOOL_ENTRY') OR ($4::text='SCHOOL_EXIT' AND x='SCHOOL_EXIT')`, [device.schoolId, result.rows[0].id, studentId, eventType]);
@@ -603,6 +645,7 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
   }
 }
 const processDeviceAttendance = run(handleDeviceAttendance);
+router.use(createAttendanceScheduleRouter(queueStudentAttendanceCommunication));
 router.post("/device/attendance/events", processDeviceAttendance);
 router.post("/biometric/events", (req, res, next) => {
   req.body = { ...req.body, identificationMethod: "FINGERPRINT" };
@@ -686,10 +729,17 @@ router.get("/school/attendance/today", requireAuthentication(), run(async (req, 
       FROM attendance_events WHERE school_id=$1 AND event_date=$2
     )
     SELECT counts.entries,counts.exits, (SELECT COUNT(*)::int FROM gate WHERE event_type='SCHOOL_ENTRY') AS present,
-      GREATEST(0,(SELECT COUNT(*)::int FROM students WHERE school_id=$1 AND UPPER(status)='ACTIVE') - counts.entries) AS absent,
+      (SELECT COUNT(*)::int FROM (
+        SELECT DISTINCT ON (student_id) attendance_status
+        FROM attendance_events WHERE school_id=$1 AND event_date=$2 AND student_id IS NOT NULL
+          AND event_type='CLASSROOM_ENTRY' AND result='ACCEPTED'
+        ORDER BY student_id,occurred_at DESC,id DESC
+      ) recorded_class WHERE attendance_status='ABSENT') AS absent,
       counts.late,
-      (SELECT COUNT(*)::int FROM attendance_discrepancies d JOIN attendance_events e ON e.id=d.attendance_event_id
-        WHERE d.school_id=$1 AND e.event_date=$2 AND d.status='OPEN') AS discrepancies
+      (SELECT COUNT(*)::int FROM attendance_discrepancies d
+        LEFT JOIN attendance_events e ON e.id=d.attendance_event_id AND e.school_id=d.school_id
+        WHERE d.school_id=$1 AND COALESCE(e.event_date::text,d.details->>'assessmentDate')=$2::text
+          AND d.status='OPEN') AS discrepancies
     FROM counts`,
     [schoolId, date],
   );

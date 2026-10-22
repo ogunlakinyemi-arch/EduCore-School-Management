@@ -15,4 +15,5 @@ export type TerminalDirectionConfiguration4b96100Direction = typeof TerminalDire
 export const TerminalDirectionConfiguration4b96100Direction = {
   ENTRY: 'ENTRY',
   EXIT: 'EXIT',
+  ENTRY_EXIT: 'ENTRY_EXIT',
 } as const;

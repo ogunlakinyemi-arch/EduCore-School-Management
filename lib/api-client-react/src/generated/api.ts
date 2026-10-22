@@ -92,6 +92,9 @@ import type {
   ApproveFeeAdjustmentParams,
   ApproveFeeRefundParams,
   ArchiveParentCommunicationThread200,
+  AssessSchoolAttendance200,
+  AssessSchoolAttendanceBody,
+  AssessSchoolAttendanceParams,
   AssignClassSubjectParams,
   AssignEmployeeNfcCardBody,
   AssignFeeStructureParams,
@@ -377,6 +380,7 @@ import type {
   GetPromotionReadinessParams,
   GetReportFilterOptions200,
   GetReportFilterOptionsParams,
+  GetSchoolAttendanceScheduleParams,
   GetSchoolAttendanceTodayParams,
   GetSchoolDashboardParams,
   GetSchoolEmployeeNfcAttendanceDailyParams,
@@ -700,6 +704,7 @@ import type {
   SchoolAdministratorInvitationList,
   SchoolAdministratorInvitationReplacement,
   SchoolAdministratorResult,
+  SchoolAttendanceScheduleView,
   SchoolBranding,
   SchoolCalendarEntry,
   SchoolClass,
@@ -856,6 +861,8 @@ import type {
   UpdateFeeCategoryParams,
   UpdateFinanceSettingsParams,
   UpdateParentParams,
+  UpdateSchoolAttendanceScheduleBody,
+  UpdateSchoolAttendanceScheduleParams,
   UpdateSchoolBrandingBody,
   UpdateSchoolCalendarEventBody,
   UpdateSchoolTeacherAssignmentBody,
@@ -910,6 +917,264 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetSchoolAttendanceScheduleUrl = (params: GetSchoolAttendanceScheduleParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/schedule?${stringifiedParams}` : `/api/school/attendance/schedule`
+}
+
+export const getSchoolAttendanceSchedule = async (params: GetSchoolAttendanceScheduleParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAttendanceScheduleView> => {
+
+  return customFetch<SchoolAttendanceScheduleView>(getGetSchoolAttendanceScheduleUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolAttendanceScheduleQueryKey = (params?: GetSchoolAttendanceScheduleParams,) => {
+    return [
+    `/api/school/attendance/schedule`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolAttendanceScheduleQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolAttendanceSchedule>>, TError = ErrorType<unknown>>(params: GetSchoolAttendanceScheduleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolAttendanceSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolAttendanceScheduleQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolAttendanceSchedule>>> = ({ signal }) => getSchoolAttendanceSchedule(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolAttendanceSchedule>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolAttendanceScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolAttendanceSchedule>>>
+export type GetSchoolAttendanceScheduleQueryError = ErrorType<unknown>
+
+
+
+export function useGetSchoolAttendanceSchedule<TData = Awaited<ReturnType<typeof getSchoolAttendanceSchedule>>, TError = ErrorType<unknown>>(
+ params: GetSchoolAttendanceScheduleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolAttendanceSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolAttendanceScheduleQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSchoolAttendanceScheduleUrl = (params: UpdateSchoolAttendanceScheduleParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/schedule?${stringifiedParams}` : `/api/school/attendance/schedule`
+}
+
+export const updateSchoolAttendanceSchedule = async (updateSchoolAttendanceScheduleBody: UpdateSchoolAttendanceScheduleBody,
+    params: UpdateSchoolAttendanceScheduleParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAttendanceScheduleView> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolAttendanceScheduleView>(getUpdateSchoolAttendanceScheduleUrl(params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateSchoolAttendanceScheduleBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolAttendanceScheduleMutationKey = () => ['updateSchoolAttendanceSchedule'] as const;
+
+export const getUpdateSchoolAttendanceScheduleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolAttendanceSchedule>>, TError,UpdateSchoolAttendanceScheduleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolAttendanceSchedule>>, TError,UpdateSchoolAttendanceScheduleMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolAttendanceScheduleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolAttendanceSchedule>>, UpdateSchoolAttendanceScheduleMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  updateSchoolAttendanceSchedule(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolAttendanceScheduleMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolAttendanceSchedule>>>
+    export type UpdateSchoolAttendanceScheduleMutationBody = BodyType<UpdateSchoolAttendanceScheduleBody>
+    export type UpdateSchoolAttendanceScheduleMutationError = ErrorType<unknown>
+    export type UpdateSchoolAttendanceScheduleMutationVariables = {data: BodyType<UpdateSchoolAttendanceScheduleBody>;params: UpdateSchoolAttendanceScheduleParams}
+
+    export const useUpdateSchoolAttendanceSchedule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolAttendanceSchedule>>, TError,UpdateSchoolAttendanceScheduleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolAttendanceSchedule>>,
+        TError,
+        UpdateSchoolAttendanceScheduleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolAttendanceScheduleMutationOptions(options));
+    }
+
+export const getAssessSchoolAttendanceUrl = (params: AssessSchoolAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/assess?${stringifiedParams}` : `/api/school/attendance/assess`
+}
+
+export const assessSchoolAttendance = async (params: AssessSchoolAttendanceParams,
+    assessSchoolAttendanceBody?: AssessSchoolAttendanceBody, options?: Parameters<typeof customFetch>[1]): Promise<AssessSchoolAttendance200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AssessSchoolAttendance200>(getAssessSchoolAttendanceUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assessSchoolAttendanceBody)
+  }
+);}
+
+
+
+
+
+export const getAssessSchoolAttendanceMutationKey = () => ['assessSchoolAttendance'] as const;
+
+export const getAssessSchoolAttendanceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessSchoolAttendance>>, TError,AssessSchoolAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assessSchoolAttendance>>, TError,AssessSchoolAttendanceMutationVariables, TContext> => {
+
+const mutationKey = getAssessSchoolAttendanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assessSchoolAttendance>>, AssessSchoolAttendanceMutationVariables> = (props) => {
+          const {params,data} = props ?? {};
+
+          return  assessSchoolAttendance(params,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssessSchoolAttendanceMutationResult = NonNullable<Awaited<ReturnType<typeof assessSchoolAttendance>>>
+    export type AssessSchoolAttendanceMutationBody = BodyType<AssessSchoolAttendanceBody> | undefined
+    export type AssessSchoolAttendanceMutationError = ErrorType<unknown>
+    export type AssessSchoolAttendanceMutationVariables = {params: AssessSchoolAttendanceParams;data?: BodyType<AssessSchoolAttendanceBody>}
+
+    export const useAssessSchoolAttendance = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessSchoolAttendance>>, TError,AssessSchoolAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assessSchoolAttendance>>,
+        TError,
+        AssessSchoolAttendanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssessSchoolAttendanceMutationOptions(options));
+    }
 
 export const getGetTelegramStatusUrl = (params?: GetTelegramStatusParams,) => {
   const normalizedParams = new URLSearchParams();

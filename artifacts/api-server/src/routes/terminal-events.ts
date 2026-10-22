@@ -70,14 +70,16 @@ export async function ingestTerminalEvent(req: Request, res: Response) {
     }
     const configuration = saved ? null : await client.query(terminalDirectionSql, [device.deviceId, device.schoolId]);
     const direction: TerminalDirection = saved?.direction ?? configuration?.rows[0]?.direction;
-    if (direction !== "ENTRY" && direction !== "EXIT") {
-      throw new AuthError(503, "Assign an entry or exit direction to this terminal before use");
+    if (!["ENTRY", "EXIT", "ENTRY_EXIT"].includes(direction)) {
+      throw new AuthError(503, "Assign an attendance mode to this terminal before use");
     }
     // Delegate to the existing card/policy/security/reconciliation pipeline with one shared transaction.
     const originalBody = req.body;
     req.body = {
       schoolId: device.schoolId, deviceId: device.deviceId, nfcUid: parsed.event.uid,
-      eventType: direction === "ENTRY" ? "SCHOOL_ENTRY" : "SCHOOL_EXIT",
+      eventType: saved?.receipt?.action === "ENTRY" ? "SCHOOL_ENTRY"
+        : saved?.receipt?.action === "EXIT" ? "SCHOOL_EXIT"
+        : direction === "ENTRY_EXIT" ? "SCHOOL_AUTO" : direction === "ENTRY" ? "SCHOOL_ENTRY" : "SCHOOL_EXIT",
       identificationMethod: "NFC", occurredAt: parsed.occurredAt.toISOString(),
       idempotencyKey: `vendor:${parsed.eventKey}`,
     };
@@ -91,7 +93,7 @@ export async function ingestTerminalEvent(req: Request, res: Response) {
     let denial: AuthError | null = null;
     try {
       await handleDeviceAttendance(req, capture, {
-        device, client, eventDate: lagosDate(parsed.occurredAt), maxAgeMs: TERMINAL_MAX_AGE_MS,
+        device, client, mode: direction, maxAgeMs: TERMINAL_MAX_AGE_MS,
         normalizeUid: true, skipDenialAudit: true,
         nowMs: now,
         suppressNotifications: lagosDate(parsed.occurredAt) !== lagosDate(new Date()),
@@ -100,8 +102,8 @@ export async function ingestTerminalEvent(req: Request, res: Response) {
         denial = new AuthError(409, "Duplicate scan suppressed");
       }
     } catch (error) {
-      if (error instanceof AuthError && [403, 404].includes(error.statusCode) &&
-          !["SUBSCRIPTION_STATUS_UNAVAILABLE"].includes(error.eventType ?? "")) {
+      if (error instanceof AuthError && [403, 404, 409].includes(error.statusCode) &&
+          !["SUBSCRIPTION_STATUS_UNAVAILABLE", "ATTENDANCE_IDEMPOTENCY_CONFLICT"].includes(error.eventType ?? "")) {
         denial = error;
       } else { throw error; }
     } finally { req.body = originalBody; }
@@ -109,11 +111,13 @@ export async function ingestTerminalEvent(req: Request, res: Response) {
     if (denial) {
       // Do not retain any partial attendance/security/notification effects of a denied scan.
       await client.query("ROLLBACK TO SAVEPOINT terminal_attendance");
-      receipt = { ...envelope(denial.message), action: "DENIED", duplicate: Boolean(saved) || status === 409 };
+       receipt = { ...envelope(denial.message), action: "DENIED",
+         duplicate: Boolean(saved) || status === 409 || /duplicate/i.test(denial.message) };
     } else {
       receipt = {
         success: true, duplicate: status === 200, retryable: false, message: "Attendance recorded",
-        student_name: typeof body.studentName === "string" ? body.studentName : null, action: direction,
+        student_name: typeof body.studentName === "string" ? body.studentName : null,
+        action: body.eventType === "SCHOOL_EXIT" ? "EXIT" : "ENTRY",
       };
     }
     await client.query("RELEASE SAVEPOINT terminal_attendance");

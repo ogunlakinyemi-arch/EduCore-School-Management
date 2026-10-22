@@ -3,15 +3,17 @@ import { pool } from "@workspace/db";
 import { getAuth } from "@clerk/express";
 import { pushSubscriptionSchema } from "../services/web-push-provider";
 import { createHash } from "node:crypto";
+import { developmentPushAllowed } from "../lib/development-push-policy";
 import { AuthError, getUserContext, requireAuthentication } from "../middlewares/auth";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
-router.get("/communication/push-configuration", (_req, res) => {
+router.get("/communication/push-configuration", (req, res) => {
   const configured = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT);
   res.setHeader("Cache-Control", "no-store");
   // The application-server PUBLIC key is intentionally supplied to PushManager.
-  res.json({ configured, publicKey: configured ? process.env.VAPID_PUBLIC_KEY : null });
+  res.json({ configured, publicKey: configured ? process.env.VAPID_PUBLIC_KEY : null,
+    deliveryEnabled: configured && developmentPushAllowed(getUserContext(req).user.id) });
 });
 router.post("/communication/push-devices/revoke-session", async (req, res) => {
   try {

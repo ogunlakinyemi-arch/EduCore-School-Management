@@ -124,8 +124,10 @@ Offline React DOM tests render the actual screen with mocked signed-in identitie
 and API responses, exercising its query/cache and interaction behavior. Route
 tests invoke Express in-process with synthetic identity, mocked persistence and
 mocked provider responses. No Flutterwave calls, transactions, refunds, transfers,
-application database writes or migrations were performed. Neither test type is
-real Clerk/browser acceptance or proof of provider/bank behavior. The queried
+application database writes or migrations were performed. Additional native
+PostgreSQL/HTTP tests exercise durable receipt, adverse hold and refund/commission
+behavior in a disposable fictional database with synthetic provider configuration.
+None of these tests is real Clerk/browser acceptance or proof of provider/bank behavior. The queried
 Development schema was not independently matched to the running app's pool
 target; verify that target and schema before any migration approval.
 The UI also rejects unexpected/cached `CONFIRMED` or `COMPLETE_VERIFIED` results

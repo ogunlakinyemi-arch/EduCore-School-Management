@@ -12,4 +12,5 @@ export type TerminalDirectionInputDirection = typeof TerminalDirectionInputDirec
 export const TerminalDirectionInputDirection = {
   ENTRY: 'ENTRY',
   EXIT: 'EXIT',
+  ENTRY_EXIT: 'ENTRY_EXIT',
 } as const;
