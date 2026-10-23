@@ -26,6 +26,7 @@
 - [Authorization cache lifecycle](authorization-cache-lifecycle.md) — do not reset an active parent auth query when a child mounts; isolate cached authorization by signed-in identity.
 - [Restricted employee isolation](internal-officer-isolation.md) — internal officer and company accountant roles stay exclusive, with live verified identity checks before restricted operations.
 - [Invitation link evidence](invitation-link-evidence.md) — a working app acceptance route does not prove a recipient's emailed Clerk link lands on that host and path.
+- [Canonical onboarding domains](canonical-invitation-policy.md) — custom-domain Production invitation/referral links; preserve Development identity isolation and payment behavior.
 - [Vitest file completeness](vitest-file-completeness.md) — explicitly naming a test file does not override include filters; compare requested files with executed-file summaries.
 - [Mutation cleanup ownership](mutation-cleanup-ownership.md) — observer-level settlement callbacks can disappear after another mutation or reset; own keyed cleanup per execution.
 - [Provider contract mocks](provider-contract-mocks.md) — provider mocks must enforce duplicate-invitation rules and model acceptance followed by a lost response.

@@ -8,6 +8,7 @@ import {eligibleTelegramParent,telegramSchoolAllowed,createParentTelegramChallen
 import {parentTelegramInvitationStatus,telegramDirectoryParent,createTelegramDirectoryInvitation} from "../services/telegram-onboarding";
 import {dispatchCommunicationDeliveries} from "../services/communication-service";
 import {logger} from "../lib/logger";
+import {inspectTelegramStorage} from "../services/telegram-storage-readiness";
 const router=Router();
 router.use(requireAuthentication());
 const run=(fn:(req:Request,res:any)=>Promise<void>)=>(req:Request,res:any,next:any)=>{void fn(req,res).catch(e=>{
@@ -80,8 +81,12 @@ router.post("/health",run(async(req,res)=>{
   sameOrigin(req);
   if(Date.now()-lastOwnerCheck<10000){res.status(429).json({error:"Wait ten seconds before checking again"});return;}
   lastOwnerCheck=Date.now();
-  const diagnostic=await diagnoseTelegramBot();
-  const {botId:_botId,...delivery}=getTelegramHealth();
+   const storage=await inspectTelegramStorage(pool);
+   const diagnostic=await diagnoseTelegramBot();
+   const {botId:_botId,...cachedDelivery}=getTelegramHealth();
+   // A fresh failed storage gate can only reduce readiness, never enable it.
+   // Successful catalog inspection is not a bot check or send authorization.
+   const delivery=storage.ready?cachedDelivery:{...cachedDelivery,ready:false,reason:"SCHEMA_NOT_READY"};
   try{
     await audit(pool,getUserContext(req).user.id,null,"TELEGRAM_CONFIGURATION_CHECK",{
       diagnosticOk:diagnostic.diagnosticOk,diagnosticReason:diagnostic.diagnosticReason,
@@ -91,7 +96,8 @@ router.post("/health",run(async(req,res)=>{
     logger.warn({event:"TELEGRAM_HEALTH_CHECK_FAILED",reason:"CHECK_AUDIT_UNAVAILABLE"},"Telegram check audit unavailable");
     res.status(503).set("Cache-Control","no-store").json({error:"Telegram check audit unavailable",reason:"CHECK_AUDIT_UNAVAILABLE"});return;
   }
-  res.set("Cache-Control","no-store").json({...delivery,...diagnostic,linked:false,consented:false,parentEligible:false,
+   res.set("Cache-Control","no-store").json({...delivery,...diagnostic,storageReady:storage.ready,storageMissing:storage.missing,
+     linked:false,consented:false,parentEligible:false,
     policyAllowed:false,pending:false,pendingAccountLabel:null});
 }));
 router.post("/link",run(async(req,res)=>{

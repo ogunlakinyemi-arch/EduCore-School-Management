@@ -26,6 +26,13 @@ export async function inspectTelegramStorage(db: Db): Promise<{ ready: boolean; 
           AND c.conname IN (table_name || '_channel_check', table_name || '_telegram_channel_check')
           AND c.contype = 'c' AND c.convalidated
           AND pg_get_constraintdef(c.oid) LIKE '%''TELEGRAM''%')
+      -- Both checks are enforced if a partial schema release left the old one.
+      -- A broadened replacement must not hide an old check rejecting Telegram.
+      OR EXISTS (
+        SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass(table_name)
+          AND c.conname IN (table_name || '_channel_check', table_name || '_telegram_channel_check')
+          AND (c.contype <> 'c' OR NOT c.convalidated
+            OR pg_get_constraintdef(c.oid) NOT LIKE '%''TELEGRAM''%'))
   ) SELECT item FROM missing ORDER BY item`);
   const missing = result.rows.map(row => String(row.item));
   return { ready: missing.length === 0, missing };

@@ -2,10 +2,22 @@
 
 ## What is confirmed, and what is not
 
-No Production database was queried and no Production migration was applied.
-Therefore the exact absent objects in the running database are **not established**.
-The Owner's `SCHEMA_NOT_READY` message establishes a failed storage gate, not which
-individual object failed.
+Read-only Production-replica catalog inspection on 2026-10-23 found all three
+Telegram tables and all required columns. The three existing channel CHECKs
+still allow only `IN_APP`, `SMS`, `EMAIL`, `PUSH`; each rejects `TELEGRAM`.
+No Production migration was applied. This is storage evidence, not a verification
+of the deployed process's in-memory provider health or physical delivery.
+
+The exact failing storage requirements are:
+
+- `channel_check:communication_deliveries`
+- `channel_check:communication_preferences`
+- `channel_check:communication_templates`
+
+Development's catalog passes the storage inspector using the old CHECK names.
+The current Publish schema preview nevertheless returns **no diff**. This
+confirms the same-name-expression discovery problem; publishing code alone is
+not a storage migration.
 
 Source already contained the three Telegram tables and the original migration
 `0172_telegram_notifications.sql`. That migration broadens three channel CHECKs
@@ -26,10 +38,13 @@ Telegram tables therefore does not establish that Telegram inserts are allowed.
 
 The corrected catalog-only readiness inspector checks the tables, required
 columns, and each relation's validated channel CHECK independently. It accepts
-already-correct legacy names as well as the new names. It returns fixed schema
+already-correct legacy names as well as the new names, but a new broadened CHECK
+cannot hide an old restrictive CHECK still enforced on the same table. It returns fixed schema
 object labels for missing requirements; it reads no business rows, credentials
 or chat identifiers. The worker retains `SCHEMA_NOT_READY` when storage fails and
-does not contact the provider from that failed gate.
+does not contact the provider from that failed gate. Owner diagnostics now report
+fresh catalog failures separately from cached provider health. A successful
+catalog read never enables delivery or mutates the worker's readiness cache.
 
 ## Prepared correction
 
@@ -72,8 +87,15 @@ project's approved migration process and load the corrected readiness code.
 For Replit-managed Production, the supported path is the reviewed Publish schema
 diff, not direct Production SQL or a startup migration script.
 
-First approve target-verified Development schema preparation separately; the
-project intentionally disables automatic schema writes. Then verify the fresh
+**Current approval blocker:** authorize running the existing reviewed `0173`
+correction against target-verified **Development only**. The required change for
+its present schema is installation/validation of the three
+`*_telegram_channel_check` constraints and removal of the three superseded
+`*_channel_check` constraints. No row changes or ledger edits are required.
+This approval has not been supplied; neither application database was changed.
+
+The project intentionally disables automatic schema writes. After that approval,
+verify Development readiness and preservation, then inspect the fresh
 Publish preview includes all required missing tables and BOTH installation of
 the new CHECKs and removal of obsolete CHECKs. Stop if unrelated schema/data
 changes appear. Do not select overwrite/reset, and do not assume a numbered SQL
@@ -86,4 +108,4 @@ change while expecting old code to recognize it.
 Telegram opt-in, secrets, notification live-from cutoff, hosting, payment settings
 and SMS policy were not changed. The cutoff stays held; a storage-ready result
 does not authorize sending, release TEST history, or prove provider/device receipt.
-No restart or publication occurred.
+No publication or application-database migration occurred during this correction.

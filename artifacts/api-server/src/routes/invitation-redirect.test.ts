@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { invitationRedirect, PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
+import { invitationRedirect, CANONICAL_PUBLIC_ORIGIN as PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 describe("Clerk invitation return URL", () => {
   afterEach(() => vi.unstubAllEnvs());

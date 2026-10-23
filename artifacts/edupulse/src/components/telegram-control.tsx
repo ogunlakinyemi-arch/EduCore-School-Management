@@ -88,5 +88,9 @@ export function OwnerTelegramHealth() {
     {s && !check.isError && !check.isPending && <p role={s.ready ? 'status' : 'alert'} className={s.ready ? 'text-sm' : notificationErrorClass} data-testid="text-telegram-health">
       {s.ready ? 'Delivery configuration is ready. Notifications still require consent and current school permissions; this does not prove receipt.' :
         (Object.hasOwn(telegramReasons, s.reason) ? telegramReasons[s.reason] : telegramReasons.BOT_UNAVAILABLE)}</p>}
+    {s && !check.isError && !check.isPending && s.storageReady === false && <div className={notificationErrorClass} data-testid="text-telegram-storage">
+      <p>Storage requires an approved schema migration. Publishing code alone does not repair these requirements:</p>
+      <ul className="list-inside list-disc break-words">{s.storageMissing?.map(item => <li key={item}>{item}</li>)}</ul>
+    </div>}
   </section>;
 }

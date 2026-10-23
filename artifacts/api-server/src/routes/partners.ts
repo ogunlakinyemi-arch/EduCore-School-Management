@@ -10,6 +10,7 @@ import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import { commitInvitationWithRecovery } from "./partner-commit-recovery";
 import { invitationRedirect } from "./invitation-redirect";
+import { canonicalPublicUrl } from "../lib/canonical-public-url";
 import {
   createSchoolWithAdministrator,
   replaceSchoolAdminInvitation,
@@ -636,10 +637,11 @@ async function partnerLink(req: Request, p: any) {
   const token = referralToken(p.id, p.partnerCode);
   const h = hash(token);
   const existing = await pool.query(`SELECT id,created_at AS "createdAt",status FROM partner_referral_links WHERE token_hash=$1`, [h]);
-  if (existing.rows[0]) return { id: existing.rows[0].id, url: `/school/register?ref=${token}`, status: existing.rows[0].status, createdAt: existing.rows[0].createdAt };
+  const url = canonicalPublicUrl(`/school/register?ref=${encodeURIComponent(token)}`);
+  if (existing.rows[0]) return { id: existing.rows[0].id, url, status: existing.rows[0].status, createdAt: existing.rows[0].createdAt };
   const created = await pool.query(`INSERT INTO partner_referral_links(partner_profile_id,token_hash,status,created_by)
     VALUES($1,$2,'ACTIVE',$3) RETURNING id,created_at AS "createdAt",status`, [p.id, h, getUserContext(req).user.id]);
-  return { id: created.rows[0].id, url: `/school/register?ref=${token}`, status: "ACTIVE", createdAt: created.rows[0].createdAt };
+  return { id: created.rows[0].id, url, status: "ACTIVE", createdAt: created.rows[0].createdAt };
 }
 
 // Referral validation and school onboarding intentionally precede authentication: possession of

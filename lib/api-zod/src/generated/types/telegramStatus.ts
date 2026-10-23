@@ -15,6 +15,8 @@ export interface TelegramStatus {
   botUsername: string | null;
   diagnosticOk?: boolean;
   diagnosticReason?: string;
+  storageReady?: boolean;
+  storageMissing?: string[];
   linked: boolean;
   consented: boolean;
   parentEligible: boolean;

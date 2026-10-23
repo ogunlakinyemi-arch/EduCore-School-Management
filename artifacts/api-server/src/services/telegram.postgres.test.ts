@@ -297,6 +297,17 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
       expect(botFetch).not.toHaveBeenCalled();
     }finally{await c.query("ROLLBACK");c.release();}
   });
+  it("does not let a new check hide a restrictive legacy check left by a partial release",async()=>{
+    const c=await db.connect();
+    try{
+      await c.query("BEGIN");
+      await c.query(`ALTER TABLE communication_deliveries ADD CONSTRAINT communication_deliveries_channel_check
+        CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH'))`);
+      expect(await inspectTelegramStorage(c)).toEqual({ready:false,missing:["channel_check:communication_deliveries"]});
+      expect((await checkTelegramRuntimeHealth(c)).reason).toBe("SCHEMA_NOT_READY");
+      expect(botFetch).not.toHaveBeenCalled();
+    }finally{await c.query("ROLLBACK");c.release();}
+  });
   it("requires Telegram channel constraints as well as link tables before readiness",async()=>{
     const c=await db.connect();
     try{
@@ -306,6 +317,26 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
       expect(createTelegramProvider()).toBeUndefined();
       expect(botFetch).not.toHaveBeenCalled();
     }finally{await c.query("ROLLBACK");c.release();}
+  });
+  it("owner diagnostics report fresh missing storage despite a previously ready cache, without sending",async()=>{
+    await db.query(`ALTER TABLE communication_templates ADD CONSTRAINT communication_templates_channel_check
+      CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH'))`);
+    state.role="PLATFORM_OWNER";
+    // Keep this diagnostic outside the following test's ten-second limiter
+    // window without a real wait or a clock mock leaking to later tests.
+    const clock=vi.spyOn(Date,"now").mockReturnValue(Date.now()-11000);
+    try{
+      const response=await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:base}});
+      expect(response.status).toBe(200);
+      const body=await response.json();
+      expect(body).toMatchObject({diagnosticOk:true,ready:false,reason:"SCHEMA_NOT_READY",
+        storageReady:false,storageMissing:["channel_check:communication_templates"]});
+      expect(getTelegramHealth().ready).toBe(true);
+      expect(botFetch.mock.calls.every(call=>["getMe","getWebhookInfo"].includes(String(call[0]).split("/").at(-1)!))).toBe(true);
+    }finally{
+      await db.query("ALTER TABLE communication_templates DROP CONSTRAINT communication_templates_channel_check");
+      clock.mockRestore();
+    }
   });
   it("owner-only configuration test calls no send API and status exposes no chat/cipher/token",async()=>{
     expect((await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:base}})).status).toBe(403);

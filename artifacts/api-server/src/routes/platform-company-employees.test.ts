@@ -1,6 +1,6 @@
 import express from "express";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
+import { CANONICAL_PUBLIC_ORIGIN as PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 const state = vi.hoisted(() => ({
   role: "PLATFORM_OWNER",

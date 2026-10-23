@@ -15,6 +15,16 @@ import { ParentTelegramControl, OwnerTelegramHealth, telegramGate } from './tele
 const base = { configured: true, ready: true, reason: 'ok', botUsername: 'b', linked: false, consented: false, parentEligible: true, policyAllowed: true, pending: false, pendingAccountLabel: null };
 const render = (o: object) => { st.s = { ...base, ...o }; return renderToStaticMarkup(<ParentTelegramControl schoolId={3} />); };
 describe('telegram control', () => {
+  it('shows missing schema requirements without claiming that publishing code repairs storage', () => {
+    st.health = {configured:true,ready:false,reason:'SCHEMA_NOT_READY',diagnosticOk:true,
+      storageReady:false,storageMissing:['channel_check:communication_templates']};
+    const html=renderToStaticMarkup(<OwnerTelegramHealth />);
+    expect(html).toContain('approved schema migration');
+    expect(html).toContain('Publishing code alone does not repair');
+    expect(html).toContain('channel_check:communication_templates');
+    expect(html).not.toContain('Delivery configuration is ready.');
+    st.health=null;
+  });
   it('separates successful Production diagnostics from disabled delivery and safe failures', () => {
     st.health = { configured: true, ready: false, reason: 'PRODUCTION_DISABLED', diagnosticOk: true, diagnosticReason: 'READY' };
     let html = renderToStaticMarkup(<OwnerTelegramHealth />);

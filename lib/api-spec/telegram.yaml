@@ -123,6 +123,10 @@ components:
         botUsername: {type: [string, "null"]}
         diagnosticOk: {type: boolean}
         diagnosticReason: {type: string}
+        storageReady: {type: boolean}
+        storageMissing:
+          type: array
+          items: {type: string}
         linked: {type: boolean}
         consented: {type: boolean}
         parentEligible: {type: boolean}

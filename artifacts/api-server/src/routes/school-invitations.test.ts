@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
-import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
+import { CANONICAL_PUBLIC_ORIGIN as PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 const mocks = vi.hoisted(() => ({
   poolQuery: vi.fn(),
