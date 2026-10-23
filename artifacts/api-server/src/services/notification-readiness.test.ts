@@ -1,7 +1,7 @@
 import { createECDH } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@workspace/db", () => ({ pool: {} }));
-import { notificationChannelAvailability, notificationChannelConfiguration, emailSetupDetail } from "./notification-channel-policy";
+import { notificationChannelAvailability, notificationChannelConfiguration, notificationChannelReadiness, emailSetupDetail } from "./notification-channel-policy";
 import { validVapidConfiguration } from "./web-push-configuration";
 import { WebPushProvider } from "./web-push-provider";
 import { dispatchCommunicationDeliveries } from "./communication-service";
@@ -14,6 +14,30 @@ function syntheticKeys() {
 }
 afterEach(() => vi.unstubAllEnvs());
 describe("local notification readiness, no provider network", () => {
+  it.each(["development","production"])("validates configured Resend without a school while preserving %s send safeguards",nodeEnv=>{
+    const env={
+      NODE_ENV:nodeEnv,COMMUNICATION_EMAIL_PROVIDER:"resend",
+      EMAIL_FROM:"Yetenia EduCore <notification@yetenia.com>",RESEND_API_KEY:"synthetic-readiness-only",
+      EDUCORE_DEVELOPMENT_WORKERS_PAUSED:"true",
+    };
+    const health=notificationChannelReadiness(env).EMAIL;
+    expect(health.configurationReady).toBe(true);
+    expect(health.deliveryReady).toBe(false);
+    expect(health.deliveryHold).toContain(nodeEnv==="production"
+      ?"EDUCORE_NOTIFICATION_LIVE_FROM is not set":"Development notification safety lock");
+    expect(health.configurationDetail).toContain("without");
+    expect(health.configurationDetail).not.toContain(env.RESEND_API_KEY);
+    expect(health.configurationDetail).not.toContain(env.EMAIL_FROM);
+  });
+  it("does not mistake a configured but paused Development transport for missing Email setup",()=>{
+    const env={NODE_ENV:"development",COMMUNICATION_EMAIL_PROVIDER:"resend",EMAIL_FROM:"Fixture <sender@example.invalid>",
+      RESEND_API_KEY:"synthetic-key",EDUCORE_DEVELOPMENT_WORKERS_PAUSED:"true"};
+    expect(notificationChannelConfiguration(env).EMAIL).toBe(true);
+    expect(notificationChannelAvailability(env).EMAIL).toBe(false);
+    expect(emailSetupDetail(env)).toContain("Development notification safety lock");
+    expect(notificationChannelConfiguration({...env,EMAIL_FROM:"invalid"}).EMAIL).toBe(false);
+    expect(emailSetupDetail({...env,EMAIL_FROM:"invalid"})).toContain("valid sender");
+  });
   it("does not infer email selection or sender from API key presence", () => {
     const env = { NODE_ENV: "production", RESEND_API_KEY: "synthetic-key" };
     expect(notificationChannelConfiguration(env).EMAIL).toBe(false);

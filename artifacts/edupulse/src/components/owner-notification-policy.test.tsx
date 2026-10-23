@@ -44,6 +44,27 @@ beforeEach(()=>{
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();});
 
 describe('Owner school permission selector',()=>{
+  it('shows configured Email as globally permitted with Default off and no real school required',async()=>{
+    directory({data:{schools:[]}});
+    policy.events.ACADEMIC={allowed:['IN_APP','EMAIL'],defaults:['IN_APP']};
+    policy.events.ATTENDANCE_ABSENCE={allowed:['IN_APP','EMAIL'],defaults:['IN_APP']};
+    mocks.policy.mockReturnValue({data:{policy,availability:{IN_APP:true,EMAIL:false,SMS:false,PUSH:false,TELEGRAM:false},
+      readiness:{EMAIL:{configurationReady:true,deliveryReady:false,
+        configurationDetail:'Email configuration passes local validation without a school tenant.',
+        deliveryHold:'External delivery held by the launch safeguard.'}}},refetch:mocks.refetch});
+    await render();
+    for(const event of ['FINANCE','ACADEMIC','ATTENDANCE_ABSENCE']){
+      const allowed=host.querySelector<HTMLInputElement>(`[aria-label="${event} EMAIL allowed"]`)!;
+      const selected=host.querySelector<HTMLInputElement>(`[aria-label="${event} EMAIL default"]`)!;
+      expect(allowed.checked).toBe(true);expect(selected.checked).toBe(false);
+      const row=allowed.closest('label')!.parentElement!;
+      expect(row.textContent).toContain('EMAIL — Globally permitted');
+      expect(row.textContent).toContain('Not selected as a default — no automatic send');
+      expect(row.textContent).toContain('Configured — delivery held by launch safeguard');
+    }
+    expect(host.textContent).toContain('No schools are available');
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+  });
   it('shows per-channel configuration and launch holds without changing policy or enabling defaults',async()=>{
     const readiness=Object.fromEntries(['EMAIL','PUSH','TELEGRAM'].map(channel=>[channel,{
       configurationReady:channel!=='EMAIL',deliveryReady:false,
@@ -57,8 +78,9 @@ describe('Owner school permission selector',()=>{
     expect(host.textContent).toContain('TELEGRAM: configuration ready');
     expect(host.textContent).toContain('EDUCORE_NOTIFICATION_LIVE_FROM is not set');
     expect(host.textContent).toContain('Existing TEST history remains isolated');
-    expect(host.textContent).toContain('PUSH — Configured — delivery held by launch safeguard');
-    expect(host.textContent).toContain('TELEGRAM — Configured — delivery held by launch safeguard');
+    expect(host.textContent).toContain('PUSH — Not globally permitted');
+    expect(host.textContent).toContain('TELEGRAM — Not globally permitted');
+    expect(host.textContent).toContain('Configured — delivery held by launch safeguard');
     expect(host.textContent).not.toContain('Permitted, not yet deliverable');
     expect((host.querySelector('[aria-label="FINANCE EMAIL default"]') as HTMLInputElement).disabled).toBe(true);
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
@@ -148,12 +170,14 @@ describe('Owner school permission selector',()=>{
     const telegramDefault=host.querySelector<HTMLInputElement>('input[aria-label="FINANCE TELEGRAM default"]')!;
     expect(telegramAllowed.disabled).toBe(false);
     expect(telegramDefault.disabled).toBe(true);
-    expect(host.textContent).toContain('TELEGRAM — Readiness details unavailable');
+    expect(host.textContent).toContain('TELEGRAM — Not globally permitted');
+    expect(host.textContent).toContain('Readiness details unavailable');
 
     await click(telegramAllowed);
     expect(telegramAllowed.checked).toBe(true);
     expect(telegramDefault.disabled).toBe(true);
-    expect(host.textContent).toContain('TELEGRAM — Readiness details unavailable');
+    expect(host.textContent).toContain('TELEGRAM — Globally permitted');
+    expect(host.textContent).toContain('Readiness details unavailable');
 
     await change(select(),'9');
     await click(button('Add override'));

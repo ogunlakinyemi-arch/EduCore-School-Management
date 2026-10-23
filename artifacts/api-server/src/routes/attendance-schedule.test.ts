@@ -95,7 +95,7 @@ describe('existing attendance schedule API contract', () => {
       weekdaysClosing:'15:00',fridayClosing:'12:30',missingTagOutStart:'15:15',missingTagOutEnd:'17:00',fridayMissingTagOut:'13:30' };
     const response = await request('PUT',7,{revision:initial.revision,schedule,reason:'Reviewed closing times'});
     expect(response.status).toBe(200);
-    const saved = await response.json(); expect(saved).toMatchObject({revision:1,schedule});
+    const saved = await response.json() as {revision:number;schedule:typeof schedule}; expect(saved).toMatchObject({revision:1,schedule});
     expect(await (await request('GET')).json()).toMatchObject(saved);
     expect(fixture.schedules.has(8)).toBe(false);
     const conflict = await request('PUT',7,{revision:0,schedule,reason:'Stale revision'});

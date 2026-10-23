@@ -16,7 +16,8 @@ export function OwnerNotificationPolicyControl(){
   const channelState=(channel:typeof channels[number])=>{
     if(channel==='SMS')return 'Disabled';
     const status=query.data?.readiness?.[channel];
-    if(status?.configurationReady&&status.deliveryHold)return 'Configured — delivery held by launch safeguard';
+    if(status?.configurationReady&&status.deliveryHold)return /launch|EDUCORE_NOTIFICATION_LIVE_FROM/i.test(status.deliveryHold)
+      ?'Configured — delivery held by launch safeguard':'Configured — delivery held by safety controls';
     if(status&&!status.configurationReady)return 'Configuration required — see channel blocker above';
     return availability[channel]?'Delivery available':'Readiness details unavailable — refresh after the reporting update is published';
   };
@@ -39,7 +40,7 @@ export function OwnerNotificationPolicyControl(){
   };
   return <section className="panel mb-6 space-y-4 p-5" aria-label="Platform notification policy">
     <h2 className="display-font text-xl font-bold">Owner notification controls</h2>
-    <p className="text-sm">Permit supported channels by category and set school permissions. SMS is unavailable and disabled. Allowing a channel does not configure its provider, subscribe recipients or send a test message.</p>
+    <p className="text-sm">Allowed means globally permitted for that event, not prohibited and not automatically selected. Default is a separate selection inherited by schools without an override. Provider readiness and delivery safeguards are separate from both. No real school is required to check configuration. SMS remains disabled.</p>
     {query.isLoading?<p>Loading policy…</p>:query.isError?<p role="alert">Could not load policy. <button onClick={()=>void query.refetch()}>Retry</button></p>:policy&&<>
       {query.data?.readiness&&<div className="space-y-3 rounded-xl border p-3" aria-label="External channel readiness">
         <h3 className="font-bold">Configuration and delivery holds</h3>
@@ -58,7 +59,9 @@ export function OwnerNotificationPolicyControl(){
       <div className="space-y-3">{Object.entries(policy.events).map(([event,rule])=><fieldset key={event} className="rounded-xl border p-3">
         <legend className="px-1 text-sm font-bold">{event.replaceAll('_',' ')}</legend>
         <div className="flex flex-wrap gap-4">{channels.map(channel=><div key={channel} className="text-xs">
-          <div className="font-semibold">{channel.replace('_',' ')} — {channelState(channel)}</div>
+          <div className="font-semibold">{channel.replace('_',' ')} — {rule.allowed.includes(channel)?'Globally permitted':'Not globally permitted'}</div>
+          <div>{rule.defaults.includes(channel)?'Default selected':'Not selected as a default — no automatic send'}</div>
+          <div>{channelState(channel)}</div>
           <label className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} allowed`}
             disabled={save.isPending||channel==='SMS'} checked={rule.allowed.includes(channel)}
             onChange={e=>change(event,channel,'allowed',e.target.checked)}/>Allowed</label>

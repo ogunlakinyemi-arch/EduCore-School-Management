@@ -31,6 +31,18 @@ the launch guard. Permit explicit preference/subscription preparation only when
 local configuration is valid, report the hold truthfully, and never equate setup,
 credential presence, provider acceptance or browser registration with receipt.
 
+Configuration readiness checks must not require a real school or recipient.
+A paused Development transport remains validly configured; its intentional
+send-time suppression is not evidence of missing provider configuration.
+
+**Why:** The Owner has no real school tenant yet and explicitly requested
+launch preparation without fake tenants, real parent emails or relaxed locks.
+
+**How to apply:** Use local configuration validation and read-only provider
+health checks; report Development safety holds separately from launch holds.
+Connected-account domain verification is not proof that the app credential
+can send, and neither check proves recipient receipt.
+
 Owner category rows must distinguish a valid configuration held by the launch
 safeguard from missing/invalid configuration. Do not label both states generically
 as “Permitted, not yet deliverable.”

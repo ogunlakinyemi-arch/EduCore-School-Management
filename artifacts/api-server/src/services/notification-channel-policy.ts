@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createEmailProvider } from "./communication-providers";
+import { createEmailProvider, ResendEmailProvider } from "./communication-providers";
 import { validVapidConfiguration, vapidConfiguration, vapidConfigurationProblem } from "./web-push-configuration";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import {getTelegramHealth} from "./telegram-provider";
@@ -91,7 +91,7 @@ export function effectiveNotificationChannels(
   return [...new Set(selected)].filter((c): c is PolicyChannel => allowed.includes(c as PolicyChannel));
 }
 export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.env):Record<PolicyChannel,boolean>{
-  if (!notificationLaunchBoundary(env).allowed) {
+  if (!notificationLaunchBoundary(env).allowed || developmentPaymentNotificationsSuppressed(env)) {
     return { IN_APP: true, SMS: false, EMAIL: false, PUSH: false, TELEGRAM: false };
   }
   return notificationChannelConfiguration(env);
@@ -99,9 +99,18 @@ export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.en
 /** Setup/consent may be prepared without permitting a dispatcher claim. */
 export function notificationChannelConfiguration(env:NodeJS.ProcessEnv=process.env):Record<PolicyChannel,boolean>{
   const emailReady=()=>{
-    if(developmentPaymentNotificationsSuppressed(env))return false;
+    // Configuration is tenant-independent. Development locks and the launch
+    // boundary restrict delivery availability, not whether Resend is configured.
     const selected=env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase();
     if(!selected||["mock","dev","development","test"].includes(selected.toLowerCase()))return false;
+    if(selected==="resend"){
+      if(!env.RESEND_API_KEY||!env.EMAIL_FROM)return false;
+      // Constructor validation is local only: no network, recipient or tenant.
+      // Do not use the transport factory here: it correctly returns a suppressed
+      // provider in locked Development, which is not missing configuration.
+      try { new ResendEmailProvider({apiKey:env.RESEND_API_KEY,from:env.EMAIL_FROM});return true; }
+      catch{return false;}
+    }
     try { const p=createEmailProvider(env);return ["resend","http-email"].includes(p.provider); }
     catch{return false;}
   };
@@ -124,11 +133,11 @@ export function emailSetupDetail(env: NodeJS.ProcessEnv = process.env): string {
     if (!env.COMMUNICATION_EMAIL_ENDPOINT) return "COMMUNICATION_EMAIL_ENDPOINT is missing for the selected HTTP Email provider.";
     if (!env.COMMUNICATION_EMAIL_API_KEY) return "COMMUNICATION_EMAIL_API_KEY is missing for the selected HTTP Email provider.";
   }
-  if (developmentPaymentNotificationsSuppressed(env)) return "Email sending is restricted by the Development notification safety lock.";
   if (!notificationChannelConfiguration(env).EMAIL) return selected === "resend"
     ? "EMAIL_FROM must be a valid sender on a Resend-verified domain, not a Gmail/Googlemail address. The company contact can be used as Reply-To, not as a Resend From address."
     : "COMMUNICATION_EMAIL_ENDPOINT is invalid for the selected HTTP Email provider; it must be a valid HTTPS endpoint.";
-  return "Email is configured for preference setup. Provider/domain authorization and recipient delivery are not verified by this local check.";
+  if (developmentPaymentNotificationsSuppressed(env)) return "Email configuration passes local validation without a school tenant. Sending remains restricted by the Development notification safety lock; no delivery is claimed.";
+  return "Email is configured for preference setup and school activity notifications without requiring a school tenant. Provider/domain authorization and recipient delivery are not verified by this local check.";
 }
 
 /** Owner-facing explanation only. No provider requests, DB reads or readiness mutation. */
@@ -159,7 +168,11 @@ export function notificationChannelReadiness(env: NodeJS.ProcessEnv = process.en
     configurationReady:configured[channel],
     deliveryReady:delivery[channel],
     configurationDetail:details[channel],
-    deliveryHold:channel!=="IN_APP"&&channel!=="SMS"&&!launch.allowed?held:null,
+    deliveryHold:channel!=="IN_APP"&&channel!=="SMS"
+      ?developmentPaymentNotificationsSuppressed(env)
+        ?"External delivery is held by the Development notification safety lock. Configuration checks do not authorize sending."
+        :!launch.allowed?held:null
+      :null,
   }])) as Record<PolicyChannel,{
     configurationReady:boolean;deliveryReady:boolean;configurationDetail:string;deliveryHold:string|null;
   }>;
