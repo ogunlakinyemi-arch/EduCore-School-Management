@@ -3,6 +3,7 @@ import {AuthError} from "../middlewares/auth";
 import {familyChildSchoolScope} from "../lib/family-child-school-scope";
 import {loadNotificationPolicy,allowedNotificationChannels,policyEvents} from "./notification-channel-policy";
 import {getTelegramHealth,refreshTelegramHealth} from "./telegram-provider";
+import {inspectTelegramStorage} from "./telegram-storage-readiness";
 type Db={query:(sql:string,values?:any[])=>Promise<{rows:any[]}>};
 const key=(env:NodeJS.ProcessEnv)=> {
   if(!env.SESSION_SECRET||env.SESSION_SECRET.length<32)throw new Error("Telegram encryption unavailable");
@@ -66,13 +67,8 @@ export async function telegramSchoolAllowed(db:Db,schoolId:number){
 export async function checkTelegramRuntimeHealth(db:Db){
   const local=getTelegramHealth();
   if(["TOKEN_MISSING","ENCRYPTION_KEY_UNAVAILABLE","PRODUCTION_DISABLED"].includes(local.reason))return local;
-  const row=(await db.query(`SELECT to_regclass('parent_telegram_links') IS NOT NULL
-    AND to_regclass('telegram_link_challenges') IS NOT NULL AND to_regclass('telegram_poll_state') IS NOT NULL
-    AND (SELECT count(*)=3 FROM pg_constraint WHERE conname IN (
-      'communication_deliveries_channel_check','communication_preferences_channel_check','communication_templates_channel_check')
-      AND conrelid IN (to_regclass('communication_deliveries'),to_regclass('communication_preferences'),to_regclass('communication_templates'))
-      AND pg_get_constraintdef(oid) LIKE '%''TELEGRAM''%') AS ready`)).rows[0];
-  return refreshTelegramHealth(row?.ready===true);
+  const storage=await inspectTelegramStorage(db);
+  return refreshTelegramHealth(storage.ready);
 }
 export async function createParentTelegramChallenge(db:Db,userId:number,schoolId:number){
   const health=getTelegramHealth();

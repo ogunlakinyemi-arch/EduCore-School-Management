@@ -42,7 +42,10 @@ not been verified against Production.
    Telegram link/challenge/poll tables, encryption compatibility, and Telegram
    channel CHECK constraints are present. No migration is applied automatically.
    Missing storage leaves delivery unavailable; approve any missing migration
-   separately rather than bypassing the gate.
+   separately rather than bypassing the gate. See
+   [Storage readiness correction](telegram-storage-correction.md) for the prepared
+   data-preserving migration, replacement channel CHECK names and controlled
+   schema/code release requirements. No correction has been applied to Production.
 4. Review queued Telegram records and current Owner/school channel permissions
    before enabling the switch. Do not replay an unreviewed historical backlog.
 5. After an approved release, the active Platform Owner may run **Check bot

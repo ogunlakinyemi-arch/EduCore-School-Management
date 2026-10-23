@@ -11,6 +11,7 @@ import {createParentTelegramChallenge,acceptTelegramUpdate,confirmParentTelegram
   revokeParentTelegramLink,sealTelegramChat,openTelegramChat} from "./telegram-links";
 import {dispatchCommunicationDeliveries,queueCommunicationNotification} from "./communication-service";
 import {createTelegramDirectoryInvitation,parentTelegramInvitationStatus} from "./telegram-onboarding";
+import {inspectTelegramStorage} from "./telegram-storage-readiness";
 
 const state=vi.hoisted(()=>({pool:null as any,userId:1,role:"PARENT",anonymous:false}));
 vi.mock("@workspace/db",async original=>({...await original<any>(),pool:{
@@ -23,6 +24,7 @@ vi.mock("../middlewares/auth",async original=>{
 });
 import telegramRouter from "../routes/telegram";
 const fixtureEnv={NODE_ENV:"production",REPLIT_DEPLOYMENT:"1",EDUCORE_PRODUCTION_TELEGRAM_ENABLED:"true",
+  EDUCORE_NOTIFICATION_LIVE_FROM:"2026-10-23T12:34:38.000Z",
   TELEGRAM_BOT_TOKEN:"123456:fixture_telegram_token_not_real",SESSION_SECRET:"fixture-only-telegram-encryption-key-0123456789"};
 const botFetch=vi.fn(async (_url:any,options:any)=>{
   const method=String(_url).split("/").at(-1);
@@ -42,8 +44,8 @@ beforeAll(async()=>{
   db=state.pool=new DatabasePool({host:dir,port:5432,user:"telegram_fixture",database:"postgres",connectionTimeoutMillis:500,max:3});
   let ready=false;for(let i=0;i<100;i++){try{await db.query("SELECT 1");ready=true;break;}catch{await new Promise(r=>setTimeout(r,30));}}
   if(!ready)throw new Error("Disposable database unavailable; application fallback prohibited");
-  await db.query(`CREATE TABLE schools(id int PRIMARY KEY,name text,status text,communication_defaults jsonb DEFAULT '{}');
-    CREATE TABLE app_users(id int PRIMARY KEY,email text,phone text,status text);
+   await db.query(`CREATE TABLE schools(id int PRIMARY KEY,name text,status text,communication_defaults jsonb DEFAULT '{}',created_at timestamptz DEFAULT now());
+     CREATE TABLE app_users(id int PRIMARY KEY,email text,phone text,status text,created_at timestamptz DEFAULT now());
     CREATE TABLE school_memberships(user_id int,school_id int,role text,status text);
     CREATE TABLE students(id int PRIMARY KEY,user_id int,school_id int,status text,class_name text,section text,
       first_name text DEFAULT 'Fixture',last_name text DEFAULT 'Child');
@@ -66,6 +68,7 @@ beforeAll(async()=>{
     CREATE TABLE communication_push_devices(user_id int,school_id int,status text,subscription jsonb,session_id text);
     CREATE TABLE communication_templates(channel text,CONSTRAINT communication_templates_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));`);
   await db.query(await readFile(new URL("../../../../lib/db/drizzle/0172_telegram_notifications.sql",import.meta.url),"utf8"));
+  await db.query(await readFile(new URL("../../../../lib/db/drizzle/0173_telegram_storage_readiness.sql",import.meta.url),"utf8"));
   const app=express().use(express.json()).use("/communication/telegram",telegramRouter);
   app.use((e:any,_req:any,res:any,_next:any)=>res.status(e.statusCode??500).json({error:e.message}));
   await new Promise<void>(resolve=>{server=app.listen(0,"127.0.0.1",()=>resolve());});
@@ -197,7 +200,9 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
     await dispatchCommunicationDeliveries(db,10,{providers:{...mocks(),telegram:{provider:"fixture",channel:"telegram",send}},channels:["TELEGRAM"],now:()=>now});
     const row=(await db.query("SELECT next_attempt_at FROM communication_deliveries")).rows[0];
     expect(new Date(row.next_attempt_at).getTime()-now.getTime()).toBe(120000);
-    await db.query("UPDATE communication_deliveries SET next_attempt_at=now()-interval '1 second';DELETE FROM audit_logs");
+    await db.query(`UPDATE communication_deliveries SET next_attempt_at=now()-interval '1 second';
+      UPDATE audit_logs SET metadata=jsonb_set(metadata,'{policy,events,ATTENDANCE_ENTRY,allowed}','["IN_APP"]'::jsonb)
+      WHERE event_type='GLOBAL_CHANNEL_POLICY_UPDATED'`);
     await dispatchCommunicationDeliveries(db,10,{providers:{...mocks(),telegram:{provider:"fixture",channel:"telegram",send}},channels:["TELEGRAM"]});
     expect(send).toHaveBeenCalledTimes(1);
     expect((await db.query("SELECT error_code FROM communication_deliveries")).rows[0].error_code).toBe("OWNER_CHANNEL_POLICY");
@@ -222,11 +227,81 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
       .toEqual([{status:"QUEUED",attempts:0}]);
     expect(botFetch).not.toHaveBeenCalled();
   });
+  it("repairs legacy channel checks without changing existing rows, and is safely repeatable",async()=>{
+    await db.query(`INSERT INTO parent_telegram_links(parent_id,bot_id,revoked_at)
+      VALUES(1,'123456',now());
+      INSERT INTO telegram_poll_state VALUES(1,'123456',8);
+      INSERT INTO telegram_link_challenges(parent_id,school_id,bot_id,token_hash,expires_at)
+      VALUES(1,1,'123456','synthetic-preserved-token-hash',now()+INTERVAL '5 minutes')`);
+    const snapshot=async()=>Promise.all([
+      "parent_telegram_links","telegram_link_challenges","telegram_poll_state",
+      "communication_notifications","communication_deliveries","communication_preferences",
+    ].map(async table=>(await db.query(`SELECT to_jsonb(t) AS row FROM ${table} t ORDER BY to_jsonb(t)::text`)).rows));
+    const before=await snapshot();
+    for(const table of ["communication_deliveries","communication_preferences","communication_templates"]){
+      await db.query(`ALTER TABLE ${table} DROP CONSTRAINT ${table}_telegram_channel_check;
+        ALTER TABLE ${table} ADD CONSTRAINT ${table}_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH'))`);
+    }
+    expect((await inspectTelegramStorage(db)).missing).toEqual([
+      "channel_check:communication_deliveries","channel_check:communication_preferences","channel_check:communication_templates",
+    ]);
+    const correction=await readFile(new URL("../../../../lib/db/drizzle/0173_telegram_storage_readiness.sql",import.meta.url),"utf8");
+    await db.query(correction);
+    expect(await inspectTelegramStorage(db)).toEqual({ready:true,missing:[]});
+    expect(await snapshot()).toEqual(before);
+    await db.query(correction);
+    expect(await snapshot()).toEqual(before);
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("creates missing Telegram tables and preserves all four legacy channel values in an isolated schema",async()=>{
+    const c=await db.connect();
+    try{
+      await c.query(`CREATE SCHEMA telegram_storage_fixture;
+        SET search_path TO telegram_storage_fixture;
+        CREATE TABLE parents(id integer PRIMARY KEY);
+        CREATE TABLE schools(id integer PRIMARY KEY);
+        CREATE TABLE communication_deliveries(channel text,
+          CONSTRAINT communication_deliveries_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));
+        CREATE TABLE communication_preferences(channel text,
+          CONSTRAINT communication_preferences_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));
+        CREATE TABLE communication_templates(channel text,
+          CONSTRAINT communication_templates_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));
+        INSERT INTO communication_deliveries VALUES('IN_APP'),('SMS'),('EMAIL'),('PUSH')`);
+      expect((await inspectTelegramStorage(c)).missing).toContain("table:parent_telegram_links");
+      await c.query(await readFile(new URL("../../../../lib/db/drizzle/0173_telegram_storage_readiness.sql",import.meta.url),"utf8"));
+      expect(await inspectTelegramStorage(c)).toEqual({ready:true,missing:[]});
+      expect((await c.query("SELECT channel FROM communication_deliveries ORDER BY channel")).rows)
+        .toEqual([{channel:"EMAIL"},{channel:"IN_APP"},{channel:"PUSH"},{channel:"SMS"}]);
+      for(const table of ["communication_deliveries","communication_preferences","communication_templates"]){
+        await c.query(`INSERT INTO ${table} VALUES('TELEGRAM')`);
+        await expect(c.query(`INSERT INTO ${table} VALUES('INVALID_CHANNEL')`)).rejects.toMatchObject({code:"23514"});
+      }
+      expect(botFetch).not.toHaveBeenCalled();
+    }finally{
+      await c.query("ROLLBACK");
+      await c.query("SET search_path TO public; DROP SCHEMA IF EXISTS telegram_storage_fixture CASCADE");
+      c.release();
+    }
+  });
+  it("accepts already-correct legacy names but detects incomplete table columns without provider contact",async()=>{
+    const c=await db.connect();
+    try{
+      await c.query("BEGIN");
+      for(const table of ["communication_deliveries","communication_preferences","communication_templates"]){
+        await c.query(`ALTER TABLE ${table} RENAME CONSTRAINT ${table}_telegram_channel_check TO ${table}_channel_check`);
+      }
+      expect(await inspectTelegramStorage(c)).toEqual({ready:true,missing:[]});
+      await c.query("ALTER TABLE telegram_link_challenges DROP COLUMN pending_ciphertext");
+      expect(await inspectTelegramStorage(c)).toEqual({ready:false,missing:["column:telegram_link_challenges.pending_ciphertext"]});
+      expect((await checkTelegramRuntimeHealth(c)).reason).toBe("SCHEMA_NOT_READY");
+      expect(botFetch).not.toHaveBeenCalled();
+    }finally{await c.query("ROLLBACK");c.release();}
+  });
   it("requires Telegram channel constraints as well as link tables before readiness",async()=>{
     const c=await db.connect();
     try{
       await c.query("BEGIN");
-      await c.query("ALTER TABLE communication_deliveries DROP CONSTRAINT communication_deliveries_channel_check");
+      await c.query("ALTER TABLE communication_deliveries DROP CONSTRAINT communication_deliveries_telegram_channel_check");
       expect((await checkTelegramRuntimeHealth(c)).reason).toBe("SCHEMA_NOT_READY");
       expect(createTelegramProvider()).toBeUndefined();
       expect(botFetch).not.toHaveBeenCalled();

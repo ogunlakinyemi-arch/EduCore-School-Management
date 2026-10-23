@@ -109,7 +109,7 @@ export const communicationDeliveries = pgTable(
   },
   (t) => [
     unique("communication_deliveries_notification_channel_unique").on(t.notificationId, t.channel),
-    check("communication_deliveries_channel_check", sql`${t.channel} IN ('IN_APP','SMS','EMAIL','PUSH','TELEGRAM')`),
+    check("communication_deliveries_telegram_channel_check", sql`${t.channel} IN ('IN_APP','SMS','EMAIL','PUSH','TELEGRAM')`),
     check("communication_deliveries_status_check", sql`${t.status} IN (
       'QUEUED','PROCESSING','SENT','DELIVERED','READ','FAILED','CANCELLED'
     )`),
@@ -148,7 +148,7 @@ export const communicationPreferences = pgTable(
       'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',
       'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'
     )`),
-    check("communication_preferences_channel_check", sql`${t.channel} IN ('IN_APP','SMS','EMAIL','PUSH','TELEGRAM')`),
+    check("communication_preferences_telegram_channel_check", sql`${t.channel} IN ('IN_APP','SMS','EMAIL','PUSH','TELEGRAM')`),
     index("communication_preferences_user_idx").on(t.userId, t.schoolId),
   ],
 );
@@ -177,7 +177,7 @@ export const communicationTemplates = pgTable(
       'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',
       'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'
     )`),
-    check("communication_templates_channel_check", sql`${t.channel} IN ('IN_APP','SMS','EMAIL','PUSH','TELEGRAM')`),
+    check("communication_templates_telegram_channel_check", sql`${t.channel} IN ('IN_APP','SMS','EMAIL','PUSH','TELEGRAM')`),
     check("communication_templates_variables_check", sql`
       ${t.allowedVariables} <@ ARRAY[
         'student_name','parent_name','school_name','class_name','amount','invoice_number',
