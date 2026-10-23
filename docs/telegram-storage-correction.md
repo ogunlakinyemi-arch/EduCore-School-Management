@@ -14,10 +14,11 @@ The exact failing storage requirements are:
 - `channel_check:communication_preferences`
 - `channel_check:communication_templates`
 
-Development's catalog passes the storage inspector using the old CHECK names.
-The current Publish schema preview nevertheless returns **no diff**. This
-confirms the same-name-expression discovery problem; publishing code alone is
-not a storage migration.
+Before preparation, Development's catalog passed the storage inspector using
+the old CHECK names, but Publish returned **no diff**. This confirmed the
+same-name-expression discovery problem; publishing code alone was not a storage
+migration. The approved Development preparation below now makes the required
+Production schema changes visible.
 
 Source already contained the three Telegram tables and the original migration
 `0172_telegram_notifications.sql`. That migration broadens three channel CHECKs
@@ -87,17 +88,36 @@ project's approved migration process and load the corrected readiness code.
 For Replit-managed Production, the supported path is the reviewed Publish schema
 diff, not direct Production SQL or a startup migration script.
 
-**Current approval blocker:** authorize running the existing reviewed `0173`
-correction against target-verified **Development only**. The required change for
-its present schema is installation/validation of the three
-`*_telegram_channel_check` constraints and removal of the three superseded
-`*_channel_check` constraints. No row changes or ledger edits are required.
-This approval has not been supplied; neither application database was changed.
+**Development preparation approved and completed on 2026-10-23.** The application
+pool and the independent Development SQL service agreed on the local database
+identity, distinct from the Production replica. A guarded transaction applied
+only the three approved constraint replacements from the `0173` correction;
+it did not create/recreate tables or indexes or change migration history.
 
-The project intentionally disables automatic schema writes. After that approval,
-verify Development readiness and preservation, then inspect the fresh
-Publish preview includes all required missing tables and BOTH installation of
-the new CHECKs and removal of obsolete CHECKs. Stop if unrelated schema/data
+The transaction locked the six affected communication/Telegram tables, compared
+row counts and full-row fingerprints before/after, and required equality before
+commit. All six were unchanged. Development's storage inspector reports no
+missing requirements, and all three replacement CHECKs are validated.
+
+The fresh supported Publish preview contains exactly these six changes:
+
+1. Remove `communication_templates_channel_check`.
+2. Remove `communication_preferences_channel_check`.
+3. Remove `communication_deliveries_channel_check`.
+4. Install `communication_templates_telegram_channel_check`.
+5. Install `communication_preferences_telegram_channel_check`.
+6. Install `communication_deliveries_telegram_channel_check`.
+
+Each new CHECK accepts `IN_APP`, `SMS`, `EMAIL`, `PUSH`, `TELEGRAM`. The preview
+reports no structural data loss, tables/columns/schema removals, truncation or
+unrelated statements. It does flag potential backward incompatibility while
+the constraints are replaced. A transient storage-readiness failure during the
+coordinated schema/code rollout remains fail-closed.
+
+**Remaining action:** the Owner must publish the corrected application with
+this reviewed schema diff through Publish. No direct Production DDL is
+authorized or needed. Review the actual final preview again if anything has
+changed; stop if unrelated schema/data
 changes appear. Do not select overwrite/reset, and do not assume a numbered SQL
 file is automatically executed by Publish.
 
@@ -108,4 +128,7 @@ change while expecting old code to recognize it.
 Telegram opt-in, secrets, notification live-from cutoff, hosting, payment settings
 and SMS policy were not changed. The cutoff stays held; a storage-ready result
 does not authorize sending, release TEST history, or prove provider/device receipt.
-No publication or application-database migration occurred during this correction.
+No publication or Production migration has been performed by the agent.
+Production storage remains unverified as corrected until Publish applies the
+intended schema and a fresh Production catalog inspection reports no missing
+requirements. Worker/provider health is separate from storage readiness.
