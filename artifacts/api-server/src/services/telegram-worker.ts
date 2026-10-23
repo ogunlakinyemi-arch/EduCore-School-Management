@@ -1,16 +1,16 @@
 import {pool} from "@workspace/db";
 import {logger} from "../lib/logger";
-import {telegramApi,getTelegramHealth,telegramDevelopment} from "./telegram-provider";
+import {telegramApi,getTelegramHealth,telegramRuntimeEnabled} from "./telegram-provider";
 import {checkTelegramRuntimeHealth,acceptTelegramUpdate} from "./telegram-links";
 import {dispatchCommunicationDeliveries} from "./communication-service";
 let running=false,lastHealth=0;
 export async function telegramWorkerTick(){
-  if(running||!telegramDevelopment(process.env)||process.env.REPLIT_DEPLOYMENT)return;
+  if(running||!telegramRuntimeEnabled(process.env))return;
   running=true;
   try{
     if(Date.now()-lastHealth>60000){lastHealth=Date.now();
       const h=await checkTelegramRuntimeHealth(pool);
-      logger.info({configured:h.configured,ready:h.ready,reason:h.reason},"Development Telegram configuration health");
+      logger.info({configured:h.configured,ready:h.ready,reason:h.reason},"Telegram delivery configuration health");
     }
     const health=getTelegramHealth();if(!health.ready)return;
     const db=await pool.connect();
@@ -40,10 +40,10 @@ export async function telegramWorkerTick(){
     }finally{db.release();}
     // This opt-in worker cannot claim SMS/email/push or revive paused Development workers.
     await dispatchCommunicationDeliveries(pool,10,{allowConfiguredProviders:true,channels:["TELEGRAM"]});
-  }catch{logger.warn({category:"TELEGRAM_WORKER_UNAVAILABLE"},"Development Telegram temporarily unavailable");}
+  }catch{logger.warn({category:"TELEGRAM_WORKER_UNAVAILABLE"},"Telegram temporarily unavailable");}
   finally{running=false;}
 }
-export function startDevelopmentTelegramWorker(){
-  if(!telegramDevelopment(process.env)||process.env.REPLIT_DEPLOYMENT)return;
+export function startTelegramWorker(){
+  if(!telegramRuntimeEnabled(process.env))return;
   void telegramWorkerTick();setInterval(()=>void telegramWorkerTick(),3000).unref();
 }

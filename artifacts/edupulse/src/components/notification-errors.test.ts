@@ -3,7 +3,8 @@ import {telegramCheckError,telegramReasons,notificationErrorClass} from './notif
 describe('sanitized notification error copy',()=>{
   it('distinguishes safe server reasons, Development-only, session and rate limits',()=>{
     expect(telegramCheckError({status:503,data:{reason:'CHECK_AUDIT_UNAVAILABLE'}})).toBe(telegramReasons.CHECK_AUDIT_UNAVAILABLE);
-    expect(telegramCheckError({status:404})).toContain('Development-only');
+    expect(telegramCheckError({status:404})).toContain('endpoint is unavailable');
+    expect(telegramCheckError({status:503,data:{reason:'PRODUCTION_DISABLED'}})).toContain('not enabled');
     expect(telegramCheckError({status:401})).toContain('Sign in again');
     expect(telegramCheckError({status:429})).toContain('ten seconds');
   });

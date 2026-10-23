@@ -9,11 +9,17 @@ let checkedAt=0,credentialHash="";
 const digest=(s:string)=>createHash("sha256").update(s).digest("hex");
 export const telegramDevelopment=(env:NodeJS.ProcessEnv)=>
   !env.REPLIT_DEPLOYMENT&&(env.NODE_ENV==="development"||env.NODE_ENV==="test");
+export const telegramRuntimeEnabled=(env:NodeJS.ProcessEnv)=>
+  telegramDevelopment(env)||((!!env.REPLIT_DEPLOYMENT||env.NODE_ENV==="production")
+    &&env.EDUCORE_PRODUCTION_TELEGRAM_ENABLED==="true");
+const scope=(env:NodeJS.ProcessEnv)=>digest(JSON.stringify([
+  env.TELEGRAM_BOT_TOKEN,env.SESSION_SECRET,telegramDevelopment(env),telegramRuntimeEnabled(env),
+]));
 export function getTelegramHealth(env:NodeJS.ProcessEnv=process.env):TelegramHealth{
-  if(!telegramDevelopment(env))return {configured:false,ready:false,reason:"DEVELOPMENT_ONLY",botUsername:null,botId:null};
   if(!env.TELEGRAM_BOT_TOKEN)return {configured:false,ready:false,reason:"TOKEN_MISSING",botUsername:null,botId:null};
+  if(!telegramRuntimeEnabled(env))return {configured:true,ready:false,reason:"PRODUCTION_DISABLED",botUsername:null,botId:null};
   if(!env.SESSION_SECRET||env.SESSION_SECRET.length<32)return {configured:true,ready:false,reason:"ENCRYPTION_KEY_UNAVAILABLE",botUsername:null,botId:null};
-  if(credentialHash!==digest(env.TELEGRAM_BOT_TOKEN)||Date.now()-checkedAt>120000)
+  if(credentialHash!==scope(env)||Date.now()-checkedAt>120000)
     return {configured:true,ready:false,reason:"HEALTH_CHECK_REQUIRED",botUsername:null,botId:null};
   // A separate explicit Development opt-in authorizes only this new channel.
   // Never change the existing SMS/email payment-test or scheduler locks.
@@ -36,7 +42,9 @@ export function telegramHealthFailure(error:unknown){
 /** No caller may log a request URL, caught transport error, Bot API body or token. */
 export async function telegramApi(method:"getMe"|"getWebhookInfo"|"getUpdates"|"sendMessage",body:unknown,
   env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch):Promise<any>{
-  if(!telegramDevelopment(env)||!env.TELEGRAM_BOT_TOKEN)throw new TelegramApiError(401);
+  const diagnostic=method==="getMe"||method==="getWebhookInfo";
+  if(!["getMe","getWebhookInfo","getUpdates","sendMessage"].includes(method)||
+    !env.TELEGRAM_BOT_TOKEN||(!diagnostic&&!getTelegramHealth(env).ready))throw new TelegramApiError(401);
   try{
     const response=await transport(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,{
       method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),
@@ -58,11 +66,10 @@ export async function telegramApi(method:"getMe"|"getWebhookInfo"|"getUpdates"|"
     throw new TelegramApiError(0,0,name==="AbortError"||name==="TimeoutError"?"TIMEOUT":"NETWORK_UNAVAILABLE");
   }
 }
-export async function refreshTelegramHealth(schemaReady:boolean,env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch){
-  if(!telegramDevelopment(env)||!env.TELEGRAM_BOT_TOKEN||!env.SESSION_SECRET||env.SESSION_SECRET.length<32){
-    health=getTelegramHealth(env);return health;
-  }
-  credentialHash=digest(env.TELEGRAM_BOT_TOKEN);checkedAt=Date.now();
+// Stateless provider inspection. In particular, the Owner health route must
+// never refresh the cache consumed by send/link/poll operations.
+async function inspectTelegramBot(env:NodeJS.ProcessEnv,transport:typeof fetch):Promise<TelegramHealth>{
+  if(!env.TELEGRAM_BOT_TOKEN)return {configured:false,ready:false,reason:"TOKEN_MISSING",botUsername:null,botId:null};
   let stage:"getMe"|"getWebhookInfo"="getMe";
   try{
     const bot=await telegramApi("getMe",{},env,transport);
@@ -71,16 +78,33 @@ export async function refreshTelegramHealth(schemaReady:boolean,env:NodeJS.Proce
     stage="getWebhookInfo";
     const webhook=await telegramApi("getWebhookInfo",{},env,transport);
     if(!webhook||typeof webhook.url!=="string")throw new TelegramApiError(0,0,"INVALID_RESPONSE");
-    const reason=webhook?.url?"WEBHOOK_CONFLICT":!schemaReady?"SCHEMA_NOT_READY":"READY";
-    health={configured:true,ready:reason==="READY",reason,botUsername:bot.username,botId:String(bot.id)};
+    const reason=webhook?.url?"WEBHOOK_CONFLICT":"READY";
+    return {configured:true,ready:reason==="READY",reason,botUsername:bot.username,botId:String(bot.id)};
   }catch(error){
     const reason=telegramHealthFailure(error);
     // Never pass caught errors, URLs, response bodies or credentials to logging.
     logger.warn({event:"TELEGRAM_HEALTH_CHECK_FAILED",stage,reason,
       status:error instanceof TelegramApiError&&[400,401,403,404,429,500,502,503,504].includes(error.code)?error.code:0},
       "Telegram read-only configuration check failed");
-    health={configured:true,ready:false,reason,botUsername:null,botId:null};
+    return {configured:true,ready:false,reason,botUsername:null,botId:null};
   }
+}
+export async function diagnoseTelegramBot(env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch){
+  const inspected=await inspectTelegramBot(env,transport);
+  return {configured:inspected.configured,diagnosticOk:inspected.ready,
+    diagnosticReason:inspected.reason,botUsername:inspected.botUsername};
+}
+// Worker-owned readiness validation; never called from the diagnostic endpoint.
+export async function refreshTelegramHealth(schemaReady:boolean,env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch){
+  if(!telegramRuntimeEnabled(env)||!env.TELEGRAM_BOT_TOKEN||!env.SESSION_SECRET||env.SESSION_SECRET.length<32)
+    return getTelegramHealth(env);
+  health={configured:true,ready:false,reason:"HEALTH_CHECK_REQUIRED",botUsername:null,botId:null};
+  if(!schemaReady){
+    health={...health,reason:"SCHEMA_NOT_READY"};
+  }else{
+    health=await inspectTelegramBot(env,transport);
+  }
+  credentialHash=scope(env);checkedAt=Date.now();
   return getTelegramHealth(env);
 }
 export interface TelegramProvider {readonly provider:string;readonly channel:"telegram";

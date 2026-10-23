@@ -7,7 +7,7 @@ import {createECDH} from "node:crypto";
 import express from "express";
 import {DatabasePool} from "@workspace/db/driver";
 import {refreshTelegramHealth,getTelegramHealth,createTelegramProvider} from "./telegram-provider";
-import {createParentTelegramChallenge,acceptTelegramUpdate,confirmParentTelegramLink,telegramRecipient,
+import {createParentTelegramChallenge,acceptTelegramUpdate,confirmParentTelegramLink,telegramRecipient,checkTelegramRuntimeHealth,
   revokeParentTelegramLink,sealTelegramChat,openTelegramChat} from "./telegram-links";
 import {dispatchCommunicationDeliveries,queueCommunicationNotification} from "./communication-service";
 import {createTelegramDirectoryInvitation,parentTelegramInvitationStatus} from "./telegram-onboarding";
@@ -22,7 +22,8 @@ vi.mock("../middlewares/auth",async original=>{
       status:"ACTIVE",schoolId:state.role==="PLATFORM_OWNER"?null:state.userId}]})};
 });
 import telegramRouter from "../routes/telegram";
-const fixtureEnv={NODE_ENV:"test",TELEGRAM_BOT_TOKEN:"123456:fixture_telegram_token_not_real",SESSION_SECRET:"fixture-only-telegram-encryption-key-0123456789"};
+const fixtureEnv={NODE_ENV:"production",REPLIT_DEPLOYMENT:"1",EDUCORE_PRODUCTION_TELEGRAM_ENABLED:"true",
+  TELEGRAM_BOT_TOKEN:"123456:fixture_telegram_token_not_real",SESSION_SECRET:"fixture-only-telegram-encryption-key-0123456789"};
 const botFetch=vi.fn(async (_url:any,options:any)=>{
   const method=String(_url).split("/").at(-1);
   return new Response(JSON.stringify({ok:true,result:method==="getMe"?{id:123456,is_bot:true,username:"EduCoreFixtureBot"}
@@ -79,6 +80,9 @@ afterAll(async()=>{
 });
 beforeEach(async()=>{
   state.userId=1;state.role="PARENT";state.anonymous=false;
+  vi.stubEnv("REPLIT_DOMAINS",new URL(base).host);
+  vi.stubEnv("EDUCORE_PRODUCTION_TELEGRAM_ENABLED","true");
+  vi.stubEnv("EDUCORE_TELEGRAM_ALLOWED_ORIGINS","");
   for(const key of ["VAPID_PUBLIC_KEY","VAPID_PRIVATE_KEY","VAPID_SUBJECT"])vi.stubEnv(key,"");
   await db.query(`TRUNCATE telegram_link_challenges,parent_telegram_links,telegram_poll_state,
     schools,app_users,school_memberships,students,parents,parent_student_relationships,audit_logs,
@@ -193,7 +197,7 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
     await dispatchCommunicationDeliveries(db,10,{providers:{...mocks(),telegram:{provider:"fixture",channel:"telegram",send}},channels:["TELEGRAM"],now:()=>now});
     const row=(await db.query("SELECT next_attempt_at FROM communication_deliveries")).rows[0];
     expect(new Date(row.next_attempt_at).getTime()-now.getTime()).toBe(120000);
-    await db.query("UPDATE communication_deliveries SET next_attempt_at=now();DELETE FROM audit_logs");
+    await db.query("UPDATE communication_deliveries SET next_attempt_at=now()-interval '1 second';DELETE FROM audit_logs");
     await dispatchCommunicationDeliveries(db,10,{providers:{...mocks(),telegram:{provider:"fixture",channel:"telegram",send}},channels:["TELEGRAM"]});
     expect(send).toHaveBeenCalledTimes(1);
     expect((await db.query("SELECT error_code FROM communication_deliveries")).rows[0].error_code).toBe("OWNER_CHANNEL_POLICY");
@@ -209,12 +213,43 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
     expect((await db.query("SELECT * FROM telegram_link_challenges")).rows).toHaveLength(0);
     expect((await request({schoolId:1,consent:true})).status).toBe(200);
   });
+  it("defers disabled Production Telegram without consuming attempts or touching SMS",async()=>{
+    await link(888017);await notification("PARENT_EVENT:SCHOOL_ENTRY:disabled");
+    vi.stubEnv("EDUCORE_PRODUCTION_TELEGRAM_ENABLED","false");
+    const result=await dispatchCommunicationDeliveries(db,10,{allowConfiguredProviders:true,channels:["TELEGRAM"]});
+    expect(result.claimed).toBe(0);
+    expect((await db.query("SELECT status,attempts FROM communication_deliveries")).rows)
+      .toEqual([{status:"QUEUED",attempts:0}]);
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("requires Telegram channel constraints as well as link tables before readiness",async()=>{
+    const c=await db.connect();
+    try{
+      await c.query("BEGIN");
+      await c.query("ALTER TABLE communication_deliveries DROP CONSTRAINT communication_deliveries_channel_check");
+      expect((await checkTelegramRuntimeHealth(c)).reason).toBe("SCHEMA_NOT_READY");
+      expect(createTelegramProvider()).toBeUndefined();
+      expect(botFetch).not.toHaveBeenCalled();
+    }finally{await c.query("ROLLBACK");c.release();}
+  });
   it("owner-only configuration test calls no send API and status exposes no chat/cipher/token",async()=>{
     expect((await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:base}})).status).toBe(403);
     state.role="PLATFORM_OWNER";
+    vi.stubEnv("EDUCORE_PRODUCTION_TELEGRAM_ENABLED","false");
     const response=await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:base}});
     expect(response.status).toBe(200);
-    const body=await response.json();expect(body).toMatchObject({configured:true,ready:true,reason:"READY"});
+    const body=await response.json();expect(body).toMatchObject({configured:true,ready:false,reason:"PRODUCTION_DISABLED",diagnosticOk:true,diagnosticReason:"READY"});
+    expect(createTelegramProvider()).toBeUndefined();
+    expect(botFetch).toHaveBeenCalledTimes(2);
+    expect(botFetch.mock.calls.map(([url])=>String(url).split("/").at(-1))).toEqual(["getMe","getWebhookInfo"]);
+    expect((await db.query("SELECT count(*)::int AS count FROM communication_deliveries")).rows[0].count).toBe(0);
+    expect((await db.query("SELECT metadata FROM audit_logs WHERE event_type='TELEGRAM_CONFIGURATION_CHECK'")).rows[0].metadata)
+      .toMatchObject({diagnosticOk:true,diagnosticReason:"READY",deliveryReady:false,deliveryReason:"PRODUCTION_DISABLED"});
+    expect((await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:base}})).status).toBe(429);
+    expect((await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:"https://untrusted.invalid"}})).status).toBe(403);
+    vi.stubEnv("EDUCORE_TELEGRAM_ALLOWED_ORIGINS","https://published.fixture.invalid");
+    expect((await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:"https://published.fixture.invalid"}})).status).toBe(429);
+    expect((await fetch(`${base}/communication/telegram/health`,{method:"POST",headers:{Origin:"http://published.fixture.invalid"}})).status).toBe(403);
     expect(botFetch).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(body)).not.toMatch(/fixture_telegram_token_not_real|chat_ciphertext|chatId|tokenHash/);
     expect((await db.query("SELECT event_type FROM audit_logs WHERE event_type='TELEGRAM_CONFIGURATION_CHECK'")).rows).toHaveLength(1);
@@ -301,10 +336,10 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
     const first=await notification("PARENT_EVENT:SCHOOL_ENTRY:scoped-first");
     const second=await notification("PARENT_EVENT:SCHOOL_ENTRY:scoped-second");
     const providers={...mocks(),telegram:createTelegramProvider(process.env,botFetch as any)!};
-    const result=await dispatchCommunicationDeliveries(db,10,{providers,channels:["TELEGRAM"],notificationIds:[second]});
+    const result=await dispatchCommunicationDeliveries(db,10,{providers,channels:["TELEGRAM"],notificationIds:[second],now:()=>new Date(Date.now()+1000)});
     expect(result.claimed).toBe(1);
     expect((await db.query("SELECT status FROM communication_deliveries WHERE notification_id=$1",[first])).rows[0].status).toBe("QUEUED");
-    await db.query("UPDATE communication_deliveries SET status='FAILED',error_code='PROVIDER_REJECTED',updated_at=now() WHERE notification_id=$1",[first]);
+    await db.query("UPDATE communication_deliveries SET status='FAILED',error_code='PROVIDER_REJECTED',updated_at=now()+interval '2 seconds' WHERE notification_id=$1",[first]);
     expect((await parentTelegramInvitationStatus(db,1,1)).status).toBe("Delivery unavailable");
   });
   it("queues push only with configuration, policy and an active parent device; no token or SMS/email fallback",async()=>{

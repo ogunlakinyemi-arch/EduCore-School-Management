@@ -1,7 +1,7 @@
 import {describe,it,expect,vi} from "vitest";
 const diagnostics=vi.hoisted(()=>({warn:vi.fn()}));
 vi.mock("../lib/logger",()=>({logger:diagnostics}));
-import {refreshTelegramHealth,getTelegramHealth,createTelegramProvider} from "./telegram-provider";
+import {refreshTelegramHealth,getTelegramHealth,createTelegramProvider,diagnoseTelegramBot,telegramApi} from "./telegram-provider";
 const env={NODE_ENV:"test",TELEGRAM_BOT_TOKEN:"123456:fixture_token_not_real",SESSION_SECRET:"fixture-encryption-key-01234567890123456789"};
 const ok=(method:string)=>new Response(JSON.stringify({ok:true,result:method==="getMe"
   ?{id:123456,is_bot:true,username:"FixtureBot"}:{url:""}}),{status:200});
@@ -39,10 +39,46 @@ describe("Telegram transport/configuration (fake HTTP only)",()=>{
     }),expect.any(String));
     expect(JSON.stringify(diagnostics.warn.mock.calls)).not.toContain("sensitive webhook body");
   });
-  it("never enables a missing token, Production or missing encryption",async()=>{
+  it("never enables a missing token, unapproved Production or missing encryption",async()=>{
     expect(getTelegramHealth({NODE_ENV:"test"}).reason).toBe("TOKEN_MISSING");
     expect(getTelegramHealth({...env,NODE_ENV:"production"}).ready).toBe(false);
     expect(getTelegramHealth({...env,SESSION_SECRET:""}).ready).toBe(false);
+  });
+  it("permits Production diagnostics with delivery disabled, without changing readiness",async()=>{
+    const production={...env,NODE_ENV:"production",REPLIT_DEPLOYMENT:"1",TELEGRAM_BOT_TOKEN:"222222:diagnostic_fixture"};
+    const transport=vi.fn(async(url:any)=>ok(String(url).split("/").at(-1)!));
+    const before=getTelegramHealth(production);
+    expect(await diagnoseTelegramBot(production,transport as any)).toMatchObject({diagnosticOk:true,configured:true});
+    expect(transport.mock.calls.map(([url])=>String(url).split("/").at(-1))).toEqual(["getMe","getWebhookInfo"]);
+    expect(getTelegramHealth(production)).toEqual(before);
+    expect(createTelegramProvider(production)).toBeUndefined();
+    await expect(telegramApi("sendMessage",{},production,transport as any)).rejects.toThrow("Telegram request failed");
+    await expect(telegramApi("getUpdates",{},production,transport as any)).rejects.toThrow("Telegram request failed");
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
+  it("requires Production opt-in, encryption, schema and worker validation; diagnostic success is insufficient",async()=>{
+    const production={...env,NODE_ENV:"production",REPLIT_DEPLOYMENT:"1",EDUCORE_PRODUCTION_TELEGRAM_ENABLED:"true"};
+    expect((await refreshTelegramHealth(false,production,healthy as any)).reason).toBe("SCHEMA_NOT_READY");
+    expect(createTelegramProvider(production)).toBeUndefined();
+    await diagnoseTelegramBot(production,healthy as any);
+    expect(getTelegramHealth(production).reason).toBe("SCHEMA_NOT_READY");
+    expect(createTelegramProvider(production)).toBeUndefined();
+    await refreshTelegramHealth(true,production,healthy as any);
+    expect(getTelegramHealth(production).ready).toBe(true);
+    const before=getTelegramHealth(production);
+    const failed=await diagnoseTelegramBot(production,vi.fn(async()=>{throw new Error(env.TELEGRAM_BOT_TOKEN)}) as any);
+    expect(failed.diagnosticReason).toBe("NETWORK_UNAVAILABLE");
+    expect(getTelegramHealth(production)).toEqual(before);
+    expect(getTelegramHealth({...production,SESSION_SECRET:"changed-valid-encryption-key-0123456789"}).ready).toBe(false);
+    expect(getTelegramHealth({...production,EDUCORE_PRODUCTION_TELEGRAM_ENABLED:"false"}).ready).toBe(false);
+    expect(getTelegramHealth({...production,SESSION_SECRET:"short"}).ready).toBe(false);
+    const transport=vi.fn(async()=>new Response(JSON.stringify({ok:true,result:{message_id:781}})));
+    const result=await createTelegramProvider(production,transport as any)!.send({
+      to:"999001",body:"Consented fixture notification",idempotencyKey:"production-fixture",
+    });
+    expect(result).toMatchObject({accepted:true,delivered:false,status:"ACCEPTED"});
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify([failed,diagnostics.warn.mock.calls])).not.toContain(env.TELEGRAM_BOT_TOKEN);
   });
   it("checks getMe/getWebhookInfo only, and reports an existing webhook without changing it",async()=>{
     const transport=vi.fn(async(url:any)=>String(url).endsWith("getMe")?ok("getMe"):

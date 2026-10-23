@@ -967,7 +967,11 @@ export async function dispatchCommunicationDeliveries(
     throw new TypeError("Invalid dispatch channels");
   if(options.notificationIds&&(!options.notificationIds.length||options.notificationIds.length>500||
     options.notificationIds.some(id=>!Number.isSafeInteger(id)||id<1)))throw new TypeError("Invalid notification scope");
-  const claimed = await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),selectedChannels,options.notificationIds);
+  // Unavailable Telegram is deferred, not claimed and exhausted before its
+  // explicitly enabled worker has validated credentials/storage.
+  const availableChannels=selectedChannels.filter(channel=>channel!=="TELEGRAM"||!!telegramProvider);
+  const claimed = availableChannels.length
+    ? await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),availableChannels,options.notificationIds) : [];
   const summary: DispatchCommunicationResult = {
     claimed: claimed.length,
     accepted: 0,

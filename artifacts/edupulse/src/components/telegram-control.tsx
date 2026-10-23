@@ -80,8 +80,13 @@ export function OwnerTelegramHealth() {
     <p className="text-sm">This check calls Telegram getMe and getWebhookInfo only. It never sends a message and does not prove delivery.</p>
     <button type="button" data-testid="button-telegram-health" className="min-h-11 rounded-lg border px-4 disabled:opacity-50" disabled={check.isPending} onClick={() => check.mutate()}>Check bot configuration</button>
     {check.isError && <p role="alert" className={notificationErrorClass}>{telegramCheckError(check.error)}</p>}
+    {s && !check.isError && !check.isPending && s.diagnosticOk !== undefined &&
+      <p role={s.diagnosticOk ? 'status' : 'alert'} className={s.diagnosticOk ? 'text-sm' : notificationErrorClass} data-testid="text-telegram-diagnostic">
+        {s.diagnosticOk ? 'Bot identity and webhook checks passed. No message was sent; delivery is checked separately.'
+          : (telegramReasons[s.diagnosticReason ?? ''] ?? telegramReasons.BOT_UNAVAILABLE)}
+      </p>}
     {s && !check.isError && !check.isPending && <p role={s.ready ? 'status' : 'alert'} className={s.ready ? 'text-sm' : notificationErrorClass} data-testid="text-telegram-health">
-      {s.ready ? 'Configuration looks ready. This does not prove delivery.' :
+      {s.ready ? 'Delivery configuration is ready. Notifications still require consent and current school permissions; this does not prove receipt.' :
         (Object.hasOwn(telegramReasons, s.reason) ? telegramReasons[s.reason] : telegramReasons.BOT_UNAVAILABLE)}</p>}
   </section>;
 }

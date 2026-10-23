@@ -7,7 +7,7 @@ paths:
         - {name: schoolId, in: query, schema: {type: integer, minimum: 1}}
       responses:
         "200":
-          description: Sanitized Development configuration and own-parent linking state; no credentials/chat IDs
+          description: Sanitized delivery configuration and own-parent linking state; no credentials/chat IDs
           content:
             application/json:
               schema: {$ref: "#/components/schemas/TelegramStatus"}
@@ -17,7 +17,7 @@ paths:
       tags: [communication]
       responses:
         "200":
-          description: Owner-only Bot API getMe/getWebhookInfo check; never sends a message
+          description: Owner-only stateless Bot API getMe/getWebhookInfo diagnostics; never refreshes delivery readiness or sends a message
           content:
             application/json:
               schema: {$ref: "#/components/schemas/TelegramStatus"}
@@ -121,6 +121,8 @@ components:
         ready: {type: boolean}
         reason: {type: string}
         botUsername: {type: [string, "null"]}
+        diagnosticOk: {type: boolean}
+        diagnosticReason: {type: string}
         linked: {type: boolean}
         consented: {type: boolean}
         parentEligible: {type: boolean}

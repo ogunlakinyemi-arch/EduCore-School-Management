@@ -2,6 +2,7 @@
 export const notificationErrorClass = 'rounded-lg bg-[#fff1f2] p-3 text-sm text-[#991b1b] break-words';
 export const telegramReasons: Record<string, string> = {
   DEVELOPMENT_ONLY: 'Telegram is currently Development-only. The published application cannot run this check; an Owner must review Production support separately.',
+  PRODUCTION_DISABLED: 'Telegram delivery is not enabled for this published application. The Owner must complete Production setup; diagnostics do not enable sending.',
   TOKEN_MISSING: 'The bot token is not configured. Ask the Owner to configure the Telegram bot credential securely.',
   ENCRYPTION_KEY_UNAVAILABLE: 'Telegram link encryption is unavailable. Ask the Owner to review the server session encryption configuration.',
   INVALID_TOKEN: 'Telegram rejected the bot credential. Ask the Owner to verify the configured bot token securely.',
@@ -17,13 +18,13 @@ export const telegramReasons: Record<string, string> = {
   CHECK_STORAGE_UNAVAILABLE: 'The server could not inspect Telegram storage. Ask the Owner to check database availability and the sanitized logs.',
   CHECK_AUDIT_UNAVAILABLE: 'The check could not record its audit entry. Ask the Owner to check audit storage before retrying.',
   DEVELOPMENT_SEND_LOCK: 'Bot credentials passed, but Development sending remains locked. This check does not change send permissions.',
-  HEALTH_CHECK_REQUIRED: 'Run the bot configuration check to verify the current credential.',
+  HEALTH_CHECK_REQUIRED: 'Delivery is unavailable until the Telegram worker independently verifies the current bot configuration. Bot diagnostics do not enable delivery.',
 };
 export function telegramCheckError(error: unknown) {
   const e = error as { status?: number; data?: { reason?: string } } | null;
   const reason = e?.data?.reason;
   if (reason && Object.hasOwn(telegramReasons, reason)) return telegramReasons[reason];
-  return e?.status === 404 ? telegramReasons.DEVELOPMENT_ONLY
+  return e?.status === 404 ? 'The Telegram diagnostic endpoint is unavailable. Ask the Owner to review the published API version.'
     : e?.status === 401 ? 'Your session has expired. Sign in again before checking the bot.'
     : e?.status === 403 ? 'Only an authorized Platform Owner can run this check. Refresh your session and try again.'
     : e?.status === 429 ? 'Wait ten seconds before running another bot check.'

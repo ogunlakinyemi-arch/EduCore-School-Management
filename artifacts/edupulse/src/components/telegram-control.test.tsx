@@ -1,12 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-const st = vi.hoisted(() => ({ s: {} as Record<string, unknown>, ctx: { isPlatformOwner: false, roles: [{ schoolId: 3, role: "PARENT", status: "ACTIVE" }] } as any }));
+const st = vi.hoisted(() => ({ s: {} as Record<string, unknown>, health: null as any, ctx: { isPlatformOwner: false, roles: [{ schoolId: 3, role: "PARENT", status: "ACTIVE" }] } as any }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: st.ctx }),
   useGetTelegramStatus: () => ({ data: st.s, isError: false, refetch: vi.fn() }),
   getGetTelegramStatusQueryKey: (p: unknown) => ['tg', p],
-  useCheckTelegramHealth: () => ({ data: { ready: false, reason: 'webhook_missing', botUsername: null }, isPending: false, isError: false, mutate: vi.fn() }),
+  useCheckTelegramHealth: () => ({ data: st.health ?? { ready: false, reason: 'webhook_missing', botUsername: null }, isPending: false, isError: false, mutate: vi.fn() }),
   useCreateTelegramLink: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useConfirmTelegramLink: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnlinkTelegram: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -15,6 +15,20 @@ import { ParentTelegramControl, OwnerTelegramHealth, telegramGate } from './tele
 const base = { configured: true, ready: true, reason: 'ok', botUsername: 'b', linked: false, consented: false, parentEligible: true, policyAllowed: true, pending: false, pendingAccountLabel: null };
 const render = (o: object) => { st.s = { ...base, ...o }; return renderToStaticMarkup(<ParentTelegramControl schoolId={3} />); };
 describe('telegram control', () => {
+  it('separates successful Production diagnostics from disabled delivery and safe failures', () => {
+    st.health = { configured: true, ready: false, reason: 'PRODUCTION_DISABLED', diagnosticOk: true, diagnosticReason: 'READY' };
+    let html = renderToStaticMarkup(<OwnerTelegramHealth />);
+    expect(html).toContain('Bot identity and webhook checks passed');
+    expect(html).toContain('delivery is checked separately');
+    expect(html).toContain('not enabled');
+    st.health = { configured: false, ready: false, reason: 'TOKEN_MISSING', diagnosticOk: false, diagnosticReason: 'TOKEN_MISSING' };
+    html = renderToStaticMarkup(<OwnerTelegramHealth />);
+    expect(html).toContain('token is not configured');
+    st.health = { configured: true, ready: false, reason: 'HEALTH_CHECK_REQUIRED', diagnosticOk: false, diagnosticReason: 'INVALID_TOKEN' };
+    html = renderToStaticMarkup(<OwnerTelegramHealth />);
+    expect(html).toContain('Telegram rejected the bot credential');
+    st.health = null;
+  });
   it('separates disabled, unavailable and policy-blocked', () => {
     expect(render({ configured: false, ready: false })).toContain('disabled');
     expect(render({ ready: false })).toContain('unavailable');

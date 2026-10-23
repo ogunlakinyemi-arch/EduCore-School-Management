@@ -13,6 +13,8 @@ export interface TelegramStatus {
   reason: string;
   /** @nullable */
   botUsername: string | null;
+  diagnosticOk?: boolean;
+  diagnosticReason?: string;
   linked: boolean;
   consented: boolean;
   parentEligible: boolean;

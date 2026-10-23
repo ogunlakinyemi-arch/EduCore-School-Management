@@ -100,7 +100,7 @@ describe('telegram dom flow', () => {
     m.healthState={mutate:m.health,isPending:false,isError:true,
       error:{status:404,message:'sensitive diagnostics'},data:{ready:true}};
     mount(<OwnerTelegramHealth/>);
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Development-only');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('endpoint is unavailable');
     expect(host.querySelector('[role="alert"]')?.className).toContain('text-[#991b1b]');
     expect(host.textContent).not.toContain('sensitive diagnostics');
     expect(host.textContent).not.toContain('Configuration looks ready');

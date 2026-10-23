@@ -2,19 +2,14 @@ import {Router,type Request} from "express";
 import {z} from "zod";
 import {pool} from "@workspace/db";
 import {AuthError,getUserContext,requireAuthentication} from "../middlewares/auth";
-import {getTelegramHealth,telegramDevelopment} from "../services/telegram-provider";
-import {eligibleTelegramParent,telegramSchoolAllowed,checkTelegramRuntimeHealth,createParentTelegramChallenge,
+import {getTelegramHealth,diagnoseTelegramBot} from "../services/telegram-provider";
+import {eligibleTelegramParent,telegramSchoolAllowed,createParentTelegramChallenge,
   confirmParentTelegramLink,revokeParentTelegramLink,openTelegramChat,telegramPhoneCheck,isAdminTelegramInvitation} from "../services/telegram-links";
 import {parentTelegramInvitationStatus,telegramDirectoryParent,createTelegramDirectoryInvitation} from "../services/telegram-onboarding";
 import {dispatchCommunicationDeliveries} from "../services/communication-service";
 import {logger} from "../lib/logger";
 const router=Router();
 router.use(requireAuthentication());
-router.use((req,res,next)=>{
-  if(telegramDevelopment(process.env)){next();return;}
-  if(req.path==="/health")logger.warn({event:"TELEGRAM_HEALTH_CHECK_BLOCKED",reason:"DEVELOPMENT_ONLY"},"Telegram check is Development-only");
-  res.status(404).json({error:"Development channel only",reason:"DEVELOPMENT_ONLY"});
-});
 const run=(fn:(req:Request,res:any)=>Promise<void>)=>(req:Request,res:any,next:any)=>{void fn(req,res).catch(e=>{
   if(e instanceof z.ZodError)return res.status(400).json({error:"Invalid Telegram request"});
   if(e?.code==="23505")return res.status(409).json({error:"This Telegram account is already linked. Unlink it before linking another parent."});
@@ -30,14 +25,19 @@ function parentSession(req:Request){
 function sameOrigin(req:Request){
   const permitted=(process.env.REPLIT_DOMAINS??process.env.REPLIT_DEV_DOMAIN??"").split(",").map(x=>x.trim()).filter(Boolean);
   if(process.env.NODE_ENV==="test")permitted.push(req.get("host")??"");
-  try{if(permitted.includes(new URL(req.get("Origin")??"").host))return;}catch{}
+  try{
+    const origin=new URL(req.get("Origin")??"");
+    const published=(process.env.EDUCORE_TELEGRAM_ALLOWED_ORIGINS??"").split(",").map(x=>x.trim()).filter(Boolean);
+    if(origin.protocol==="https:"&&published.includes(origin.origin))return;
+    if(permitted.includes(origin.host))return;
+  }catch{}
   throw new AuthError(403,"Open Telegram controls from the EduCore app");
 }
-async function audit(db:any,userId:number,schoolId:number|null,event:string){
+async function audit(db:any,userId:number,schoolId:number|null,event:string,metadata:Record<string,unknown>={}){
   await db.query(`INSERT INTO audit_logs(actor_user_id,"user",role,school_id,action,module,event_type,result,metadata)
-    SELECT id,email,$4,$2,$3,'Communication',$3,'SUCCESS','{}'::jsonb FROM app_users WHERE id=$1`,
+    SELECT id,email,$4,$2,$3,'Communication',$3,'SUCCESS',$5::jsonb FROM app_users WHERE id=$1`,
     [userId,schoolId,event,event==="TELEGRAM_CONFIGURATION_CHECK"?"PLATFORM_OWNER":
-      event==="TELEGRAM_PARENT_INVITED"?"SCHOOL_ADMIN":"PARENT"]);
+      event==="TELEGRAM_PARENT_INVITED"?"SCHOOL_ADMIN":"PARENT",JSON.stringify(metadata)]);
 }
 async function transaction(userId:number,fn:(db:any)=>Promise<any>){
   const db=await pool.connect();
@@ -80,19 +80,18 @@ router.post("/health",run(async(req,res)=>{
   sameOrigin(req);
   if(Date.now()-lastOwnerCheck<10000){res.status(429).json({error:"Wait ten seconds before checking again"});return;}
   lastOwnerCheck=Date.now();
-  let stage:"CHECK_STORAGE_UNAVAILABLE"|"CHECK_AUDIT_UNAVAILABLE"="CHECK_STORAGE_UNAVAILABLE";
-  let h:Omit<ReturnType<typeof getTelegramHealth>,"botId">;
+  const diagnostic=await diagnoseTelegramBot();
+  const {botId:_botId,...delivery}=getTelegramHealth();
   try{
-    const {botId:_botId,...result}=await checkTelegramRuntimeHealth(pool);
-    h=result;
-    stage="CHECK_AUDIT_UNAVAILABLE";
-    await audit(pool,getUserContext(req).user.id,null,"TELEGRAM_CONFIGURATION_CHECK");
+    await audit(pool,getUserContext(req).user.id,null,"TELEGRAM_CONFIGURATION_CHECK",{
+      diagnosticOk:diagnostic.diagnosticOk,diagnosticReason:diagnostic.diagnosticReason,
+      deliveryReady:delivery.ready,deliveryReason:delivery.reason,
+    });
   }catch{
-    logger.warn({event:"TELEGRAM_HEALTH_CHECK_FAILED",reason:stage},"Telegram check storage unavailable");
-    res.status(503).set("Cache-Control","no-store").json({error:"Telegram check storage unavailable",reason:stage});return;
+    logger.warn({event:"TELEGRAM_HEALTH_CHECK_FAILED",reason:"CHECK_AUDIT_UNAVAILABLE"},"Telegram check audit unavailable");
+    res.status(503).set("Cache-Control","no-store").json({error:"Telegram check audit unavailable",reason:"CHECK_AUDIT_UNAVAILABLE"});return;
   }
-  if(!h.ready)logger.warn({event:"TELEGRAM_HEALTH_CHECK_NOT_READY",reason:h.reason},"Telegram configuration is not ready");
-  res.set("Cache-Control","no-store").json({...h,linked:false,consented:false,parentEligible:false,
+  res.set("Cache-Control","no-store").json({...delivery,...diagnostic,linked:false,consented:false,parentEligible:false,
     policyAllowed:false,pending:false,pendingAccountLabel:null});
 }));
 router.post("/link",run(async(req,res)=>{

@@ -1,5 +1,5 @@
 import app from "./app";
-import {startDevelopmentTelegramWorker} from "./services/telegram-worker";
+import {startTelegramWorker} from "./services/telegram-worker";
 import { pool, setDatabaseDiagnosticReporter } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { createGuardedBackgroundTask } from "./lib/background-task";
@@ -33,7 +33,7 @@ app.listen(port, (err) => {
       process.env.EDUCORE_TERMINAL_TEST_MODE !== undefined ? "EXPLICIT_TERMINAL_TEST_TARGET" : "DATABASE_URL_PG_RESOLUTION",
       communicationWorkerUsesApiPool:true}, "Development database configuration provenance");
   }
-  startDevelopmentTelegramWorker();
+  startTelegramWorker();
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
     void verifyRemovalRuntimeTarget().then((verified) => {
       logger.info({ developmentSettlementRemovalIsolation: verified },
