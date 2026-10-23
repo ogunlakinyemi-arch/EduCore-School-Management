@@ -18346,7 +18346,13 @@ export const GetNotificationChannelPolicyResponse = zod.object({
   "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
 }))
 }),
-  "availability": zod.record(zod.string(), zod.boolean())
+  "availability": zod.record(zod.string(), zod.boolean()),
+  "readiness": zod.record(zod.string(), zod.object({
+  "configurationReady": zod.boolean(),
+  "deliveryReady": zod.boolean(),
+  "configurationDetail": zod.string(),
+  "deliveryHold": zod.string().nullable()
+})).optional()
 })
 
 
@@ -18372,7 +18378,13 @@ export const UpdateNotificationChannelPolicyResponse = zod.object({
   "allowed": zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))
 }))
 }),
-  "availability": zod.record(zod.string(), zod.boolean())
+  "availability": zod.record(zod.string(), zod.boolean()),
+  "readiness": zod.record(zod.string(), zod.object({
+  "configurationReady": zod.boolean(),
+  "deliveryReady": zod.boolean(),
+  "configurationDetail": zod.string(),
+  "deliveryHold": zod.string().nullable()
+})).optional()
 })
 
 

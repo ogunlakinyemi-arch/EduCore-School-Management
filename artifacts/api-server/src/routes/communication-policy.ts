@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { AuthError, getUserContext, assertSchoolAccess, requireAuthentication } from "../middlewares/auth";
 import { loadNotificationPolicy, notificationPolicySchema, notificationChannelAvailability,
-  allowedNotificationChannels, policyEvents, policyValidationIssue } from "../services/notification-channel-policy";
+  allowedNotificationChannels, policyEvents, policyValidationIssue, notificationChannelReadiness } from "../services/notification-channel-policy";
 const router = Router();
 router.use(requireAuthentication());
 const category = z.enum(policyEvents);
@@ -56,7 +56,8 @@ router.put("/communication/schools/:schoolId/defaults", async (req, res) => {
 router.get("/communication/channel-policy",async(req,res)=>{
   try{
     ownerContext(req);
-    res.json({policy:await loadNotificationPolicy(pool),availability:notificationChannelAvailability()});
+    res.json({policy:await loadNotificationPolicy(pool),availability:notificationChannelAvailability(),
+      readiness:notificationChannelReadiness()});
   }catch(e){res.status(e instanceof AuthError?e.statusCode:500).json({error:"Could not read Owner channel policy"});}
 });
 router.put("/communication/channel-policy",async(req,res)=>{
@@ -78,7 +79,8 @@ router.put("/communication/channel-policy",async(req,res)=>{
       VALUES($1,$2,'PLATFORM_OWNER','Updated event channels and school permissions','NotificationPolicy',
       'GLOBAL_CHANNEL_POLICY_UPDATED',$3::jsonb)`,
       [ctx.user.id,ctx.user.email,JSON.stringify({policy})]);
-    await c.query("COMMIT");res.json({policy,availability:notificationChannelAvailability()});
+    await c.query("COMMIT");res.json({policy,availability:notificationChannelAvailability(),
+      readiness:notificationChannelReadiness()});
   }catch(e){
     await c?.query("ROLLBACK").catch(()=>undefined);
     res.status(e instanceof AuthError?e.statusCode:e instanceof z.ZodError?400:500).json({error:"Could not save Owner channel policy"});

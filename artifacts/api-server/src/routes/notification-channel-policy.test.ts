@@ -1,6 +1,6 @@
 import express from "express";
 import type {Server} from "node:http";
-import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from "vitest";
+import {beforeAll,afterAll,beforeEach,afterEach,describe,it,expect,vi} from "vitest";
 const h=vi.hoisted(()=>({role:"SCHOOL_ADMIN",schoolId:9,status:"ACTIVE",anonymous:false,policy:null as any,
   defaults:{} as Record<string,string[]>,writes:[] as any[]}));
 vi.mock("@workspace/db",()=>{
@@ -17,7 +17,7 @@ vi.mock("@workspace/db",()=>{
   return {pool:{query,connect:async()=>({query,release:vi.fn()})}};
 });
 vi.mock("../services/telegram-provider",()=>({
-  getTelegramHealth:()=>({ready:false,status:"DEVELOPMENT_ONLY"}),
+  getTelegramHealth:()=>({ready:false,reason:"DEVELOPMENT_ONLY"}),
 }));
 vi.mock("../middlewares/auth",async original=>{
   const actual=await original<typeof import("../middlewares/auth")>();
@@ -39,9 +39,30 @@ beforeAll(async()=>{
   base=`http://127.0.0.1:${address.port}`;
 });
 afterAll(async()=>{await new Promise<void>((r,j)=>server.close(e=>e?j(e):r()));});
-beforeEach(()=>{h.role="SCHOOL_ADMIN";h.schoolId=9;h.status="ACTIVE";h.anonymous=false;h.policy=null;h.defaults={};h.writes=[];});
+beforeEach(()=>{
+  h.role="SCHOOL_ADMIN";h.schoolId=9;h.status="ACTIVE";h.anonymous=false;h.policy=null;h.defaults={};h.writes=[];
+  // Unavailable-channel fixtures must not inherit workspace provider/key setup.
+  vi.stubEnv("COMMUNICATION_EMAIL_PROVIDER","mock");
+  vi.stubEnv("VAPID_PUBLIC_KEY","");
+});
+afterEach(()=>vi.unstubAllEnvs());
 const put=(url:string,body:unknown)=>fetch(base+url,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
 describe("Owner/school channel policy HTTP boundaries; no delivery",()=>{
+  it("reports runtime holds to the Owner without changing saved policy or delivery state",async()=>{
+    h.role="PLATFORM_OWNER";
+    vi.stubEnv("NODE_ENV","production");vi.stubEnv("EDUCORE_NOTIFICATION_LIVE_FROM",undefined);
+    const response=await fetch(base+"/communication/channel-policy");
+    expect(response.status).toBe(200);
+    const body=await response.json() as {policy:unknown;availability:Record<string,boolean>;
+      readiness:Record<string,{deliveryReady:boolean;deliveryHold:string}>};
+    expect(body.policy).toEqual(defaultNotificationPolicy());
+    for(const channel of ["EMAIL","PUSH","TELEGRAM"]){
+      expect(body.availability[channel]).toBe(false);
+      expect(body.readiness[channel].deliveryReady).toBe(false);
+      expect(body.readiness[channel].deliveryHold).toContain("EDUCORE_NOTIFICATION_LIVE_FROM is not set");
+    }
+    expect(h.writes).toHaveLength(0);
+  });
   it.each(["SCHOOL_ADMIN","TEACHER","STAFF","PARENT","STUDENT"])("%s cannot edit global policy",async role=>{
     h.role=role;expect((await put("/communication/channel-policy",defaultNotificationPolicy())).status).toBe(403);
     expect(h.writes).toHaveLength(0);
@@ -84,6 +105,7 @@ describe("Owner/school channel policy HTTP boundaries; no delivery",()=>{
   it("rejects a new school Telegram override until the global policy allows it",async()=>{
     h.role="PLATFORM_OWNER";
     const p=defaultNotificationPolicy();
+    for(const rule of Object.values(p.events))rule!.allowed=rule!.allowed.filter(channel=>channel!=="TELEGRAM");
     p.schools["9"]={enabled:true,allowed:["IN_APP","TELEGRAM"]};
     const rejected=await put("/communication/channel-policy",p);
     expect(rejected.status).toBe(400);

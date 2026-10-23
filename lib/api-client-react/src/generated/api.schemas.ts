@@ -7603,9 +7603,18 @@ export interface NotificationChannelPolicy {
   schools: NotificationChannelPolicySchools;
 }
 
+export type NotificationChannelPolicyResponseReadiness = {[key: string]: {
+  configurationReady: boolean;
+  deliveryReady: boolean;
+  configurationDetail: string;
+  /** @nullable */
+  deliveryHold: string | null;
+}};
+
 export interface NotificationChannelPolicyResponse {
   policy: NotificationChannelPolicy;
   availability: NotificationChannelAvailability;
+  readiness?: NotificationChannelPolicyResponseReadiness;
 }
 
 export interface ActivationSchool {
@@ -21970,9 +21979,18 @@ export interface NotificationChannelPolicy4b96100 {
   schools: NotificationChannelPolicy4b96100Schools;
 }
 
+export type NotificationChannelPolicyResponse4b96100Readiness = {[key: string]: {
+  configurationReady: boolean;
+  deliveryReady: boolean;
+  configurationDetail: string;
+  /** @nullable */
+  deliveryHold: string | null;
+}};
+
 export interface NotificationChannelPolicyResponse4b96100 {
   policy: NotificationChannelPolicy4b96100;
   availability: NotificationChannelAvailability4b96100;
+  readiness?: NotificationChannelPolicyResponse4b96100Readiness;
 }
 
 export interface ActivationSchool4b96100 {

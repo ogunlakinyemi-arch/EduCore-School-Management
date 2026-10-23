@@ -1291,6 +1291,8 @@ export * from './notificationChannelPolicy4b96100Schools';
 export * from './notificationChannelPolicyEvents';
 export * from './notificationChannelPolicyResponse';
 export * from './notificationChannelPolicyResponse4b96100';
+export * from './notificationChannelPolicyResponse4b96100Readiness';
+export * from './notificationChannelPolicyResponseReadiness';
 export * from './notificationChannelPolicyRule';
 export * from './notificationChannelPolicyRule4b96100';
 export * from './notificationChannelPolicyRule4b96100AllowedItem';

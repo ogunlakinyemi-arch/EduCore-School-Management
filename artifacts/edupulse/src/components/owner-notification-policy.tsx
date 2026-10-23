@@ -1,9 +1,10 @@
 import {useState} from 'react';
-import {useGetNotificationChannelPolicy,useUpdateNotificationChannelPolicy,useListOwnerSchoolDirectory} from '@workspace/api-client-react';
+import {useGetNotificationChannelPolicy,getGetNotificationChannelPolicyQueryKey,useUpdateNotificationChannelPolicy,useListOwnerSchoolDirectory} from '@workspace/api-client-react';
 import type {NotificationChannelPolicy} from '@workspace/api-client-react';
+import {OwnerPushBrowserStatus} from './owner-push-browser-status';
 const channels=['IN_APP','SMS','EMAIL','PUSH','TELEGRAM'] as const;
 export function OwnerNotificationPolicyControl(){
-  const query=useGetNotificationChannelPolicy();
+  const query=useGetNotificationChannelPolicy({query:{queryKey:getGetNotificationChannelPolicyQueryKey(),refetchInterval:30000}});
   const save=useUpdateNotificationChannelPolicy();
   const directory=useListOwnerSchoolDirectory({status:'all'});
   const [draft,setDraft]=useState<NotificationChannelPolicy|null>(null);
@@ -12,6 +13,13 @@ export function OwnerNotificationPolicyControl(){
   const [notice,setNotice]=useState('');
   const policy=draft??query.data?.policy;
   const availability:Partial<Record<typeof channels[number],boolean>>=query.data?.availability??{};
+  const channelState=(channel:typeof channels[number])=>{
+    if(channel==='SMS')return 'Disabled';
+    const status=query.data?.readiness?.[channel];
+    if(status?.configurationReady&&status.deliveryHold)return 'Configured — delivery held by launch safeguard';
+    if(status&&!status.configurationReady)return 'Configuration required — see channel blocker above';
+    return availability[channel]?'Delivery available':'Readiness details unavailable — refresh after the reporting update is published';
+  };
   // Channels allowed for at least one event; school overrides may only opt into these.
   const globalAllowed=new Set(policy?Object.values(policy.events).flatMap(rule=>rule.allowed):[]);
   const savedSchools=query.data?.policy.schools??{};
@@ -33,12 +41,24 @@ export function OwnerNotificationPolicyControl(){
     <h2 className="display-font text-xl font-bold">Owner notification controls</h2>
     <p className="text-sm">Permit supported channels by category and set school permissions. SMS is unavailable and disabled. Allowing a channel does not configure its provider, subscribe recipients or send a test message.</p>
     {query.isLoading?<p>Loading policy…</p>:query.isError?<p role="alert">Could not load policy. <button onClick={()=>void query.refetch()}>Retry</button></p>:policy&&<>
-      <p className="text-xs">Each channel has “Allowed” and “Default” controls. A channel can be allowed before its delivery is available (shown as “Permitted, not yet deliverable”), but it cannot be a default until delivery is available. Telegram delivery needs a ready bot configuration. Permission alone never activates delivery or sends messages.</p>
+      {query.data?.readiness&&<div className="space-y-3 rounded-xl border p-3" aria-label="External channel readiness">
+        <h3 className="font-bold">Configuration and delivery holds</h3>
+        {(['EMAIL','PUSH','TELEGRAM'] as const).map(channel=>{
+          const status=query.data?.readiness?.[channel];
+          return status&&<div key={channel} className="text-sm" data-testid={`readiness-${channel.toLowerCase()}`}>
+            <p className="font-semibold">{channel}: {status.configurationReady?'configuration ready':'configuration not ready'} · {status.deliveryReady?'delivery available':'delivery held'}</p>
+            <p>{status.configurationDetail}</p>
+            {status.deliveryHold&&<p>{status.deliveryHold}</p>}
+            {channel==='PUSH'&&<OwnerPushBrowserStatus/>}
+          </div>;
+        })}
+      </div>}
+      {!query.data?.readiness&&<p role="status">Detailed channel blockers are not available from this server revision. Publish the reporting update and refresh; unavailable delivery is not being treated as ready.</p>}
+      <p className="text-xs">Allowed is permission, not delivery readiness. A valid configuration held by the launch safeguard is shown separately from missing or invalid setup. Defaults still require delivery availability. No checkbox or browser-status check activates delivery or sends messages.</p>
       <div className="space-y-3">{Object.entries(policy.events).map(([event,rule])=><fieldset key={event} className="rounded-xl border p-3">
         <legend className="px-1 text-sm font-bold">{event.replaceAll('_',' ')}</legend>
         <div className="flex flex-wrap gap-4">{channels.map(channel=><div key={channel} className="text-xs">
-          <div className="font-semibold">{channel.replace('_',' ')}{!availability[channel]&&(rule.allowed.includes(channel)
-            ?' — Permitted, not yet deliverable':' — delivery unavailable')}</div>
+          <div className="font-semibold">{channel.replace('_',' ')} — {channelState(channel)}</div>
           <label className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} allowed`}
             disabled={save.isPending||channel==='SMS'} checked={rule.allowed.includes(channel)}
             onChange={e=>change(event,channel,'allowed',e.target.checked)}/>Allowed</label>

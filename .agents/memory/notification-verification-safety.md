@@ -3,6 +3,19 @@ name: Notification verification safety
 description: Development-only delivery evidence and the approval boundary for contacting recipients
 ---
 
+Unavailable-channel tests must explicitly isolate each channel's configuration,
+not inherit workspace credentials or assume selecting a mock Email provider
+also makes Push unavailable.
+
+**Why:** The workspace's usable VAPID configuration made an old unavailable-Push
+fixture permit a default channel; saved-setting presence metadata did not
+establish what the test process inherited. A fixture failure must not motivate
+changing real delivery authorization.
+
+**How to apply:** Stub transport selection and VAPID inputs independently in
+no-network tests and restore them afterward. Retain synthetic positive-configuration
+cases behind the launch hold; never inspect real key values to repair a fixture.
+
 Notification-channel integration is Development-only except the explicitly approved opt-in Production Telegram path; see [Telegram Production policy](telegram-production-policy.md). Configured provider credentials do not by themselves authorize real sends, real emergency broadcasts, or contact with real parents. Use isolated fixtures and no-network adapters until the user explicitly approves a controlled provider test.
 
 **Why:** The notification specification expressly forbids publishing, Production changes and unauthorized messages. A pre-existing SMS credential is not permission to send. Simulated acceptance, native receipt fixtures and browser mocks cannot establish physical delivery.

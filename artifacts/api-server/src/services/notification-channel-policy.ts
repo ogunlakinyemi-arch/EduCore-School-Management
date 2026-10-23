@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createEmailProvider } from "./communication-providers";
-import { validVapidConfiguration, vapidConfiguration } from "./web-push-configuration";
+import { validVapidConfiguration, vapidConfiguration, vapidConfigurationProblem } from "./web-push-configuration";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import {getTelegramHealth} from "./telegram-provider";
 import { notificationLaunchBoundary } from "./notification-launch-boundary";
@@ -101,10 +101,53 @@ export function notificationChannelConfiguration(env:NodeJS.ProcessEnv=process.e
 export function emailSetupDetail(env: NodeJS.ProcessEnv = process.env): string {
   const selected = env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase();
   if (!selected) return "Owner setup required: confirm the saved COMMUNICATION_EMAIL_PROVIDER setting selects Resend. Do not add a duplicate setting.";
+  if (["mock","dev","development","test"].includes(selected)) return "COMMUNICATION_EMAIL_PROVIDER selects a non-delivering mock/test provider.";
+  if (!["resend","http"].includes(selected)) return "COMMUNICATION_EMAIL_PROVIDER must select a supported provider: resend or http.";
   if (selected === "resend") {
     if (!env.EMAIL_FROM) return "Owner setup required: confirm the saved EMAIL_FROM setting uses the approved verified sender. Do not invent or overwrite the sender.";
     if (!env.RESEND_API_KEY) return "Owner setup required: the Resend credential is unavailable to this runtime. Configure it securely, never in chat.";
   }
-  if (!notificationChannelConfiguration(env).EMAIL) return "Email configuration is invalid or sending is restricted in this environment. Ask the Owner to review it securely.";
+  if (selected === "http") {
+    if (!env.COMMUNICATION_EMAIL_ENDPOINT) return "COMMUNICATION_EMAIL_ENDPOINT is missing for the selected HTTP Email provider.";
+    if (!env.COMMUNICATION_EMAIL_API_KEY) return "COMMUNICATION_EMAIL_API_KEY is missing for the selected HTTP Email provider.";
+  }
+  if (developmentPaymentNotificationsSuppressed(env)) return "Email sending is restricted by the Development notification safety lock.";
+  if (!notificationChannelConfiguration(env).EMAIL) return selected === "resend"
+    ? "EMAIL_FROM is invalid for the selected Resend provider. The saved sender must pass local format validation."
+    : "COMMUNICATION_EMAIL_ENDPOINT is invalid for the selected HTTP Email provider; it must be a valid HTTPS endpoint.";
   return "Email is configured for preference setup. Provider/domain authorization and recipient delivery are not verified by this local check.";
+}
+
+/** Owner-facing explanation only. No provider requests, DB reads or readiness mutation. */
+export function notificationChannelReadiness(env: NodeJS.ProcessEnv = process.env) {
+  const configured=notificationChannelConfiguration(env);
+  const launch=notificationLaunchBoundary(env);
+  const telegram=getTelegramHealth(env);
+  const delivery=notificationChannelAvailability(env);
+  const held=!env.EDUCORE_NOTIFICATION_LIVE_FROM
+    ?"External delivery is held: EDUCORE_NOTIFICATION_LIVE_FROM is not set. Existing TEST history remains isolated."
+    :"External delivery is held: the notification launch cutoff is invalid, in the future or before the retained TEST boundary. Existing TEST history remains isolated.";
+  const pushMissing=["VAPID_PUBLIC_KEY","VAPID_PRIVATE_KEY","VAPID_SUBJECT"].filter(key=>!env[key]);
+  const pushProblem=vapidConfigurationProblem(vapidConfiguration(env));
+  const details:Record<PolicyChannel,string>={
+    IN_APP:"In-App is available under existing user and school permissions.",
+    SMS:"SMS is disabled.",
+    EMAIL:emailSetupDetail(env),
+    PUSH:pushMissing.length
+      ?`Push configuration is incomplete: ${pushMissing.join(", ")}.`
+      :configured.PUSH
+        ?"Push configuration passes local validation. A recipient still needs a supported browser, permission and an active subscription; receipt is not verified."
+        :developmentPaymentNotificationsSuppressed(env)
+          ?"Push sending is restricted by the Development notification safety lock."
+          :`Push configuration validation failed: ${pushProblem}`,
+    TELEGRAM:`Telegram runtime health: ${telegram.reason}. Bot readiness does not override the launch hold, parent consent or school permissions.`,
+  };
+  return Object.fromEntries(policyChannels.map(channel=>[channel,{
+    configurationReady:configured[channel],
+    deliveryReady:delivery[channel],
+    configurationDetail:details[channel],
+    deliveryHold:channel!=="IN_APP"&&channel!=="SMS"&&!launch.allowed?held:null,
+  }])) as Record<PolicyChannel,{
+    configurationReady:boolean;deliveryReady:boolean;configurationDetail:string;deliveryHold:string|null;
+  }>;
 }

@@ -7,8 +7,10 @@
  */
 import type { NotificationChannelAvailability4b96100 } from './notificationChannelAvailability4b96100';
 import type { NotificationChannelPolicy4b96100 } from './notificationChannelPolicy4b96100';
+import type { NotificationChannelPolicyResponse4b96100Readiness } from './notificationChannelPolicyResponse4b96100Readiness';
 
 export interface NotificationChannelPolicyResponse4b96100 {
   policy: NotificationChannelPolicy4b96100;
   availability: NotificationChannelAvailability4b96100;
+  readiness?: NotificationChannelPolicyResponse4b96100Readiness;
 }

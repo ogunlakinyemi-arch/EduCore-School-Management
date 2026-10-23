@@ -31,6 +31,18 @@ the launch guard. Permit explicit preference/subscription preparation only when
 local configuration is valid, report the hold truthfully, and never equate setup,
 credential presence, provider acceptance or browser registration with receipt.
 
+Owner category rows must distinguish a valid configuration held by the launch
+safeguard from missing/invalid configuration. Do not label both states generically
+as “Permitted, not yet deliverable.”
+
+**Why:** The Owner repeatedly requested removal of this misleading status without
+authorizing cutoff changes or real sending; reporting readiness is not permission
+to bypass the launch guard.
+
+**How to apply:** Render configuration and delivery holds separately in the rows,
+not only in a summary. Keep browser subscription diagnostics scoped to the current
+device; an Owner's absent subscription must not disable other recipients.
+
 Production email screenshot evidence conflicts with automated presence metadata.
 
 **Why:** A visible configuration entry and a false presence result do not

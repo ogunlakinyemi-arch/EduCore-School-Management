@@ -10,6 +10,7 @@ const mocks=vi.hoisted(()=>({
 vi.mock('@workspace/api-client-react',()=>({
   useListOwnerSchoolDirectory:mocks.directory,
   useGetNotificationChannelPolicy:mocks.policy,
+  getGetNotificationChannelPolicyQueryKey:()=>['owner-policy'],
   useUpdateNotificationChannelPolicy:mocks.save,
 }));
 import {OwnerNotificationPolicyControl} from './owner-notification-policy';
@@ -43,6 +44,26 @@ beforeEach(()=>{
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();});
 
 describe('Owner school permission selector',()=>{
+  it('shows per-channel configuration and launch holds without changing policy or enabling defaults',async()=>{
+    const readiness=Object.fromEntries(['EMAIL','PUSH','TELEGRAM'].map(channel=>[channel,{
+      configurationReady:channel!=='EMAIL',deliveryReady:false,
+      configurationDetail:channel==='EMAIL'?'Owner setup required: COMMUNICATION_EMAIL_PROVIDER.':`${channel} configuration passes local validation.`,
+      deliveryHold:'External delivery is held: EDUCORE_NOTIFICATION_LIVE_FROM is not set. Existing TEST history remains isolated.',
+    }]));
+    mocks.policy.mockReturnValue({data:{policy,availability:{IN_APP:true,SMS:false,EMAIL:false,PUSH:false,TELEGRAM:false},readiness},refetch:mocks.refetch});
+    await render();
+    expect(host.textContent).toContain('EMAIL: configuration not ready');
+    expect(host.textContent).toContain('PUSH: configuration ready');
+    expect(host.textContent).toContain('TELEGRAM: configuration ready');
+    expect(host.textContent).toContain('EDUCORE_NOTIFICATION_LIVE_FROM is not set');
+    expect(host.textContent).toContain('Existing TEST history remains isolated');
+    expect(host.textContent).toContain('PUSH — Configured — delivery held by launch safeguard');
+    expect(host.textContent).toContain('TELEGRAM — Configured — delivery held by launch safeguard');
+    expect(host.textContent).not.toContain('Permitted, not yet deliverable');
+    expect((host.querySelector('[aria-label="FINANCE EMAIL default"]') as HTMLInputElement).disabled).toBe(true);
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.policy).toHaveBeenCalledWith({query:{queryKey:['owner-policy'],refetchInterval:30000}});
+  });
   it('uses the authenticated Owner directory and shows school names, requiring a selection',async()=>{
     await render();
     expect(mocks.directory).toHaveBeenCalledWith({status:'all'});
@@ -127,12 +148,12 @@ describe('Owner school permission selector',()=>{
     const telegramDefault=host.querySelector<HTMLInputElement>('input[aria-label="FINANCE TELEGRAM default"]')!;
     expect(telegramAllowed.disabled).toBe(false);
     expect(telegramDefault.disabled).toBe(true);
-    expect(host.textContent).toContain('TELEGRAM — delivery unavailable');
+    expect(host.textContent).toContain('TELEGRAM — Readiness details unavailable');
 
     await click(telegramAllowed);
     expect(telegramAllowed.checked).toBe(true);
     expect(telegramDefault.disabled).toBe(true);
-    expect(host.textContent).toContain('TELEGRAM — Permitted, not yet deliverable');
+    expect(host.textContent).toContain('TELEGRAM — Readiness details unavailable');
 
     await change(select(),'9');
     await click(button('Add override'));

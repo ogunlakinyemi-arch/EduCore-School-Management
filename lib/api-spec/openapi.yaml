@@ -9993,6 +9993,16 @@ components:
       properties:
         policy: { $ref: "#/components/schemas/NotificationChannelPolicy" }
         availability: { $ref: "#/components/schemas/NotificationChannelAvailability" }
+        readiness:
+          type: object
+          additionalProperties:
+            type: object
+            required: [configurationReady, deliveryReady, configurationDetail, deliveryHold]
+            properties:
+              configurationReady: {type: boolean}
+              deliveryReady: {type: boolean}
+              configurationDetail: {type: string}
+              deliveryHold: {type: [string, "null"]}
     ActivationSchool:
       type: object
       required: [id, name, code, city, state, logo]
