@@ -1,4 +1,4 @@
-# Production Telegram and browser push: activation handoff
+# Production notifications: final readiness handoff
 
 For email prerequisites, unified channel availability and the SMS-disabled policy,
 see [Supported notification channels](notification-supported-channels.md).
@@ -8,6 +8,28 @@ see [Supported notification channels](notification-supported-channels.md).
 **Nothing was activated by this review.** No secrets/configuration were changed,
 services restarted, release published, provider contacted or notification sent.
 Flutterwave LIVE is unrelated and remains untouched.
+
+### Final permitted review result
+
+Production configuration presence and deployment metadata were rechecked.
+Source review is complete within the no-database/no-provider boundary. No
+additional code fix was needed; the earlier 96 focused passing tests and
+shared/frontend type checks are reused, not rerun. The known unrelated API
+attendance-test type error remains. Neither the published source revision nor
+live recipient delivery was verified.
+
+| Channel | True readiness and remaining Owner step |
+| --- | --- |
+| IN-APP | Authenticated database-backed inbox implemented; live storage/access not retested because application DB inspection is prohibited. |
+| EMAIL | Real Resend adapter implemented, but Production selection and sender are missing. After approval set `COMMUNICATION_EMAIL_PROVIDER=resend` and `EMAIL_FROM` to the approved Resend-verified sender. Preserve the existing key. |
+| Browser PUSH | All VAPID settings present; local pair/subject validation exists and returns only a boolean. Actual Production values and browser subscriptions remain unverified. Do not rotate keys without evidence. |
+| TELEGRAM | Token/encryption secret present, but Production opt-in absent. Complete trusted credential/storage/bot ownership and hosting checks before approved enablement; retain parent-owned chat consent. |
+| SMS | Unavailable in prepared source policy/capability/dispatch; leave disabled. No claim is made about the revision currently loaded in Production. |
+
+No secrets are accessible through the current presence-only tooling. Therefore
+local Production credential validation cannot be completed in this session.
+Development values are not substitutes. Existing source validation is a safe
+mechanism for a later approved Production runtime, not proof it has run there.
 
 Production-scoped configuration inspection (including inherited shared settings)
 returned the following. Development secret presence was not used as evidence.
@@ -21,26 +43,32 @@ returned the following. Development secret presence was not used as evidence.
 | `VAPID_PUBLIC_KEY` | Present | Existence only |
 | `VAPID_PRIVATE_KEY` | Present | Existence only |
 | `VAPID_SUBJECT` | Present | Existence only |
+| `RESEND_API_KEY` | Present | Existence only; API access/domain authority unverified |
+| `COMMUNICATION_EMAIL_PROVIDER` | Absent | No real email adapter explicitly selected |
+| `EMAIL_FROM` | Absent | No notification sender configured |
 
 The secret-inspection interface returns no secret values and offers no
 Production-side validation executor. Consequently token syntax, encryption-secret
 length/quality and stability, VAPID syntax/subject and key-pair agreement are
 **unverified**, not passed and not known-invalid. Do not substitute Development
 values or read an authenticated push endpoint to extract keys into a report.
-There are no known missing credential keys and no established invalid credentials.
+Telegram/VAPID credential keys are present; email selection and sender are missing.
+No credential has been established as invalid.
 
 Deployment metadata reports a public, successfully built **Autoscale** deployment:
 `https://educore.yetenia.com`, with the additional published address
 `https://edu-pulse-school-management--ogunlakinyemi.replit.app`.
 This does not prove the published bundle matches the current source.
-Current source differs from freshly verified GitHub main; retain local fixes.
+The earlier source comparison found differences from GitHub main; that comparison
+was not repeated in this documentation-only review.
 
 ## Shortest safe sequence
 
-1. Obtain a **read-only Production readiness review** first. No provider calls or
-   sends are needed for the local credential checks described below. Separately
-   inspect Production schema, current policies, active subscriptions/consent and
-   queued/uncertain deliveries. Do not migrate, cancel or replay records without
+1. The permitted source/configuration-presence review is complete. Obtain separate
+   approval and a trusted execution mechanism for Production-local credential
+   validation and application schema/policy/subscription/backlog inspection.
+   These were not authorized or performed here. No provider calls or sends are
+   needed for local checks. Do not migrate, cancel or replay records without
    approval. Presence-only results are insufficient for activation.
 2. Resolve worker hosting: the API currently polls Telegram every three seconds
    and runs its communication dispatcher every fifteen seconds using in-process
@@ -52,6 +80,9 @@ Current source differs from freshly verified GitHub main; retain local fixes.
    For Telegram the missing opt-in is
    `EDUCORE_PRODUCTION_TELEGRAM_ENABLED=true`. Set the exact published HTTPS
    origin allowlist as described below. No new push enablement flag exists.
+   For email, preserve `RESEND_API_KEY` and add the missing provider selection and
+   approved sender under **Publishing → Adjust settings → Production app secrets**.
+   Do not invent a sender or infer domain verification from key presence.
 4. Only after setup/backlog review and explicit configuration/release approval,
    save the approved Production settings and republish. **This is not a
    send-free release:** startup workers can process eligible existing records
@@ -62,6 +93,22 @@ Current source differs from freshly verified GitHub main; retain local fixes.
 5. After a successful approved release, separately authorize one controlled
    end-to-end test per channel with a consenting recipient. Registration, provider
    acceptance and observed device receipt are distinct results.
+
+### Backlog risk — source evidence only
+
+The normal server invokes its communication dispatcher at startup, then every
+15 seconds; the opted-in Telegram worker starts immediately and ticks every
+three seconds. The ordinary dispatcher does not restrict itself to newly created
+notification IDs: it claims due `QUEUED`/`FAILED` records below the attempt limit,
+excluding `PROVIDER_OUTCOME_UNKNOWN`, in due/creation order. That claim has no
+general creation-age cutoff. Current recipient, Owner/school policy and dispatch
+guards still apply, but do not make a release inherently send-free. Restoring
+valid email/push configuration or enabling Telegram may release older eligible
+work. Unknown outcomes stay held for reconciliation, not automatic replay.
+
+No application DB was accessed; backlog size, age, actual policies, consents,
+subscriptions and existing Production activity are unknown. Do not approve
+unrestricted release on the assumption that the queue is empty.
 
 ## Telegram checklist and exact Owner steps
 
@@ -171,6 +218,8 @@ unknown; this review neither enabled nor disabled it. Telegram's opt-in is absen
 in the inspected configuration; the running process's loaded revision/settings
 were not inspected.
 
-Next single action: approve the **read-only Production readiness review** covering
-trusted local credential validation, storage/policy/backlog and always-on hosting.
+Next single action: approve a separately scoped **trusted Production preflight**
+covering local credential validation, storage/policy/backlog inspection and the
+always-on hosting decision. This requires permissions/tools beyond this review;
+it does not authorize provider calls, configuration changes, sends or publication.
 Approve exact configuration changes and publication only after its results.
