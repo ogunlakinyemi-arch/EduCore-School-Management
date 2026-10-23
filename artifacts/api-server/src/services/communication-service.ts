@@ -11,6 +11,7 @@ import { duplicateCampaignDelivery } from "./communication-external-identity";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import {telegramRecipient} from "./telegram-links";
 import {createTelegramProvider,getTelegramHealth} from "./telegram-provider";
+import { notificationLaunchBoundary, notificationLaunchSql } from "./notification-launch-boundary";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -668,12 +669,13 @@ async function claimCommunicationDeliveries(
   now: Date,
   selectedChannels: Array<"SMS"|"EMAIL"|"PUSH"|"TELEGRAM">,
   notificationIds?: number[],
+  liveFrom: string | null = null,
 ): Promise<ClaimedDelivery[]> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     await client.query(
-      `UPDATE communication_deliveries
+      `UPDATE communication_deliveries AS d
        SET status = 'FAILED',
            error_code = 'PROVIDER_OUTCOME_UNKNOWN',
            last_error = 'Worker stopped while provider acceptance was unknown; manual reconciliation is required.',
@@ -681,16 +683,18 @@ async function claimCommunicationDeliveries(
            updated_at = $1
        WHERE channel = ANY($2::text[])
           AND ($3::int[] IS NULL OR notification_id=ANY($3::int[]))
+           AND ${notificationLaunchSql("$4")}
           AND status = 'PROCESSING'
           AND COALESCE(last_attempt_at, updated_at, created_at) < $1::timestamptz - INTERVAL '15 minutes'`,
-      [normalizedDate(now),selectedChannels,notificationIds??null],
+      [normalizedDate(now),selectedChannels,notificationIds??null,liveFrom],
     );
     const claimed = await client.query<ClaimedDelivery>(
       `WITH due AS (
-         SELECT id
-         FROM communication_deliveries
+          SELECT d.id
+          FROM communication_deliveries d
          WHERE channel = ANY($4::text[])
             AND ($5::int[] IS NULL OR notification_id=ANY($5::int[]))
+             AND ${notificationLaunchSql("$6")}
            AND attempts < $2
            AND next_attempt_at <= $3
             AND status IN ('QUEUED','FAILED')
@@ -709,7 +713,7 @@ async function claimCommunicationDeliveries(
        FROM due
        WHERE d.id = due.id
        RETURNING d.id, d.channel, d.attempts`,
-      [batchLimit, maxAttempts, normalizedDate(now),selectedChannels,notificationIds??null],
+      [batchLimit, maxAttempts, normalizedDate(now),selectedChannels,notificationIds??null,liveFrom],
     );
     await client.query("COMMIT");
     return claimed.rows;
@@ -728,6 +732,7 @@ async function claimCommunicationDeliveries(
 async function loadDispatchRecord(
   pool: CommunicationDispatchPool,
   deliveryId: number | string,
+  liveFrom: string | null,
 ): Promise<DispatchRecord | null> {
   const result = await pool.query<DispatchRecord>(
     `SELECT
@@ -862,8 +867,9 @@ async function loadDispatchRecord(
      LEFT JOIN schools s ON s.id = n.school_id
      LEFT JOIN parents p
        ON p.user_id = u.id AND p.school_id = n.school_id AND UPPER(p.status) = 'ACTIVE'
-     WHERE d.id = $1 AND d.status = 'PROCESSING'`,
-    [deliveryId],
+     WHERE d.id = $1 AND d.status = 'PROCESSING'
+       AND ${notificationLaunchSql("$2")}`,
+    [deliveryId, liveFrom],
   );
   return result.rows[0] ?? null;
 }
@@ -952,6 +958,13 @@ export async function dispatchCommunicationDeliveries(
   if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 20) {
     throw new TypeError("maxAttempts must be an integer from 1 to 20.");
   }
+  const now = options.now ?? (() => new Date());
+  const launch = notificationLaunchBoundary(process.env, now());
+  // Runs before provider construction, claims or stale-processing updates.
+  // Injected adapters/manual scopes cannot bypass the Production launch hold.
+  if (!launch.allowed) {
+    return { claimed: 0, accepted: 0, simulated: 0, delivered: 0, failed: 0, skipped: 0 };
+  }
   const providers = options.providers ?? createCommunicationProviders(
     options.allowConfiguredProviders === true ? process.env : {},
   );
@@ -960,7 +973,6 @@ export async function dispatchCommunicationDeliveries(
       && process.env.EDUCORE_DEVELOPMENT_PUSH_ENABLED === "true") ? new WebPushProvider({
     publicKey: process.env.VAPID_PUBLIC_KEY ?? "", privateKey: process.env.VAPID_PRIVATE_KEY ?? "", subject: process.env.VAPID_SUBJECT ?? "",
   }) : undefined);
-  const now = options.now ?? (() => new Date());
   const telegramProvider=providers.telegram??(options.allowConfiguredProviders?createTelegramProvider():undefined);
   const selectedChannels=options.channels??["SMS","EMAIL","PUSH","TELEGRAM"];
   if(!selectedChannels.length||selectedChannels.some(c=>!["SMS","EMAIL","PUSH","TELEGRAM"].includes(c)))
@@ -974,7 +986,7 @@ export async function dispatchCommunicationDeliveries(
     &&(channel!=="TELEGRAM"||!!telegramProvider)
     &&(channel!=="PUSH"||!!pushProvider&&(!("configured" in pushProvider)||pushProvider.configured)));
   const claimed = availableChannels.length
-    ? await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),availableChannels,options.notificationIds) : [];
+    ? await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),availableChannels,options.notificationIds,launch.liveFrom) : [];
   const summary: DispatchCommunicationResult = {
     claimed: claimed.length,
     accepted: 0,
@@ -985,7 +997,7 @@ export async function dispatchCommunicationDeliveries(
   };
 
   for (const delivery of claimed) {
-    const record = await loadDispatchRecord(pool, delivery.id);
+    const record = await loadDispatchRecord(pool, delivery.id, launch.liveFrom);
     if (!record || record.channel !== delivery.channel || record.userStatus.toUpperCase() !== "ACTIVE" || !record.schoolAuthorized) {
       await pool.query(
         `UPDATE communication_deliveries

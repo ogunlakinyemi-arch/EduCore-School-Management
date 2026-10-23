@@ -81,6 +81,7 @@ function queueClient(options: {
 }
 
 function dispatchPool(options: {
+  channel?: "SMS" | "EMAIL";
   claimed?: Array<{ id: number; channel: "SMS" | "EMAIL"; attempts: number }>;
   record?: Record<string, unknown> | null;
   policy?: ReturnType<typeof defaultNotificationPolicy>;
@@ -93,7 +94,7 @@ function dispatchPool(options: {
       calls.push({ sql, values });
       if (sql === "COMMIT") committed = true;
       if (sql.includes("RETURNING d.id, d.channel, d.attempts")) {
-        return { rows: (options.claimed ?? [{ id: 42, channel: "SMS", attempts: 1 }]) as Row[] };
+        return { rows: (options.claimed ?? [{ id: 42, channel: options.channel ?? "SMS", attempts: 1 }]) as Row[] };
       }
       return { rows: [] as Row[] };
     }),
@@ -111,7 +112,7 @@ function dispatchPool(options: {
             ? []
             : [options.record ?? {
               id: 42,
-              channel: "SMS",
+              channel: options.channel ?? "SMS",
               notificationId: 33,
               recipientUserId: 17,
               schoolId: 9,
@@ -461,18 +462,18 @@ describe("communication template rendering", () => {
 
 describe("communication delivery dispatcher", () => {
   it("commits delivery claims before invoking the no-network development provider", async () => {
-    const { pool, calls, committed } = dispatchPool();
+    const { pool, calls, committed } = dispatchPool({ channel: "EMAIL" });
     const send = vi.fn(async () => {
       expect(committed()).toBe(true);
       return {
-        provider: "development-sms",
-        channel: "sms" as const,
+        provider: "development-email",
+        channel: "email" as const,
         status: "SIMULATED" as const,
         accepted: false,
         delivered: false,
       };
     });
-    const providers = testProviders(send);
+    const providers = testProviders(send, send);
     const summary = await dispatchCommunicationDeliveries(pool, 20, {
       providers,
       now: () => new Date("2026-08-01T10:00:00.000Z"),
@@ -489,7 +490,7 @@ describe("communication delivery dispatcher", () => {
     const update = calls.find(call => call.sql.includes("UPDATE communication_deliveries") && call.sql.includes("provider_message_id"));
     expect(update?.values?.[1]).toBe("SENT");
     expect(update?.values?.[8]).toBe("SIMULATED");
-    expect(update?.values?.[9]).toContain("development-sms");
+    expect(update?.values?.[9]).toContain("development-email");
     expect(update?.values?.[9]).toContain("no external message");
     expect(update?.values?.[3]).toBe(false);
     expect(update?.values?.[6]).toBe(false);
@@ -497,15 +498,16 @@ describe("communication delivery dispatcher", () => {
   });
 
   it("records provider acknowledgement as sent, never as delivered", async () => {
-    const { pool, calls } = dispatchPool();
-    const providers = testProviders(async () => ({
-      provider: "termii",
-      channel: "sms",
+    const { pool, calls } = dispatchPool({ channel: "EMAIL" });
+    const send = async (): Promise<ProviderSendResult> => ({
+      provider: "resend",
+      channel: "email",
       status: "ACCEPTED",
       accepted: true,
       delivered: false,
       providerMessageId: "safe-id-1",
-    }));
+    });
+    const providers = testProviders(send, send);
 
     const summary = await dispatchCommunicationDeliveries(pool, 5, { providers });
 
@@ -618,10 +620,10 @@ describe("communication delivery dispatcher", () => {
   });
 
   it("applies exponential retry backoff without exposing provider error details", async () => {
-    const { pool, calls } = dispatchPool();
+    const { pool, calls } = dispatchPool({ channel: "EMAIL" });
     const send = vi.fn(async () => ({
-      provider: "termii",
-      channel: "sms" as const,
+      provider: "resend",
+      channel: "email" as const,
       status: "FAILED" as const,
       accepted: false,
       delivered: false,
@@ -629,7 +631,7 @@ describe("communication delivery dispatcher", () => {
     }));
 
     const summary = await dispatchCommunicationDeliveries(pool, 5, {
-      providers: testProviders(send),
+      providers: testProviders(send, send),
       now: () => new Date("2026-08-01T10:00:00.000Z"),
     });
 
@@ -656,18 +658,19 @@ describe("communication delivery dispatcher", () => {
     expect((await dispatchCommunicationDeliveries(pool,5,{providers:testProviders(send)})).skipped).toBe(1);
     expect(send).not.toHaveBeenCalled();
   });
-  it("does not schedule retries for an invalid Termii recipient", async () => {
+  it("does not schedule retries for an invalid email recipient", async () => {
     const { pool, calls } = dispatchPool({
+      channel: "EMAIL",
       record: {
-        id: 42, channel: "SMS", notificationId: 33, recipientUserId: 17, schoolId: 9,
+        id: 42, channel: "EMAIL", notificationId: 33, recipientUserId: 17, schoolId: 9,
         subjectStudentId: null, subjectClassId: null, category: "ATTENDANCE",
         eventKey: "campaign-9-1-user-17", subject: "Update", body: "Message",
-        email: null, phone: "not-a-phone", schoolAuthorized: true, userStatus: "ACTIVE",
+        email: "not-an-email", phone: null, schoolAuthorized: true, userStatus: "ACTIVE",
       },
     });
     const send = vi.fn(async () => ({
-      provider: "termii",
-      channel: "sms" as const,
+      provider: "resend",
+      channel: "email" as const,
       status: "FAILED" as const,
       accepted: false,
       delivered: false,
@@ -675,14 +678,15 @@ describe("communication delivery dispatcher", () => {
     }));
 
     const summary = await dispatchCommunicationDeliveries(pool, 5, {
-      providers: testProviders(send),
+      providers: testProviders(send, send),
       now: () => new Date("2026-08-01T10:00:00.000Z"),
     });
 
     expect(send).toHaveBeenCalledWith({
-      to: "not-a-phone",
+      to: "not-an-email",
+      subject: "Update",
       body: "Message",
-      idempotencyKey: "communication-33-sms",
+      idempotencyKey: "communication-33-email",
     });
     expect(summary.failed).toBe(1);
     const update = calls.find(call => call.sql.includes("provider_message_id"));
@@ -693,15 +697,16 @@ describe("communication delivery dispatcher", () => {
   });
 
   it("does not retry ambiguous network outcomes that may have been accepted", async () => {
-    const { pool, calls } = dispatchPool();
-    const providers = testProviders(async () => ({
+    const { pool, calls } = dispatchPool({ channel: "EMAIL" });
+    const send = async (): Promise<ProviderSendResult> => ({
       provider: "http-email",
-      channel: "sms",
+      channel: "email",
       status: "FAILED",
       accepted: false,
       delivered: false,
       failure: { category: "TIMEOUT", retryable: true },
-    }));
+    });
+    const providers = testProviders(send, send);
 
     const summary = await dispatchCommunicationDeliveries(pool, 5, {
       providers,

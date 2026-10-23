@@ -1,5 +1,10 @@
 # Production notifications: final readiness handoff
 
+> **Current source preparation:** see [First real-school launch](notification-first-school-launch.md).
+> A new fail-closed Production external-delivery boundary is required; the dated
+> review below predates it. Email screenshot and metadata evidence conflict:
+> provider/sender absence is not established. Do not overwrite settings.
+
 For email prerequisites, unified channel availability and the SMS-disabled policy,
 see [Supported notification channels](notification-supported-channels.md).
 
@@ -21,7 +26,7 @@ live recipient delivery was verified.
 | Channel | True readiness and remaining Owner step |
 | --- | --- |
 | IN-APP | Authenticated database-backed inbox implemented; live storage/access not retested because application DB inspection is prohibited. |
-| EMAIL | Real Resend adapter implemented, but Production selection and sender are missing. After approval set `COMMUNICATION_EMAIL_PROVIDER=resend` and `EMAIL_FROM` to the approved Resend-verified sender. Preserve the existing key. |
+| EMAIL | Real Resend adapter implemented. Screenshot and presence-tool evidence conflict about provider/sender configuration. Confirm exact saved keys before proposing any change; preserve the existing key. |
 | Browser PUSH | All VAPID settings present; local pair/subject validation exists and returns only a boolean. Actual Production values and browser subscriptions remain unverified. Do not rotate keys without evidence. |
 | TELEGRAM | Token/encryption secret present, but Production opt-in absent. Complete trusted credential/storage/bot ownership and hosting checks before approved enablement; retain parent-owned chat consent. |
 | SMS | Unavailable in prepared source policy/capability/dispatch; leave disabled. No claim is made about the revision currently loaded in Production. |
@@ -44,15 +49,16 @@ returned the following. Development secret presence was not used as evidence.
 | `VAPID_PRIVATE_KEY` | Present | Existence only |
 | `VAPID_SUBJECT` | Present | Existence only |
 | `RESEND_API_KEY` | Present | Existence only; API access/domain authority unverified |
-| `COMMUNICATION_EMAIL_PROVIDER` | Absent | No real email adapter explicitly selected |
-| `EMAIL_FROM` | Absent | No notification sender configured |
+| `COMMUNICATION_EMAIL_PROVIDER` | Not reported by tool | Later screenshot evidence conflicts; exact saved key unresolved |
+| `EMAIL_FROM` | Not reported by tool | Later screenshot evidence conflicts; do not overwrite sender |
 
 The secret-inspection interface returns no secret values and offers no
 Production-side validation executor. Consequently token syntax, encryption-secret
 length/quality and stability, VAPID syntax/subject and key-pair agreement are
 **unverified**, not passed and not known-invalid. Do not substitute Development
 values or read an authenticated push endpoint to extract keys into a report.
-Telegram/VAPID credential keys are present; email selection and sender are missing.
+Telegram/VAPID credential keys are present; email selection and sender remain
+unresolved because subsequent screenshot evidence conflicts with this inventory.
 No credential has been established as invalid.
 
 Deployment metadata reports a public, successfully built **Autoscale** deployment:
@@ -80,8 +86,9 @@ was not repeated in this documentation-only review.
    For Telegram the missing opt-in is
    `EDUCORE_PRODUCTION_TELEGRAM_ENABLED=true`. Set the exact published HTTPS
    origin allowlist as described below. No new push enablement flag exists.
-   For email, preserve `RESEND_API_KEY` and add the missing provider selection and
-   approved sender under **Publishing → Adjust settings → Production app secrets**.
+   For email, preserve `RESEND_API_KEY` and reconcile screenshot/tool metadata
+   before proposing provider/sender changes under **Publishing → Adjust settings
+   → Production app secrets**. Do not add duplicates or overwrite existing settings.
    Do not invent a sender or infer domain verification from key presence.
 4. Only after setup/backlog review and explicit configuration/release approval,
    save the approved Production settings and republish. **This is not a

@@ -3,6 +3,7 @@ import { createEmailProvider } from "./communication-providers";
 import { validVapidConfiguration, vapidConfiguration } from "./web-push-configuration";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import {getTelegramHealth} from "./telegram-provider";
+import { notificationLaunchBoundary } from "./notification-launch-boundary";
 export const policyEvents = ["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","NFC_REMINDER","SUBSCRIPTION",
   "EMERGENCY","ATTENDANCE","ACADEMIC","ASSIGNMENT","FINANCE","PAYMENT","ANNOUNCEMENT","ACCOUNT","SYSTEM","PARTNER","SECURITY"] as const;
 export const policyChannels = ["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const;
@@ -77,6 +78,9 @@ export function allowedNotificationChannels(policy:NotificationChannelPolicy,eve
   return configured.allowed.filter(c=>c!=="SMS"&&(!school||school.allowed.includes(c)));
 }
 export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.env):Record<PolicyChannel,boolean>{
+  if (!notificationLaunchBoundary(env).allowed) {
+    return { IN_APP: true, SMS: false, EMAIL: false, PUSH: false, TELEGRAM: false };
+  }
   const emailReady=()=>{
     if(developmentPaymentNotificationsSuppressed(env))return false;
     const selected=env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase();

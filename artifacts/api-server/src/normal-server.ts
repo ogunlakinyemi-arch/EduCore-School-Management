@@ -2,7 +2,7 @@ import app from "./app";
 import {startTelegramWorker} from "./services/telegram-worker";
 import { pool, setDatabaseDiagnosticReporter } from "@workspace/db";
 import { logger } from "./lib/logger";
-import { createGuardedBackgroundTask } from "./lib/background-task";
+import { createIndependentBackgroundTasks } from "./lib/background-task";
 import { dispatchCommunicationDeliveries } from "./services/communication-service";
 import { createDevelopmentCommunicationProviders } from "./services/communication-providers";
 import { reconcileFinanceCommunicationIntents } from "./routes/finance-communication-service";
@@ -46,19 +46,26 @@ app.listen(port, (err) => {
     return;
   }
   let lastSubscriptionEvaluation = 0;
-  const dispatch = createGuardedBackgroundTask("Communication delivery worker", async () => {
-    if (Date.now() - lastSubscriptionEvaluation >= 60_000) {
-      await evaluateSubscriptionSchools();
-      await assessDevelopmentSchools(queueStudentAttendanceCommunication);
-      lastSubscriptionEvaluation = Date.now();
-    }
-    await reconcileFinanceCommunicationIntents(pool, 50);
-    await dispatchCommunicationDeliveries(pool, 50, {
-      allowConfiguredProviders: process.env.NODE_ENV === "production",
-      providers: process.env.NODE_ENV === "production" ? undefined :
-        createDevelopmentCommunicationProviders(process.env),
-    });
-  }, logger);
+  const dispatch = createIndependentBackgroundTasks([{
+    name: "Communication maintenance worker",
+    run: async () => {
+      if (Date.now() - lastSubscriptionEvaluation >= 60_000) {
+        await evaluateSubscriptionSchools();
+        await assessDevelopmentSchools(queueStudentAttendanceCommunication);
+        lastSubscriptionEvaluation = Date.now();
+      }
+      await reconcileFinanceCommunicationIntents(pool, 50);
+    },
+  }, {
+    name: "Communication delivery worker",
+    run: async () => {
+      await dispatchCommunicationDeliveries(pool, 50, {
+        allowConfiguredProviders: process.env.NODE_ENV === "production",
+        providers: process.env.NODE_ENV === "production" ? undefined :
+          createDevelopmentCommunicationProviders(process.env),
+      });
+    },
+  }], logger);
   void dispatch();
   setInterval(() => void dispatch(), 15_000).unref();
 });

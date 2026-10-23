@@ -1,5 +1,11 @@
 # Supported notification channels — Production setup
 
+> **First-school launch update:** [launch boundary and current gates](notification-first-school-launch.md).
+> Production external dispatch now requires an explicit non-secret launch cutoff.
+> Nothing is enabled by this source change. The email presence inventory below is
+> historical and conflicts with later screenshot evidence; do not overwrite
+> provider/sender settings until exact saved keys are confirmed.
+
 ## Source corrections, not activation
 
 The Owner requests IN-APP, EMAIL, PUSH and TELEGRAM across notification categories,
@@ -35,7 +41,7 @@ Development credentials. Secret values were not returned or inspected.
 | Channel | Production evidence | Remaining steps |
 | --- | --- | --- |
 | IN-APP | Database-backed authenticated inbox exists in source | Existing function; actual published storage was not retested here |
-| EMAIL | `RESEND_API_KEY` present; `COMMUNICATION_EMAIL_PROVIDER` and `EMAIL_FROM` absent | Explicitly select Resend and configure the verified sender |
+| EMAIL | `RESEND_API_KEY` present; provider/sender screenshot and tool metadata conflict | Confirm full saved keys and approved verified sender before any change |
 | PUSH | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` present | Production values/pair remain unverified; release local validator and prepared worker fix after approval |
 | TELEGRAM | `TELEGRAM_BOT_TOKEN`, `SESSION_SECRET` present; `EDUCORE_PRODUCTION_TELEGRAM_ENABLED` absent | Reviewed opt-in, origin, storage, bot ownership and always-on hosting |
 | SMS | Deliberately not operational | Leave disabled; no setup or sending authorized |
@@ -45,7 +51,8 @@ credentials, sender verification, encryption compatibility, delivery or receipt.
 
 ## Exact email setup
 
-After reviewing backlog, policies and the precise changes with the Owner:
+Only if exact saved configuration confirms a change is needed, and after reviewing
+the launch cutoff, backlog, policies and precise changes with the Owner:
 
 1. In **Publishing → Adjust settings → Production app secrets**, preserve the
    existing `RESEND_API_KEY`. Add `COMMUNICATION_EMAIL_PROVIDER=resend`.
@@ -106,7 +113,8 @@ Preserve tenant/audience rechecks, durable deduplication, rate limits, dispatch
 claims, uncertain-send holds and audit records. Approve a single controlled
 recipient test separately only after all setup checks pass.
 
-**Current result:** source prepared only. Email and Telegram still have the
-specific missing Production settings listed above. Push credentials exist but
-Production readiness is unverified. SMS remains intentionally disabled. No
-channel was activated or physically delivery-tested in this work.
+**Current result:** source prepared only. The new external launch boundary is
+required. Email provider/sender metadata remain unresolved; Telegram's Production
+opt-in was not reported present. Push credentials exist but Production readiness
+is unverified. SMS remains intentionally disabled. No channel was activated or
+physically delivery-tested in this work.
