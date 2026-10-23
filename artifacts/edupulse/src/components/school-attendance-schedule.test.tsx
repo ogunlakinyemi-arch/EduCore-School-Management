@@ -13,6 +13,7 @@ const st = vi.hoisted(() => ({ data: null as any, isError: false, mutate: vi.fn(
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: st.invalidate }) }));
 vi.mock('@workspace/api-client-react', () => ({
   getGetSchoolAttendanceScheduleQueryKey: (p: any) => ['/api/school/attendance/schedule', p],
+  getGetSchoolCommunityDashboardQueryKey: (id: number) => [`/api/schools/${id}/community-dashboard`],
   useGetSchoolAttendanceSchedule: (p: any) => { st.keys.push(p.schoolId); return { data: st.isError ? undefined : st.data, isLoading: false, isError: st.isError, error: new Error('Internal server error: column created_at; private SQL details'), refetch: st.refetch }; },
   useUpdateSchoolAttendanceSchedule: () => ({ mutate: st.mutate, isPending: false }),
   useAssessSchoolAttendance: () => ({ mutate: st.assess, isPending: false }),
@@ -45,7 +46,8 @@ describe('school attendance schedule', () => {
   it('submits the school closing/review times through the existing tenant API and reloads the saved values', () => {
     render(7, true);
     const values: Record<string,string> = {
-      'Weekday school closing':'15:00','Friday school closing':'12:30',
+      'Monday school closing':'15:00','Tuesday school closing':'14:30',
+      'Wednesday school closing':'14:00','Thursday school closing':'13:45','Friday school closing':'12:30',
       'Missing tag-out window opens':'15:15','Missing tag-out window ends':'17:00',
       'Friday missing tag-out check':'13:30',
     };
@@ -56,7 +58,8 @@ describe('school attendance schedule', () => {
     const [request,callbacks] = st.mutate.mock.calls[0];
     expect(request.params).toEqual({schoolId:7});
     expect(request.data).toMatchObject({revision:4,reason:'Approved school closing times',
-      schedule:{weekdaysClosing:'15:00',fridayClosing:'12:30',missingTagOutStart:'15:15',
+      schedule:{weekdaysClosing:'15:00',fridayClosing:'12:30',
+        closingByWeekday:{'1':'15:00','2':'14:30','3':'14:00','4':'13:45','5':'12:30'},missingTagOutStart:'15:15',
         missingTagOutEnd:'17:00',fridayMissingTagOut:'13:30'}});
     const response={...st.data,revision:5,schedule:structuredClone(request.data.schedule)};
     act(() => { st.data=response; callbacks.onSuccess(response); });
@@ -65,6 +68,10 @@ describe('school attendance schedule', () => {
       expect((q(`input[aria-label="${label}"]`) as HTMLInputElement).value).toBe(value);
     expect(q('[data-testid=text-schedule-revision]').textContent).toContain('5');
     expect(st.invalidate).toHaveBeenCalledWith({queryKey:['/api/school/attendance/schedule',{schoolId:7}]});
+    expect(st.invalidate).toHaveBeenCalledWith({queryKey:['/api/schools/7/community-dashboard']});
+    expect(request.data.schedule.rules).toEqual(base.rules);
+    expect(request.data.schedule.duplicateSeconds).toBe(base.duplicateSeconds);
+    expect(request.data.schedule.offlineMaxHours).toBe(base.offlineMaxHours);
   });
   it('shows defaults, precedence and revision', () => {
     render(1, true);

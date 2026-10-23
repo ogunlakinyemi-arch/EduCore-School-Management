@@ -1860,6 +1860,7 @@ export * from './schoolAdministratorResultDispatchStatus';
 export * from './schoolAdministratorResultRole';
 export * from './schoolAdministratorResultStatus';
 export * from './schoolAttendanceSchedule';
+export * from './schoolAttendanceScheduleClosingByWeekday';
 export * from './schoolAttendanceScheduleClosuresItem';
 export * from './schoolAttendanceScheduleExemptionsItem';
 export * from './schoolAttendanceScheduleRules';

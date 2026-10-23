@@ -31,6 +31,7 @@ import router from "./school-community";
 import transportRouter from "./transport";
 import {communityAccess,communityClosing,dutyStatus,parseBusDuty,publishCalendarChanges,requireDriverCalendarSupport} from "../services/school-community";
 import {defaultAttendanceSchedule} from "../services/attendance-schedule";
+import {createAttendanceScheduleRouter} from "./attendance-schedule";
 
 const role=(name:string,schoolId=1,status="ACTIVE")=>({role:name,schoolId,status});
 const now="2026-10-23T09:00:00Z"; // Friday
@@ -49,7 +50,7 @@ beforeAll(async()=>{
   await state.db.query(`
     CREATE TABLE schools(id int PRIMARY KEY,name text);
     CREATE TABLE audit_logs(id serial PRIMARY KEY,"user" text,role text,school_id int,actor_user_id int,
-      action text,module text,record_id int,metadata jsonb,created_at timestamptz DEFAULT now(),
+      action text,module text,record_id int,metadata jsonb,"timestamp" timestamptz DEFAULT now(),
       clerk_user_id text,severity text,event_type text,result text);
     CREATE TABLE school_calendar_events(id int PRIMARY KEY,school_id int,title text,category text,
       start_date date,end_date date,audience text[],status text,is_academic boolean,notes text,
@@ -71,8 +72,12 @@ beforeAll(async()=>{
     CREATE TABLE parents(id int,user_id int,school_id int,status text);
     CREATE TABLE parent_student_relationships(parent_id int,student_id int,status text);
     CREATE TABLE communication_notifications(school_id int,event_key text,archived_at timestamptz);
+    CREATE TABLE attendance_settings(school_id int PRIMARY KEY,entry_window_start time,entry_window_end time,
+      classroom_window_end time,duplicate_suppression_seconds int,notify_on_entry boolean,
+      notify_on_exit boolean,notify_on_discrepancy boolean,updated_at timestamptz DEFAULT now());
   `);
   const app=express();app.use(express.json());app.use(router);app.use(transportRouter);
+  app.use(createAttendanceScheduleRouter(vi.fn()));
   app.use((err:any,_req:any,res:any,_next:any)=>res.status(err.status??500).json({error:err.message}));
   await new Promise<void>(resolve=>{server=app.listen(0,"127.0.0.1",()=>resolve())});
   base=`http://127.0.0.1:${server.address().port}`;
@@ -87,7 +92,7 @@ afterAll(async()=>{
 beforeEach(async()=>{
   vi.useRealTimers();
   state.roles=[role("TEACHER")];state.userId=10;state.queued.mockReset();
-  await state.db.query(`TRUNCATE schools,audit_logs,school_calendar_events,employees,transport_buses,transport_routes,
+  await state.db.query(`TRUNCATE attendance_settings,schools,audit_logs,school_calendar_events,employees,transport_buses,transport_routes,
     transport_route_staff,transport_history,school_memberships,app_users,students,parents,
     parent_student_relationships,communication_notifications RESTART IDENTITY`);
   await state.db.query("INSERT INTO schools VALUES(1,'Test school one'),(2,'Test school two')");
@@ -96,7 +101,7 @@ const get=async(path="/schools/1/community-dashboard")=>{
   const response=await fetch(base+path);return {status:response.status,body:await response.json() as any};
 };
 async function schedule(overrides:Record<string,unknown>={}){
-  await state.db.query(`INSERT INTO audit_logs(school_id,action,module,metadata,created_at)
+  await state.db.query(`INSERT INTO audit_logs(school_id,action,module,metadata,"timestamp")
     VALUES(1,'Updated school attendance schedule','Attendance',$1,$2)`,
     [JSON.stringify({revision:2,schedule:{...defaultAttendanceSchedule,...overrides}}),now]);
 }
@@ -133,6 +138,30 @@ describe("school community: real isolated PostgreSQL",()=>{
     await events();state.roles=[role("SCHOOL_ADMIN")];
     expect((await get()).body.notices.map((n:any)=>n.id).sort()).toEqual([1,2,4]);
     expect((await fetch(base+"/schools/1/community-dashboard",{method:"POST"})).status).toBe(404);
+  });
+  it("persists all five weekday closing times through the schedule API and projects them read-only",async()=>{
+    state.roles=[role("SCHOOL_ADMIN")];
+    const closingByWeekday={'1':'14:00','2':'13:30','3':'13:45','4':'13:15','5':'12:30'};
+    const submit=async(revision:number,schedule:any)=>fetch(`${base}/school/attendance/schedule?schoolId=1`,{
+      method:"PUT",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({revision,schedule,reason:"Approved individual weekday closing times"}),
+    });
+    const response=await submit(0,{...structuredClone(defaultAttendanceSchedule),closingByWeekday});
+    expect(response.status).toBe(200);
+    const read=await get("/school/attendance/schedule?schoolId=1");
+    expect(read).toMatchObject({status:200,body:{revision:1,schedule:{closingByWeekday}}});
+    for(const [index,date] of ['2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23'].entries())
+      expect(await communityClosing(state.db,1,new Date(`${date}T09:00:00Z`))).toMatchObject({
+        configured:true,timezone:"Africa/Lagos",time:closingByWeekday[String(index+1) as keyof typeof closingByWeekday],
+      });
+    expect(await communityClosing(state.db,2,new Date(now))).toMatchObject({configured:false,time:null});
+    // A legacy payload may update other settings, but cannot erase the new map.
+    expect((await submit(1,structuredClone(defaultAttendanceSchedule))).status).toBe(200);
+    expect((await get("/school/attendance/schedule?schoolId=1")).body.schedule.closingByWeekday).toEqual(closingByWeekday);
+    const revised={...closingByWeekday,'2':'13:00'};
+    expect((await submit(2,{...structuredClone(defaultAttendanceSchedule),closingByWeekday:revised})).status).toBe(200);
+    expect((await communityClosing(state.db,1,new Date("2026-10-20T09:00:00Z"))).time).toBe("13:00");
+    expect(state.queued).not.toHaveBeenCalled();
   });
   it("keeps unsaved operational fallback distinct from a configured closing time",async()=>{
     const c=await communityClosing(state.db,1,new Date(now));

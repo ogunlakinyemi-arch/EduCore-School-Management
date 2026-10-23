@@ -43,6 +43,14 @@ export function createAttendanceScheduleRouter(notify: AttendanceReviewNotice) {
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`attendance-schedule:${id}`]);
       const prior = await readAttendanceSchedule(client, id);
       if (prior.revision !== body.data.revision) throw new AuthError(409, "Schedule changed; reload before saving");
+      // Older clients must not silently erase per-day closing times.
+      if (prior.schedule.closingByWeekday && !body.data.schedule.closingByWeekday) {
+        const retained = attendanceScheduleSchema.safeParse({
+          ...body.data.schedule, closingByWeekday: prior.schedule.closingByWeekday,
+        });
+        if (!retained.success) throw new AuthError(400, "Review times conflict with the saved weekday closing times");
+        body.data.schedule = retained.data;
+      }
       for (const exemption of body.data.schedule.exemptions) {
         const student = await client.query("SELECT id FROM students WHERE id=$1 AND school_id=$2",
           [exemption.studentId, id]);

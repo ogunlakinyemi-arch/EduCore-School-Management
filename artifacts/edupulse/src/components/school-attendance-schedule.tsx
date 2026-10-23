@@ -3,12 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CalendarX2, Plus, Trash2 } from 'lucide-react';
 import {
   useGetSchoolAttendanceSchedule, useUpdateSchoolAttendanceSchedule, useAssessSchoolAttendance,
-  getGetSchoolAttendanceScheduleQueryKey,
+  getGetSchoolAttendanceScheduleQueryKey, getGetSchoolCommunityDashboardQueryKey,
 } from '@workspace/api-client-react';
 import type { SchoolAttendanceSchedule, SchoolAttendanceScheduleRules } from '@workspace/api-client-react';
 import { Button, Field } from '@/components/shared';
 
 const DAYS: [number, string][] = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
+const CLOSING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const;
 const TIMES: [keyof SchoolAttendanceSchedule, string][] = [
   ['arrivalStart', 'Arrival opens'], ['arrivalEnd', 'Arrival closes'], ['lateCutoff', 'Late after'],
   ['absenceAssessment', 'Absence review runs at'], ['weekdaysClosing', 'Weekday school closing'], ['fridayClosing', 'Friday school closing'],
@@ -44,6 +45,11 @@ export function validateSchedule(s: SchoolAttendanceSchedule, reason: string): s
   if (!s.timezone.trim()) out.push('Timezone is required.');
   if (!s.operatingDays.length) out.push('Select at least one operating day.');
   for (const [key, label] of TIMES) if (!TIME_RE.test(String(s[key]))) out.push(`${label} must be a valid time.`);
+  for (const [day, closing] of Object.entries(s.closingByWeekday ?? {})) {
+    if (!TIME_RE.test(closing) || closing <= s.absenceAssessment ||
+      closing > (day === '5' ? s.fridayMissingTagOut : s.missingTagOutStart))
+      out.push(`${CLOSING_DAYS[Number(day) - 1]} closing must follow absence review and not follow missing tag-out review.`);
+  }
   if (!Number.isInteger(s.duplicateSeconds) || s.duplicateSeconds < 5 || s.duplicateSeconds > 600) out.push('Duplicate window must be 5–600 seconds.');
   if (!Number.isInteger(s.offlineMaxHours) || s.offlineMaxHours < 1 || s.offlineMaxHours > 8784) out.push('Offline limit must be 1–8784 hours.');
   s.closures.forEach((c, i) => { if (!DATE_RE.test(c.date) || c.reason.trim().length < 1) out.push(`Closure ${i + 1} needs a date and reason.`); });
@@ -95,6 +101,18 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
 
   const errors = validateSchedule(draft, reason);
   const set = <K extends keyof SchoolAttendanceSchedule>(k: K, v: SchoolAttendanceSchedule[K]) => { setDraft({ ...draft, [k]: v }); setSaved(false); };
+  const setClosing = (day: number, value: string) => {
+    const closingByWeekday = Object.fromEntries(CLOSING_DAYS.map((_, index) => {
+      const key = String(index + 1) as keyof NonNullable<SchoolAttendanceSchedule['closingByWeekday']>;
+      return [key, draft.closingByWeekday?.[key] ?? (index === 4 ? draft.fridayClosing : draft.weekdaysClosing)];
+    })) as NonNullable<SchoolAttendanceSchedule['closingByWeekday']>;
+    closingByWeekday[String(day) as keyof typeof closingByWeekday] = value;
+    setDraft({ ...draft, closingByWeekday,
+      ...(day === 1 ? { weekdaysClosing: value } : {}),
+      ...(day === 5 ? { fridayClosing: value } : {}),
+    });
+    setSaved(false);
+  };
   const ro = !canEdit;
 
   const save = (e: FormEvent) => {
@@ -106,6 +124,7 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
     update.mutate({ params: { schoolId: target }, data: { schedule: draft, revision: view.revision, reason: reason.trim() } }, {
       onSuccess: () => {
         void cache.invalidateQueries({ queryKey: getGetSchoolAttendanceScheduleQueryKey({ schoolId: target }) });
+        void cache.invalidateQueries({ queryKey: getGetSchoolCommunityDashboardQueryKey(target) });
         if (activeSchool.current === target) { setSaved(true); setReason(''); setShowErrors(false); }
       },
       onError: (err) => { if (activeSchool.current === target) setSaveError(errMsg(err)); },
@@ -148,7 +167,16 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
         <legend className="eyebrow px-1">Closing times and missing tag-out review</legend>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">Times use {draft.timezone}. A missing tag-out creates a review item; it never proves physical absence.</p>
         <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {TIMES.filter(([key]) => CLOSING_KEYS.has(key)).map(([key, label]) => <Field key={key} label={label}>
+          {CLOSING_DAYS.map((day, index) => {
+            const key = String(index + 1) as keyof NonNullable<SchoolAttendanceSchedule['closingByWeekday']>;
+            const label = `${day} school closing`;
+            return <Field key={day} label={label}>
+              <input type="time" step={60} aria-label={label}
+                value={draft.closingByWeekday?.[key] ?? (index === 4 ? draft.fridayClosing : draft.weekdaysClosing)}
+                onChange={e => setClosing(index + 1, e.target.value)} />
+            </Field>;
+          })}
+          {TIMES.filter(([key]) => CLOSING_KEYS.has(key) && key !== 'weekdaysClosing' && key !== 'fridayClosing').map(([key, label]) => <Field key={key} label={label}>
             <input type="time" step={60} aria-label={label} value={String(draft[key]).slice(0, 5)} onChange={e => set(key, e.target.value as never)} />
           </Field>)}
         </div>

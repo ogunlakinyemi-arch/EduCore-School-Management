@@ -24,6 +24,20 @@ describe("attendance policy and combined reader (pure, no providers)", () => {
   ])("rejects invalid or contradictory configuration %j", bad => {
     expect(attendanceScheduleSchema.safeParse({...defaults(),...bad}).success).toBe(false);
   });
+  it("applies independent weekday closing times without changing reader modes or early-exit protection", () => {
+    const s = defaults();
+    s.closingByWeekday = {'1':'14:00','2':'13:30','3':'13:45','4':'13:15','5':'12:30'};
+    expect(attendanceScheduleSchema.safeParse(s).success).toBe(true);
+    for (const [day, date] of ['2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23'].entries()) {
+      const closing = s.closingByWeekday[String(day + 1) as keyof typeof s.closingByWeekday];
+      expect(transition({schedule:s,latest:{eventType:'SCHOOL_ENTRY',occurredAt:at('07:00',date)},
+        occurredAt:at(closing,date)}).eventType).toBe('SCHOOL_EXIT');
+      expect(() => transition({schedule:s,latest:{eventType:'SCHOOL_ENTRY',occurredAt:at('07:00',date)},
+        occurredAt:at('12:00',date)})).toThrow(/Early exit/);
+    }
+    s.closingByWeekday['2']='14:30';
+    expect(attendanceScheduleSchema.safeParse(s).success).toBe(false);
+  });
   it("uses school-local date across UTC midnight and supports other timezones", () => {
     expect(schoolClock(new Date("2026-10-22T23:30:00Z"),"Africa/Lagos"))
       .toEqual({date:"2026-10-23",time:"00:30",weekday:5});

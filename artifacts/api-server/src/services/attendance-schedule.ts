@@ -16,6 +16,7 @@ export const attendanceScheduleSchema = z.object({
     .refine(v => new Set(v).size === v.length, "Do not repeat operating days"),
   arrivalStart: time, arrivalEnd: time, lateCutoff: time, absenceAssessment: time,
   weekdaysClosing: time, fridayClosing: time,
+  closingByWeekday: z.object({ "1": time, "2": time, "3": time, "4": time, "5": time }).strict().optional(),
   missingTagOutStart: time, missingTagOutEnd: time, fridayMissingTagOut: time,
   classroomDeadline: time,
   duplicateSeconds: z.number().int().min(5).max(600),
@@ -37,10 +38,17 @@ export const attendanceScheduleSchema = z.object({
     && s.weekdaysClosing <= s.missingTagOutStart && s.missingTagOutStart <= s.missingTagOutEnd
     && s.fridayClosing <= s.fridayMissingTagOut;
   if (!ordered) ctx.addIssue({ code: "custom", message: "Arrival, late, classroom, absence, closing and review times must be in school-day order" });
+  if (s.closingByWeekday && Object.entries(s.closingByWeekday).some(([day, closing]) =>
+    closing <= s.absenceAssessment || closing > (day === "5" ? s.fridayMissingTagOut : s.missingTagOutStart)))
+    ctx.addIssue({ code: "custom", message: "Each weekday closing time must follow absence review and not follow its missing tag-out review time" });
   if (new Set(s.closures.map(c => c.date)).size !== s.closures.length)
     ctx.addIssue({ code: "custom", message: "Do not repeat closure dates" });
 });
 export type AttendanceSchedule = z.infer<typeof attendanceScheduleSchema>;
+export function schoolClosingTime(s: AttendanceSchedule, weekday: number): string {
+  return s.closingByWeekday?.[String(weekday) as keyof NonNullable<AttendanceSchedule["closingByWeekday"]>]
+    ?? (weekday === 5 ? s.fridayClosing : s.weekdaysClosing);
+}
 export const defaultAttendanceSchedule: AttendanceSchedule = {
   timezone: "Africa/Lagos", operatingDays: [1, 2, 3, 4, 5],
   arrivalStart: "06:45", arrivalEnd: "07:45", lateCutoff: "08:00", absenceAssessment: "10:00",
@@ -108,7 +116,7 @@ export function decideGateTransition(input: {
   if (eventType === "SCHOOL_EXIT" && !s.rules.exitEnabled)
     throw new AuthError(409, "Exit is disabled by attendance rules");
   if (mode === "ENTRY_EXIT" && eventType === "SCHOOL_EXIT" && !s.rules.allowEarlyExit
-      && clock.time < (clock.weekday === 5 ? s.fridayClosing : s.weekdaysClosing))
+      && clock.time < schoolClosingTime(s, clock.weekday))
     throw new AuthError(409, "Early exit requires authorized school review; repeated entry was not converted to exit");
   return { eventType, date: clock.date,
     status: eventType === "SCHOOL_ENTRY" && s.rules.lateness

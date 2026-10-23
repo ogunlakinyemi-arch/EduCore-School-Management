@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {AuthError} from "../middlewares/auth";
 import {queueCommunicationNotification,type CommunicationQueryClient} from "./communication-service";
-import {readAttendanceSchedule,schoolClock,attendanceDayOpen} from "./attendance-schedule";
+import {readAttendanceSchedule,schoolClock,attendanceDayOpen,schoolClosingTime} from "./attendance-schedule";
 import {familyChildSchoolScope} from "../lib/family-child-school-scope";
 
 type Db={query(sql:string,values?:any[]):Promise<{rows:any[]}>};
@@ -58,7 +58,7 @@ export async function communityClosing(db:Db,schoolId:number,now:Date){
   // by the existing authoritative schedule, including operating days.
   const dayOpen=configured&&attendanceDayOpen(saved.schedule,at.date,at.weekday);
   return {configured,date:at.date,timezone:saved.schedule.timezone,
-    time:dayOpen?(at.weekday===5?saved.schedule.fridayClosing:saved.schedule.weekdaysClosing):null,
+    time:dayOpen?schoolClosingTime(saved.schedule,at.weekday):null,
     dayOpen,effectiveAt:saved.effectiveAt,revision:saved.revision};
 }
 export async function calendarSnapshot(db:Db,schoolId:number){

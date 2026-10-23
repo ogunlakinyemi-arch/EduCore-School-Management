@@ -81,6 +81,17 @@ components:
         absenceAssessment: {type: string, default: "10:00"}
         weekdaysClosing: {type: string, default: "14:00"}
         fridayClosing: {type: string, default: "13:00"}
+        closingByWeekday:
+          type: object
+          description: Optional school-local Monday-Friday closing times; absent on legacy schedules, which retain weekdaysClosing and fridayClosing.
+          additionalProperties: false
+          required: ["1", "2", "3", "4", "5"]
+          properties:
+            "1": {type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'}
+            "2": {type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'}
+            "3": {type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'}
+            "4": {type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'}
+            "5": {type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'}
         missingTagOutStart: {type: string, default: "14:00"}
         missingTagOutEnd: {type: string, default: "16:00"}
         fridayMissingTagOut: {type: string, default: "14:00"}

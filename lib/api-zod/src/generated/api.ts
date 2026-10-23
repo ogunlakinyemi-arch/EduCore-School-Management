@@ -84,6 +84,11 @@ export const getSchoolAttendanceScheduleResponseScheduleLateCutoffDefault = `08:
 export const getSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault = `10:00`;
 export const getSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault = `14:00`;
 export const getSchoolAttendanceScheduleResponseScheduleFridayClosingDefault = `13:00`;
+export const getSchoolAttendanceScheduleResponseScheduleClosingByWeekday1RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const getSchoolAttendanceScheduleResponseScheduleClosingByWeekday2RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const getSchoolAttendanceScheduleResponseScheduleClosingByWeekday3RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const getSchoolAttendanceScheduleResponseScheduleClosingByWeekday4RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const getSchoolAttendanceScheduleResponseScheduleClosingByWeekday5RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
 export const getSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault = `14:00`;
 export const getSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault = `16:00`;
 export const getSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault = `14:00`;
@@ -105,6 +110,13 @@ export const GetSchoolAttendanceScheduleResponse = zod.object({
   "absenceAssessment": zod.string().default(getSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault),
   "weekdaysClosing": zod.string().default(getSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault),
   "fridayClosing": zod.string().default(getSchoolAttendanceScheduleResponseScheduleFridayClosingDefault),
+  "closingByWeekday": zod.object({
+  "1": zod.string().regex(getSchoolAttendanceScheduleResponseScheduleClosingByWeekday1RegExp),
+  "2": zod.string().regex(getSchoolAttendanceScheduleResponseScheduleClosingByWeekday2RegExp),
+  "3": zod.string().regex(getSchoolAttendanceScheduleResponseScheduleClosingByWeekday3RegExp),
+  "4": zod.string().regex(getSchoolAttendanceScheduleResponseScheduleClosingByWeekday4RegExp),
+  "5": zod.string().regex(getSchoolAttendanceScheduleResponseScheduleClosingByWeekday5RegExp)
+}).optional().describe('Optional school-local Monday-Friday closing times; absent on legacy schedules, which retain weekdaysClosing and fridayClosing.'),
   "missingTagOutStart": zod.string().default(getSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault),
   "missingTagOutEnd": zod.string().default(getSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault),
   "fridayMissingTagOut": zod.string().default(getSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault),
@@ -158,6 +170,11 @@ export const updateSchoolAttendanceScheduleBodyScheduleLateCutoffDefault = `08:0
 export const updateSchoolAttendanceScheduleBodyScheduleAbsenceAssessmentDefault = `10:00`;
 export const updateSchoolAttendanceScheduleBodyScheduleWeekdaysClosingDefault = `14:00`;
 export const updateSchoolAttendanceScheduleBodyScheduleFridayClosingDefault = `13:00`;
+export const updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday1RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday2RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday3RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday4RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday5RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
 export const updateSchoolAttendanceScheduleBodyScheduleMissingTagOutStartDefault = `14:00`;
 export const updateSchoolAttendanceScheduleBodyScheduleMissingTagOutEndDefault = `16:00`;
 export const updateSchoolAttendanceScheduleBodyScheduleFridayMissingTagOutDefault = `14:00`;
@@ -183,6 +200,13 @@ export const UpdateSchoolAttendanceScheduleBody = zod.object({
   "absenceAssessment": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleAbsenceAssessmentDefault),
   "weekdaysClosing": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleWeekdaysClosingDefault),
   "fridayClosing": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleFridayClosingDefault),
+  "closingByWeekday": zod.object({
+  "1": zod.string().regex(updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday1RegExp),
+  "2": zod.string().regex(updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday2RegExp),
+  "3": zod.string().regex(updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday3RegExp),
+  "4": zod.string().regex(updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday4RegExp),
+  "5": zod.string().regex(updateSchoolAttendanceScheduleBodyScheduleClosingByWeekday5RegExp)
+}).optional().describe('Optional school-local Monday-Friday closing times; absent on legacy schedules, which retain weekdaysClosing and fridayClosing.'),
   "missingTagOutStart": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleMissingTagOutStartDefault),
   "missingTagOutEnd": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleMissingTagOutEndDefault),
   "fridayMissingTagOut": zod.string().default(updateSchoolAttendanceScheduleBodyScheduleFridayMissingTagOutDefault),
@@ -225,6 +249,11 @@ export const updateSchoolAttendanceScheduleResponseScheduleLateCutoffDefault = `
 export const updateSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault = `10:00`;
 export const updateSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault = `14:00`;
 export const updateSchoolAttendanceScheduleResponseScheduleFridayClosingDefault = `13:00`;
+export const updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday1RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday2RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday3RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday4RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday5RegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
 export const updateSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault = `14:00`;
 export const updateSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault = `16:00`;
 export const updateSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault = `14:00`;
@@ -246,6 +275,13 @@ export const UpdateSchoolAttendanceScheduleResponse = zod.object({
   "absenceAssessment": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleAbsenceAssessmentDefault),
   "weekdaysClosing": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleWeekdaysClosingDefault),
   "fridayClosing": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleFridayClosingDefault),
+  "closingByWeekday": zod.object({
+  "1": zod.string().regex(updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday1RegExp),
+  "2": zod.string().regex(updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday2RegExp),
+  "3": zod.string().regex(updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday3RegExp),
+  "4": zod.string().regex(updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday4RegExp),
+  "5": zod.string().regex(updateSchoolAttendanceScheduleResponseScheduleClosingByWeekday5RegExp)
+}).optional().describe('Optional school-local Monday-Friday closing times; absent on legacy schedules, which retain weekdaysClosing and fridayClosing.'),
   "missingTagOutStart": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleMissingTagOutStartDefault),
   "missingTagOutEnd": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleMissingTagOutEndDefault),
   "fridayMissingTagOut": zod.string().default(updateSchoolAttendanceScheduleResponseScheduleFridayMissingTagOutDefault),

@@ -3,6 +3,21 @@ name: Provisional gate attendance and notification authority
 description: User-approved provisional classroom attendance, SMS governance and retention boundaries.
 ---
 
+## Preserve the attendance engine when changing schedules
+
+Per-weekday closing configuration extends the existing school-specific attendance
+engine; it must never replace configurable rules, reader modes, duplicate and
+offline replay protections, missing-arrival/classroom/exit review items, holidays,
+closures, exemptions or the attendance state machine.
+
+**Why:** The user explicitly reiterated that schedule UI changes must not remove
+or override the established engine. Each weekday needs independent school-local
+closing configuration, while other roles receive read-only persisted information.
+
+**How to apply:** Keep one authoritative tenant-scoped schedule and timezone.
+Preserve older saved schedules and refresh role-dashboard readers after changes;
+do not introduce a separate generic closing-time setting.
+
 Use valid morning student gate Tag-in as provisional classroom presence while
 biometric devices are unavailable. Keep gate entry, gate exit and classroom
 evidence distinct. Never label derived NFC presence as biometric or teacher

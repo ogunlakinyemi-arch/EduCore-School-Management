@@ -13452,6 +13452,22 @@ export interface SchoolCommunityDashboard {
   busDuties: CommunityBusDuty[];
 }
 
+/**
+ * Optional school-local Monday-Friday closing times; absent on legacy schedules, which retain weekdaysClosing and fridayClosing.
+ */
+export type SchoolAttendanceScheduleClosingByWeekday = {
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  '1': string;
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  '2': string;
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  '3': string;
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  '4': string;
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  '5': string;
+};
+
 export type SchoolAttendanceScheduleClosuresItem = {
   date: string;
   reason: string;
@@ -13491,6 +13507,8 @@ export interface SchoolAttendanceSchedule {
   absenceAssessment: string;
   weekdaysClosing: string;
   fridayClosing: string;
+  /** Optional school-local Monday-Friday closing times; absent on legacy schedules, which retain weekdaysClosing and fridayClosing. */
+  closingByWeekday?: SchoolAttendanceScheduleClosingByWeekday;
   missingTagOutStart: string;
   missingTagOutEnd: string;
   fridayMissingTagOut: string;

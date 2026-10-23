@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { SchoolAttendanceScheduleClosingByWeekday } from './schoolAttendanceScheduleClosingByWeekday';
 import type { SchoolAttendanceScheduleClosuresItem } from './schoolAttendanceScheduleClosuresItem';
 import type { SchoolAttendanceScheduleExemptionsItem } from './schoolAttendanceScheduleExemptionsItem';
 import type { SchoolAttendanceScheduleRules } from './schoolAttendanceScheduleRules';
@@ -22,6 +23,8 @@ export interface SchoolAttendanceSchedule {
   absenceAssessment: string;
   weekdaysClosing: string;
   fridayClosing: string;
+  /** Optional school-local Monday-Friday closing times; absent on legacy schedules, which retain weekdaysClosing and fridayClosing. */
+  closingByWeekday?: SchoolAttendanceScheduleClosingByWeekday;
   missingTagOutStart: string;
   missingTagOutEnd: string;
   fridayMissingTagOut: string;
