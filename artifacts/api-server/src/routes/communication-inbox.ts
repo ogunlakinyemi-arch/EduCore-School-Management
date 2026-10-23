@@ -5,16 +5,18 @@ import { pushSubscriptionSchema } from "../services/web-push-provider";
 import { createHash } from "node:crypto";
 import { developmentPushAllowed } from "../lib/development-push-policy";
 import { validVapidConfiguration, vapidConfiguration } from "../services/web-push-configuration";
+import { notificationLaunchBoundary } from "../services/notification-launch-boundary";
 import { AuthError, getUserContext, requireAuthentication } from "../middlewares/auth";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
 router.get("/communication/push-configuration", (req, res) => {
   const configured = validVapidConfiguration(vapidConfiguration());
+  const launchHeld = !notificationLaunchBoundary().allowed;
   res.setHeader("Cache-Control", "no-store");
   // The application-server PUBLIC key is intentionally supplied to PushManager.
-  res.json({ configured, publicKey: configured ? process.env.VAPID_PUBLIC_KEY : null,
-    deliveryEnabled: configured && developmentPushAllowed(getUserContext(req).user.id) });
+  res.json({ configured, publicKey: configured ? process.env.VAPID_PUBLIC_KEY : null, launchHeld,
+    deliveryEnabled: configured && !launchHeld && developmentPushAllowed(getUserContext(req).user.id) });
 });
 router.post("/communication/push-devices/revoke-session", async (req, res) => {
   try {

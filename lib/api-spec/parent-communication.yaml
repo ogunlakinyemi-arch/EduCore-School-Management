@@ -379,6 +379,9 @@ components:
       type: object
       required: [channels]
       properties:
+        launchHeld:
+          type: boolean
+          description: External sending is held by the Production launch boundary; setup never releases queued work.
         channels:
           type: array
           items:
@@ -389,6 +392,9 @@ components:
                 type: string
                 enum: [IN_APP, PUSH, SMS, EMAIL, TELEGRAM]
               available: { type: boolean }
+              setupAvailable:
+                type: boolean
+                description: Local channel configuration permits saving preferences; does not authorize delivery.
               status:
                 type: string
                 enum: [AVAILABLE, CONFIGURATION_REQUIRED, UNAVAILABLE]

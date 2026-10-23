@@ -102,9 +102,11 @@ export const parentThreadMutationResponseSchema = z.object({
 }).strict();
 
 export const communicationChannelAvailabilityResponseSchema = z.object({
+  launchHeld: z.boolean().optional(),
   channels: z.array(z.object({
     channel: z.enum(["IN_APP", "PUSH", "SMS", "EMAIL", "TELEGRAM"]),
     available: z.boolean(),
+    setupAvailable: z.boolean().optional(),
     status: z.enum(["AVAILABLE", "CONFIGURATION_REQUIRED", "UNAVAILABLE"]),
     detail: z.string(),
   }).strict()),

@@ -11,7 +11,8 @@ import {
   type UserContext,
 } from "../middlewares/auth";
 import { queueCommunicationNotification } from "../services/communication-service";
-import { notificationChannelAvailability } from "../services/notification-channel-policy";
+import { notificationChannelAvailability, notificationChannelConfiguration, emailSetupDetail } from "../services/notification-channel-policy";
+import { notificationLaunchBoundary } from "../services/notification-launch-boundary";
 import {
   communicationChannelAvailabilityResponseSchema,
   parentCommunicationChildrenResponseSchema,
@@ -427,14 +428,17 @@ async function notifyThreadCounterpart(
 
 router.get("/communication/channels", asyncRoute(async (_req, res) => {
   const availability = notificationChannelAvailability();
+  const configuration = notificationChannelConfiguration();
   res.json(communicationChannelAvailabilityResponseSchema.parse({
+    launchHeld: !notificationLaunchBoundary().allowed,
     channels: (["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const).map(channel => ({
       channel, available: availability[channel],
+      setupAvailable: channel === "EMAIL" || channel === "PUSH" ? configuration[channel] : availability[channel],
       status: availability[channel] ? "AVAILABLE" : channel === "SMS" ? "UNAVAILABLE" : "CONFIGURATION_REQUIRED",
       detail: channel === "IN_APP" ? "Notifications are stored in the authenticated inbox."
         : channel === "SMS" ? "SMS notifications are not available."
         : channel === "PUSH" ? "Requires a valid matching VAPID pair and subject, browser permission, an active subscription, policy and consent. Configuration is not proof of receipt."
-        : channel === "EMAIL" ? "Requires an explicitly selected real provider, credentials and valid sender, plus policy and preferences. Provider acceptance is not receipt."
+        : channel === "EMAIL" ? emailSetupDetail()
         : "Requires Production opt-in, independently validated bot/storage readiness, policy and a parent-owned consented chat. Provider acceptance is not receipt.",
     })),
   }));

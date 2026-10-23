@@ -19,6 +19,18 @@ alone cannot classify new QA data; keep QA in Development or hold external sends
 The guard is source-only until an approved release; never restart/publish or
 configure it merely to validate readiness.
 
+Local Email/Push setup readiness must remain separate from delivery permission.
+
+**Why:** The Owner explicitly requested usable preference/device setup without
+setting the launch cutoff or releasing any TEST backlog. Treating the launch hold
+as missing configuration wrongly disables safe setup and mislabels Production
+holds as Development restrictions.
+
+**How to apply:** Keep real sending/claims and default-channel validation behind
+the launch guard. Permit explicit preference/subscription preparation only when
+local configuration is valid, report the hold truthfully, and never equate setup,
+credential presence, provider acceptance or browser registration with receipt.
+
 Production email screenshot evidence conflicts with automated presence metadata.
 
 **Why:** A visible configuration entry and a false presence result do not

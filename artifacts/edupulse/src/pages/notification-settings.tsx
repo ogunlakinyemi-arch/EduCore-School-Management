@@ -12,6 +12,7 @@ import { OwnerNotificationPolicyControl } from '@/components/owner-notification-
 import { OwnerTelegramHealth, ParentTelegramControl } from '@/components/telegram-control';
 import { useSchoolAdminAccess } from '@/components/shared';
 import { useGetParentCommunicationChannels, getGetParentCommunicationChannelsQueryKey } from '@workspace/api-client-react';
+import { channelSetupAvailable } from './parent-communication/comm-contract';
 
 export function NotificationSettings({ standalone = false, globalOnly = false }: { standalone?: boolean; globalOnly?: boolean }) {
   const { schoolId: tenantSchoolId } = useTenant();
@@ -19,7 +20,7 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
   const schoolAccess = useSchoolAdminAccess();
   const capability = useGetParentCommunicationChannels({ query: { queryKey: getGetParentCommunicationChannelsQueryKey(), staleTime: 30000 } });
   const available = (channel: CommunicationChannel) => channel !== 'SMS' &&
-    capability.data?.channels.some(c => c.channel === channel && c.available) === true;
+    capability.data?.channels.some(c => c.channel === channel && channelSetupAvailable(c)) === true;
   const qc = useQueryClient();
   const [error, setError] = useState('');
   const [reference, setReference] = useState('');
@@ -51,6 +52,10 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
     {schoolAccess.isPlatformOwner && <><OwnerTelegramHealth /><OwnerNotificationPolicyControl /></>}
     {schoolId && (schoolAccess.isSchoolAdmin || schoolAccess.isPlatformOwner) && <SchoolCommunicationDefaultsControl key={schoolId} schoolId={schoolId} />}
     <PageHeading eyebrow="Your messages / Controls" title="Notification settings." description="Choose how school updates reach you. Security and account messages may remain required." action={<Link href="/inbox" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-back-inbox"><ArrowLeft size={15} /> Inbox</Link>} />
+    {capability.data?.launchHeld && <p role="status" className="mb-5 rounded-xl border border-[hsl(var(--border))] p-4 text-sm">
+      Email and Browser Push preferences can be prepared when configured. External sending remains held by the launch cutoff. Saving preferences or subscribing a device does not release TEST notifications.
+    </p>}
+    {capability.data?.channels.filter(c => c.channel === 'EMAIL').map(c => <p key={c.channel} role="status" className="mb-4 text-sm">{c.detail}</p>)}
     {error && <div role="alert" className="mb-5 rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.07)] p-4 text-sm text-[hsl(var(--destructive))]">{error}</div>}
     <div className="grid gap-6 xl:grid-cols-[1.4fr_.8fr]">
       <section className="panel overflow-hidden">

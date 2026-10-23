@@ -71,9 +71,26 @@ configuration. No source fix can establish these provider-side facts.
 ## Channel/launch gates
 
 - In-App remains available independently of the external launch hold.
+- Email and Browser Push now expose separate **setup availability** and **delivery
+  availability**. With locally valid runtime configuration, the general notification
+  settings and Parent Portal allow preference setup while the launch hold remains
+  active. Saving preferences never changes the cutoff or releases queued work.
+  Owner/school default validation still uses delivery availability, not setup.
+- `/api/communication/channels` is authenticated and returns only fixed status
+  text/booleans for readiness; it never returns the sender or credentials. Its
+  `setupAvailable` fields and `launchHeld` flag are local configuration evidence,
+  not evidence of provider authorization, current recipient eligibility or receipt.
+  Email status identifies the exact missing setting without assuming the screenshot
+  or presence tool is authoritative. Existing saved settings are not overwritten.
 - Browser Push implementation and subscriptions are preserved; external dispatch
   obeys the cutoff. Validate Production VAPID locally, confirm released service
   worker/browser permission and real-user subscriptions before approved tests.
+  `/api/communication/push-configuration` now includes the launch guard when
+  reporting `deliveryEnabled`, but device setup remains available when its local
+  VAPID pair/subject validator passes. Permission remains explicit, subscriptions
+  retain school/user/session association, and registration does not imply receipt.
+  The intentionally public application-server key is supplied only for browser
+  registration; private key and subject are never added to these responses.
 - Telegram retains its independent explicit Production opt-in and readiness/
   consent checks. The Owner subsequently approved saving
   `EDUCORE_PRODUCTION_TELEGRAM_ENABLED=true` in Production configuration, and the
@@ -88,6 +105,28 @@ configuration. No source fix can establish these provider-side facts.
   database or provider evidence.
 - Only after release/configuration approval and all readiness checks, authorize
   one controlled test with a consenting recipient. Acceptance is not receipt.
+
+## Email/Push setup change verification
+
+159 focused API/frontend tests passed, including synthetic VAPID pair matching/
+mismatch rejection, the push-configuration launch hold, no-claim launch behavior,
+email configuration diagnostics, recipient authorization, preference-setup
+selection, explicit browser permission, mocked subscription persistence/revocation,
+worker activation and per-device dispatch/retry/session safeguards.
+All network adapters used mocks; no real subscription, email or push was created.
+Shared code generation/typechecking and frontend typechecking passed. API
+typechecking still reports the unrelated attendance-test unknown-to-object error.
+
+The actual saved Production VAPID pair was not accessed or certified: presence
+metadata is not key validation. After an approved release, the application can
+validate it locally without provider contact and show boolean setup readiness.
+Production metadata still did not confirm the email provider/sender, despite
+earlier screenshot evidence. The exact email manual blocker is confirmation that
+the intended Production app has the saved `COMMUNICATION_EMAIL_PROVIDER=resend`
+and approved `EMAIL_FROM` loaded; do not create duplicates or share values.
+
+A new approved publish is required to release these application changes. No
+restart/publish or configuration/secret change was performed for this setup work.
 
 Deployment address previously verified: https://educore.yetenia.com.
 No URL probe, service restart or publication was performed for this source change.

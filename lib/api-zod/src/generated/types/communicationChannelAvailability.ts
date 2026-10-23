@@ -8,5 +8,7 @@
 import type { CommunicationChannelAvailabilityChannelsItem } from './communicationChannelAvailabilityChannelsItem';
 
 export interface CommunicationChannelAvailability {
+  /** External sending is held by the Production launch boundary; setup never releases queued work. */
+  launchHeld?: boolean;
   channels: CommunicationChannelAvailabilityChannelsItem[];
 }

@@ -108,7 +108,9 @@ export function WebPushControl({ schoolId }: { schoolId: number | null }) {
       <button type="button" className="min-h-11 rounded-lg border px-4 disabled:opacity-50" disabled={busy} onClick={() => void disable()}>Disable this session</button>
     </div>
     {configuration.data?.configured && configuration.data.deliveryEnabled === false &&
-      <p className="text-sm">Subscriptions can be saved, but sending to this user is disabled in Development.</p>}
+      <p className="text-sm">{configuration.data.launchHeld
+        ? 'Device setup is enabled. Sending is held until the Owner approves the notification launch cutoff; subscribing does not release queued notifications.'
+        : 'Subscriptions can be saved, but sending to this user is restricted in this environment.'}</p>}
     {message && <p role={failed ? 'alert' : 'status'} className={failed ? notificationErrorClass : 'text-sm break-words'}>{message}</p>}
     <p className="text-xs text-[hsl(var(--muted-foreground))]">Push contains a generic notice only. Open the authenticated app for details. Expired or logged-out sessions cannot receive new sends.</p>
   </section>;

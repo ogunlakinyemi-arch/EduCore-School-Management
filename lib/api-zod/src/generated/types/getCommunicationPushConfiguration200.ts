@@ -10,6 +10,8 @@ export type GetCommunicationPushConfiguration200 = {
   configured: boolean;
   /** @nullable */
   publicKey: string | null;
-  /** False when Development sending is not explicitly authorized for this user */
+  /** False while the Production launch hold or Development sending restrictions apply; does not prove recipient eligibility or receipt */
   deliveryEnabled: boolean;
+  /** External sends are held by the Production launch cutoff; subscriptions may still be prepared */
+  launchHeld?: boolean;
 };

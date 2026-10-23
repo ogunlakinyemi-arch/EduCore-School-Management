@@ -1,5 +1,23 @@
 import express from "express";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createECDH } from "node:crypto";
+
+afterEach(() => vi.unstubAllEnvs());
+
+it("locally validates push configuration for device setup but reports Production delivery held without a cutoff", async () => {
+  const key = createECDH("prime256v1"); key.generateKeys();
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("EDUCORE_NOTIFICATION_LIVE_FROM", "");
+  vi.stubEnv("VAPID_PUBLIC_KEY", key.getPublicKey().toString("base64url"));
+  vi.stubEnv("VAPID_PRIVATE_KEY", key.getPrivateKey().toString("base64url"));
+  vi.stubEnv("VAPID_SUBJECT", "mailto:synthetic@example.invalid");
+  const response = await fetch(`${baseUrl}/communication/push-configuration`);
+  expect(response.status).toBe(200);
+  const data = await response.json();
+  expect(data).toMatchObject({ configured: true, deliveryEnabled: false, launchHeld: true });
+  expect(data).not.toHaveProperty("privateKey");
+  expect(state.calls).toEqual([]);
+});
 
 const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: any[] }>,

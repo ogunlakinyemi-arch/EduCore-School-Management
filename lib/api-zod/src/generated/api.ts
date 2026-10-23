@@ -2896,9 +2896,11 @@ export const MarkSchoolNfcCardLostResponse = zod.unknown()
  * @summary Report configured communication channel availability
  */
 export const GetParentCommunicationChannelsResponse = zod.object({
+  "launchHeld": zod.boolean().optional().describe('External sending is held by the Production launch boundary; setup never releases queued work.'),
   "channels": zod.array(zod.object({
   "channel": zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']),
   "available": zod.boolean(),
+  "setupAvailable": zod.boolean().optional().describe('Local channel configuration permits saving preferences; does not authorize delivery.'),
   "status": zod.enum(['AVAILABLE', 'CONFIGURATION_REQUIRED', 'UNAVAILABLE']),
   "detail": zod.string()
 }))
@@ -18373,7 +18375,8 @@ export const UpdateNotificationChannelPolicyResponse = zod.object({
 export const GetCommunicationPushConfigurationResponse = zod.object({
   "configured": zod.boolean(),
   "publicKey": zod.string().nullable(),
-  "deliveryEnabled": zod.boolean().describe('False when Development sending is not explicitly authorized for this user')
+  "deliveryEnabled": zod.boolean().describe('False while the Production launch hold or Development sending restrictions apply; does not prove recipient eligibility or receipt'),
+  "launchHeld": zod.boolean().optional().describe('External sends are held by the Production launch cutoff; subscriptions may still be prepared')
 })
 
 

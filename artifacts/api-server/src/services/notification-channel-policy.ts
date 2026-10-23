@@ -81,6 +81,10 @@ export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.en
   if (!notificationLaunchBoundary(env).allowed) {
     return { IN_APP: true, SMS: false, EMAIL: false, PUSH: false, TELEGRAM: false };
   }
+  return notificationChannelConfiguration(env);
+}
+/** Setup/consent may be prepared without permitting a dispatcher claim. */
+export function notificationChannelConfiguration(env:NodeJS.ProcessEnv=process.env):Record<PolicyChannel,boolean>{
   const emailReady=()=>{
     if(developmentPaymentNotificationsSuppressed(env))return false;
     const selected=env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase();
@@ -91,4 +95,16 @@ export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.en
   return {IN_APP:true,SMS:false,EMAIL:emailReady(),
     PUSH:!developmentPaymentNotificationsSuppressed(env)&&validVapidConfiguration(vapidConfiguration(env)),
     TELEGRAM:getTelegramHealth(env).ready};
+}
+
+/** Fixed, non-secret diagnostics; no provider calls and no sender/key disclosure. */
+export function emailSetupDetail(env: NodeJS.ProcessEnv = process.env): string {
+  const selected = env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase();
+  if (!selected) return "Owner setup required: confirm the saved COMMUNICATION_EMAIL_PROVIDER setting selects Resend. Do not add a duplicate setting.";
+  if (selected === "resend") {
+    if (!env.EMAIL_FROM) return "Owner setup required: confirm the saved EMAIL_FROM setting uses the approved verified sender. Do not invent or overwrite the sender.";
+    if (!env.RESEND_API_KEY) return "Owner setup required: the Resend credential is unavailable to this runtime. Configure it securely, never in chat.";
+  }
+  if (!notificationChannelConfiguration(env).EMAIL) return "Email configuration is invalid or sending is restricted in this environment. Ask the Owner to review it securely.";
+  return "Email is configured for preference setup. Provider/domain authorization and recipient delivery are not verified by this local check.";
 }

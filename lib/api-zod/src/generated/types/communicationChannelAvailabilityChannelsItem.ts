@@ -11,6 +11,8 @@ import type { CommunicationChannelAvailabilityChannelsItemStatus } from './commu
 export type CommunicationChannelAvailabilityChannelsItem = {
   channel: CommunicationChannelAvailabilityChannelsItemChannel;
   available: boolean;
+  /** Local channel configuration permits saving preferences; does not authorize delivery. */
+  setupAvailable?: boolean;
   status: CommunicationChannelAvailabilityChannelsItemStatus;
   detail: string;
 };

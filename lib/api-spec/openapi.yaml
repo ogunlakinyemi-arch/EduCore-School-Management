@@ -5689,7 +5689,8 @@ paths:
                 properties:
                   configured: { type: boolean }
                   publicKey: { type: ["string", "null"] }
-                  deliveryEnabled: {type: boolean, description: False when Development sending is not explicitly authorized for this user}
+                  deliveryEnabled: {type: boolean, description: False while the Production launch hold or Development sending restrictions apply; does not prove recipient eligibility or receipt}
+                  launchHeld: {type: boolean, description: External sends are held by the Production launch cutoff; subscriptions may still be prepared}
   /communication/push-devices/revoke-session:
     post:
       operationId: revokeCommunicationPushSession

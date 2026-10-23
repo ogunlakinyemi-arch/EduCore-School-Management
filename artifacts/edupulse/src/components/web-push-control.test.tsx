@@ -3,13 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 const state=vi.hoisted(()=>({configured:false,register:vi.fn(),revoke:vi.fn(),invalidate:vi.fn(),worker:null as any,
+  launchHeld:false,deliveryEnabled:true,
   publicKey: btoa(String.fromCharCode(4,...Array(64).fill(97)))}));
 vi.mock('@/lib/push-registration',async original=>({
   ...await original<typeof import('@/lib/push-registration')>(),
   readyPushWorker:async()=>{if(state.worker instanceof Error)throw state.worker;return state.worker;},
 }));
 vi.mock('@workspace/api-client-react',()=>({
-  useGetCommunicationPushConfiguration:()=>({data:{configured:state.configured,publicKey:state.configured?state.publicKey:null},isLoading:false,isError:false}),
+  useGetCommunicationPushConfiguration:()=>({data:{configured:state.configured,publicKey:state.configured?state.publicKey:null,
+    launchHeld:state.launchHeld,deliveryEnabled:state.deliveryEnabled},isLoading:false,isError:false}),
   useRegisterCommunicationPushDevice:()=>({mutateAsync:state.register}),
   useRevokeCommunicationPushSession:()=>({mutateAsync:state.revoke}),
 }));
@@ -27,6 +29,7 @@ function button(name:string) {
 describe('browser push permission controls (mocked, no network)',()=>{
   beforeEach(()=>{
     state.configured=false;state.register.mockReset();state.revoke.mockReset().mockResolvedValue(undefined);
+    state.launchHeld=false;state.deliveryEnabled=true;
     state.invalidate.mockReset().mockResolvedValue(undefined);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
     vi.stubGlobal('isSecureContext',true);
@@ -42,6 +45,15 @@ describe('browser push permission controls (mocked, no network)',()=>{
     expect(button('Enable on this device').disabled).toBe(true);
     expect(container.textContent).toContain('VAPID settings are not configured');
     expect(Notification.requestPermission).not.toHaveBeenCalled();
+  });
+  it('keeps device setup enabled during the Production launch hold without claiming delivery or requesting permission automatically',()=>{
+    state.configured=true;state.launchHeld=true;state.deliveryEnabled=false;
+    renderControl();
+    expect(button('Enable on this device').disabled).toBe(false);
+    expect(container.textContent).toContain('Sending is held');
+    expect(container.textContent).not.toContain('disabled in Development');
+    expect(Notification.requestPermission).not.toHaveBeenCalled();
+    expect(state.register).not.toHaveBeenCalled();
   });
   it('permission is requested only by user action and denial never registers a subscription',async()=>{
     state.configured=true;renderControl();
