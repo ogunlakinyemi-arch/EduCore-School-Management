@@ -6,6 +6,9 @@ Evidence date: **2026-10-23**. **NOT approved for application-database migration
 and establishes semantic equivalence of the two CHECK expressions without
 rewriting their SQL or erasing the exact-text discrepancy. External provenance,
 resource binding, recovery and authorization-cause requirements remain open.
+The later export-workflow correction below is verified in a fresh disposable
+cluster only; upstream raw output and managed Publish behavior are not fixed
+or approved by that result.
 
 **Update:** The user separately authorized the disposable-only SQL rehearsal.
 It is completed in §8, with recorded failures and limitations. This authorization
@@ -249,7 +252,7 @@ down/reapply. Post-failure schema/ledger verification is mandatory.
 | Worker authorization cause | Development probe succeeds; deployment `28000` subcause unknown. Configuration-owner evidence needed; no queue resumption justified. |
 | Development target schema | LIVE namespace absent; no migration approved or applied. |
 | Backup/restore | Exact-resource recoverability and authorized restore acceptance unverified. §9 documents equivalent synthetic CHECK semantics, not business-data recovery acceptance. |
-| Native rehearsal | §8: 96 checks and 13 tooling/reviewer tests. §9: 26 new named native checks explain late-key raw failure and equivalent CHECK semantics; exact-text mismatch retained. No application-target approval follows. |
+| Native rehearsal | §8: 96 checks and 13 tooling/reviewer tests. §9: 26 native follow-up checks explain raw failure/CHECK equivalence; later workflow regression adds 16 checks and 46 offline tests. Exact-text mismatch retained; no application-target approval. |
 | Merchant fee bearer / LIVE account identity | Real, reviewed, redacted dashboard/account ownership and merchant/school/subaccount association evidence required. Mocks cannot supply it. |
 | Independent recipient verification | Reviewed actual reader contract plus transaction-bound school payout evidence required. No endpoint invented or provider contacted. |
 | Webhook/durable financial acceptance | Mocked ordering/failure contracts pass; real versioned authentication, HTTPS delivery, durable finalization, adversarial replay/concurrency and recovery still require approved acceptance. |
@@ -519,6 +522,41 @@ for complete scope, reproduction, evidence hashes and operator steps.
   and 30 mocked database-resilience tests passed. The latter include
   non-enumerable error-message handling and refusing to guess a 28000 subcause
   from code/severity alone. They are not evidence of external authentication.
+
+### Later workflow-only correction — 2026-10-23
+
+Both offline export entry points now use one mandatory capture/order boundary.
+The workflow `.sql` contains the existing dependency-ordered permutation;
+upstream stdout remains byte-preserved, explicitly non-executable `.raw.sql`
+evidence. All keys precede FKs, with the staff NFC unique index at **315** before
+its dependent FK at **1098**. No DDL definition, schema source, historical SQL,
+pin, ownership guard or ledger was changed. The source/raw/ordered/multiset
+hashes in §8 remain unchanged. Direct upstream raw output still fails; managed
+Publish is outside this correction.
+
+Fresh results: **46 offline tests passed**, including three new workflow tests;
+**one native workflow regression passed with 16 checks**. It reproduces the
+original raw **42830** atomically and executes both actual corrected outputs
+into separate fresh disposable databases: **187 tables, 693 validated FKs**,
+valid/ready indexes and the same staff NFC supporting-index association.
+Scripts and DB TypeScript checks passed; `.mjs` syntax/execution was verified
+separately. No application/Production connection, migration, runtime restart or
+provider operation occurred.
+
+Evidence: `generated-artifacts/flutterwave-readiness-followup/fw-export-order-GGsRRU/`;
+report SHA-256
+`dabe6e241db2e5dc5d9422ed03f8f3e8f37fcfd3ccb49119fd2eb1f0a4932331`.
+The private cluster was stopped/deleted. Companion follow-up document §8 records
+reproduction, exact limits and retained harness failures. Its §6D adds redacted
+owner collection records and explicit acceptance/rejection criteria for
+revision-specific API/worker binding, exact-resource recovery lineage and
+historical authentication cause. Official documentation is not project-specific
+external evidence; none of these records was obtained here.
+
+The two CHECK discrepancies and their existing semantic-equivalence evidence
+are unchanged. `eda97466…` remains **UNRESOLVED**; no new source finding or
+independently reviewed exception exists. Existing external/provider/runtime
+blockers remain open and **HOLD** remains in force.
 
 No application migration, ledger edit, secret change, provider call, worker
 resumption, notification, service restart, Production change, publishing or

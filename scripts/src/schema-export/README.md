@@ -7,6 +7,30 @@ pnpm --filter @workspace/scripts run export:schema:audit --out /tmp/educore-audi
 pnpm --filter @workspace/scripts run test:schema-export
 ```
 
+Both this audit command and the Flutterwave representative-target exporter now
+use the same mandatory capture/order boundary. Upstream standalone Drizzle
+stdout is retained byte-for-byte in `.raw.sql` as **non-executable evidence**;
+the requested `.sql` output always contains the dependency-ordered permutation.
+The audit `.graph.json` identifies both hashes (the ordered hash excludes only
+the fixed audit comment header). Direct vendor output is still incorrectly
+ordered for this model; this is not a patch to Drizzle or Replit Publish.
+
+Explicit native regression, **fresh private disposable cluster only**:
+
+```sh
+NODE_BIN="$(env -i PATH="$PATH" node -p process.execPath)"
+env -i PATH="$PATH" LANG=C.UTF-8 LC_ALL=C.UTF-8 "$NODE_BIN" \
+  --import ./scripts/node_modules/tsx/dist/loader.mjs \
+  scripts/src/schema-export-ordering.native.test.mjs
+```
+
+Invoke from the workspace root, directly as shown (not through `node --test`
+with an environment-injecting loader). It accepts no target/configuration
+arguments, rejects inherited application configuration, creates/verifies a
+fresh Unix-socket-only PostgreSQL cluster and stops/deletes it in cleanup.
+It does not run pinned migrations. Native execution is outside the default
+offline test glob and must remain separately authorized.
+
 SQL and its `.graph.json` companion are labelled:
 **DISPOSABLE / AUDIT ONLY — NOT FOR PRODUCTION EXECUTION**.
 Only `/tmp/*.sql` or workspace `reports/**/*.sql` output paths are accepted.

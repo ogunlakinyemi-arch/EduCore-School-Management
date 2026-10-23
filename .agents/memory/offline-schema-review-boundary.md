@@ -25,3 +25,17 @@ Publish does not support selecting individual statements from the Development-to
 **Why:** The user explicitly reported Replit Support confirmation of this limitation. A five-statement allowlist or edited offline export cannot isolate a release when the actual Development schema contains additional differences.
 
 **How to apply:** Obtain a fresh read-only preview when authorized, and treat statement numbers as capture-specific. If the actual release baseline is not safe, stop before mutations unless a Production-compatible code/schema baseline and a verified recovery path for current Development are established. Do not repeat generic backup-tool builds or broad audits to rediscover this limitation.
+
+Keep strict clean-environment gates intact when combining native tests with
+TypeScript loaders; choose a compatible invocation rather than expanding the
+allowlist for runner-injected state.
+
+**Why:** An unwrapped, clean Node invocation with `--test` plus the tsx loader
+failed the native export regression's environment gate before initialization.
+Direct invocation with that loader passed the unchanged gate and still ran the
+`node:test` harness.
+
+**How to apply:** For explicitly authorized disposable tests requiring schema
+TypeScript imports, use the documented direct clean-Node command. Keep ordinary
+offline tests on their existing runner, and never treat a loader problem as
+permission to inherit application configuration or select a different database.

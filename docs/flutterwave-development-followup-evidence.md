@@ -82,8 +82,9 @@ Native evidence, all in new disposable databases:
 
 Thus PostgreSQL's error describes missing qualifying uniqueness **at execution
 time**, not absent uniqueness in the model. The generic raw emitter's phase
-ordering is unsuitable for this source model. No emitter, source SQL, historical
-migration, key ownership or generic guard was changed. Use the reviewed
+ordering is unsuitable for this source model. In that earlier pass, no emitter,
+source SQL, historical migration, key ownership or generic guard was changed.
+The later workflow-only correction and regression are recorded in §8. Use the reviewed
 dependency-aware path only for explicitly approved disposable schema audits;
 neither version is an approved application-target migration or Publish diff.
 
@@ -289,6 +290,35 @@ enumerable-only 28000 evidence stays UNSPECIFIED. These tests neither recover a
 missing historical message nor prove that updated diagnostics are deployed.
 No production logging/configuration change was made.
 
+### D. Redacted collection record and acceptance boundaries
+
+Prepare one evidence record per process/revision, resource/recovery point, and
+incident. Populate unavailable fields with **UNAVAILABLE — HOLD**, not an
+inferred value. A blank template is not evidence:
+
+| Record | Required non-secret fields | What must not be substituted |
+|---|---|---|
+| Serving binding | Collection UTC time; verifier role; actually serving revision/build and immutable artifact reference; API/worker process identity; effective configuration snapshot reference; resource and branch/primary IDs; privately compared routing fingerprint; authoritative UI/provider attestation reference | Latest successful build, workspace settings, matching database name, replica visibility, secret presence, or source-only shared-pool wiring |
+| Recovery inventory | Bound source resource/branch; observed backup/recovery-point ID and UTC point; scope and retention; availability/access attestation; proposed RPO/RTO; inventory evidence reference | Documentation defaults, Development checkpoint, synthetic dump, or “backups enabled” |
+| Restore acceptance | Separate approval reference and scope; source point → isolated destination resource lineage; no automatic app/job/provider startup; bounded pre/post schema/data/financial-history consistency results; every discrepancy; timings; reviewer decision; cleanup/retention | Successful restore command alone, two semantically equivalent CHECKs, silently normalized catalog text, or an unreviewed production overwrite |
+| Historical authentication | Incident UTC window and clock uncertainty; process and serving-at-incident revision; resource/configuration association; PostgreSQL/proxy FATAL correlation reference; privileged primary reason; redacted category and verifier decision | SQLSTATE 28000 alone, enumerable error keys, query monitoring, present-day successful authentication, or a speculative password/role explanation |
+
+The official documentation was rechecked in this workflow-correction pass.
+It describes query monitoring, application logs and Scheduled backups, but the
+consulted pages do **not** document revision/worker-specific resource linkage,
+backup-ID/restore-lineage attestation or historical database/proxy authentication
+FATAL retrieval. This is a documentation limit, not proof that no owner/provider
+surface exists. If owner-visible records are insufficient, request these exact
+associations from the authorized platform/resource owner; do not run speculative
+connections or change settings to fill the blanks.
+
+Collecting recovery metadata does not approve a restore. Mapping the current
+revision does not explain an older incident. An exception for `eda97466…` must
+identify the full unresolved hash, search limits, independently reviewed
+catalog/preservation risk and exact Development-only scope; record its separate
+review/approval reference. No exception is recorded here, and an exception would
+not establish original bytes or authorize ledger edits, DDL or LIVE activation.
+
 ## 7. Decision
 
 The late-key explanation and these two CHECKs' semantic equivalence are now
@@ -299,3 +329,107 @@ unevidenced. Provider/merchant/settlement and genuine runtime acceptance gates
 from the main package also remain open. **HOLD** continues; every later connection,
 restore, migration, transaction, worker or LIVE release needs its own applicable
 evidence and separate approval.
+
+## 8. Export workflow correction and regression — HOLD retained
+
+Completed **2026-10-23 06:50:35.999–06:50:44.230 UTC**. This changes offline
+export tooling only, not schema declarations, historical SQL, constraints,
+pinned migrations, database ledgers, runtime services or configuration.
+
+### Corrected boundary, unchanged vendor evidence
+
+The existing object DAG already supported the required unique-index → FK edge.
+The two callers previously captured standalone Drizzle output independently.
+They now share `schema-export/source.mjs`: capture vendor stdout in a
+credential-free subprocess, inspect the schema-only model, require the existing
+dependency-aware permutation, check that no table/key/index follows an FK, and
+reject concurrent schema-source changes before returning workflow output.
+Neither caller can select vendor stdout as its `.sql` payload.
+
+`export:schema:audit` now also retains exact vendor bytes in `.raw.sql`, explicitly
+marked non-executable in metadata. The representative-target exporter retains
+its existing `.raw.sql` evidence. Both preserve all 1,249 statement bytes and
+duplicates; the audit file adds only its fixed two-line warning header.
+Both ordered payload hashes remain
+`74732d873d8891c0e7dd3bd1b330d7ddaac0010cb2935fcb33c131dcf6522873`;
+raw bytes still hash to
+`a9f092605b523d61ae1981daa4a39b22a62f79929f8bff6f767003546ff3f8c0`.
+The statement-multiset and source fingerprints remain those recorded in main
+package §8. Existing ownership/provenance guards remain intact; raw evidence
+and metadata sidecars now also reject symlink destinations.
+
+This is a fix to the repository's export workflow, **not** to the upstream
+Drizzle emitter or managed Publish generator. Direct vendor output remains
+incorrectly ordered; retained raw failures are not retroactively marked passed.
+No generated output is an approved application-target upgrade.
+
+### Regression results and reproduction
+
+From the workspace root:
+
+```sh
+NODE_BIN="$(env -i PATH="$PATH" node -p process.execPath)"
+env -i PATH="$PATH" LANG=C.UTF-8 LC_ALL=C.UTF-8 "$NODE_BIN" --test \
+  scripts/src/schema-export/*.test.mjs \
+  scripts/src/flutterwave-rehearsal/pg-check-tree.test.mjs \
+  scripts/src/flutterwave-live-review.test.mjs \
+  scripts/src/flutterwave-live-isolated-rehearsal.test.mjs
+env -i PATH="$PATH" LANG=C.UTF-8 LC_ALL=C.UTF-8 "$NODE_BIN" \
+  --import ./scripts/node_modules/tsx/dist/loader.mjs \
+  scripts/src/schema-export-ordering.native.test.mjs
+pnpm --filter @workspace/scripts run typecheck
+pnpm exec tsc -p lib/db/tsconfig.json --noEmit
+```
+
+* **46 offline tests passed**, including three new workflow tests for the original
+  five-column late-index shape, exact CHECK/statement preservation, failure on
+  absent support/unsupported DDL, and sidecar symlink refusal. Existing parser,
+  ownership, ordering, reviewer and isolation tests passed. Expected negative
+  bundle tests print forbidden-import errors while passing.
+* **One native regression test passed, with 16 named checks**, using Node
+  **24.22.1** and PostgreSQL **16.10**, fresh UTF8 initialization, no TCP listener,
+  explicit role/socket/database and proven child PID/data/system identity.
+  Fresh vendor bytes exactly match the original retained raw hash. Raw execution
+  again gives **42830** and rolls back to an empty catalog. Both actual corrected
+  entry-point outputs install **187 tables / 693 validated FKs**, all indexes
+  valid/ready, and bind the original staff NFC FK to the same original unique
+  index. Positions remain raw **1103 after 556**, corrected **315 before 1098**.
+* The entire original CREATE TABLE statement for each of the two transport CHECKs
+  is identical before/after ordering. §3's exact text/tree discrepancies and
+  semantic-equivalence evidence remain unchanged; no restore or semantic-matrix
+  rerun is claimed in this pass.
+* Scripts and DB TypeScript checks passed. These project checks do not typecheck
+  `.mjs`; JavaScript is covered by syntax checks and the executed regressions.
+  No API/frontend runtime code changed; previous API/DOM test results are not
+  counted as fresh.
+
+Retained local evidence:
+`generated-artifacts/flutterwave-readiness-followup/fw-export-order-GGsRRU/`.
+`report.json` SHA-256:
+`dabe6e241db2e5dc5d9422ed03f8f3e8f37fcfd3ccb49119fd2eb1f0a4932331`.
+It includes command SQL/stdout/stderr, both workflow outputs/metadata, exact raw
+bytes, original failure and catalog assertions. System identifier:
+`7699752113642730787`; private root `/tmp/fw-export-order-GGsRRU`.
+Cluster stop and deletion were confirmed. No application database was contacted;
+no pinned migration or ledger was executed/read.
+
+Retained harness failures are not hidden: the first `--test` + loader invocation
+was refused by the strict environment gate before initialization. Direct
+invocation preserves that gate. `fw-export-order-k1gtEv` then failed before
+PostgreSQL initialization because its comparator counted the audit warning
+comments as part of the first SQL statement; it records two checks, no database
+commands, and temporary-directory deletion. The final comparator requires the
+**exact known header plus byte-identical payload**, not SQL normalization.
+An initial DB typecheck command combined composite mode with
+`--incremental false` and was refused with TS6379; the supported `--noEmit`
+invocation above passed without any compiler configuration change.
+
+Original `eda974665826aa4d5affc07f24f658122ac81502a7190313f0edcd99d24206ba`
+source remains **UNRESOLVED**; no new search or independently reviewed exception
+is claimed. The current associated SQL still hashes to `02d011d9…` as recorded
+in §4; none of its bytes changed. Serving-resource mapping, exact-resource
+recovery acceptance, historical 28000 cause, and all merchant/provider/runtime
+acceptance blockers remain open. No application connections/migrations, ledger
+access/edit, secret/config changes, provider calls/transactions, worker
+resumption, notifications, service restarts, Production changes, publishing or
+LIVE activation occurred. **HOLD** remains mandatory.
