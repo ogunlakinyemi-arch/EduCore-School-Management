@@ -59,6 +59,31 @@ function expectSanitized(value: unknown) {
 
 describe("database error classification (allowlisted)", () => {
   it.each([
+    ['password authentication failed for user "app_role_user" at db-host.internal.example', "PASSWORD_REJECTED"],
+    ['role "app_role_user" does not exist at db-host.internal.example', "ROLE_UNAVAILABLE"],
+    ['no pg_hba.conf entry for host db-host.internal.example, user "app_role_user"', "ACCESS_RULE_REJECTED"],
+    ['invalid authorization specification at db-host.internal.example', "UNSPECIFIED"],
+  ])("classifies non-enumerable 28000 message evidence without exposing it (%s)", (message, reason) => {
+    const error = pgError("28000", message);
+    expect(Object.keys(error)).not.toContain("message");
+    const diagnostic = classifyDatabaseError(error);
+    expect(diagnostic).toMatchObject({
+      sqlstate: "28000", category: "AUTHENTICATION_REJECTED",
+      authorizationReason: reason, transientConnectFailure: false,
+    });
+    expectSanitized(diagnostic);
+  });
+
+  it("does not infer a 28000 cause from an enumerable-only historical log", () => {
+    const diagnostic = classifyDatabaseError({ code: "28000", severity: "FATAL", length: 148 });
+    expect(diagnostic).toMatchObject({
+      category: "AUTHENTICATION_REJECTED", authorizationReason: "UNSPECIFIED",
+      transientConnectFailure: false,
+    });
+    expectSanitized(diagnostic);
+  });
+
+  it.each([
     ["57P01", "CONNECTION_TERMINATED", true],
     ["08006", "CONNECTION_TERMINATED", true],
     ["57P03", "CONNECTION_UNAVAILABLE", true],

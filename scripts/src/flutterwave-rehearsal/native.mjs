@@ -98,8 +98,10 @@ export class NativeRehearsal {
       `pre-execution hash ${database} ${name}.${direction}`);
     this.sql(database,bytes,`${database}-${name}-${direction}`,failure);
   }
-  async start() {
-    this.run("fresh-initdb","initdb",["-D",path.join(this.directory,"data"),"-U","isolated_rehearsal","-A","trust","--no-locale"]);
+  async start({encoding}={}) {
+    assert.ok(encoding===undefined||encoding==="UTF8");
+    this.run("fresh-initdb","initdb",["-D",path.join(this.directory,"data"),"-U","isolated_rehearsal","-A","trust","--no-locale",
+      ...(encoding?["--encoding",encoding]:[])]);
     const output=fs.openSync(path.join(this.evidence,"postgres.log"),"w",0o600);
     this.server=spawn("postgres",["-D",path.join(this.directory,"data"),"-k",this.directory,"-h","","-p","5432",
       "-c","unix_socket_permissions=0700","-c","log_lock_waits=on","-c","deadlock_timeout=100ms","-c","log_min_duration_statement=0"],

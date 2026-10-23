@@ -2,6 +2,11 @@
 
 Evidence date: **2026-10-23**. **NOT approved for application-database migration or LIVE activation.**
 
+**Current decision: HOLD.** The follow-up in §9 explains the raw-export failure
+and establishes semantic equivalence of the two CHECK expressions without
+rewriting their SQL or erasing the exact-text discrepancy. External provenance,
+resource binding, recovery and authorization-cause requirements remain open.
+
 **Update:** The user separately authorized the disposable-only SQL rehearsal.
 It is completed in §8, with recorded failures and limitations. This authorization
 does not extend to any application database, ledger, service or external resource.
@@ -77,7 +82,7 @@ Do not replace the current SQL or replay the older SQL.
 Ledger hash:
 `eda974665826aa4d5affc07f24f658122ac81502a7190313f0edcd99d24206ba`
 
-No exact source was found. Fresh searches traversed available refs/reflogs,
+No exact source was found. The prior offline searches traversed available refs/reflogs,
 checked 207 distinct historical SQL blobs with zero unreadable SQL objects, and
 checked the history of the associated `0004_platform_operations.sql` path.
 Current SQL hashes to
@@ -239,12 +244,12 @@ down/reapply. Post-failure schema/ledger verification is mandatory.
 
 | Requirement | Current status / exact remaining input |
 |---|---|
-| Historical SQL provenance | One exact source recovered; original `eda97466…` SQL or separately reviewed exception remains required. |
+| Historical SQL provenance | `eda97466…` still unresolved after the §9 fresh 207-blob/31-unreachable-tree search; no ledger change or exception granted. |
 | Published API/worker resource binding | Unverified; authoritative serving-revision/resource mapping required from platform operator. |
 | Worker authorization cause | Development probe succeeds; deployment `28000` subcause unknown. Configuration-owner evidence needed; no queue resumption justified. |
 | Development target schema | LIVE namespace absent; no migration approved or applied. |
-| Backup/restore | Exact-resource recoverability and authorized restore acceptance unverified. |
-| Native rehearsal | Completed under disposable-only approval: 96 checks, plus 13 tooling/reviewer tests. Raw-export failure and two exact-text restore CHECK differences retained; §8. No application-target approval follows. |
+| Backup/restore | Exact-resource recoverability and authorized restore acceptance unverified. §9 documents equivalent synthetic CHECK semantics, not business-data recovery acceptance. |
+| Native rehearsal | §8: 96 checks and 13 tooling/reviewer tests. §9: 26 new named native checks explain late-key raw failure and equivalent CHECK semantics; exact-text mismatch retained. No application-target approval follows. |
 | Merchant fee bearer / LIVE account identity | Real, reviewed, redacted dashboard/account ownership and merchant/school/subaccount association evidence required. Mocks cannot supply it. |
 | Independent recipient verification | Reviewed actual reader contract plus transaction-bound school payout evidence required. No endpoint invented or provider contacted. |
 | Webhook/durable financial acceptance | Mocked ordering/failure contracts pass; real versioned authentication, HTTPS delivery, durable finalization, adversarial replay/concurrency and recovery still require approved acceptance. |
@@ -478,3 +483,45 @@ settlement evidence; genuine signed-in acceptance and controlled runtime
 financial/replay/concurrency acceptance. Raw-export and restore-text limitations
 above are additional recorded evidence, not substitutions for those inputs.
 No application migration or LIVE activation is authorized by this rehearsal.
+
+## 9. Readiness-only follow-up — HOLD retained
+
+See [follow-up evidence and owner verification checklist](flutterwave-development-followup-evidence.md)
+for complete scope, reproduction, evidence hashes and operator steps.
+
+* **Raw-export cause reproduced:** unchanged raw statement 556 declares
+  `staff_nfc_allocations_subscription_owner_term_fk` before its existing
+  five-column unique index at statement 1103. PostgreSQL correctly returns 42830.
+  The same original FK binds that same original index when it precedes the FK
+  (ordered positions 315 → 1098). Complete raw/ordered statement multisets are
+  identical; no key, constraint, SQL source or ownership guard was rewritten.
+* **CHECK meaning established:** PostgreSQL 16.10 typed trees retain identical
+  operators, function/type/collation/column references and constants, differing
+  in source positions and associative AND grouping. All 87 distinct input cases
+  produced expected TRUE/FALSE/UNKNOWN and enforcement results in both forms:
+  174 insertion trials, plus separate NOT NULL checks and all 27 three-valued AND
+  triples. The exact SQL/native-tree text discrepancy remains retained. This
+  establishes semantic equivalence of these two builtin expressions, **not**
+  exact catalog-text equality, a general normalization exemption or real restore
+  approval.
+* **Provenance remains unknown:** a new raw-byte scan covered 207 distinct
+  SQL-path blobs from local refs/reflogs and 31 unreachable trees. Zero unreadable
+  candidates and no `eda97466…` match. No remote fetch, reconstruction, ledger
+  access or provenance waiver occurred.
+* **Platform evidence remains insufficient:** fresh read-only deployment
+  metadata/build listings expose status/build IDs, not authoritative API/worker
+  database bindings, exact-resource recovery points or server authentication
+  rejection reasons. Official documentation identifies owner UI inspection
+  paths; the linked checklist specifies what must be attested and what requires
+  a separate approval. No application database or published application endpoint
+  was contacted to fill those gaps.
+* **Fresh verification:** 26 named isolated checks, 5 parser/matrix unit tests
+  and 30 mocked database-resilience tests passed. The latter include
+  non-enumerable error-message handling and refusing to guess a 28000 subcause
+  from code/severity alone. They are not evidence of external authentication.
+
+No application migration, ledger edit, secret change, provider call, worker
+resumption, notification, service restart, Production change, publishing or
+LIVE activation was performed. **HOLD remains in force** pending evidence and
+distinct explicit approvals; neither semantic equivalence nor an operator
+checklist supplies those approvals.
