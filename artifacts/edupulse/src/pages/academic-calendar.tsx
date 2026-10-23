@@ -9,12 +9,12 @@ import {
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker } from '@/components/shared';
 import { FRESH, Notice, errMsg, fmtDay, isValidRange, useSchoolRole } from '@/components/school-ops-kit';
 import { TermsManager, invalidatePeriodQueries } from '@/pages/academics';
+import { AudiencePicker, type CommunityAudience } from '@/components/audience-picker';
 import { CalendarGenerator } from '@/components/calendar-generator';
 
 type Category = CreateSchoolCalendarEventBody['category'];
 type Audience = CreateSchoolCalendarEventBody['audience'][number];
 const CATEGORIES: Category[] = ['RESUMPTION', 'MID_TERM_BREAK', 'HOLIDAY', 'EXAMINATION', 'RESULT_PUBLICATION', 'SCHOOL_EVENT', 'OTHER'];
-const AUDIENCES: Audience[] = ['TEACHER', 'STUDENT', 'PARENT', 'STAFF'];
 const pretty = (v: string) => v.replaceAll('_', ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
 
 export function AcademicCalendarPage() {
@@ -138,7 +138,7 @@ function EventForm({ initial, terms, pending, error, onSubmit, onCancel }: {
   const [f, setF] = useState({
     title: initial?.title ?? '', category: (initial?.category && initial.category !== 'TERM_START' && initial.category !== 'TERM_END' ? initial.category : 'SCHOOL_EVENT') as Category,
     startDate: initial?.startDate.slice(0, 10) ?? '', endDate: initial?.endDate?.slice(0, 10) ?? '', academic: initial?.academic ?? false,
-    audience: (initial?.audience ?? ['TEACHER', 'STUDENT', 'PARENT', 'STAFF']) as Audience[], notes: initial?.notes ?? '',
+    audience: (initial?.audience ?? ['TEACHER','STUDENT','PARENT','STAFF']) as unknown as CommunityAudience[], notes: initial?.notes ?? '',
     termId: initial?.termId ?? null as number | null, status: (initial?.status ?? 'ACTIVE') as 'ACTIVE' | 'INACTIVE',
   });
   const [err, setErr] = useState('');
@@ -147,7 +147,7 @@ function EventForm({ initial, terms, pending, error, onSubmit, onCancel }: {
     if (!isValidRange(f.startDate, f.endDate || null)) return setErr('Enter valid dates; the end date cannot precede the start.');
     if (f.audience.length === 0) return setErr('Choose at least one audience.');
     setErr('');
-    onSubmit({ title: f.title.trim(), category: f.category, startDate: f.startDate, endDate: f.endDate || null, academic: f.academic, audience: f.audience, notes: f.notes.trim() || null, termId: f.termId }, f.status);
+    onSubmit({ title: f.title.trim(), category: f.category, startDate: f.startDate, endDate: f.endDate || null, academic: f.academic, audience: f.audience as unknown as Audience[], notes: f.notes.trim() || null, termId: f.termId }, f.status);
   };
   return (
     <form onSubmit={submit} className="space-y-5">
@@ -159,13 +159,11 @@ function EventForm({ initial, terms, pending, error, onSubmit, onCancel }: {
         <Field label="Ends (optional)"><input type="date" value={f.endDate} onChange={e => setF({ ...f, endDate: e.target.value })} /></Field>
       </div>
       <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={f.academic} onChange={e => setF({ ...f, academic: e.target.checked })} className="!w-auto" />Academic day (classes affected)</label>
-      <fieldset><legend className="mb-1.5 text-xs font-bold text-[hsl(var(--muted-foreground))]">Audience</legend>
-        <div className="flex flex-wrap gap-4">{AUDIENCES.map(a => (
-          <label key={a} className="flex items-center gap-2 text-sm"><input type="checkbox" className="!w-auto" checked={f.audience.includes(a)} onChange={e => setF({ ...f, audience: e.target.checked ? [...f.audience, a] : f.audience.filter(x => x !== a) })} />{pretty(a)}</label>
-        ))}</div></fieldset>
+      <AudiencePicker value={f.audience} onChange={audience => setF({ ...f, audience })} />
+      <p className="text-xs text-[hsl(var(--muted-foreground))]">Driver targeting requires the separately approved calendar update. Existing audiences continue to work without it.</p>
       <Field label="Notes"><textarea maxLength={2000} rows={3} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></Field>
       {initial && <Field label="Status"><select value={f.status} onChange={e => setF({ ...f, status: e.target.value as 'ACTIVE' | 'INACTIVE' })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></Field>}
-      {(err || error) && <Notice tone="error">{err || error}</Notice>}
+      {(err || error) && <Notice tone="error">{err || error}{!err && error && f.audience.includes('DRIVER') ? ' If this was rejected, the Driver audience may not be enabled in the database yet; deselect Driver to save for other audiences.' : ''}</Notice>}
       <div className="flex justify-end gap-3 border-t border-[hsl(var(--border))] pt-5">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending} testId="button-save-event">{pending ? 'Saving…' : initial ? 'Save changes' : 'Add event'}</Button>

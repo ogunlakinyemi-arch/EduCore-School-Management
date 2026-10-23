@@ -9089,6 +9089,7 @@ export const SchoolCalendarEntryAudienceItem = {
   STUDENT: 'STUDENT',
   PARENT: 'PARENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export type SchoolCalendarEntryStatus = typeof SchoolCalendarEntryStatus[keyof typeof SchoolCalendarEntryStatus];
@@ -9140,6 +9141,7 @@ export const CalendarDateItemAudienceItem = {
   STUDENT: 'STUDENT',
   PARENT: 'PARENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export interface CalendarDateItem {
@@ -9198,6 +9200,7 @@ export const CreateSchoolCalendarEventBodyAudienceItem = {
   STUDENT: 'STUDENT',
   PARENT: 'PARENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export interface CreateSchoolCalendarEventBody {
@@ -9246,6 +9249,7 @@ export const UpdateSchoolCalendarEventBodyAudienceItem = {
   STUDENT: 'STUDENT',
   PARENT: 'PARENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export type UpdateSchoolCalendarEventBodyStatus = typeof UpdateSchoolCalendarEventBodyStatus[keyof typeof UpdateSchoolCalendarEventBodyStatus];
@@ -10864,7 +10868,19 @@ export const TransportRouteStaffInputRole = {
   ACCOMPANIER: 'ACCOMPANIER',
 } as const;
 
+export interface TransportBusDuty {
+  startDate: string;
+  endDate: string;
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  startTime: string;
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  endTime: string;
+  /** @maxLength 1000 */
+  instructions: string;
+}
+
 export interface TransportRouteStaffInput {
+  duty?: TransportBusDuty | null;
   /** @minimum 1 */
   employeeId: number;
   role?: TransportRouteStaffInputRole;
@@ -13390,6 +13406,50 @@ export interface LostCardInput {
      * @maxLength 500
      */
   reason: string;
+}
+
+export interface CommunityClosing {
+  configured: boolean;
+  date: string;
+  timezone: string;
+  /** @nullable */
+  time: string | null;
+  dayOpen: boolean;
+  /** @nullable */
+  effectiveAt: string | null;
+  revision: number;
+}
+
+export interface CommunityNotice {
+  id: number;
+  title: string;
+  category: string;
+  startDate: string;
+  /** @nullable */
+  endDate: string | null;
+  status: string;
+  changedAt: string;
+  change: string;
+}
+
+export interface CommunityBusDuty {
+  id: number;
+  routeId: number;
+  routeName: string;
+  /** @nullable */
+  busIdentifier: string | null;
+  role: string;
+  duty: TransportBusDuty | null;
+  status: string;
+}
+
+export interface SchoolCommunityDashboard {
+  schoolId: number;
+  schoolName: string;
+  asOf: string;
+  closing: CommunityClosing;
+  notices: CommunityNotice[];
+  busDuties: CommunityBusDuty[];
 }
 
 export type SchoolAttendanceScheduleClosuresItem = {
@@ -22532,6 +22592,20 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type GetSchoolCommunityDashboardParams = {
+view?: GetSchoolCommunityDashboardView;
+};
+
+export type GetSchoolCommunityDashboardView = typeof GetSchoolCommunityDashboardView[keyof typeof GetSchoolCommunityDashboardView];
+
+
+export const GetSchoolCommunityDashboardView = {
+  SCHOOL: 'SCHOOL',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  DRIVER: 'DRIVER',
+} as const;
+
 export type GetSchoolAttendanceScheduleParams = {
 /**
  * @minimum 1
@@ -25579,6 +25653,7 @@ export const UpdateTransportRouteStaffBodyRole = {
 } as const;
 
 export type UpdateTransportRouteStaffBody = (unknown & {
+  duty?: TransportBusDuty;
   isActive?: boolean;
   role?: UpdateTransportRouteStaffBodyRole;
   /**

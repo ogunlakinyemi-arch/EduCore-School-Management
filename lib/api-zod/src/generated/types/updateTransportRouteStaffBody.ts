@@ -5,9 +5,11 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { TransportBusDuty } from './transportBusDuty';
 import type { UpdateTransportRouteStaffBodyRole } from './updateTransportRouteStaffBodyRole';
 
 export type UpdateTransportRouteStaffBody = (unknown & {
+  duty?: TransportBusDuty;
   isActive?: boolean;
   role?: UpdateTransportRouteStaffBodyRole;
   /**

@@ -16,11 +16,39 @@ function useInvalidate() {
 }
 const key = (...p: unknown[]) => ['/api/transport', ...p];
 
+export type DutyDraft = { startDate: string; endDate: string; startTime: string; endTime: string; instructions: string };
+export const emptyDuty = (): DutyDraft => ({ startDate: '', endDate: '', startTime: '', endTime: '', instructions: '' });
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+export function buildDuty(d: DutyDraft): { duty?: DutyDraft; error?: string } {
+  const okDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+  if (!okDate(d.startDate) || !okDate(d.endDate)) return { error: 'Enter a valid duty start and end date.' };
+  if (d.endDate < d.startDate) return { error: 'The duty end date cannot be before the start date.' };
+  if (!TIME_RE.test(d.startTime) || !TIME_RE.test(d.endTime)) return { error: 'Enter valid duty start and end times.' };
+  if (d.endTime <= d.startTime) return { error: 'The duty end time must be after the start time.' };
+  return { duty: { ...d, instructions: d.instructions.trim() } };
+}
+
+function DutyFields({ value, onChange, prefix }: { value: DutyDraft; onChange: (v: DutyDraft) => void; prefix: string }) {
+  const set = (k: keyof DutyDraft) => (e: { target: { value: string } }) => onChange({ ...value, [k]: e.target.value });
+  return (
+    <div className="grid gap-3 sm:grid-cols-2" data-testid={`${prefix}-duty-fields`}>
+      <Field label="Duty starts"><input type="date" className={inputCls} value={value.startDate} onChange={set('startDate')} data-testid={`${prefix}-duty-start-date`} /></Field>
+      <Field label="Duty ends"><input type="date" className={inputCls} value={value.endDate} onChange={set('endDate')} data-testid={`${prefix}-duty-end-date`} /></Field>
+      <Field label="From time"><input type="time" className={inputCls} value={value.startTime} onChange={set('startTime')} data-testid={`${prefix}-duty-start-time`} /></Field>
+      <Field label="To time"><input type="time" className={inputCls} value={value.endTime} onChange={set('endTime')} data-testid={`${prefix}-duty-end-time`} /></Field>
+      <div className="sm:col-span-2"><Field label="Instructions (visible to this companion)"><textarea className={inputCls} rows={2} maxLength={1000} value={value.instructions} onChange={set('instructions')} data-testid={`${prefix}-duty-instructions`} /></Field></div>
+    </div>
+  );
+}
+
 export function RouteStaffModal({ schoolId, route, onClose }: { schoolId: number; route: TransportRoute; onClose: () => void }) {
   const invalidate = useInvalidate();
   const [role, setRole] = useState<StaffRole>('ACCOMPANIER');
   const [search, setSearch] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  const [newDuty, setNewDuty] = useState<DutyDraft>(emptyDuty);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editDuty, setEditDuty] = useState<DutyDraft>(emptyDuty);
   const staff = useListTransportRouteStaff(route.id, { schoolId }, { query: { queryKey: key('route-staff', route.id, schoolId), refetchInterval: 30000, staleTime: 15000 } });
   const found = useSearchTransportEmployees(employeeSearchParams(schoolId, search, role), { query: { queryKey: key('employees', schoolId, role, search.trim()), staleTime: 15000 } });
   const assign = useAssignTransportRouteStaff();
@@ -35,10 +63,18 @@ export function RouteStaffModal({ schoolId, route, onClose }: { schoolId: number
         {staff.isLoading ? <ListSkeleton rows={2} /> : staff.isError ? <ErrorState retry={() => staff.refetch()} message={errorMessage(staff.error, 'Companions could not be loaded.')} /> : (staff.data ?? []).length ? (
           <ul className="space-y-2">
             {(staff.data ?? []).map(s => (
-              <li key={s.routeStaffId} className="flex items-center justify-between gap-3 rounded-xl border border-[hsl(var(--border))] p-3" data-testid={`route-staff-${s.routeStaffId}`}>
-                <div><div className="text-sm font-bold">{s.employeeName}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{s.employeeNo} - {s.employeeType} - {s.role ?? 'ACCOMPANIER'}</div></div>
-                <div className="flex items-center gap-2"><StatusPill value={s.isActive ? 'ACTIVE' : 'INACTIVE'} />
+              <li key={s.routeStaffId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[hsl(var(--border))] p-3" data-testid={`route-staff-${s.routeStaffId}`}>
+                <div className="min-w-0"><div className="text-sm font-bold">{s.employeeName}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{s.employeeNo} - {s.employeeType} - {s.role ?? 'ACCOMPANIER'}</div>
+                  <div className="mt-1 text-xs" data-testid={`route-staff-duty-${s.routeStaffId}`}>{s.duty ? `Duty ${s.duty.startDate} to ${s.duty.endDate}, ${s.duty.startTime} to ${s.duty.endTime}${s.duty.instructions ? ` - ${s.duty.instructions}` : ''}` : 'Duty period not set'}</div></div>
+                <div className="flex flex-wrap items-center gap-2"><StatusPill value={s.isActive ? 'ACTIVE' : 'INACTIVE'} />
+                  {s.isActive && <Button variant="outline" onClick={() => { setErr(null); setEditId(editId === s.routeStaffId ? null : s.routeStaffId); setEditDuty(s.duty ? { ...s.duty } : emptyDuty()); }} testId={`button-edit-duty-${s.routeStaffId}`}>Duty</Button>}
                   <Button variant="outline" disabled={update.isPending} onClick={() => update.mutate({ routeId: route.id, routeStaffId: s.routeStaffId, params: { schoolId }, data: { isActive: !s.isActive, reason: s.isActive ? 'Removed from bus companion duty' : 'Restored to bus companion duty' } }, opts)} testId={`button-toggle-staff-${s.routeStaffId}`}>{s.isActive ? 'Remove' : 'Restore'}</Button></div>
+                {editId === s.routeStaffId && (
+                  <div className="w-full space-y-3 border-t border-[hsl(var(--border))] pt-3">
+                    <DutyFields value={editDuty} onChange={setEditDuty} prefix={`edit-${s.routeStaffId}`} />
+                    <Button disabled={update.isPending} testId={`button-save-duty-${s.routeStaffId}`} onClick={() => { const r = buildDuty(editDuty); if (!r.duty) return setErr(r.error ?? null); update.mutate({ routeId: route.id, routeStaffId: s.routeStaffId, params: { schoolId }, data: { duty: r.duty, reason: 'Updated bus companion duty' } as never }, { ...opts, onSuccess: () => { setErr(null); setEditId(null); invalidate(); } }); }}>{update.isPending ? 'Saving...' : 'Save duty'}</Button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -47,12 +83,14 @@ export function RouteStaffModal({ schoolId, route, onClose }: { schoolId: number
           <Field label="Who"><select className={inputCls} value={role} onChange={e => setRole(e.target.value as StaffRole)} data-testid="select-staff-role">{STAFF_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select></Field>
           <Field label="Search by name or number"><input className={inputCls} value={search} onChange={e => setSearch(e.target.value)} data-testid="input-staff-search" /></Field>
         </div>
+        <DutyFields value={newDuty} onChange={setNewDuty} prefix="new" />
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">New companions need a duty period before they can be added.</p>
         {found.isLoading ? <ListSkeleton rows={1} /> : found.isError ? <Notice tone="error">Employees could not be searched. <button className="underline" onClick={() => found.refetch()}>Retry</button></Notice> : (
           <ul className="max-h-48 space-y-2 overflow-auto">
             {(found.data ?? []).filter(e => !taken.has(e.employeeId)).map(e => (
               <li key={e.employeeId} className="flex items-center justify-between gap-3 text-sm">
                 <span>{e.employeeName} <span className="text-xs text-[hsl(var(--muted-foreground))]">{e.employeeNo} - {e.employeeType}</span></span>
-                <Button variant="outline" disabled={assign.isPending || route.status !== 'ACTIVE'} onClick={() => assign.mutate({ routeId: route.id, params: { schoolId }, data: { employeeId: e.employeeId, role } }, opts)} testId={`button-add-staff-${e.employeeId}`}>Add</Button>
+                <Button variant="outline" disabled={assign.isPending || route.status !== 'ACTIVE'} onClick={() => { const r = buildDuty(newDuty); if (!r.duty) return setErr(r.error ?? null); assign.mutate({ routeId: route.id, params: { schoolId }, data: { employeeId: e.employeeId, role, duty: r.duty } as never }, opts); }} testId={`button-add-staff-${e.employeeId}`}>Add</Button>
               </li>
             ))}
             {!(found.data ?? []).filter(e => !taken.has(e.employeeId)).length && <li className="text-xs text-[hsl(var(--muted-foreground))]">No matching employees available.</li>}

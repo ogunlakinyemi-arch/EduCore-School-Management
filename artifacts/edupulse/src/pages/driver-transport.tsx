@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Bus, ShieldAlert, UsersRound } from 'lucide-react';
 import { useGetAuthorizedContext, useGetDriverTransport, getGetDriverTransportQueryKey } from '@workspace/api-client-react';
 import { EmptyState, ErrorState, PageHeading, StatusPill } from '@/components/shared';
+import { SchoolCommunityDashboard } from '@/components/school-community-dashboard';
 import { ListSkeleton } from '@/components/transport-parts';
 import { TRANSPORT_POLL_MS, TRANSPORT_STALE_MS, driverAudience, driverSchools } from '@/components/transport-logic';
 
@@ -34,6 +35,7 @@ export default function DriverTransportPage() {
           {schools.map(id => <button key={id} role="tab" aria-selected={id === schoolId} onClick={() => setPick(id)} data-testid={`select-driver-school-${id}`} className={`rounded-xl border px-4 py-2 text-sm font-bold ${id === schoolId ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/.08)]' : 'border-[hsl(var(--border))]'}`}>School {id}</button>)}
         </div>
       )}
+      {schoolId ? <SchoolCommunityDashboard key={schoolId} schoolId={schoolId} view="DRIVER" /> : null}
       {q.isLoading ? <ListSkeleton rows={3} /> : q.isError || !d ? <ErrorState retry={() => q.refetch()} message={q.error instanceof Error ? q.error.message : undefined} /> : (
         <div className="space-y-6">
           <section id="driver-profile" className="panel p-5" data-testid="driver-profile">

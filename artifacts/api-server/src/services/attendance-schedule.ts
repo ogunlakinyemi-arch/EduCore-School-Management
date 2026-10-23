@@ -61,14 +61,15 @@ export const attendanceRulePrecedence = [
   "Notification intent obeys school rules plus Owner policy and recipient preferences at dispatch",
 ];
 export async function readAttendanceSchedule(db: AttendanceDb, schoolId: number) {
-  const rows = await db.query(`SELECT metadata FROM audit_logs
+  const rows = await db.query(`SELECT metadata,created_at AS "effectiveAt" FROM audit_logs
     WHERE school_id=$1 AND action=$2 AND module='Attendance' ORDER BY id DESC LIMIT 1`,
   [schoolId, ATTENDANCE_SCHEDULE_ACTION]);
   const saved = rows.rows[0]?.metadata;
-  if (!saved) return { schedule: structuredClone(defaultAttendanceSchedule), revision: 0 };
+  if (!saved) return { schedule: structuredClone(defaultAttendanceSchedule), revision: 0, effectiveAt: null as string|null };
   const parsed = attendanceScheduleSchema.safeParse(saved.schedule);
   if (!parsed.success) throw new AuthError(503, "Saved attendance schedule is invalid; administrator review required");
-  return { schedule: parsed.data, revision: Number(saved.revision) };
+  return { schedule: parsed.data, revision: Number(saved.revision),
+    effectiveAt: rows.rows[0]?.effectiveAt ? new Date(rows.rows[0].effectiveAt).toISOString() : null };
 }
 export function schoolClock(instant: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-GB", {

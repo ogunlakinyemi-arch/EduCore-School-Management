@@ -320,7 +320,10 @@ paths:
               anyOf:
                 - required: [isActive]
                 - required: [role]
+                - required: [duty]
               properties:
+                duty:
+                  $ref: "#/components/schemas/TransportBusDuty"
                 isActive:
                   type: boolean
                 role:
@@ -1740,6 +1743,10 @@ components:
       additionalProperties: false
       required: [employeeId]
       properties:
+        duty:
+          anyOf:
+            - $ref: "#/components/schemas/TransportBusDuty"
+            - type: "null"
         employeeId:
           type: integer
           minimum: 1
@@ -1773,6 +1780,16 @@ components:
             updatedAt:
               type: string
               format: date-time
+    TransportBusDuty:
+      type: object
+      additionalProperties: false
+      required: [startDate, endDate, startTime, endTime, instructions]
+      properties:
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        startTime: { type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$' }
+        endTime: { type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$' }
+        instructions: { type: string, maxLength: 1000 }
     TransportSchoolPolicy:
       type: object
       required: [schoolId, paymentRequired, suspendWhenOverdue]

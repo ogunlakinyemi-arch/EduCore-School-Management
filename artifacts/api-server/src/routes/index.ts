@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import schoolCommunityRouter from "./school-community";
 import ownerAttendanceRouter from "./owner-attendance";
 import telegramRouter from "./telegram";
 import flutterwaveSplitsRouter from "./flutterwave-splits";
@@ -63,6 +64,7 @@ import partnerNfcRouter from "./partner-nfc";
 import nfcPaymentLinksRouter from "./nfc-payment-links";
 
 const router: IRouter = Router();
+router.use(schoolCommunityRouter);
 // Mount before routers that can provision identity or enforce mutable eligibility.
 if (process.env.NODE_ENV === "development") router.use(devPaymentDiagnosticRouter);
 router.use(rejectOperationalSimulation);

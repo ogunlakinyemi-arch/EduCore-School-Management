@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AcademicTerm, CalendarDateItem, CalendarTermConfiguration, GenerateSchoolCalendarBody } from '@workspace/api-client-react';
 import { Button, Field } from '@/components/shared';
+import { AudiencePicker, COMMUNITY_AUDIENCES, type CommunityAudience } from '@/components/audience-picker';
 import { Notice, isValidRange } from '@/components/school-ops-kit';
 
 type ListKey = 'midTermBreaks' | 'holidays' | 'examinations' | 'resultPublicationDates';
@@ -14,7 +15,7 @@ const LISTS: Array<{ key: ListKey; label: string }> = [
 type Draft = { resumptionDate: string } & Record<ListKey, Array<{ title: string; startDate: string; endDate: string }>>;
 const empty = (): Draft => ({ resumptionDate: '', midTermBreaks: [], holidays: [], examinations: [], resultPublicationDates: [] });
 
-export function buildGenerateBody(sessionId: number, terms: AcademicTerm[], drafts: Record<number, Draft>): { body?: GenerateSchoolCalendarBody; error?: string } {
+export function buildGenerateBody(sessionId: number, terms: AcademicTerm[], drafts: Record<number, Draft>, audience?: CommunityAudience[]): { body?: GenerateSchoolCalendarBody; error?: string } {
   const out: CalendarTermConfiguration[] = [];
   for (const t of terms) {
     const d = drafts[t.id] ?? empty();
@@ -24,7 +25,7 @@ export function buildGenerateBody(sessionId: number, terms: AcademicTerm[], draf
       const items: CalendarDateItem[] = [];
       for (const it of d[key]) {
         if (!it.title.trim() || !isValidRange(it.startDate, it.endDate || null)) return { error: `${label}: every row needs a title and a valid date range.` };
-        items.push({ title: it.title.trim(), startDate: it.startDate, endDate: it.endDate || null });
+        items.push({ title: it.title.trim(), startDate: it.startDate, endDate: it.endDate || null, ...(audience ? { audience: audience as unknown as CalendarDateItem['audience'] } : {}) });
       }
       cfg[key] = items;
     }
@@ -37,17 +38,20 @@ export function CalendarGenerator({ sessionId, terms, pending, error, onSubmit, 
   sessionId: number; terms: AcademicTerm[]; pending: boolean; error?: string; onSubmit: (b: GenerateSchoolCalendarBody) => void; onCancel: () => void;
 }) {
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
+  const [audience, setAudience] = useState<CommunityAudience[]>([...COMMUNITY_AUDIENCES]);
   const [localError, setLocalError] = useState('');
   const get = (id: number) => drafts[id] ?? empty();
   const patch = (id: number, fn: (d: Draft) => Draft) => setDrafts(s => ({ ...s, [id]: fn(s[id] ?? empty()) }));
   const submit = () => {
-    const r = buildGenerateBody(sessionId, terms, drafts);
+    if (audience.length === 0) return setLocalError('Choose at least one audience.');
+    const r = buildGenerateBody(sessionId, terms, drafts, audience);
     if (r.error) return setLocalError(r.error);
     setLocalError(''); onSubmit(r.body!);
   };
   return (
     <div className="space-y-6">
       <Notice>Regenerating updates this session&apos;s generated entries in place. It never duplicates them, and custom events you created are untouched.</Notice>
+      <AudiencePicker value={audience} onChange={setAudience} legend="Who sees generated entries" />
       {terms.map(t => (
         <fieldset key={t.id} className="rounded-2xl border border-[hsl(var(--border))] p-4">
           <legend className="px-2 text-sm font-bold">{t.name[0] + t.name.slice(1).toLowerCase()} term</legend>

@@ -2,6 +2,7 @@ import { useGetPlatformDashboard, useGetSchoolDashboard, useGetAuthorizedContext
 import { useQuery } from '@tanstack/react-query';
 import { lazy, Suspense } from 'react';
 import { Link } from 'wouter';
+import { SchoolCommunityDashboard } from '@/components/school-community-dashboard';
 import { StudentNfcObligationsPanel } from '@/components/student-nfc-obligations';
 import { TeacherAssignedWork, isOwnTeacherView } from '@/components/teacher-assigned-work';
 import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock, UsersRound, Briefcase, CreditCard, FileClock, ReceiptText } from 'lucide-react';
@@ -64,6 +65,8 @@ function StudentDashboard() {
         title={`Welcome, ${student.firstName}.`}
         description="View your school information and recent attendance."
       />
+
+      {student.schoolId > 0 && <SchoolCommunityDashboard schoolId={student.schoolId} view="STUDENT" />}
 
       <Link href="/my-fees" className="panel mb-6 flex items-center gap-4 p-5 transition-colors hover:border-[hsl(var(--primary)/.4)] hover:bg-[hsl(var(--secondary))]" data-testid="link-student-fees-receipts">
         <span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ReceiptText size={21} /></span>
@@ -388,6 +391,7 @@ function SchoolDashboard({ schoolId, canOpenFinance, showTeacherWork = false }: 
         <Metric label="Active cards" value={data?.activeCards ?? 0} detail={`${data?.lockedCards ?? 0} locked`} icon={Smartphone} />
       </div>
       
+      <SchoolCommunityDashboard schoolId={schoolId} />
       {showTeacherWork && <TeacherAssignedWork schoolId={schoolId} />}
       {showTeacherWork && <StudentNfcObligationsPanel schoolId={schoolId} teacherView compact />}
 

@@ -651,7 +651,7 @@ components:
           type: array
           items:
             type: string
-            enum: [TEACHER, STUDENT, PARENT, STAFF]
+            enum: [TEACHER, STUDENT, PARENT, STAFF, DRIVER]
         status:
           type: string
           enum: [ACTIVE, INACTIVE]
@@ -683,7 +683,7 @@ components:
           uniqueItems: true
           items:
             type: string
-            enum: [TEACHER, STUDENT, PARENT, STAFF]
+            enum: [TEACHER, STUDENT, PARENT, STAFF, DRIVER]
     CalendarTermConfiguration:
       type: object
       required: [termId]
@@ -751,7 +751,7 @@ components:
           uniqueItems: true
           items:
             type: string
-            enum: [TEACHER, STUDENT, PARENT, STAFF]
+            enum: [TEACHER, STUDENT, PARENT, STAFF, DRIVER]
         notes:
           type: [string, "null"]
           maxLength: 2000
@@ -784,7 +784,7 @@ components:
           uniqueItems: true
           items:
             type: string
-            enum: [TEACHER, STUDENT, PARENT, STAFF]
+            enum: [TEACHER, STUDENT, PARENT, STAFF, DRIVER]
         notes:
           type: [string, "null"]
           maxLength: 2000

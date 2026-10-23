@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { pool } from "@workspace/db";
+import {parseBusDuty} from "../services/school-community";
 import {
   assertRoles,
   assertSchoolAccess,
@@ -737,7 +738,9 @@ router.get("/transport/routes/:routeId/staff", run(async (req, res) => {
             e.employee_no AS "employeeNo",
             e.first_name || ' ' || e.last_name AS "employeeName",
             e.employee_type AS "employeeType",rs.role,rs.is_active AS "isActive",
-            rs.created_at AS "createdAt",rs.updated_at AS "updatedAt"
+            rs.created_at AS "createdAt",rs.updated_at AS "updatedAt",
+            (SELECT th.after_state->'duty' FROM transport_history th WHERE th.school_id=rs.school_id
+              AND th.route_staff_id=rs.id AND th.after_state ? 'duty' ORDER BY th.id DESC LIMIT 1) AS duty
        FROM transport_route_staff rs
        JOIN employees e ON e.id=rs.employee_id AND e.school_id=rs.school_id
       WHERE rs.school_id=$1 AND rs.route_id=$2
@@ -796,7 +799,8 @@ router.post("/transport/routes/:routeId/staff", run(async (req, res) => {
   const schoolId = querySchoolId(req);
   const context = authorizeSchoolWrite(req, schoolId);
   const routeId = requestId(req.params.routeId, "routeId");
-  const body = record(req.body, ["employeeId", "role"]);
+  const body = record(req.body, ["employeeId", "role", "duty"]);
+  const duty=body.duty===undefined||body.duty===null?null:parseBusDuty(body.duty);
   const employeeId = requireRecordId(body.employeeId, "employeeId");
   const role = body.role === undefined
     ? "ACCOMPANIER"
@@ -820,6 +824,7 @@ router.post("/transport/routes/:routeId/staff", run(async (req, res) => {
       employeeNo: employee.employeeNo,
       employeeName: employee.name,
       employeeType: employee.employeeType,
+      duty,
     };
     await appendHistory(client, req, {
       schoolId,
@@ -840,13 +845,14 @@ router.patch("/transport/routes/:routeId/staff/:routeStaffId", run(async (req, r
   authorizeSchoolWrite(req, schoolId);
   const routeId = requestId(req.params.routeId, "routeId");
   const routeStaffId = requestId(req.params.routeStaffId, "routeStaffId");
-  const body = record(req.body, ["isActive", "role", "reason"]);
+  const body = record(req.body, ["isActive", "role", "reason", "duty"]);
+  const duty=body.duty===undefined?undefined:parseBusDuty(body.duty);
   const isActive = optionalBoolean(body.isActive, "isActive");
   const requestedRole = body.role === undefined
     ? undefined
     : oneOf(body.role, ["TEACHER", "STAFF", "ACCOMPANIER"] as const, "role");
-  if (isActive === undefined && requestedRole === undefined) {
-    throw new AuthError(400, "isActive or role must be provided");
+  if (isActive === undefined && requestedRole === undefined && duty===undefined) {
+    throw new AuthError(400, "isActive, role or duty must be provided");
   }
   const row = await inTransaction(async (client) => {
     const currentResult = await client.query(
@@ -865,7 +871,7 @@ router.patch("/transport/routes/:routeId/staff/:routeStaffId", run(async (req, r
     if (!current) throw new AuthError(404, "Route employee assignment not found");
     const nextIsActive = isActive ?? Boolean(current.isActive);
     const nextRole = requestedRole ?? String(current.role);
-    if (Boolean(current.isActive) === nextIsActive && String(current.role) === nextRole) return current;
+    if (Boolean(current.isActive) === nextIsActive && String(current.role) === nextRole && duty===undefined) return current;
     if (nextIsActive) {
       await validateBusRouteStaff(
         client,
@@ -885,27 +891,30 @@ router.patch("/transport/routes/:routeId/staff/:routeStaffId", run(async (req, r
       [nextIsActive, nextRole, routeStaffId, routeId, schoolId],
     );
     const updated = updatedResult.rows[0];
+    const previousDuty=await client.query(`SELECT after_state->'duty' AS duty FROM transport_history
+      WHERE school_id=$1 AND route_staff_id=$2 AND after_state ? 'duty' ORDER BY id DESC LIMIT 1`,[schoolId,routeStaffId]);
     const after = {
       ...updated,
       routeStaffId,
       employeeNo: current.employeeNo,
       employeeName: current.employeeName,
       employeeType: current.employeeType,
+      duty:duty??previousDuty.rows[0]?.duty??null,
     };
     await appendHistory(client, req, {
       schoolId,
       entity: "routeStaff",
       entityId: routeStaffId,
-      eventType: requestedRole !== undefined && String(current.role) !== nextRole
+      eventType: duty!==undefined ? "TRANSPORT_BUS_EMPLOYEE_DUTY_UPDATED" : requestedRole !== undefined && String(current.role) !== nextRole
         ? "TRANSPORT_BUS_EMPLOYEE_ROLE_CHANGED"
         : nextIsActive ? "TRANSPORT_BUS_EMPLOYEE_ACTIVATED" : "TRANSPORT_BUS_EMPLOYEE_REMOVED",
       effectiveDate: new Date().toISOString().slice(0, 10),
       reason: body.reason === undefined
-        ? (nextIsActive
+        ? (duty!==undefined ? "Updated bus companion duty period and instructions" : nextIsActive
           ? "School-admin restored same-school bus employee assignment"
           : "School-admin deactivated same-school bus employee assignment")
         : requireReason(body.reason),
-      before: current,
+      before: {...current,duty:previousDuty.rows[0]?.duty??null},
       after,
     });
     return after;

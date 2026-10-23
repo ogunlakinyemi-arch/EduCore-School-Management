@@ -14,4 +14,5 @@ export const SchoolCalendarEntryAudienceItem = {
   STUDENT: 'STUDENT',
   PARENT: 'PARENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;

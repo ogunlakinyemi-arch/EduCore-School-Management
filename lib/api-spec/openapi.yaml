@@ -34,6 +34,8 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /schools/{schoolId}/community-dashboard:
+    $ref: "./school-community.yaml#/paths/~1schools~1{schoolId}~1community-dashboard"
   /school/attendance/schedule:
     $ref: "./attendance-schedule.yaml#/paths/~1school~1attendance~1schedule"
   /school/attendance/assess:

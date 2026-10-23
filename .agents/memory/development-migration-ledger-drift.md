@@ -36,3 +36,18 @@ differed. Journal timestamps could not establish that source identity.
 **How to apply:** Verify the full digest against the actual historical blob.
 Keep an unrecovered hash explicitly unresolved; never reconstruct its SQL from
 timestamps or rewrite the ledger to match current text.
+
+## ORM definitions versus executable storage
+
+Before extending a reader over an existing audit/history store, compare its
+column contract with the original executable migration and the existing writer.
+Do not build a disposable test fixture solely from the ORM definition.
+
+**Why:** A historical ORM alias can differ from the executable migration and
+working SQL routes. A fixture copied from that alias can make a nonexistent
+column look verified while failing to exercise the actual save/read cycle.
+
+**How to apply:** Test the routed write and subsequent read together against
+isolated PostgreSQL using the established executable contract. Document any
+existing drift separately; do not silently rename application database columns
+or apply a reconciliation migration without approval.

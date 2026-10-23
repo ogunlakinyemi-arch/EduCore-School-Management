@@ -382,6 +382,7 @@ import type {
   GetReportFilterOptionsParams,
   GetSchoolAttendanceScheduleParams,
   GetSchoolAttendanceTodayParams,
+  GetSchoolCommunityDashboardParams,
   GetSchoolDashboardParams,
   GetSchoolEmployeeNfcAttendanceDailyParams,
   GetSchoolEmployeeNfcAttendanceMonthlyParams,
@@ -710,6 +711,7 @@ import type {
   SchoolClass,
   SchoolCommunicationDefaults,
   SchoolCommunicationDefaultsResponse,
+  SchoolCommunityDashboard,
   SchoolCreateCommunicationThread,
   SchoolCurriculumMapping,
   SchoolCurriculumMappingInput,
@@ -917,6 +919,89 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetSchoolCommunityDashboardUrl = (schoolId: number,
+    params?: GetSchoolCommunityDashboardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/community-dashboard?${stringifiedParams}` : `/api/schools/${schoolId}/community-dashboard`
+}
+
+export const getSchoolCommunityDashboard = async (schoolId: number,
+    params?: GetSchoolCommunityDashboardParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolCommunityDashboard> => {
+
+  return customFetch<SchoolCommunityDashboard>(getGetSchoolCommunityDashboardUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolCommunityDashboardQueryKey = (schoolId: number,
+    params?: GetSchoolCommunityDashboardParams,) => {
+    return [
+    `/api/schools/${schoolId}/community-dashboard`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolCommunityDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolCommunityDashboard>>, TError = ErrorType<void>>(schoolId: number,
+    params?: GetSchoolCommunityDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolCommunityDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolCommunityDashboardQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolCommunityDashboard>>> = ({ signal }) => getSchoolCommunityDashboard(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolCommunityDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolCommunityDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolCommunityDashboard>>>
+export type GetSchoolCommunityDashboardQueryError = ErrorType<void>
+
+
+
+export function useGetSchoolCommunityDashboard<TData = Awaited<ReturnType<typeof getSchoolCommunityDashboard>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params?: GetSchoolCommunityDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolCommunityDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolCommunityDashboardQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetSchoolAttendanceScheduleUrl = (params: GetSchoolAttendanceScheduleParams,) => {
   const normalizedParams = new URLSearchParams();

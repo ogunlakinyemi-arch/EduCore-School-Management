@@ -22,6 +22,7 @@ import { Loans } from '@/pages/library';
 import { ReportingPage } from '@/pages/reporting';
 import { cx } from 'class-variance-authority';
 import { CardReplacementsPage } from './card-replacements';
+import { SchoolCommunityDashboard } from '@/components/school-community-dashboard';
 import { Shell } from '@/components/shared';
 import { PublishedReports } from '@/components/exam-record-family';
 
@@ -73,6 +74,7 @@ export function ParentDashboard() {
         <h1 className="display-font mt-2 text-3xl font-bold md:text-4xl">Welcome, {parent.name}.</h1>
         <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">View the school information currently available for your linked children.</p>
       </div>
+      {[...new Set(linked.map(c => c.schoolId).filter((id): id is number => typeof id === 'number' && id > 0))].map(id => <SchoolCommunityDashboard key={id} schoolId={id} view="PARENT" />)}
       <div className="grid gap-5 lg:grid-cols-[.7fr_1.3fr]">
         <aside className="panel p-5 md:p-6">
           <div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><UserRound size={20} /></div><div><div className="font-bold">{parent.name}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">Verified parent profile</div></div></div>

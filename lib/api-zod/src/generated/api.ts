@@ -11,6 +11,66 @@ import * as zod from 'zod';
 
 
 
+export const GetSchoolCommunityDashboardParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const getSchoolCommunityDashboardQueryViewDefault = `SCHOOL`;
+
+export const GetSchoolCommunityDashboardQueryParams = zod.object({
+  "view": zod.enum(['SCHOOL', 'PARENT', 'STUDENT', 'DRIVER']).default(getSchoolCommunityDashboardQueryViewDefault)
+})
+
+export const getSchoolCommunityDashboardResponseBusDutiesItemDutyOneStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const getSchoolCommunityDashboardResponseBusDutiesItemDutyOneEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const getSchoolCommunityDashboardResponseBusDutiesItemDutyOneInstructionsMax = 1000;
+
+
+
+export const GetSchoolCommunityDashboardResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "asOf": zod.coerce.date(),
+  "closing": zod.object({
+  "configured": zod.boolean(),
+  "date": zod.coerce.date(),
+  "timezone": zod.string(),
+  "time": zod.string().nullable(),
+  "dayOpen": zod.boolean(),
+  "effectiveAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int()
+}),
+  "notices": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
+  "status": zod.string(),
+  "changedAt": zod.coerce.date(),
+  "change": zod.string()
+})),
+  "busDuties": zod.array(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "routeName": zod.string(),
+  "busIdentifier": zod.string().nullable(),
+  "role": zod.string(),
+  "duty": zod.union([zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(getSchoolCommunityDashboardResponseBusDutiesItemDutyOneStartTimeRegExp),
+  "endTime": zod.string().regex(getSchoolCommunityDashboardResponseBusDutiesItemDutyOneEndTimeRegExp),
+  "instructions": zod.string().max(getSchoolCommunityDashboardResponseBusDutiesItemDutyOneInstructionsMax)
+}),zod.null()]),
+  "status": zod.string()
+}))
+})
+
+
+
+
+
 export const GetSchoolAttendanceScheduleQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1)
 })
@@ -21929,7 +21989,7 @@ export const ListSchoolAcademicCalendarResponseItem = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "academic": zod.boolean(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])),
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "source": zod.enum(['SESSION_TERM', 'SCHOOL_EVENT']),
   "notes": zod.string().nullish()
@@ -21962,7 +22022,7 @@ export const CreateSchoolCalendarEventBody = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "academic": zod.boolean(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])).min(1),
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])).min(1),
   "notes": zod.string().max(createSchoolCalendarEventBodyNotesMax).nullish()
 })
 
@@ -21978,7 +22038,7 @@ export const CreateSchoolCalendarEventResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "academic": zod.boolean(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])),
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "source": zod.enum(['SESSION_TERM', 'SCHOOL_EVENT']),
   "notes": zod.string().nullish()
@@ -22030,28 +22090,28 @@ export const GenerateSchoolAcademicCalendarBody = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "notes": zod.string().max(generateSchoolAcademicCalendarBodyTermsItemMidTermBreaksItemNotesMax).nullish(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])).min(1).optional()
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])).min(1).optional()
 })).optional(),
   "holidays": zod.array(zod.object({
   "title": zod.string().min(1).max(generateSchoolAcademicCalendarBodyTermsItemHolidaysItemTitleMax),
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "notes": zod.string().max(generateSchoolAcademicCalendarBodyTermsItemHolidaysItemNotesMax).nullish(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])).min(1).optional()
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])).min(1).optional()
 })).optional(),
   "examinations": zod.array(zod.object({
   "title": zod.string().min(1).max(generateSchoolAcademicCalendarBodyTermsItemExaminationsItemTitleMax),
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "notes": zod.string().max(generateSchoolAcademicCalendarBodyTermsItemExaminationsItemNotesMax).nullish(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])).min(1).optional()
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])).min(1).optional()
 })).optional(),
   "resultPublicationDates": zod.array(zod.object({
   "title": zod.string().min(1).max(generateSchoolAcademicCalendarBodyTermsItemResultPublicationDatesItemTitleMax),
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "notes": zod.string().max(generateSchoolAcademicCalendarBodyTermsItemResultPublicationDatesItemNotesMax).nullish(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])).min(1).optional()
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])).min(1).optional()
 })).optional()
 }))
 })
@@ -22068,7 +22128,7 @@ export const GenerateSchoolAcademicCalendarResponseItem = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "academic": zod.boolean(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])),
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "source": zod.enum(['SESSION_TERM', 'SCHOOL_EVENT']),
   "notes": zod.string().nullish()
@@ -22103,7 +22163,7 @@ export const UpdateSchoolCalendarEventBody = zod.object({
   "startDate": zod.coerce.date().optional(),
   "endDate": zod.coerce.date().nullish(),
   "academic": zod.boolean().optional(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])).min(1).optional(),
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])).min(1).optional(),
   "notes": zod.string().max(updateSchoolCalendarEventBodyNotesMax).nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
 })
@@ -22120,7 +22180,7 @@ export const UpdateSchoolCalendarEventResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "academic": zod.boolean(),
-  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF'])),
+  "audience": zod.array(zod.enum(['TEACHER', 'STUDENT', 'PARENT', 'STAFF', 'DRIVER'])),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "source": zod.enum(['SESSION_TERM', 'SCHOOL_EVENT']),
   "notes": zod.string().nullish()
@@ -24326,10 +24386,21 @@ export const ListTransportRouteStaffQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
 })
 
+export const listTransportRouteStaffResponseOneDutyOneStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const listTransportRouteStaffResponseOneDutyOneEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const listTransportRouteStaffResponseOneDutyOneInstructionsMax = 1000;
+
 
 export const listTransportRouteStaffResponseOneRoleDefault = `ACCOMPANIER`;
 
 export const ListTransportRouteStaffResponseItem = zod.object({
+  "duty": zod.union([zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(listTransportRouteStaffResponseOneDutyOneStartTimeRegExp),
+  "endTime": zod.string().regex(listTransportRouteStaffResponseOneDutyOneEndTimeRegExp),
+  "instructions": zod.string().max(listTransportRouteStaffResponseOneDutyOneInstructionsMax)
+}),zod.null()]).optional(),
   "employeeId": zod.number().int().min(1),
   "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(listTransportRouteStaffResponseOneRoleDefault)
 }).and(zod.object({
@@ -24360,18 +24431,40 @@ export const AssignTransportRouteStaffQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
 })
 
+export const assignTransportRouteStaffBodyDutyOneStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const assignTransportRouteStaffBodyDutyOneEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const assignTransportRouteStaffBodyDutyOneInstructionsMax = 1000;
+
 
 export const assignTransportRouteStaffBodyRoleDefault = `ACCOMPANIER`;
 
 export const AssignTransportRouteStaffBody = zod.object({
+  "duty": zod.union([zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(assignTransportRouteStaffBodyDutyOneStartTimeRegExp),
+  "endTime": zod.string().regex(assignTransportRouteStaffBodyDutyOneEndTimeRegExp),
+  "instructions": zod.string().max(assignTransportRouteStaffBodyDutyOneInstructionsMax)
+}),zod.null()]).optional(),
   "employeeId": zod.number().int().min(1),
   "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(assignTransportRouteStaffBodyRoleDefault)
 })
+
+export const assignTransportRouteStaffResponseOneDutyOneStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const assignTransportRouteStaffResponseOneDutyOneEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const assignTransportRouteStaffResponseOneDutyOneInstructionsMax = 1000;
 
 
 export const assignTransportRouteStaffResponseOneRoleDefault = `ACCOMPANIER`;
 
 export const AssignTransportRouteStaffResponse = zod.object({
+  "duty": zod.union([zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(assignTransportRouteStaffResponseOneDutyOneStartTimeRegExp),
+  "endTime": zod.string().regex(assignTransportRouteStaffResponseOneDutyOneEndTimeRegExp),
+  "instructions": zod.string().max(assignTransportRouteStaffResponseOneDutyOneInstructionsMax)
+}),zod.null()]).optional(),
   "employeeId": zod.number().int().min(1),
   "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(assignTransportRouteStaffResponseOneRoleDefault)
 }).and(zod.object({
@@ -24403,35 +24496,97 @@ export const UpdateTransportRouteStaffQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
 })
 
+export const updateTransportRouteStaffBodyOneDutyStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyOneDutyEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyOneDutyInstructionsMax = 1000;
+
 export const updateTransportRouteStaffBodyOneReasonMin = 3;
 export const updateTransportRouteStaffBodyOneReasonMax = 500;
+
+export const updateTransportRouteStaffBodyTwoDutyStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyTwoDutyEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyTwoDutyInstructionsMax = 1000;
 
 export const updateTransportRouteStaffBodyTwoReasonMin = 3;
 export const updateTransportRouteStaffBodyTwoReasonMax = 500;
 
+export const updateTransportRouteStaffBodyThreeDutyStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyThreeDutyEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyThreeDutyInstructionsMax = 1000;
+
 export const updateTransportRouteStaffBodyThreeReasonMin = 3;
 export const updateTransportRouteStaffBodyThreeReasonMax = 500;
+
+export const updateTransportRouteStaffBodyFourDutyStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyFourDutyEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffBodyFourDutyInstructionsMax = 1000;
+
+export const updateTransportRouteStaffBodyFourReasonMin = 3;
+export const updateTransportRouteStaffBodyFourReasonMax = 500;
 
 
 
 export const UpdateTransportRouteStaffBody = zod.union([zod.object({
+  "duty": zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(updateTransportRouteStaffBodyOneDutyStartTimeRegExp),
+  "endTime": zod.string().regex(updateTransportRouteStaffBodyOneDutyEndTimeRegExp),
+  "instructions": zod.string().max(updateTransportRouteStaffBodyOneDutyInstructionsMax)
+}).optional(),
   "isActive": zod.boolean(),
   "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).optional(),
   "reason": zod.string().min(updateTransportRouteStaffBodyOneReasonMin).max(updateTransportRouteStaffBodyOneReasonMax).optional()
 }),zod.object({
+  "duty": zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(updateTransportRouteStaffBodyTwoDutyStartTimeRegExp),
+  "endTime": zod.string().regex(updateTransportRouteStaffBodyTwoDutyEndTimeRegExp),
+  "instructions": zod.string().max(updateTransportRouteStaffBodyTwoDutyInstructionsMax)
+}).optional(),
   "isActive": zod.boolean().optional(),
   "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']),
   "reason": zod.string().min(updateTransportRouteStaffBodyTwoReasonMin).max(updateTransportRouteStaffBodyTwoReasonMax).optional()
-})]).and(zod.object({
+}),zod.object({
+  "duty": zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(updateTransportRouteStaffBodyThreeDutyStartTimeRegExp),
+  "endTime": zod.string().regex(updateTransportRouteStaffBodyThreeDutyEndTimeRegExp),
+  "instructions": zod.string().max(updateTransportRouteStaffBodyThreeDutyInstructionsMax)
+}),
   "isActive": zod.boolean().optional(),
   "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).optional(),
   "reason": zod.string().min(updateTransportRouteStaffBodyThreeReasonMin).max(updateTransportRouteStaffBodyThreeReasonMax).optional()
+})]).and(zod.object({
+  "duty": zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(updateTransportRouteStaffBodyFourDutyStartTimeRegExp),
+  "endTime": zod.string().regex(updateTransportRouteStaffBodyFourDutyEndTimeRegExp),
+  "instructions": zod.string().max(updateTransportRouteStaffBodyFourDutyInstructionsMax)
+}).optional(),
+  "isActive": zod.boolean().optional(),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).optional(),
+  "reason": zod.string().min(updateTransportRouteStaffBodyFourReasonMin).max(updateTransportRouteStaffBodyFourReasonMax).optional()
 }))
+
+export const updateTransportRouteStaffResponseOneDutyOneStartTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffResponseOneDutyOneEndTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const updateTransportRouteStaffResponseOneDutyOneInstructionsMax = 1000;
 
 
 export const updateTransportRouteStaffResponseOneRoleDefault = `ACCOMPANIER`;
 
 export const UpdateTransportRouteStaffResponse = zod.object({
+  "duty": zod.union([zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "startTime": zod.string().regex(updateTransportRouteStaffResponseOneDutyOneStartTimeRegExp),
+  "endTime": zod.string().regex(updateTransportRouteStaffResponseOneDutyOneEndTimeRegExp),
+  "instructions": zod.string().max(updateTransportRouteStaffResponseOneDutyOneInstructionsMax)
+}),zod.null()]).optional(),
   "employeeId": zod.number().int().min(1),
   "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(updateTransportRouteStaffResponseOneRoleDefault)
 }).and(zod.object({

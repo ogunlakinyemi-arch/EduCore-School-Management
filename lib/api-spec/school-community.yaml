@@ -1,0 +1,79 @@
+openapi: 3.1.0
+info: { title: School community, version: 1.0.0 }
+paths:
+  /schools/{schoolId}/community-dashboard:
+    get:
+      operationId: getSchoolCommunityDashboard
+      tags: [schools]
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: view
+          in: query
+          schema: { type: string, enum: [SCHOOL, PARENT, STUDENT, DRIVER], default: SCHOOL }
+      responses:
+        "200":
+          description: Read-only role-filtered, tenant-bound dashboard. No private event notes or student data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolCommunityDashboard"
+        "403": { description: Platform ownership does not confer community membership }
+        "404": { description: Membership or portal view not authorized }
+        "503": { description: Stored configuration needs administrator review }
+components:
+  schemas:
+    SchoolCommunityDashboard:
+      type: object
+      required: [schoolId, schoolName, asOf, closing, notices, busDuties]
+      properties:
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        asOf: { type: string, format: date-time }
+        closing:
+          $ref: "#/components/schemas/CommunityClosing"
+        notices:
+          type: array
+          items: { $ref: "#/components/schemas/CommunityNotice" }
+        busDuties:
+          type: array
+          items: { $ref: "#/components/schemas/CommunityBusDuty" }
+    CommunityClosing:
+      type: object
+      required: [configured, date, timezone, time, dayOpen, effectiveAt, revision]
+      properties:
+        configured: { type: boolean }
+        date: { type: string, format: date }
+        timezone: { type: string }
+        time: { type: [string, "null"] }
+        dayOpen: { type: boolean }
+        effectiveAt: { type: [string, "null"], format: date-time }
+        revision: { type: integer }
+    CommunityNotice:
+      type: object
+      required: [id, title, category, startDate, endDate, status, changedAt, change]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        category: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: [string, "null"], format: date }
+        status: { type: string }
+        changedAt: { type: string, format: date-time }
+        change: { type: string }
+    CommunityBusDuty:
+      type: object
+      required: [id, routeId, routeName, busIdentifier, role, duty, status]
+      properties:
+        id: { type: integer }
+        routeId: { type: integer }
+        routeName: { type: string }
+        busIdentifier: { type: [string, "null"] }
+        role: { type: string }
+        duty:
+          anyOf:
+            - $ref: "./transport-feedback.yaml#/components/schemas/TransportBusDuty"
+            - type: "null"
+        status: { type: string }

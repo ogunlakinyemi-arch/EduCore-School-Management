@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import {calendarSnapshot,publishCalendarChanges,requireDriverCalendarSupport} from "../services/school-community";
 import { registrationNumberChanged } from "../services/school-registration-number";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
@@ -36,7 +37,7 @@ const CALENDAR_CATEGORIES = new Set([
   "SCHOOL_EVENT",
   "OTHER",
 ]);
-const CALENDAR_AUDIENCES = new Set(["TEACHER", "STUDENT", "PARENT", "STAFF"]);
+const CALENDAR_AUDIENCES = new Set(["TEACHER", "STUDENT", "PARENT", "STAFF", "DRIVER"]);
 const WRITE_SCHOOL_ADMIN: Role[] = ["SCHOOL_ADMIN"];
 const SCHOOL_BRANDING_READERS = [
   "SCHOOL_ADMIN",
@@ -53,6 +54,7 @@ const CALENDAR_READERS = [
   "PARENT",
   "STUDENT",
   "STAFF",
+  "DRIVER",
 ] as const;
 const SCHOOL_NAME_SELECT = `s.id AS "schoolId", s.name, s.registration_number AS "registrationNumber",
   s.address, s.city, s.state, s.lga, s.phone, s.email, s.website,
@@ -598,7 +600,7 @@ router.get("/schools/:schoolId/branding/logo-versions/:logoId", run(async (req, 
   res.status(200).send(validated.bytes);
 }));
 
-type CalendarAudience = "TEACHER" | "STUDENT" | "PARENT" | "STAFF";
+type CalendarAudience = "TEACHER" | "STUDENT" | "PARENT" | "STAFF" | "DRIVER";
 type CalendarDateItem = {
   title: string;
   startDate: string;
@@ -608,7 +610,7 @@ type CalendarDateItem = {
 };
 
 function parseAudience(raw: unknown, label: string): CalendarAudience[] {
-  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 4) {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 5) {
     throw new AuthError(400, `${label} must contain one or more permitted audience roles`);
   }
   const audiences = raw.map((value) => {
@@ -632,7 +634,7 @@ function parseCalendarDateItem(raw: unknown, label: string): CalendarDateItem {
   dateRange(startDate, endDate, label);
   const notes = input.notes === undefined ? null : optionalNullableText(input.notes, `${label} notes`, 2000);
   const audience = input.audience === undefined
-    ? [...CALENDAR_AUDIENCES] as CalendarAudience[]
+    ? ["TEACHER","STUDENT","PARENT","STAFF"] as CalendarAudience[]
     : parseAudience(input.audience, `${label} audience`);
   return { title, startDate, endDate, notes, audience };
 }
@@ -709,6 +711,8 @@ function calendarAudiences(context: ReturnType<typeof getUserContext>, schoolId:
     STAFF: "STAFF",
     STUDENT: "STUDENT",
     PARENT: "PARENT",
+    DRIVER: "DRIVER",
+    ACCOUNTANT: "STAFF",
   };
   const audiences = context.roles
     .filter((role) =>
@@ -770,7 +774,7 @@ async function listCalendarRows(
        SELECT ce.id::text, ce.school_id, ce.academic_session_id, ac.name,
          ce.academic_term_id, t.name, ce.title, ce.category,
          ce.start_date::text, ce.end_date::text, ce.is_academic, ce.audience,
-         ce.status, ce.source, ce.notes
+         ce.status, ce.source, CASE WHEN $6::boolean THEN ce.notes ELSE NULL::text END
        FROM school_calendar_events ce
        LEFT JOIN academic_sessions ac
          ON ac.id=ce.academic_session_id AND ac.school_id=ce.school_id
@@ -795,7 +799,7 @@ async function listCalendarRows(
       access.roles,
     ],
   );
-  return result.rows;
+  return result.rows.map(row=>({...row,notes:access.manager?row.notes:null}));
 }
 
 router.get("/schools/:schoolId/academic-calendar", run(async (req, res) => {
@@ -861,6 +865,9 @@ router.post("/schools/:schoolId/academic-calendar", run(async (req, res) => {
   let eventId = 0;
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`school-calendar:${schoolId}`]);
+    const noticeBefore=await calendarSnapshot(client,schoolId);
+    await requireDriverCalendarSupport(client,schoolId,[body.audience]);
     const academicPeriod = await validateEventTerm(client, schoolId, body.termId);
     const inserted = await client.query(
       `INSERT INTO school_calendar_events
@@ -885,6 +892,7 @@ router.post("/schools/:schoolId/academic-calendar", run(async (req, res) => {
     );
     eventId = Number(inserted.rows[0]?.id);
     await audit(req, schoolId, "Created school calendar event", eventId, {}, client);
+    await publishCalendarChanges(client,schoolId,context.user.id,noticeBefore,await calendarSnapshot(client,schoolId));
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
@@ -982,7 +990,7 @@ function materializeGeneratedEntries(
       startDate: config.resumptionDate,
       endDate: null,
       notes: null,
-      audience: [...CALENDAR_AUDIENCES] as CalendarAudience[],
+      audience: ["TEACHER","STUDENT","PARENT","STAFF"] as CalendarAudience[],
     });
   }
   for (const [category, items, permittedRange] of [
@@ -1013,6 +1021,8 @@ router.post("/schools/:schoolId/academic-calendar/generate", run(async (req, res
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`school-calendar:${schoolId}`]);
+    const noticeBefore=await calendarSnapshot(client,schoolId);
     await client.query("SELECT pg_advisory_xact_lock($1::int,$2::int)", [schoolId, 0]);
     const sessionResult = await client.query(
       `SELECT id, name, start_date::text AS "startDate", end_date::text AS "endDate"
@@ -1059,6 +1069,7 @@ router.post("/schools/:schoolId/academic-calendar/generate", run(async (req, res
       const term = termById.get(configuration.termId);
       if (!term) throw new AuthError(404, "Academic term not found in this school");
       const entries = materializeGeneratedEntries(configuration, term, session);
+      await requireDriverCalendarSupport(client,schoolId,entries.map(e=>e.audience));
       for (const entry of entries) {
         const sourceKey = `calendar:v1:session:${body.sessionId}:term:${configuration.termId}:${entry.category}:${entry.sourceIndex}`;
         await client.query(
@@ -1094,6 +1105,7 @@ router.post("/schools/:schoolId/academic-calendar/generate", run(async (req, res
       configuredTerms: body.terms.length,
       generatedEntries: generatedCount,
     }, client);
+    await publishCalendarChanges(client,schoolId,context.user.id,noticeBefore,await calendarSnapshot(client,schoolId));
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
@@ -1150,6 +1162,9 @@ router.patch("/schools/:schoolId/academic-calendar/:eventId", run(async (req, re
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`school-calendar:${schoolId}`]);
+    const noticeBefore=await calendarSnapshot(client,schoolId);
+    if(Array.isArray(patch.audience))await requireDriverCalendarSupport(client,schoolId,[patch.audience as string[]]);
     const prior = await client.query(
       `SELECT start_date::text AS "startDate",end_date::text AS "endDate",source
          FROM school_calendar_events WHERE id=$1 AND school_id=$2 FOR UPDATE`,
@@ -1204,6 +1219,7 @@ router.patch("/schools/:schoolId/academic-calendar/:eventId", run(async (req, re
     await audit(req, schoolId, "Updated school calendar event", eventId, {
       updatedFields: Object.keys(patch),
     }, client);
+    await publishCalendarChanges(client,schoolId,getUserContext(req).user.id,noticeBefore,await calendarSnapshot(client,schoolId));
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
