@@ -1,5 +1,8 @@
 # Production Telegram and browser push: activation handoff
 
+For email prerequisites, unified channel availability and the SMS-disabled policy,
+see [Supported notification channels](notification-supported-channels.md).
+
 ## Read-only review — 2026-10-23
 
 **Nothing was activated by this review.** No secrets/configuration were changed,
@@ -120,10 +123,13 @@ See [Telegram setup](telegram-production-setup.md) for dispatch and retry rules.
   addresses, environment dumps or caught error objects. This validation has
   **not** run against Production because the current interface supplies no values
   or trusted Production execution facility.
-- Presence-only `/api/communication/push-configuration` uses authenticated access
-  and returns the intentionally public application-server key to the browser.
-  Its `configured`/`deliveryEnabled` results do **not** prove pair agreement,
-  subject validity, worker activation or receipt.
+- In the updated source, `/api/communication/push-configuration` validates VAPID
+  format, P-256 public/private agreement and subject locally before reporting
+  `configured`. It uses authenticated access and returns only the intentionally
+  public application-server key to the browser. `deliveryEnabled` still does
+  **not** prove worker activation, recipient eligibility, provider acceptance or
+  receipt. This runtime validator has not been executed against Production by
+  the agent; publishing the source is a separate approval.
 - Source registers `/service-worker.js` with scope `/` for the current root
   artifact, only in a secure supported browser. Push setup waits for activation
   of that registration with a bounded timeout. Optional cache warming/cleanup

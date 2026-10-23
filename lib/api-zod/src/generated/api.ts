@@ -2897,7 +2897,7 @@ export const MarkSchoolNfcCardLostResponse = zod.unknown()
  */
 export const GetParentCommunicationChannelsResponse = zod.object({
   "channels": zod.array(zod.object({
-  "channel": zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL']),
+  "channel": zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']),
   "available": zod.boolean(),
   "status": zod.enum(['AVAILABLE', 'CONFIGURATION_REQUIRED', 'UNAVAILABLE']),
   "detail": zod.string()

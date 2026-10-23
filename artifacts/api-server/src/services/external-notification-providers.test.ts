@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { createHmac } from "node:crypto";
+import { createECDH, createHmac } from "node:crypto";
 import { ResendEmailProvider, createCommunicationProviders, normalizeTermiiRecipient } from "./communication-providers";
 import { MockEmailProvider, MockSmsProvider } from "./communication-test-providers";
 import { WebPushProvider, pushSubscriptionSchema } from "./web-push-provider";
@@ -8,6 +8,10 @@ import { verifiedReceipt } from "../routes/communication-receipts";
 const subscription = { endpoint:"https://fcm.googleapis.com/fcm/send/test",keys:{
   p256dh:Buffer.from("046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5","hex").toString("base64url"),
   auth:Buffer.alloc(16,1).toString("base64url") }};
+const curve = createECDH("prime256v1");
+curve.generateKeys();
+const syntheticVapid = { publicKey: curve.getPublicKey().toString("base64url"),
+  privateKey: curve.getPrivateKey().toString("base64url"), subject: "mailto:fixture@example.invalid" };
 describe("external notification provider contracts (no network)",()=>{
   it("Resend sends stable idempotency, HTML and text and only acknowledges acceptance",async()=>{
     const fetch = vi.fn(async()=>new Response(JSON.stringify({id:"mock-email-id"}),{status:200}));
@@ -54,18 +58,18 @@ describe("external notification provider contracts (no network)",()=>{
       expect(pushSubscriptionSchema.safeParse({...subscription,endpoint}).success).toBe(false);
   });
   it("expired subscriptions never reach transport",async()=>{
-    const send=vi.fn();const p=new WebPushProvider({publicKey:"mock",privateKey:"mock",subject:"mailto:x@example.com"},send);
+    const send=vi.fn();const p=new WebPushProvider(syntheticVapid,send);
     expect((await p.send({subscription:{...subscription,expirationTime:1},idempotencyKey:"event"})).failure?.category).toBe("INVALID_REQUEST");
     expect(send).not.toHaveBeenCalled();
   });
   it("uses generic push payload, not sensitive school/child content",async()=>{
-    const send=vi.fn().mockResolvedValue({statusCode:201});const p=new WebPushProvider({publicKey:"mock",privateKey:"mock",subject:"mailto:x@example.com"},send);
+    const send=vi.fn().mockResolvedValue({statusCode:201});const p=new WebPushProvider(syntheticVapid,send);
     const result=await p.send({subscription,idempotencyKey:"communication-1-push-1"});
     expect(result).toMatchObject({accepted:true,delivered:false});
     const payload=String(send.mock.calls[0][1]);expect(payload).toContain("Open EduCore for details");expect(payload).not.toContain("subscription");
   });
   it.each([404,410])("classifies expired push endpoint %s for cleanup",async statusCode=>{
-    const p=new WebPushProvider({publicKey:"mock",privateKey:"mock",subject:"mailto:x@example.com"},vi.fn().mockRejectedValue({statusCode}));
+    const p=new WebPushProvider(syntheticVapid,vi.fn().mockRejectedValue({statusCode}));
     expect((await p.send({subscription,idempotencyKey:"event"})).failure).toEqual({category:"INVALID_REQUEST",retryable:false});
   });
   it("signed Resend receipts reject tampering and stale/replayed timestamps",()=>{

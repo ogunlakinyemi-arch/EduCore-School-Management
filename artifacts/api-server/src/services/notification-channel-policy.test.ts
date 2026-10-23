@@ -23,8 +23,8 @@ describe("Owner notification channel governance",()=>{
   it.each(["FINANCE","PAYMENT","SUBSCRIPTION","NFC_REMINDER","ACADEMIC","ANNOUNCEMENT","SECURITY"])("blocks default SMS for %s",event=>{
     expect(allowedNotificationChannels(defaultNotificationPolicy(),event,9)).not.toContain("SMS");
   });
-  it.each(["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","EMERGENCY"])("permits SMS policy for %s without claiming delivery",event=>{
-    expect(allowedNotificationChannels(defaultNotificationPolicy(),event,9)).toContain("SMS");
+  it.each(["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","EMERGENCY"])("keeps SMS disabled for %s",event=>{
+    expect(allowedNotificationChannels(defaultNotificationPolicy(),event,9)).not.toContain("SMS");
   });
   it("maps gate entry/exit, absence, card/subscription and emergency events separately",()=>{
     expect(notificationEvent("SECURITY","PARENT_EVENT:SECURITY_ENTRY:1")).toBe("ATTENDANCE_ENTRY");
@@ -34,19 +34,19 @@ describe("Owner notification channel governance",()=>{
     expect(notificationEvent("SUBSCRIPTION","subscription:1")).toBe("SUBSCRIPTION");
     expect(notificationEvent("ANNOUNCEMENT","campaign:1:EMERGENCY")).toBe("EMERGENCY");
   });
-  it("Owner can explicitly change a nonattendance SMS category; school cannot expand it",()=>{
+  it("retains saved SMS permission without making it operational; school cannot expand it",()=>{
     const p=defaultNotificationPolicy();p.events.FINANCE!.allowed.push("SMS");
-    expect(allowedNotificationChannels(p,"FINANCE",9)).toContain("SMS");
+    expect(allowedNotificationChannels(p,"FINANCE",9)).not.toContain("SMS");
     p.schools["9"]={enabled:true,allowed:["IN_APP"]};
     expect(allowedNotificationChannels(p,"FINANCE",9)).not.toContain("SMS");
-    expect(allowedNotificationChannels(p,"FINANCE",10)).toContain("SMS");
+    expect(allowedNotificationChannels(p,"FINANCE",10)).not.toContain("SMS");
     p.schools["9"].enabled=false;expect(allowedNotificationChannels(p,"FINANCE",9)).toEqual([]);
   });
   it("blocks SMS queueing even when requested and consented",async()=>{
     const f=fixture();await queue(f);expect(f.deliveries).not.toContain("SMS");
   });
-  it("allows attendance SMS intents only within current school choices and consent",async()=>{
-    const a=fixture();await queue(a,"ATTENDANCE","attendance:1:SCHOOL_ENTRY");expect(a.deliveries).toContain("SMS");
+  it("blocks attendance SMS intents even when requested",async()=>{
+    const a=fixture();await queue(a,"ATTENDANCE","attendance:1:SCHOOL_ENTRY");expect(a.deliveries).not.toContain("SMS");
     const b=fixture({choices:{ATTENDANCE_ENTRY:["IN_APP"]}});await queue(b,"ATTENDANCE","attendance:1:SCHOOL_ENTRY");expect(b.deliveries).not.toContain("SMS");
     const c=fixture({consent:false});await queue(c,"ATTENDANCE","attendance:1:SCHOOL_ENTRY");expect(c.deliveries).not.toContain("SMS");
   });
@@ -67,5 +67,11 @@ describe("Owner notification channel governance",()=>{
     const result=notificationChannelAvailability({NODE_ENV:"development",EDUCORE_DEVELOPMENT_WORKERS_PAUSED:"true",
       COMMUNICATION_SMS_PROVIDER:"termii",VAPID_PUBLIC_KEY:"fictional",VAPID_PRIVATE_KEY:"fictional",VAPID_SUBJECT:"mailto:fixture@example.invalid"});
     expect(result).toEqual({IN_APP:true,SMS:false,EMAIL:false,PUSH:false,TELEGRAM:false});
+  });
+  it("permits non-SMS channels across every default category without making them defaults",()=>{
+    for(const rule of Object.values(defaultNotificationPolicy().events)){
+      expect(rule?.allowed).toEqual(["IN_APP","EMAIL","PUSH","TELEGRAM"]);
+      expect(rule?.defaults).toEqual(["IN_APP"]);
+    }
   });
 });

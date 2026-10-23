@@ -4,12 +4,13 @@ import { getAuth } from "@clerk/express";
 import { pushSubscriptionSchema } from "../services/web-push-provider";
 import { createHash } from "node:crypto";
 import { developmentPushAllowed } from "../lib/development-push-policy";
+import { validVapidConfiguration, vapidConfiguration } from "../services/web-push-configuration";
 import { AuthError, getUserContext, requireAuthentication } from "../middlewares/auth";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
 router.get("/communication/push-configuration", (req, res) => {
-  const configured = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT);
+  const configured = validVapidConfiguration(vapidConfiguration());
   res.setHeader("Cache-Control", "no-store");
   // The application-server PUBLIC key is intentionally supplied to PushManager.
   res.json({ configured, publicKey: configured ? process.env.VAPID_PUBLIC_KEY : null,
@@ -606,6 +607,9 @@ router.put("/communication/preferences", async (req, res): Promise<void> => {
     await assertSchoolEntitlement(context, schoolId, client);
     if (!categories.has(body.category) || !channels.has(body.channel) || typeof body.enabled !== "boolean") {
       throw new AuthError(400, "category, channel, and enabled are invalid");
+    }
+    if (body.channel === "SMS" && body.enabled) {
+      throw new AuthError(400, "SMS notifications are not available");
     }
     if (body.enabled === false && ["ACCOUNT", "SECURITY"].includes(body.category)) {
       throw new AuthError(400, "Account and security notifications cannot be disabled");

@@ -1,4 +1,4 @@
-import { loadNotificationPolicy, allowedNotificationChannels, notificationEvent } from "./notification-channel-policy";
+import { loadNotificationPolicy, allowedNotificationChannels, notificationEvent, notificationChannelAvailability } from "./notification-channel-policy";
 import {
   createCommunicationProviders,
   type CommunicationProviderAdapters,
@@ -969,7 +969,10 @@ export async function dispatchCommunicationDeliveries(
     options.notificationIds.some(id=>!Number.isSafeInteger(id)||id<1)))throw new TypeError("Invalid notification scope");
   // Unavailable Telegram is deferred, not claimed and exhausted before its
   // explicitly enabled worker has validated credentials/storage.
-  const availableChannels=selectedChannels.filter(channel=>channel!=="TELEGRAM"||!!telegramProvider);
+  const availableChannels=selectedChannels.filter(channel=>channel!=="SMS"
+    &&(channel!=="EMAIL"||!!options.providers?.email||options.allowConfiguredProviders!==true||notificationChannelAvailability().EMAIL)
+    &&(channel!=="TELEGRAM"||!!telegramProvider)
+    &&(channel!=="PUSH"||!!pushProvider&&(!("configured" in pushProvider)||pushProvider.configured)));
   const claimed = availableChannels.length
     ? await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),availableChannels,options.notificationIds) : [];
   const summary: DispatchCommunicationResult = {

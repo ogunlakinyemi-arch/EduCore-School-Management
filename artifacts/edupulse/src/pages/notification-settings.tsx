@@ -11,11 +11,15 @@ import { SchoolCommunicationDefaultsControl } from '@/components/school-communic
 import { OwnerNotificationPolicyControl } from '@/components/owner-notification-policy';
 import { OwnerTelegramHealth, ParentTelegramControl } from '@/components/telegram-control';
 import { useSchoolAdminAccess } from '@/components/shared';
+import { useGetParentCommunicationChannels, getGetParentCommunicationChannelsQueryKey } from '@workspace/api-client-react';
 
 export function NotificationSettings({ standalone = false, globalOnly = false }: { standalone?: boolean; globalOnly?: boolean }) {
   const { schoolId: tenantSchoolId } = useTenant();
   const schoolId = globalOnly ? 0 : tenantSchoolId;
   const schoolAccess = useSchoolAdminAccess();
+  const capability = useGetParentCommunicationChannels({ query: { queryKey: getGetParentCommunicationChannelsQueryKey(), staleTime: 30000 } });
+  const available = (channel: CommunicationChannel) => channel !== 'SMS' &&
+    capability.data?.channels.some(c => c.channel === channel && c.available) === true;
   const qc = useQueryClient();
   const [error, setError] = useState('');
   const [reference, setReference] = useState('');
@@ -55,8 +59,8 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
           <div className="divide-y divide-[hsl(var(--border))]">{Object.entries(grouped).map(([category, rows]) => <div key={category} className="p-5 md:p-6">
             <h3 className="text-sm font-bold capitalize">{category.toLowerCase().replaceAll('_', ' ')}</h3>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">{rows?.map(row => <div key={`${row.category}:${row.channel}`} className="flex items-center justify-between gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary)/.25)] p-3">
-              <div><div className="text-xs font-bold">{row.channel.replaceAll('_', ' ')}</div>{row.mandatory && <div className="mt-1 flex items-center gap-1 text-[11px] text-[hsl(var(--muted-foreground))]"><ShieldCheck size={12} /> Required</div>}</div>
-              <button type="button" role="switch" aria-checked={row.enabled} aria-label={`${category} via ${row.channel}`} data-testid={`switch-preference-${category}-${row.channel}`} disabled={row.mandatory || update.isPending} onClick={() => void onToggle(row.category, row.channel, !row.enabled)} className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-60 ${row.enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-foreground)/.4)]'}`}><span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-[hsl(var(--card))] shadow-sm transition-transform ${row.enabled ? 'translate-x-5' : 'translate-x-0'}`} /></button>
+              <div><div className="text-xs font-bold">{row.channel.replaceAll('_', ' ')}</div>{!available(row.channel) ? <div className="text-xs">{capability.isLoading ? 'Checking availability…' : capability.isError ? 'Availability could not be checked' : 'Delivery unavailable — setup required'}</div> : row.mandatory && <div className="mt-1 flex items-center gap-1 text-[11px] text-[hsl(var(--muted-foreground))]"><ShieldCheck size={12} /> Required</div>}</div>
+              <button type="button" role="switch" aria-checked={row.enabled && available(row.channel)} aria-label={`${category} via ${row.channel}`} data-testid={`switch-preference-${category}-${row.channel}`} disabled={row.mandatory || update.isPending || !available(row.channel)} onClick={() => void onToggle(row.category, row.channel, !row.enabled)} className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-60 ${row.enabled && available(row.channel) ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-foreground)/.4)]'}`}><span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-[hsl(var(--card))] shadow-sm transition-transform ${row.enabled && available(row.channel) ? 'translate-x-5' : 'translate-x-0'}`} /></button>
             </div>)}</div>
           </div>)}</div>}
       </section>

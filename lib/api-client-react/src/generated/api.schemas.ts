@@ -12326,6 +12326,7 @@ export const CommunicationChannelAvailabilityChannelsItemChannel = {
   PUSH: 'PUSH',
   SMS: 'SMS',
   EMAIL: 'EMAIL',
+  TELEGRAM: 'TELEGRAM',
 } as const;
 
 export type CommunicationChannelAvailabilityChannelsItemStatus = typeof CommunicationChannelAvailabilityChannelsItemStatus[keyof typeof CommunicationChannelAvailabilityChannelsItemStatus];

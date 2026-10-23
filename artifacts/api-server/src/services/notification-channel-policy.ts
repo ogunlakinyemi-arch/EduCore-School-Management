@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createEmailProvider, createSmsProvider } from "./communication-providers";
+import { createEmailProvider } from "./communication-providers";
+import { validVapidConfiguration, vapidConfiguration } from "./web-push-configuration";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import {getTelegramHealth} from "./telegram-provider";
 export const policyEvents = ["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","NFC_REMINDER","SUBSCRIPTION",
@@ -17,7 +18,7 @@ export type NotificationChannelPolicy = z.infer<typeof notificationPolicySchema>
 type Db = {query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
 export function defaultNotificationPolicy():NotificationChannelPolicy {
   return {events:Object.fromEntries(policyEvents.map(event=>[event,{
-    allowed:["IN_APP","EMAIL","PUSH",...(["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","ATTENDANCE","EMERGENCY"].includes(event)?["SMS"]:[])],
+    allowed:["IN_APP","EMAIL","PUSH","TELEGRAM"],
     defaults:["IN_APP"],
   }])),schools:{}} as NotificationChannelPolicy;
 }
@@ -71,17 +72,19 @@ export function allowedNotificationChannels(policy:NotificationChannelPolicy,eve
   if(!configured)return [];
   const school=schoolId===null?undefined:policy.schools[String(schoolId)];
   if(school?.enabled===false)return [];
-  return configured.allowed.filter(c=>!school||school.allowed.includes(c));
+  // SMS is not operationally available. Retain saved policy/history, but never
+  // queue or dispatch it until a separately approved SMS implementation release.
+  return configured.allowed.filter(c=>c!=="SMS"&&(!school||school.allowed.includes(c)));
 }
 export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.env):Record<PolicyChannel,boolean>{
-  const ready=(kind:"SMS"|"EMAIL")=>{
+  const emailReady=()=>{
     if(developmentPaymentNotificationsSuppressed(env))return false;
-    const selected=env[kind==="SMS"?"COMMUNICATION_SMS_PROVIDER":"COMMUNICATION_EMAIL_PROVIDER"];
+    const selected=env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase();
     if(!selected||["mock","dev","development","test"].includes(selected.toLowerCase()))return false;
-    try { const p=kind==="SMS"?createSmsProvider(env):createEmailProvider(env);return !p.provider.startsWith("mock"); }
+    try { const p=createEmailProvider(env);return ["resend","http-email"].includes(p.provider); }
     catch{return false;}
   };
-  return {IN_APP:true,SMS:ready("SMS"),EMAIL:ready("EMAIL"),
-    PUSH:!developmentPaymentNotificationsSuppressed(env)&&!!(env.VAPID_PUBLIC_KEY&&env.VAPID_PRIVATE_KEY&&/^(mailto:|https:\/\/)/.test(env.VAPID_SUBJECT??"")),
+  return {IN_APP:true,SMS:false,EMAIL:emailReady(),
+    PUSH:!developmentPaymentNotificationsSuppressed(env)&&validVapidConfiguration(vapidConfiguration(env)),
     TELEGRAM:getTelegramHealth(env).ready};
 }

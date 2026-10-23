@@ -27,19 +27,19 @@ An HTTP 401 from Resend domain listing does not alone establish an invalid sendi
 
 **How to apply:** Inspect the sanitized provider error category, not just the HTTP status. Keep domain verification and sending verification separate; use an explicitly approved controlled-recipient send to establish sending access.
 
-The current default communication policy permits SMS for attendance (including
-configured gate entry/exit and genuine absences) and emergencies. Other categories,
-including card/subscription reminders, require an explicit Platform Owner policy
-change. School choices cannot expand Owner permissions.
+The Owner requests supported IN-APP, EMAIL, PUSH and TELEGRAM channels across
+notification categories, with SMS unavailable until separately approved. Older
+attendance/emergency SMS permission is not current authorization to enable SMS.
+School choices cannot expand Owner permissions.
 
-**Why:** The user subsequently explicitly requested full Owner category/channel
-control and school choices constrained by that authority, while forbidding real
-test messages in this Development implementation.
+**Why:** On 2026-10-23 the Owner explicitly requested every supported channel
+except SMS, without real provider calls, sends, Production configuration changes,
+database changes, restarts or publication during preparation.
 
-**How to apply:** Enforce current policy at queueing and dispatch. Preserve
-recipient checks, consent, stable event deduplication and Development send locks.
-Do not introduce routine SMS jobs, real sends or provider enablement merely
-because a category or credential is configured.
+**How to apply:** Preserve saved policy/history, recipient checks, consent,
+deduplication and Development send locks. Missing provider configuration is not
+fixed by removing unavailable labels. Permission across categories must not
+silently subscribe recipients or broaden existing saved school/Owner rules.
 
 During payment safety testing, an earlier controlled-recipient email approval does not authorize sending notifications. Keep payment-test suppression independent of recipient allowlists and scheduler pauses, and cover manual dispatch and direct real-provider transports too.
 

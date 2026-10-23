@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ECDH } from "node:crypto";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import type { PushProvider, ProviderSendResult, WebPushSubscription } from "./communication-providers";
+import { validVapidConfiguration } from "./web-push-configuration";
 
 // Do not permit arbitrary HTTPS targets: subscriptions are server-side egress credentials.
 export const pushSubscriptionSchema = z.object({
@@ -29,7 +30,7 @@ export const pushSubscriptionSchema = z.object({
 export class WebPushProvider implements PushProvider {
   readonly provider = "web-push";
   readonly channel = "push" as const;
-  get configured() { return Boolean(this.config.publicKey && this.config.privateKey && this.config.subject); }
+  get configured() { return validVapidConfiguration(this.config); }
   constructor(private readonly config: { publicKey: string; privateKey: string; subject: string },
     private readonly transport: typeof webPush.sendNotification = webPush.sendNotification) {}
   async send(message: { subscription: WebPushSubscription; idempotencyKey: string }): Promise<ProviderSendResult> {
@@ -38,7 +39,7 @@ export class WebPushProvider implements PushProvider {
     if (developmentPaymentNotificationsSuppressed() ||
         (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
           && process.env.EDUCORE_DEVELOPMENT_PUSH_ENABLED !== "true")) return failed("CONFIGURATION");
-    if (!this.config.publicKey || !this.config.privateKey || !/^(mailto:|https:\/\/)/.test(this.config.subject)) return failed("CONFIGURATION");
+    if (!this.configured) return failed("CONFIGURATION");
     const parsed = pushSubscriptionSchema.safeParse(message.subscription);
     if (!parsed.success || (parsed.data.expirationTime && parsed.data.expirationTime <= Date.now())) return failed("INVALID_REQUEST");
     try {

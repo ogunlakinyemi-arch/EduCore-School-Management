@@ -31,7 +31,7 @@ export function OwnerNotificationPolicyControl(){
   };
   return <section className="panel mb-6 space-y-4 p-5" aria-label="Platform notification policy">
     <h2 className="display-font text-xl font-bold">Owner notification controls</h2>
-    <p className="text-sm">Only you can permit SMS categories and set school permissions. SMS starts restricted to attendance and emergencies. Allowing another category is an explicit global policy change, not permission to send a test message.</p>
+    <p className="text-sm">Permit supported channels by category and set school permissions. SMS is unavailable and disabled. Allowing a channel does not configure its provider, subscribe recipients or send a test message.</p>
     {query.isLoading?<p>Loading policy…</p>:query.isError?<p role="alert">Could not load policy. <button onClick={()=>void query.refetch()}>Retry</button></p>:policy&&<>
       <p className="text-xs">Each channel has “Allowed” and “Default” controls. A channel can be allowed before its delivery is available (shown as “Permitted, not yet deliverable”), but it cannot be a default until delivery is available. Telegram delivery needs a ready bot configuration. Permission alone never activates delivery or sends messages.</p>
       <div className="space-y-3">{Object.entries(policy.events).map(([event,rule])=><fieldset key={event} className="rounded-xl border p-3">
@@ -40,10 +40,10 @@ export function OwnerNotificationPolicyControl(){
           <div className="font-semibold">{channel.replace('_',' ')}{!availability[channel]&&(rule.allowed.includes(channel)
             ?' — Permitted, not yet deliverable':' — delivery unavailable')}</div>
           <label className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} allowed`}
-            disabled={save.isPending} checked={rule.allowed.includes(channel)}
+            disabled={save.isPending||channel==='SMS'} checked={rule.allowed.includes(channel)}
             onChange={e=>change(event,channel,'allowed',e.target.checked)}/>Allowed</label>
           <label className="inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} default`}
-            disabled={save.isPending||!rule.allowed.includes(channel)||(!availability[channel]&&!rule.defaults.includes(channel))} checked={rule.defaults.includes(channel)}
+            disabled={save.isPending||channel==='SMS'||!rule.allowed.includes(channel)||(!availability[channel]&&!rule.defaults.includes(channel))} checked={rule.defaults.includes(channel)}
             onChange={e=>change(event,channel,'defaults',e.target.checked)}/>Default</label>
         </div>)}</div>
       </fieldset>)}</div>
@@ -65,7 +65,7 @@ export function OwnerNotificationPolicyControl(){
         <button type="button" className="rounded border px-3 py-2"
           disabled={schoolPickerDisabled||directory.isFetching||!selectedSchool}
           onClick={()=>{if(!selectedSchool||schoolPickerDisabled||directory.isFetching)return;
-            setDraft({...policy,schools:{...policy.schools,[String(selectedSchool.id)]:{enabled:true,allowed:channels.filter(c=>globalAllowed.has(c))}}});
+            setDraft({...policy,schools:{...policy.schools,[String(selectedSchool.id)]:{enabled:true,allowed:channels.filter(c=>c!=='SMS'&&globalAllowed.has(c))}}});
             setSchool('');setSchoolSearch('');}}>Add override</button>
       </div>
       {!schoolPickerDisabled&&visibleSchools.length===0&&<p role="status">No schools match your search.</p>}
@@ -74,7 +74,7 @@ export function OwnerNotificationPolicyControl(){
         <label className="mr-4 inline-flex min-h-10 items-center gap-2"><input type="checkbox" checked={permission.enabled} disabled={save.isPending}
           onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,enabled:e.target.checked}}})}/>Notifications permitted</label>
         {channels.map(channel=><label key={channel} className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`School ${id} ${channel} permitted`}
-          disabled={save.isPending||(!globalAllowed.has(channel)&&!(permission.allowed.includes(channel)&&savedSchools[id]?.allowed.includes(channel)))} checked={permission.allowed.includes(channel)}
+          disabled={save.isPending||channel==='SMS'||(!globalAllowed.has(channel)&&!(permission.allowed.includes(channel)&&savedSchools[id]?.allowed.includes(channel)))} checked={permission.allowed.includes(channel)}
           onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,allowed:e.target.checked?[...permission.allowed,channel]:permission.allowed.filter(c=>c!==channel)}}})}/>{channel}</label>)}
         <button type="button" disabled={save.isPending} onClick={()=>{const schools={...policy.schools};delete schools[id];setDraft({...policy,schools});}} className="ml-3 underline">Use global permissions</button>
       </fieldset>)}

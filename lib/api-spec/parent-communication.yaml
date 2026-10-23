@@ -387,7 +387,7 @@ components:
             properties:
               channel:
                 type: string
-                enum: [IN_APP, PUSH, SMS, EMAIL]
+                enum: [IN_APP, PUSH, SMS, EMAIL, TELEGRAM]
               available: { type: boolean }
               status:
                 type: string

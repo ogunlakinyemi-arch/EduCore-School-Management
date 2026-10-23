@@ -65,7 +65,7 @@ describe('Owner school permission selector',()=>{
     const saved=mocks.mutateAsync.mock.calls[0][0].data;
     expect(saved.events).toEqual(policy.events);
     expect(saved.events.FINANCE.allowed).not.toContain('SMS');
-    expect(saved.schools['9']).toEqual({enabled:true,allowed:['IN_APP','SMS','EMAIL']});
+    expect(saved.schools['9']).toEqual({enabled:true,allowed:['IN_APP','EMAIL']});
     expect(saved.schools['12']).toEqual(policy.schools['12']);
     expect(policy.schools['9']).toBeUndefined();
     expect(mocks.refetch).toHaveBeenCalledOnce();
@@ -104,10 +104,12 @@ describe('Owner school permission selector',()=>{
     expect(host.textContent).toContain('School not in current directory (reference #12)');
     expect(button('Save Owner policy').disabled).toBe(true);
   });
-  it('preserves restriction editing and removal without modifying global SMS permissions',async()=>{
+  it('keeps SMS disabled in new overrides without modifying historical global permissions',async()=>{
     await render();await change(select(),'9');await click(button('Add override'));
     const override=[...host.querySelectorAll('fieldset')].find(item=>item.querySelector('legend')?.textContent==='North Academy')!;
     const sms=[...override.querySelectorAll('label')].find(item=>item.textContent==='SMS')!.querySelector('input')!;
+    expect(sms.disabled).toBe(true);
+    expect(sms.checked).toBe(false);
     await click(sms);
     expect((override.querySelectorAll('input')[5] as HTMLInputElement).disabled).toBe(true);
     await click(button('Save Owner policy'));

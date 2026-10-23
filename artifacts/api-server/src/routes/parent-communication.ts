@@ -11,6 +11,7 @@ import {
   type UserContext,
 } from "../middlewares/auth";
 import { queueCommunicationNotification } from "../services/communication-service";
+import { notificationChannelAvailability } from "../services/notification-channel-policy";
 import {
   communicationChannelAvailabilityResponseSchema,
   parentCommunicationChildrenResponseSchema,
@@ -425,23 +426,17 @@ async function notifyThreadCounterpart(
 }
 
 router.get("/communication/channels", asyncRoute(async (_req, res) => {
-  const env = process.env;
-  const smsConfigured = env.COMMUNICATION_SMS_PROVIDER?.trim().toLowerCase() === "termii"
-    && Boolean(env.TERMII_API_KEY?.trim() && env.TERMII_SENDER_ID?.trim());
-  const emailConfigured = (env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase() === "http"
-    && Boolean(env.COMMUNICATION_EMAIL_API_KEY?.trim() && env.COMMUNICATION_EMAIL_ENDPOINT?.trim())) ||
-    (env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase() === "resend" && Boolean(env.RESEND_API_KEY && env.EMAIL_FROM));
-  const pushConfigured = Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT);
+  const availability = notificationChannelAvailability();
   res.json(communicationChannelAvailabilityResponseSchema.parse({
-    channels: [
-      { channel: "IN_APP", available: true, status: "AVAILABLE", detail: "In-app notifications are stored in the authenticated inbox." },
-      { channel: "PUSH", available: pushConfigured, status: pushConfigured ? "AVAILABLE" : "CONFIGURATION_REQUIRED",
-        detail: pushConfigured ? "Web Push is configured; permission and an active device subscription are still required." : "VAPID settings are missing; no push can be sent." },
-      { channel: "SMS", available: smsConfigured, status: smsConfigured ? "AVAILABLE" : "CONFIGURATION_REQUIRED",
-        detail: smsConfigured ? "Termii credentials and sender ID are configured; provider acceptance is not delivery." : "SMS provider not configured." },
-      { channel: "EMAIL", available: emailConfigured, status: emailConfigured ? "AVAILABLE" : "CONFIGURATION_REQUIRED",
-        detail: emailConfigured ? "Email provider endpoint and credentials are configured; provider acceptance is not delivery." : "Email provider not configured." },
-    ],
+    channels: (["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const).map(channel => ({
+      channel, available: availability[channel],
+      status: availability[channel] ? "AVAILABLE" : channel === "SMS" ? "UNAVAILABLE" : "CONFIGURATION_REQUIRED",
+      detail: channel === "IN_APP" ? "Notifications are stored in the authenticated inbox."
+        : channel === "SMS" ? "SMS notifications are not available."
+        : channel === "PUSH" ? "Requires a valid matching VAPID pair and subject, browser permission, an active subscription, policy and consent. Configuration is not proof of receipt."
+        : channel === "EMAIL" ? "Requires an explicitly selected real provider, credentials and valid sender, plus policy and preferences. Provider acceptance is not receipt."
+        : "Requires Production opt-in, independently validated bot/storage readiness, policy and a parent-owned consented chat. Provider acceptance is not receipt.",
+    })),
   }));
 }));
 
