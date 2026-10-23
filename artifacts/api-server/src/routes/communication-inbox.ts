@@ -246,9 +246,14 @@ type Visibility = { where: string; values: unknown[] };
 
 function notificationVisibility(context: UserContext, schoolId: number | null): Visibility {
   const userId = context.user.id;
+  // Email-only/outbox records are not in-app deliveries. Keep operational
+  // delivery history separate from personal inbox visibility and unread counts.
+  const inApp = `EXISTS (SELECT 1 FROM communication_deliveries inbox_delivery
+    WHERE inbox_delivery.notification_id=n.id AND inbox_delivery.channel='IN_APP'
+      AND inbox_delivery.status IN ('SENT','DELIVERED','READ'))`;
   if (isPlatformOwner(context)) {
     if (schoolId !== null) throw new AuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
-    return { where: "n.recipient_user_id=$1 AND n.school_id IS NULL", values: [userId] };
+    return { where: `${inApp} AND n.recipient_user_id=$1 AND n.school_id IS NULL`, values: [userId] };
   }
 
   const values: unknown[] = [userId];
@@ -262,12 +267,12 @@ function notificationVisibility(context: UserContext, schoolId: number | null): 
   if (schoolId !== null) {
     values.push(schoolId);
     return {
-      where: `n.recipient_user_id=$1 AND n.school_id=$2 AND ${activeSchoolEntitlementSql("$1", "$2")} AND ${subjectVisibility}${schoolCategory}`,
+      where: `${inApp} AND n.recipient_user_id=$1 AND n.school_id=$2 AND ${activeSchoolEntitlementSql("$1", "$2")} AND ${subjectVisibility}${schoolCategory}`,
       values,
     };
   }
   return {
-    where: `n.recipient_user_id=$1 AND (${global} OR (n.school_id IS NOT NULL AND ${schoolEntitlement} AND ${subjectVisibility}${schoolCategory}))`,
+    where: `${inApp} AND n.recipient_user_id=$1 AND (${global} OR (n.school_id IS NOT NULL AND ${schoolEntitlement} AND ${subjectVisibility}${schoolCategory}))`,
     values,
   };
 }

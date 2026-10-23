@@ -111,6 +111,7 @@ const poolMock = vi.hoisted(() => {
     }
     if (sql.includes("INSERT INTO academic_report_card_lines")) return result();
     if (sql.includes("FROM academic_report_card_lines")) return result([{ ...state.snapshotLine }]);
+    if (sql.includes('SELECT linked.user_id AS "userId"')) return result();
     throw new Error(`Unhandled test SQL: ${sql}`);
   };
   const client = {

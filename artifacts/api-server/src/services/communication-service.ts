@@ -1,4 +1,4 @@
-import { loadNotificationPolicy, allowedNotificationChannels, notificationEvent, notificationChannelAvailability } from "./notification-channel-policy";
+import { loadNotificationPolicy, effectiveNotificationChannels, notificationEvent, notificationChannelAvailability } from "./notification-channel-policy";
 import {
   createCommunicationProviders,
   type CommunicationProviderAdapters,
@@ -420,36 +420,16 @@ export async function queueCommunicationNotification(
   }
   if (notificationId === undefined) return null;
 
-  let requestedChannels = [...new Set(input.channels)];
-  // Add a delivery channel to existing events, not a new notification rule.
-  // Explicit campaign channel selections remain authoritative; preferences
-  // below still apply to nonmandatory categories.
-  if (requestedChannels.length > 0 && input.useSchoolDefaults !== false && input.eventKey !== null &&
-      (["ACCOUNT", "SYSTEM"].includes(input.category) ||
-       (recipient.rows[0]?.isParent === true &&
-        ["ATTENDANCE", "ACADEMIC", "FINANCE", "PAYMENT", "ANNOUNCEMENT", "SECURITY"].includes(input.category)))) {
-    requestedChannels = [...new Set([...requestedChannels, "EMAIL" as const])];
-  }
-  if (input.schoolId !== null && input.useSchoolDefaults !== false) {
-    const settings = await client.query<{ defaults: Record<string, CommunicationDeliveryChannel[]> }>(
-      `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`, [input.schoolId]);
-    const configured = settings.rows[0]?.defaults?.[input.category] ?? [];
-    requestedChannels = [...new Set([...requestedChannels, ...configured.filter(channel => channels.has(channel))])];
-  }
-  if (requestedChannels.length === 0) return Number(notificationId);
-
+  if (input.channels.length === 0) return Number(notificationId);
   const ownerPolicy = await loadNotificationPolicy(client);
   const mappedEvent = notificationEvent(input.category,input.eventKey);
-  const permitted = allowedNotificationChannels(ownerPolicy,mappedEvent,input.schoolId);
   const schoolChoices = input.schoolId === null ? undefined : (await client.query<{defaults:Record<string,CommunicationDeliveryChannel[]>}>(
     `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`,[input.schoolId])).rows[0]?.defaults;
-  const effectiveChoices=schoolChoices?.[mappedEvent]??schoolChoices?.[input.category];
-  if(input.useSchoolDefaults!==false){
-    const defaults=(effectiveChoices??ownerPolicy.events[mappedEvent]?.defaults??[])
-      .filter((c:string):c is CommunicationDeliveryChannel=>channels.has(c as CommunicationDeliveryChannel));
-    requestedChannels=[...new Set([...requestedChannels,...defaults])];
-  }
-  let enabledChannels = requestedChannels.filter(c=>permitted.includes(c)&&(!effectiveChoices||effectiveChoices.includes(c)));
+  const effective = effectiveNotificationChannels(ownerPolicy, mappedEvent, input.schoolId, schoolChoices);
+  // Automatic triggers use saved selections, not hardcoded channel hints.
+  // Explicit campaign selections may narrow, never expand, the effective set.
+  let enabledChannels = input.useSchoolDefaults === false
+    ? effective.filter(c => input.channels.includes(c)) : effective;
   if (!mandatoryCategories.has(input.category)) {
     const preferences = await client.query<{
       channel: CommunicationDeliveryChannel;
@@ -747,7 +727,7 @@ async function loadDispatchRecord(
        n.event_key AS "eventKey",
        n.subject,
        n.body,
-       u.email,
+       COALESCE(NULLIF(u.email, ''), NULLIF(p.email, '')) AS email,
        COALESCE(NULLIF(u.phone, ''), NULLIF(p.phone, '')) AS phone,
          (
            NOT EXISTS (
@@ -1014,14 +994,27 @@ export async function dispatchCommunicationDeliveries(
     const dispatchEvent=notificationEvent(record.category,record.eventKey);
     const schoolChoices=record.schoolId===null?undefined:(await pool.query<{defaults:Record<string,string[]>}>(
       `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`,[record.schoolId])).rows[0]?.defaults;
-    const effectiveChoices=schoolChoices?.[dispatchEvent]??schoolChoices?.[record.category];
-    if (!allowedNotificationChannels(await loadNotificationPolicy(pool), dispatchEvent,
-      record.schoolId === null ? null : Number(record.schoolId)).includes(delivery.channel)
-      || (effectiveChoices && !effectiveChoices.includes(delivery.channel))) {
+    if (!effectiveNotificationChannels(await loadNotificationPolicy(pool), dispatchEvent,
+      record.schoolId === null ? null : Number(record.schoolId), schoolChoices).includes(delivery.channel)) {
       await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='OWNER_CHANNEL_POLICY',
-        last_error='Channel disallowed by current Owner policy',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
+        last_error='Channel is not selected by current effective notification settings',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
         [delivery.id,normalizedDate(now())]);
       summary.skipped++; continue;
+    }
+    if (!mandatoryCategories.has(record.category)) {
+      const preference = await pool.query<{enabled:boolean}>(
+        `SELECT enabled FROM communication_preferences
+         WHERE user_id=$1 AND category=$2 AND channel=$3
+           AND (school_id=$4 OR school_id IS NULL)
+         ORDER BY CASE WHEN school_id=$4 THEN 0 ELSE 1 END LIMIT 1`,
+        [record.recipientUserId,record.category,delivery.channel,record.schoolId],
+      );
+      if (preference.rows[0]?.enabled === false) {
+        await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='RECIPIENT_PREFERENCE',
+          last_error='Recipient disabled this notification channel',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
+          [delivery.id,normalizedDate(now())]);
+        summary.skipped++; continue;
+      }
     }
     if (await duplicateCampaignDelivery(pool, record)) { summary.skipped += 1; continue; }
 

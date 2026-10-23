@@ -120,12 +120,15 @@ const poolMock = vi.hoisted(() => {
     if (sql.includes("FROM academic_report_cards WHERE id=$1 AND school_id=$2 FOR UPDATE")) {
       return result([{
         id: 80, student_id: 13, academic_session_id: 3, academic_term_id: 4,
-        student_class_assignment_id: 12, status: "DRAFT",
+        student_class_assignment_id: 12, status: state.reportCard.status,
       }]);
     }
     if (sql.includes("INSERT INTO academic_report_card_lines")) return result();
     if (sql.includes("UPDATE academic_report_cards SET status='PUBLISHED'")) {
-      state.reportCard = { ...state.reportCard, status: "PUBLISHED", publishedBy: 10, publishedAt: "2025-02-03T09:00:00.000Z" };
+      const publishedAt = state.reportCard.publishedAt
+        ? new Date(Date.parse(state.reportCard.publishedAt) + 1).toISOString()
+        : "2025-02-03T09:00:00.000Z";
+      state.reportCard = { ...state.reportCard, status: "PUBLISHED", publishedBy: 10, publishedAt };
       return result([{ ...state.reportCard }]);
     }
     if (sql.includes("INSERT INTO academic_report_cards")) return result([{ ...state.reportCard }]);
@@ -320,7 +323,7 @@ describe("academic publication notifications", () => {
     expect(state.queries).toHaveLength(0);
   });
 
-  it("queues report-card availability notices after publication commits", async () => {
+  it("commits report-card publication and availability intents together, with no draft-time delivery", async () => {
     const response = await post("/academic/report-cards/80/publish", { schoolId: 1 });
 
     expect(response.status, await response.clone().text()).toBe(200);
@@ -330,10 +333,41 @@ describe("academic publication notifications", () => {
     expect(calls.map(([, input]) => input.recipientUserId)).toEqual([13, 44]);
     expect(calls[0][1]).toMatchObject({
       schoolId: 1, subjectStudentId: 13, subjectClassId: 5,
-      category: "ACADEMIC", eventKey: "report-card-published:80",
+      category: "ACADEMIC", eventKey: "report-card-published:80:2025-02-03T09:00:00.000Z",
       subject: "Report card available", link: "/my-academics", channels: ["IN_APP"],
     });
-    expect(state.timeline.indexOf("COMMIT")).toBeLessThan(state.timeline.indexOf("QUEUE_NOTIFICATION"));
+    expect(state.timeline.lastIndexOf("QUEUE_NOTIFICATION")).toBeLessThan(state.timeline.indexOf("COMMIT"));
+    expect(calls.every(([client]) => client === poolMock.client)).toBe(true);
+  });
+
+  it("rolls back publication when notification intent cannot be persisted", async () => {
+    communicationMock.queue.mockRejectedValueOnce(new Error("synthetic queue unavailable"));
+    const response = await post("/academic/report-cards/80/publish", { schoolId: 1 });
+    expect(response.status).toBe(500);
+    expect(state.timeline).toContain("ROLLBACK");
+    expect(state.timeline).not.toContain("COMMIT");
+  });
+
+  it("does not queue another notice for a repeated publish action", async () => {
+    expect((await post("/academic/report-cards/80/publish", { schoolId: 1 })).status).toBe(200);
+    const count = communicationMock.queue.mock.calls.length;
+    const response = await post("/academic/report-cards/80/publish", { schoolId: 1 });
+    expect(response.status).toBe(409);
+    expect(communicationMock.queue).toHaveBeenCalledTimes(count);
+  });
+
+  it("uses a new deduplicated publication event after an approved correction is republished", async () => {
+    expect((await post("/academic/report-cards/80/publish", {schoolId:1})).status).toBe(200);
+    const first = (communicationMock.queue.mock.calls[0][1] as {eventKey:string}).eventKey;
+    // Represents the existing reviewed/approved correction workflow; editing alone
+    // is not a notification trigger.
+    state.reportCard.status = "DRAFT";
+    expect(communicationMock.queue).toHaveBeenCalledTimes(2);
+    expect((await post("/academic/report-cards/80/publish", {schoolId:1})).status).toBe(200);
+    const second = (communicationMock.queue.mock.calls[2][1] as {eventKey:string}).eventKey;
+    expect(second).not.toBe(first);
+    expect(second).toContain("report-card-published:80:");
+    expect(communicationMock.queue).toHaveBeenCalledTimes(4);
   });
 
   it("does not notify when a result is created as a draft", async () => {

@@ -77,6 +77,19 @@ export function allowedNotificationChannels(policy:NotificationChannelPolicy,eve
   // queue or dispatch it until a separately approved SMS implementation release.
   return configured.allowed.filter(c=>c!=="SMS"&&(!school||school.allowed.includes(c)));
 }
+/** Allowed is a ceiling, never a selection. An absent event override inherits
+ * the Owner default; an explicit empty override selects no channels. */
+export function effectiveNotificationChannels(
+  policy: NotificationChannelPolicy, event: string, schoolId: number | null,
+  schoolDefaults?: Record<string, readonly string[]>,
+): PolicyChannel[] {
+  const override = schoolDefaults?.[event];
+  const selected = override === undefined
+    ? policy.events[event as keyof typeof policy.events]?.defaults ?? []
+    : Array.isArray(override) ? override : [];
+  const allowed = allowedNotificationChannels(policy, event, schoolId);
+  return [...new Set(selected)].filter((c): c is PolicyChannel => allowed.includes(c as PolicyChannel));
+}
 export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.env):Record<PolicyChannel,boolean>{
   if (!notificationLaunchBoundary(env).allowed) {
     return { IN_APP: true, SMS: false, EMAIL: false, PUSH: false, TELEGRAM: false };

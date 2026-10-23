@@ -9948,6 +9948,7 @@ components:
       required: [defaults, canWrite]
       properties:
         defaults: { $ref: "#/components/schemas/SchoolCommunicationDefaults" }
+        effectiveDefaults: { $ref: "#/components/schemas/SchoolCommunicationDefaults" }
         canWrite: { type: boolean }
         allowed: { $ref: "#/components/schemas/NotificationAllowedChannels" }
         availability: { $ref: "#/components/schemas/NotificationChannelAvailability" }

@@ -28,7 +28,7 @@ packages = ["freetype", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf
 [userenv.development]
 FEE_PAYMENT_RETURN_URL = "https://f8ad4f13-ad39-4544-9de2-99a39f6d556c-00-1pkz80o0gbypm.riker.replit.dev/fees/return"
 COMMUNICATION_EMAIL_PROVIDER = "resend"
-EMAIL_FROM = "Yemait EduCore <notifications@yetenia.com>"
+EMAIL_FROM = "Yetenia EduCore <notification@yetenia.com>"
 RESEND_DEVELOPMENT_RECIPIENTS = "ogunlakinyemi@gmail.com"
 EDUCORE_DEVELOPMENT_WORKERS_PAUSED = "true"
 EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED = "true"
@@ -36,6 +36,8 @@ EDUCORE_DEVELOPMENT_TELEGRAM_ENABLED = "true"
 
 [userenv.production]
 EDUCORE_PRODUCTION_TELEGRAM_ENABLED = "true"
+COMMUNICATION_EMAIL_PROVIDER = "resend"
+EMAIL_FROM = "Yetenia EduCore <notification@yetenia.com>"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-2357c139-bab2-4688-9e2e-9a940e1cb1cc"

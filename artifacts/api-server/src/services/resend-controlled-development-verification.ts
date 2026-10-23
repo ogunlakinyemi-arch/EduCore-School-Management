@@ -20,7 +20,7 @@ async function main() {
     "Choose --send-once or --verify-absence-only");
   assert.equal(process.env.NODE_ENV, "development");
   assert.equal(process.env.COMMUNICATION_EMAIL_PROVIDER, "resend");
-  assert.equal(process.env.EMAIL_FROM?.replace(/^Yemait EduCore(?=\s*<)/, "Yetenia EduCore"), "Yetenia EduCore <notifications@yetenia.com>");
+  assert.equal(process.env.EMAIL_FROM?.replace(/^Yemait EduCore(?=\s*<)/, "Yetenia EduCore"), "Yetenia EduCore <notification@yetenia.com>");
   assert(Boolean(process.env.RESEND_API_KEY), "Server-side sending secret is missing");
   const recipient = process.env.RESEND_DEVELOPMENT_RECIPIENTS ?? "";
   assert(validEmail(recipient) && !recipient.includes(","), "Exactly one approved recipient required");

@@ -67,3 +67,14 @@ where supported, without assuming a Google-owned domain is a Resend sending iden
 retain a separately configured, provider-verified From domain. Direct Gmail sending
 needs separately authorized Gmail OAuth and a sending adapter; do not silently
 switch providers, add Production secrets, or enable sending.
+
+EduCore sender work is limited to School Management, not the separate marketing
+website. Clerk-managed authentication emails are a separate configuration boundary.
+
+**Why:** The Owner explicitly excluded marketing settings and authentication
+behavior changes while requesting consistent application-generated email routing.
+
+**How to apply:** Configure the existing application email adapter without
+replacing Clerk verification, password-reset or invitation flows. Report Clerk
+sender-access restrictions separately; do not introduce custom auth delivery or
+change DNS merely to make those emails use the application sender.

@@ -217,7 +217,7 @@ export async function queueStudentAttendanceCommunication(
       subject: input.subject,
       body: input.body,
       link: input.link ?? "/",
-      channels: recipient.recipientRole === "PARENT" ? ["IN_APP", "SMS", "PUSH"] : ["IN_APP", "PUSH"],
+      channels: recipient.recipientRole === "PARENT" ? ["IN_APP", "SMS", "PUSH", "EMAIL"] : ["IN_APP", "PUSH"],
     });
   }
 }
@@ -232,7 +232,8 @@ export async function queueStudentAbsenceCommunication(
     status: string;
   },
 ): Promise<void> {
-  if (event.studentId == null || String(event.status).toUpperCase() !== "ABSENT") return;
+  const status = String(event.status).toUpperCase();
+  if (event.studentId == null || !["ABSENT", "LATE"].includes(status)) return;
   const eventId = Number(event.id);
   if (!Number.isSafeInteger(eventId) || eventId < 1) return;
   const schoolId = Number(event.schoolId);
@@ -240,9 +241,11 @@ export async function queueStudentAbsenceCommunication(
     schoolId,
     studentId: Number(event.studentId),
     subjectClassId: event.schoolClassId == null ? null : Number(event.schoolClassId),
-    eventKey: `attendance:${schoolId}:${eventId}:ABSENT`,
-    subject: "Student absence recorded",
-    body: "An absence has been recorded for your child. Please review the attendance record or contact the school.",
+    eventKey: `attendance:${schoolId}:${eventId}:${status}`,
+    subject: status === "LATE" ? "Student lateness recorded" : "Student absence recorded",
+    body: status === "LATE"
+      ? "Late attendance has been recorded for your child. Sign in to review the attendance record or contact the school."
+      : "An absence has been recorded for your child. Please review the attendance record or contact the school.",
     link: "/attendance",
   });
 }
@@ -258,11 +261,12 @@ export async function queueSchoolEntryExitCommunication(
     status: string;
   },
 ): Promise<void> {
-  if (event.studentId == null || !["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(event.eventType)) return;
+  if (event.studentId == null || !["SCHOOL_ENTRY", "SCHOOL_EXIT", "CLASSROOM_ENTRY"].includes(event.eventType)) return;
   const entered = event.eventType === "SCHOOL_ENTRY";
+  const classroom = event.eventType === "CLASSROOM_ENTRY";
   const attendanceStatus = String(event.status).toUpperCase();
-  if (entered && !["PRESENT", "LATE"].includes(attendanceStatus)) return;
-  if (!entered && !["PRESENT", "LEFT_EARLY"].includes(attendanceStatus)) return;
+  if ((entered || classroom) && !["PRESENT", "LATE"].includes(attendanceStatus)) return;
+  if (!entered && !classroom && !["PRESENT", "LEFT_EARLY"].includes(attendanceStatus)) return;
   const schoolId = Number(event.schoolId);
   const eventId = Number(event.id);
   if (!Number.isSafeInteger(eventId) || eventId < 1) return;
@@ -271,8 +275,14 @@ export async function queueSchoolEntryExitCommunication(
     studentId: Number(event.studentId),
     subjectClassId: event.schoolClassId == null ? null : Number(event.schoolClassId),
     eventKey: `attendance:${schoolId}:${eventId}:${event.eventType}`,
-    subject: entered ? "School entry recorded" : "School exit recorded",
-    body: entered
+    subject: classroom
+      ? attendanceStatus === "LATE" ? "Late classroom arrival recorded" : "Classroom arrival recorded"
+      : entered ? attendanceStatus === "LATE" ? "Late school entry recorded" : "School entry recorded" : "School exit recorded",
+    body: classroom
+      ? "A classroom attendance event has been recorded. Sign in to review the record and its source."
+      : entered && attendanceStatus === "LATE"
+      ? "A late school entry has been recorded. Sign in to review the attendance record."
+      : entered
       ? "A student entry into school has been recorded."
       : "A student exit from school has been recorded.",
   });
@@ -320,7 +330,7 @@ function logAttendanceCommunicationFailure(
   const fields = {
     schoolId: context.schoolId,
     eventType: context.eventType,
-    error: error instanceof Error ? error.message : "Unknown communication queue failure",
+    error: "ATTENDANCE_NOTIFICATION_QUEUE_FAILED",
   };
   if (req.log) req.log.warn(fields, "Could not queue attendance communication");
   else logger.warn(fields, "Could not queue attendance communication");
@@ -808,23 +818,28 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
   await assertSubscriptionAccess(schoolId, studentId);
    const occurred = new Date(req.body.occurredAt);
    if (Number.isNaN(occurred.getTime())) throw new AuthError(400, "Invalid occurredAt");
-  const client = await pool.connect();
+   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const result = await client.query(
       `INSERT INTO attendance_events
         (school_id,student_id,employee_id,identification_method,event_type,result,attendance_status,event_date,occurred_at,reason,actor_user_id,dedupe_key,section_snapshot)
-       VALUES($1,$2,$3,'MANUAL',$4,'ACCEPTED',$5,$6,$7,$8,$9,$10,
+        VALUES($1,$2,$3,'MANUAL',$4,'ACCEPTED',$5,$6,$7,$8,$9,$10,
          (SELECT a.section FROM student_class_assignments a
           WHERE a.school_id=$1 AND a.student_id=$2 AND a.created_at<=$7::timestamptz
             AND (a.start_date IS NULL OR a.start_date<=$6::date)
             AND (a.end_date IS NULL OR a.end_date>=$6::date)
-          ORDER BY a.created_at DESC,a.id DESC LIMIT 1))
+           ORDER BY a.created_at DESC,a.id DESC LIMIT 1))
+        ON CONFLICT (school_id,dedupe_key) DO UPDATE SET dedupe_key=EXCLUDED.dedupe_key
        RETURNING id,school_id AS "schoolId",student_id AS "studentId",employee_id AS "employeeId",
          school_class_id AS "schoolClassId",device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",
          occurred_at AS "occurredAt",attendance_status AS status,result,created_at AS "createdAt"`,
       [schoolId, studentId, employeeId, eventType, attendanceStatus, occurred.toISOString().slice(0, 10),
-        occurred.toISOString(), reason, context.user.id, `manual:${randomUUID()}`],
+         occurred.toISOString(), reason, context.user.id,
+         `manual:v2:${createHash("sha256").update(JSON.stringify([
+           schoolId, studentId, employeeId, eventType, attendanceStatus,
+           occurred.toISOString(), reason, context.user.id,
+         ])).digest("hex")}`],
     );
      if (studentId !== null && attendanceStatus === "ABSENT") {
        await queueAttendanceCommunicationBestEffort(
@@ -833,13 +848,17 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
          () => queueStudentAbsenceCommunication(client, result.rows[0]),
          { schoolId, eventType: "STUDENT_ABSENCE" },
        );
-     } else if (studentId !== null && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)) {
+     } else if (studentId !== null && ["SCHOOL_ENTRY", "SCHOOL_EXIT", "CLASSROOM_ENTRY"].includes(eventType)) {
        await queueAttendanceCommunicationBestEffort(
          client,
          req,
          () => queueSchoolEntryExitCommunication(client, result.rows[0]),
          { schoolId, eventType },
        );
+     } else if (studentId !== null && attendanceStatus === "LATE") {
+       await queueAttendanceCommunicationBestEffort(client, req,
+         () => queueStudentAbsenceCommunication(client, result.rows[0]),
+         { schoolId, eventType: "STUDENT_LATENESS" });
      }
      await reconcileMissingClass(schoolId, occurred.toISOString().slice(0, 10), client);
     await client.query(

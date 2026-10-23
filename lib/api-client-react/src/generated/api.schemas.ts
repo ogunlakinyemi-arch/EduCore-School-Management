@@ -7546,6 +7546,7 @@ export interface NotificationChannelAvailability {[key: string]: boolean}
 
 export interface SchoolCommunicationDefaultsResponse {
   defaults: SchoolCommunicationDefaults;
+  effectiveDefaults?: SchoolCommunicationDefaults;
   canWrite: boolean;
   allowed?: NotificationAllowedChannels;
   availability?: NotificationChannelAvailability;
@@ -21922,6 +21923,7 @@ export interface NotificationChannelAvailability4b96100 {[key: string]: boolean}
 
 export interface SchoolCommunicationDefaultsResponse4b96100 {
   defaults: SchoolCommunicationDefaults4b96100;
+  effectiveDefaults?: SchoolCommunicationDefaults4b96100;
   canWrite: boolean;
   allowed?: NotificationAllowedChannels4b96100;
   availability?: NotificationChannelAvailability4b96100;

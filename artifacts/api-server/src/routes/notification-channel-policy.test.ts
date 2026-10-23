@@ -45,6 +45,27 @@ beforeEach(()=>{
   vi.stubEnv("COMMUNICATION_EMAIL_PROVIDER","mock");
   vi.stubEnv("VAPID_PUBLIC_KEY","");
 });
+it("returns raw overrides separately from effective Owner-inherited per-event selections",async()=>{
+  h.policy=defaultNotificationPolicy();
+  h.policy.events.ACADEMIC.defaults=["EMAIL"];
+  h.defaults={ATTENDANCE_ABSENCE:[],ATTENDANCE_ENTRY:["EMAIL"]};
+  const response=await fetch(base+"/communication/schools/9/defaults");
+  expect(response.status).toBe(200);
+  const body=await response.json() as any;
+  expect(body.defaults).toEqual(h.defaults);
+  expect(body.effectiveDefaults.ACADEMIC).toEqual(["EMAIL"]);
+  expect(body.effectiveDefaults.ATTENDANCE_ABSENCE).toEqual([]);
+  expect(body.effectiveDefaults.ATTENDANCE_ENTRY).toEqual(["EMAIL"]);
+  expect(body.effectiveDefaults.ATTENDANCE_EXIT).toEqual(["IN_APP"]);
+  expect(body.availability.EMAIL).toBe(false);
+});
+it("never presents a stale globally disallowed school Email choice as effective",async()=>{
+  h.policy=defaultNotificationPolicy();h.policy.events.ACADEMIC.allowed=["IN_APP"];
+  h.defaults={ACADEMIC:["EMAIL"]};
+  const body=await (await fetch(base+"/communication/schools/9/defaults")).json() as any;
+  expect(body.defaults.ACADEMIC).toEqual(["EMAIL"]);
+  expect(body.effectiveDefaults.ACADEMIC).toEqual([]);
+});
 afterEach(()=>vi.unstubAllEnvs());
 const put=(url:string,body:unknown)=>fetch(base+url,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
 describe("Owner/school channel policy HTTP boundaries; no delivery",()=>{

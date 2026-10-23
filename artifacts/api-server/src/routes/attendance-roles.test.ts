@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   policies: [{ schoolId: 1, studentId: 11, policy: "NFC_ONLY" }],
   enrollments: [] as Array<Record<string, any>>,
   nextEventId: 301,
+  queued: [] as Array<Record<string, any>>,
 }));
 
 const poolMock = vi.hoisted(() => {
@@ -66,6 +67,10 @@ const poolMock = vi.hoisted(() => {
       if(sql.includes("FROM student_nfc_replacement_requests")) return result([]);
       if (sql.includes("FROM school_subscription_manual_locks")) return result([]);
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return result();
+      if (/^(SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT)/.test(sql)) return result();
+      if (sql.includes('SELECT recipient_user_id AS "recipientUserId"')) {
+        return result([{recipientUserId: 91, recipientRole: "PARENT"}]);
+      }
       if (sql.startsWith("WITH missing AS")) return result();
       if (sql.includes("SELECT id,school_id,attendance_status FROM attendance_events")) {
         const id = Number(values[0]);
@@ -73,7 +78,10 @@ const poolMock = vi.hoisted(() => {
         return result(event ? [{ id: event.id, school_id: event.school_id, attendance_status: event.attendance_status }] : []);
       }
       if (sql.includes("INSERT INTO attendance_events")) {
+        const prior = state.events.find(event => event.school_id === Number(values[0]) && event.dedupeKey === values[9]);
+        if (prior) return result([prior]);
         const event = { id: state.nextEventId++, school_id: Number(values[0]), schoolId: Number(values[0]), student_id: Number(values[1]), studentId: Number(values[1]), employee_id: values[2], employeeId: values[2], school_class_id: null, event_type: values[3], eventType: values[3], identification_method: "MANUAL", identificationMethod: "MANUAL", attendance_status: values[4], status: values[4], result: "ACCEPTED", occurred_at: values[6], occurredAt: values[6], created_at: values[6], createdAt: values[6] };
+        Object.assign(event, {dedupeKey: values[9]});
         state.events.push(event);
         return result([event]);
       }
@@ -95,6 +103,12 @@ const poolMock = vi.hoisted(() => {
 });
 
 vi.mock("@workspace/db", () => ({ pool: poolMock }));
+vi.mock("../services/communication-service", () => ({
+  queueCommunicationNotification: vi.fn(async (_client: unknown, input: Record<string, any>) => {
+    if (!state.queued.some(item => item.recipientUserId === input.recipientUserId && item.eventKey === input.eventKey)) state.queued.push(input);
+    return 901;
+  }),
+}));
 vi.mock("../middlewares/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../middlewares/auth")>();
   return {
@@ -144,6 +158,7 @@ beforeEach(() => {
   state.policies = [{ schoolId: 1, studentId: 11, policy: "NFC_ONLY" }];
   state.enrollments.length = 0;
   state.nextEventId = 301;
+  state.queued = [];
   poolMock.query.mockClear();
   poolMock.client.query.mockClear();
 });
@@ -231,6 +246,22 @@ describe("Phase 5 attendance route role matrix", () => {
     expect((await call("/school/attendance/classes/99?schoolId=1&date=2025-02-03", "TEACHER:1,STAFF:2")).status).toBe(404);
     expect((await call("/school/attendance/students/11?schoolId=1", "TEACHER:1,SCHOOL_ADMIN:1")).status).toBe(200);
     expect((await call("/school/attendance/students/12?schoolId=1", "TEACHER:1,SCHOOL_ADMIN:1")).status).toBe(200);
+  });
+
+  it.each(["ABSENT", "LATE", "PRESENT"])("queues parent Email from the real manual classroom workflow without duplicate retries (%s)", async status => {
+    const body = {schoolId:1, studentId:11, eventType:"CLASSROOM_ENTRY", occurredAt:"2025-02-03T08:30:00Z", status, reason:"Recorded classroom attendance"};
+    const first = await call("/school/attendance/manual", "SCHOOL_ADMIN", "POST", body);
+    expect(first.status).toBe(201);
+    const firstEvent = await first.json() as {id:number};
+    const retry = await call("/school/attendance/manual", "SCHOOL_ADMIN", "POST", body);
+    expect(retry.status).toBe(201);
+    expect((await retry.json() as {id:number}).id).toBe(firstEvent.id);
+    expect(state.events.filter(event=>event.id===firstEvent.id)).toHaveLength(1);
+    expect(state.queued).toHaveLength(1);
+    expect(state.queued[0]).toMatchObject({schoolId:1,subjectStudentId:11,recipientUserId:91,category:"ATTENDANCE"});
+    expect(state.queued[0].channels).toContain("EMAIL");
+    expect(poolMock.client.query.mock.calls.find(([sql])=>sql.includes("INSERT INTO attendance_events"))?.[0])
+      .toContain("ON CONFLICT (school_id,dedupe_key)");
   });
 
   it("allows manual attendance only to school admins and staff", async () => {

@@ -289,12 +289,12 @@ describe("attendance-to-security transaction hook", () => {
     expect(client.query.mock.calls.every(([sql]) => !/INSERT|UPDATE|DELETE/.test(sql))).toBe(true);
   });
 
-  it("records the original accepted timestamp, updates presence, and emits an idempotent parent event in the caller transaction", async () => {
+  it.each(["PRESENT", "LATE"])("records accepted %s gate evidence and emits one idempotent parent notice in the caller transaction", async attendanceStatus => {
     const calls: Array<{ sql: string; values?: unknown[] }> = [];
     const client = {
       query: vi.fn(async (sql: string, values?: unknown[]) => {
         calls.push({ sql, values });
-        if (sql.includes("FROM attendance_events a")) return { rows: [attendanceRow] };
+        if (sql.includes("FROM attendance_events a")) return { rows: [{...attendanceRow, attendanceStatus}] };
         if (sql.includes("FROM students s")) {
           return { rows: [{ className: "Primary 2", section: "Blue", personName: "Mina Example", admissionNumber: "A-44" }] };
         }
@@ -325,8 +325,10 @@ describe("attendance-to-security transaction hook", () => {
       eventType: "SECURITY_ENTRY",
       eventId: 701,
       category: "SECURITY",
-      channels: ["IN_APP"],
+      subject: attendanceStatus === "LATE" ? "Late school entry recorded" : "School security update",
+      channels: ["IN_APP", "PUSH"],
     }));
+    expect(emitDomainParentEvent).toHaveBeenCalledTimes(1);
     expect(calls.some((call) => /^(BEGIN|COMMIT|ROLLBACK)/.test(call.sql))).toBe(false);
   });
 

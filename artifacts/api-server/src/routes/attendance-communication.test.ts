@@ -82,7 +82,7 @@ describe("attendance communication queueing", () => {
     });
 
     expect(state.queued.map(item => item.recipientUserId).sort((a, b) => a - b)).toEqual([101, 102, 111]);
-    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS", "PUSH"]);
+    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS", "PUSH", "EMAIL"]);
     expect(state.queued.find(item => item.recipientUserId === 111)?.channels).toEqual(["IN_APP", "PUSH"]);
     expect(state.queued.every(item => item.subjectStudentId === 11)).toBe(true);
     expect(state.queued.every(item => item.subjectClassId === 31)).toBe(true);
@@ -139,6 +139,35 @@ describe("attendance communication queueing", () => {
     expect(state.queued).toHaveLength(0);
   });
 
+  it.each(["PRESENT", "LATE"])("queues genuine classroom arrivals with parent Email (%s)", async status => {
+    await queueSchoolEntryExitCommunication(transactionClient(), {
+      id: 308, schoolId: 1, studentId: 11, schoolClassId: 31, eventType: "CLASSROOM_ENTRY", status,
+    });
+    expect(state.queued).toHaveLength(3);
+    expect(state.queued.every(item => item.eventKey === "attendance:1:308:CLASSROOM_ENTRY")).toBe(true);
+    const parent = state.queued.find(item => item.recipientUserId === 101)!;
+    expect(parent.channels).toContain("EMAIL");
+    expect(parent.subject).toBe(status === "LATE" ? "Late classroom arrival recorded" : "Classroom arrival recorded");
+    expect(parent.body).not.toMatch(/biometric|fingerprint|verified presence/i);
+    expect(state.queued.find(item => item.recipientUserId === 111)?.channels).not.toContain("EMAIL");
+  });
+
+  it("queues a late attendance status without mislabelling it as absence", async () => {
+    await queueStudentAbsenceCommunication(transactionClient(), {
+      id: 309, schoolId: 1, studentId: 11, status: "LATE",
+    });
+    expect(state.queued).toHaveLength(3);
+    expect(state.queued.every(item => item.eventKey === "attendance:1:309:LATE" && item.subject === "Student lateness recorded")).toBe(true);
+    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toContain("EMAIL");
+  });
+
+  it("describes a recorded late school entry explicitly", async () => {
+    await queueSchoolEntryExitCommunication(transactionClient(), {
+      id: 310, schoolId: 1, studentId: 11, eventType: "SCHOOL_ENTRY", status: "LATE",
+    });
+    expect(state.queued.every(item => item.subject === "Late school entry recorded")).toBe(true);
+  });
+
   it("queues a genuine student absence through the existing linked-recipient bridge", async () => {
     await queueStudentAbsenceCommunication(transactionClient(), {
       id: 305, schoolId: 1, studentId: 11, schoolClassId: 31, status: "ABSENT",
@@ -147,11 +176,11 @@ describe("attendance communication queueing", () => {
     expect(state.queued.every(item => item.category === "ATTENDANCE"
       && item.eventKey === "attendance:1:305:ABSENT"
       && item.subject === "Student absence recorded")).toBe(true);
-    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS", "PUSH"]);
+    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS", "PUSH", "EMAIL"]);
   });
 
   it("does not add absence SMS for ordinary attendance or employee events", async () => {
-    for (const status of ["PRESENT", "LATE", "EXCUSED", "UNKNOWN"]) {
+    for (const status of ["PRESENT", "EXCUSED", "UNKNOWN"]) {
       await queueStudentAbsenceCommunication(transactionClient(), {
         id: 306, schoolId: 1, studentId: 11, status,
       });
@@ -197,7 +226,7 @@ describe("attendance communication queueing", () => {
       "RELEASE SAVEPOINT attendance_communication_queue",
     ]);
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ schoolId: 1, eventType: "SCHOOL_ENTRY", error: "recipient lookup unavailable" }),
+      expect.objectContaining({ schoolId: 1, eventType: "SCHOOL_ENTRY", error: "ATTENDANCE_NOTIFICATION_QUEUE_FAILED" }),
       "Could not queue attendance communication",
     );
     expect(state.queued).toHaveLength(0);
@@ -227,7 +256,7 @@ describe("attendance communication queueing", () => {
       "RELEASE SAVEPOINT attendance_communication_queue",
     );
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ schoolId: 1, eventType: "SCHOOL_ENTRY", error: "queue unavailable" }),
+      expect.objectContaining({ schoolId: 1, eventType: "SCHOOL_ENTRY", error: "ATTENDANCE_NOTIFICATION_QUEUE_FAILED" }),
       "Could not queue attendance communication",
     );
   });

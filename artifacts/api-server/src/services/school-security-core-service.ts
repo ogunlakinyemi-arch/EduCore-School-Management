@@ -1253,7 +1253,10 @@ export async function recordSecurityEventFromAttendance(
       ? settings.rows[0]?.entryAlerts !== false
       : settings.rows[0]?.exitAlerts !== false;
     if (studentId !== null && alertAllowed && !suppressNotifications) {
-      const verb = type === "ENTRY" ? "arrived at school" : "left school";
+      const lateArrival = type === "ENTRY" && row.attendanceStatus === "LATE";
+      const verb = type === "ENTRY"
+        ? lateArrival ? "arrived late at school" : "arrived at school"
+        : row.attendanceStatus === "LEFT_EARLY" ? "left school early" : "left school";
       const body = `${verb} at ${occurredAt.toISOString()}${row.locationName ? ` (${row.locationName})` : ""}.`;
       await emitDomainParentEvent(client, {
         schoolId: num(row.schoolId),
@@ -1261,7 +1264,7 @@ export async function recordSecurityEventFromAttendance(
         eventType: `SECURITY_${type}`,
         eventId: finalEventId,
         category: "SECURITY",
-        subject: "School security update",
+        subject: lateArrival ? "Late school entry recorded" : "School security update",
         body,
         privacy: "PARENT_SAFE",
         link: "/parent/communication",

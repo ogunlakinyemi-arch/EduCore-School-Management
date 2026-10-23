@@ -11,6 +11,7 @@ import type { SchoolCommunicationDefaults4b96100 } from './schoolCommunicationDe
 
 export interface SchoolCommunicationDefaultsResponse4b96100 {
   defaults: SchoolCommunicationDefaults4b96100;
+  effectiveDefaults?: SchoolCommunicationDefaults4b96100;
   canWrite: boolean;
   allowed?: NotificationAllowedChannels4b96100;
   availability?: NotificationChannelAvailability4b96100;

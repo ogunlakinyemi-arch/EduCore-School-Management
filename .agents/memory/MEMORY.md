@@ -90,3 +90,5 @@
 - [Production DB outage signals](production-db-outage-signals.md) — pool termination crashes the API; DB failures masquerade as 401 sign-outs; 28000 reason isn't logged.
 - [Push worker activation](pwa-push-readiness.md) — proxy-private offline assets must stay uncached without making optional cache warming block push activation.
 - [First-school notification launch](first-school-notification-launch.md) — existing data is TEST-only; preserve history and separate external launch from credential presence.
+- [Parent publication notices](parent-notification-publication-policy.md) — publication and notice intent are atomic; corrected republications differ from retries.
+- [Notification selections](notification-selection-policy.md) — Allowed never implies send; exact event selections, Owner ceilings and current preferences govern delivery.

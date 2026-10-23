@@ -18300,10 +18300,13 @@ export const GetSchoolCommunicationDefaultsParams = zod.object({
 
 export const getSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
 
+export const getSchoolCommunicationDefaultsResponseEffectiveDefaultsMaxOne = 4;
+
 
 
 export const GetSchoolCommunicationDefaultsResponse = zod.object({
   "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])).max(getSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
+  "effectiveDefaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])).max(getSchoolCommunicationDefaultsResponseEffectiveDefaultsMaxOne)).optional(),
   "canWrite": zod.boolean(),
   "allowed": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))).optional(),
   "availability": zod.record(zod.string(), zod.boolean()).optional()
@@ -18325,10 +18328,13 @@ export const UpdateSchoolCommunicationDefaultsBody = zod.record(zod.string(), zo
 
 export const updateSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
 
+export const updateSchoolCommunicationDefaultsResponseEffectiveDefaultsMaxOne = 4;
+
 
 
 export const UpdateSchoolCommunicationDefaultsResponse = zod.object({
   "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])).max(updateSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
+  "effectiveDefaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM'])).max(updateSchoolCommunicationDefaultsResponseEffectiveDefaultsMaxOne)).optional(),
   "canWrite": zod.boolean(),
   "allowed": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL', 'TELEGRAM']))).optional(),
   "availability": zod.record(zod.string(), zod.boolean()).optional()

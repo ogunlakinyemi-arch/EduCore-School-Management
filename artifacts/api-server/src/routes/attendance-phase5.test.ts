@@ -180,6 +180,9 @@ const poolMock = vi.hoisted(() => {
           occurredAt: event.occurredAt, createdAt: event.occurredAt,
         }]);
       }
+      // Attendance schedules now read retained governance snapshots. No snapshot
+      // is the explicit default-policy fixture, not an unhandled database error.
+      if (text.includes('AS "effectiveAt" FROM audit_logs')) return {rows: [], rowCount: 0};
       throw new Error(`Unhandled client query: ${text}`);
     }),
     release: vi.fn(),
@@ -197,7 +200,7 @@ app.use(express.json());
 app.use(attendanceRouter);
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof AuthError) return res.status(error.statusCode).json({ error: error.message });
-  return res.status(500).json({ error: "Internal Server Error" });
+  return res.status(500).json({ error: error instanceof Error ? error.message : "Internal Server Error" });
 });
 
 let server: ReturnType<typeof app.listen>;
@@ -269,7 +272,8 @@ describe("Phase 5 device attendance behavior", () => {
     const before=JSON.stringify(state.cards);
     for(const deviceId of [100,101,102]) {
       state.credential.deviceId=deviceId;
-      expect((await request(event())).status).toBe(deviceId===100?201:409);
+      const response = await request(event());
+      expect(response.status, await response.clone().text()).toBe(deviceId===100?201:409);
     }
     expect(state.events.map(e=>e.deviceId)).toEqual([100]);
     expect(JSON.stringify(state.cards)).toBe(before);

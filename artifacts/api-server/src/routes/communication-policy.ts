@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { AuthError, getUserContext, assertSchoolAccess, requireAuthentication } from "../middlewares/auth";
 import { loadNotificationPolicy, notificationPolicySchema, notificationChannelAvailability,
-  allowedNotificationChannels, policyEvents, policyValidationIssue, notificationChannelReadiness } from "../services/notification-channel-policy";
+  allowedNotificationChannels, effectiveNotificationChannels, policyEvents, policyValidationIssue, notificationChannelReadiness } from "../services/notification-channel-policy";
 const router = Router();
 router.use(requireAuthentication());
 const category = z.enum(policyEvents);
@@ -27,6 +27,7 @@ router.get("/communication/schools/:schoolId/defaults", async (req, res) => {
     if (!result.rows[0]) throw new AuthError(404, "School not found");
     const policy=await loadNotificationPolicy(pool);
     res.json({ defaults: result.rows[0].defaults, canWrite, availability:notificationChannelAvailability(),
+      effectiveDefaults:Object.fromEntries(policyEvents.map(e=>[e,effectiveNotificationChannels(policy,e,id,result.rows[0].defaults)])),
       allowed:Object.fromEntries(policyEvents.map(e=>[e,allowedNotificationChannels(policy,e,id)])) });
   } catch (e) { res.status(e instanceof AuthError ? e.statusCode : 500).json({ error: "Could not read school communication defaults" }); }
 });

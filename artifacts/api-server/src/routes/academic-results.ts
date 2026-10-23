@@ -169,9 +169,7 @@ async function notifyStudentAcademicRecordSafely(
   } catch (error) {
     const fields = {
       schoolId,
-      studentId,
-      eventKey: input.eventKey,
-      error: error instanceof Error ? error.message : "Unknown communication queue failure",
+      error: "ACADEMIC_NOTIFICATION_QUEUE_FAILED",
     };
     if (req.log) req.log.warn(fields, "Could not queue academic communication");
     else logger.warn(fields, "Could not queue academic communication");
@@ -965,21 +963,20 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
     card = await client.query(`UPDATE academic_report_cards SET status='PUBLISHED',published_by=$1,published_at=NOW(),updated_at=NOW()
       WHERE id=$2 AND school_id=$3 RETURNING ${cardReturning}`, [context.user.id,cardId,schoolId]);
     await audit(req, schoolId, "Published academic report card", cardId, client);
+    // Transactional outbox: workers can see these intents only after publication
+    // commits. A queue failure rolls back publication instead of losing the notice.
+    await notifyStudentAcademicRecord(
+      client, schoolId, Number(card.rows[0].studentId), Number(card.rows[0].classId),
+      {
+        category: "ACADEMIC",
+        eventKey: `report-card-published:${cardId}:${new Date(card.rows[0].publishedAt).toISOString()}`,
+        subject: "Report card available",
+        body: "A report card is now available in your Yetenia EduCore account. Sign in to view it securely.",
+      },
+    );
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
-  await notifyStudentAcademicRecordSafely(
-    req,
-    schoolId,
-    Number(card!.rows[0].studentId),
-    Number(card!.rows[0].classId),
-    {
-    category: "ACADEMIC",
-    eventKey: `report-card-published:${cardId}`,
-    subject: "Report card available",
-    body: "A report card is now available in your Yetenia EduCore account.",
-    },
-  );
   const lines = await pool.query(`SELECT id,subject_id AS "subjectId",subject_name_snapshot AS "subjectName",
     assessment_name_snapshot AS "assessmentName",score,max_score AS "maxScore",grade,grade_point AS "gradePoint",remark
     FROM academic_report_card_lines WHERE school_id=$1 AND report_card_id=$2 ORDER BY id`, [schoolId,cardId]);

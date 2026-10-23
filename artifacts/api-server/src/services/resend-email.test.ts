@@ -56,6 +56,20 @@ describe("Resend transactional email integration (no live network)", () => {
     });
   });
 
+  it.each(["direct", "shared"] as const)("uses EduCore's requested sender and existing Reply-To through the %s adapter", async path => {
+    const fetch = transport(200);
+    const configuration = { ...env, NODE_ENV: "production", EMAIL_FROM: "Yetenia EduCore <notification@yetenia.com>" };
+    const provider = path === "direct" ? createEmailProvider(configuration, { fetch })
+      : createCommunicationProviders(configuration, { fetch }).email;
+    await provider.send(message);
+    const request = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      from: "Yetenia EduCore <notification@yetenia.com>",
+      reply_to: "ogunlakinyemi@gmail.com",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the company contact as Reply-To without allowing per-message From overrides", async () => {
     const fetch = transport(200);
     await createEmailProvider(env, { fetch }).send({ ...message, from: "ogunlakinyemi@gmail.com" });
