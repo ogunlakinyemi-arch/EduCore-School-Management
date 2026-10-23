@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const m = vi.hoisted(() => ({
   s: {} as any, ctx: {} as any, keys: [] as any[],
   create: vi.fn(), confirm: vi.fn(), unlink: vi.fn(), health: vi.fn(),
+  healthState: undefined as any,
 }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock('qrcode.react', () => ({ QRCodeSVG: ({ value }: any) => <svg data-qr-value={value} /> }));
@@ -13,7 +14,7 @@ vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: m.ctx }),
   useGetTelegramStatus: (p: any) => ({ data: m.s[p.schoolId], isError: false, refetch: vi.fn() }),
   getGetTelegramStatusQueryKey: (p: any) => { m.keys.push(p); return ['tg', p]; },
-  useCheckTelegramHealth: () => ({ mutate: m.health, data: undefined, isPending: false, isError: false }),
+  useCheckTelegramHealth: () => m.healthState ?? ({ mutate: m.health, data: undefined, isPending: false, isError: false }),
   useCreateTelegramLink: () => ({ mutateAsync: m.create, isPending: false }),
   useConfirmTelegramLink: () => ({ mutateAsync: m.confirm, isPending: false }),
   useUnlinkTelegram: () => ({ mutateAsync: m.unlink, isPending: false }),
@@ -24,7 +25,7 @@ let root: Root; let host: HTMLElement;
 const mount = (el: any) => { host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host); act(() => root.render(el)); };
 const id = (s: string) => host.querySelector(`[data-testid="${s}"]`) as any;
 const flush = () => act(async () => { await Promise.resolve(); });
-afterEach(() => { act(() => root.unmount()); host.remove(); vi.clearAllMocks(); });
+afterEach(() => { act(() => root.unmount()); host.remove(); m.healthState=undefined; vi.clearAllMocks(); });
 const parent = (sid: number) => ({ isPlatformOwner: false, roles: [{ schoolId: sid, role: 'PARENT', status: 'ACTIVE' }] });
 describe('telegram dom flow', () => {
   it('an Admin invitation requires a fresh parent-owned link and cannot be confirmed directly', () => {
@@ -94,5 +95,23 @@ describe('telegram dom flow', () => {
     expect(m.health).not.toHaveBeenCalled();
     act(() => id('button-telegram-health').click());
     expect(m.health).toHaveBeenCalledTimes(1);
+  });
+  it('owner HTTP failure is an actionable red alert and hides raw errors and stale success',()=>{
+    m.healthState={mutate:m.health,isPending:false,isError:true,
+      error:{status:404,message:'sensitive diagnostics'},data:{ready:true}};
+    mount(<OwnerTelegramHealth/>);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Development-only');
+    expect(host.querySelector('[role="alert"]')?.className).toContain('text-[#991b1b]');
+    expect(host.textContent).not.toContain('sensitive diagnostics');
+    expect(host.textContent).not.toContain('Configuration looks ready');
+  });
+  it('unready bot results are red while successful results are neutral',()=>{
+    m.healthState={mutate:m.health,isPending:false,isError:false,data:{ready:false,reason:'WEBHOOK_CONFLICT'}};
+    mount(<OwnerTelegramHealth/>);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('existing webhook');
+    m.healthState.data={ready:true,reason:'READY'};
+    act(()=>root.render(<OwnerTelegramHealth/>));
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.querySelector('[role="status"]')?.className).not.toContain('text-[#991b1b]');
   });
 });

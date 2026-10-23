@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { runInNewContext } from 'node:vm';
+import { describe, expect, it, vi } from 'vitest';
 import {
   getPwaMetadata,
   getPwaServiceWorkerUrl,
@@ -81,6 +82,23 @@ describe('EduCore safe static cache policy', () => {
 });
 
 describe('service-worker security invariants', () => {
+  it('activates without caching proxy-private assets or when optional storage fails',async()=>{
+    for(const storageBlocked of [false,true]){
+      const listeners:Record<string,(event:any)=>void>={};
+      const put=vi.fn(),skipWaiting=vi.fn(),claim=vi.fn();
+      const self={registration:{scope:'https://example.invalid/'},location:{origin:'https://example.invalid'},
+        addEventListener:(name:string,fn:any)=>{listeners[name]=fn;},skipWaiting,clients:{claim}};
+      runInNewContext(workerSource,{self,URL,Response,Promise,
+        caches:{open:async()=>{if(storageBlocked)throw new Error('blocked');return {put,keys:async()=>[]};},
+          keys:async()=>{if(storageBlocked)throw new Error('blocked');return [];}},
+        fetch:async()=>new Response('public fixture',{headers:{'Cache-Control':'private','Content-Type':'text/html'}})});
+      let pending:Promise<void>|undefined;
+      listeners.install({waitUntil:(p:Promise<void>)=>{pending=p;}});
+      await pending;expect(skipWaiting).toHaveBeenCalledOnce();expect(put).not.toHaveBeenCalled();
+      listeners.activate({waitUntil:(p:Promise<void>)=>{pending=p;}});
+      await pending;expect(claim).toHaveBeenCalledOnce();
+    }
+  });
   it('allows same-origin public CORS variation without allowing credential-dependent caching', () => {
     const asset = {
       pathname: '/assets/app-a1b2c3d4.js',

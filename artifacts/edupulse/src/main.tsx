@@ -6,8 +6,8 @@ import { registerPwaServiceWorker } from '@/lib/pwa';
 
 import './index.css';
 
-void registerPwaServiceWorker(import.meta.env.BASE_URL).catch((error) => {
-  console.warn('EduCore installation support could not start.', error);
+void registerPwaServiceWorker(import.meta.env.BASE_URL).catch(() => {
+  console.warn('EduCore worker registration failed. Check HTTPS, the service-worker script response and browser site storage.');
 });
 
 createRoot(document.getElementById('root')!, {

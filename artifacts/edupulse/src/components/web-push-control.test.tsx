@@ -2,13 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-const state=vi.hoisted(()=>({configured:false,register:vi.fn(),revoke:vi.fn(),invalidate:vi.fn(),worker:null as any}));
+const state=vi.hoisted(()=>({configured:false,register:vi.fn(),revoke:vi.fn(),invalidate:vi.fn(),worker:null as any,
+  publicKey: btoa(String.fromCharCode(4,...Array(64).fill(97)))}));
 vi.mock('@/lib/push-registration',async original=>({
   ...await original<typeof import('@/lib/push-registration')>(),
-  readyPushWorker:async()=>state.worker,
+  readyPushWorker:async()=>{if(state.worker instanceof Error)throw state.worker;return state.worker;},
 }));
 vi.mock('@workspace/api-client-react',()=>({
-  useGetCommunicationPushConfiguration:()=>({data:{configured:state.configured,publicKey:state.configured?'YQ':null},isLoading:false,isError:false}),
+  useGetCommunicationPushConfiguration:()=>({data:{configured:state.configured,publicKey:state.configured?state.publicKey:null},isLoading:false,isError:false}),
   useRegisterCommunicationPushDevice:()=>({mutateAsync:state.register}),
   useRevokeCommunicationPushSession:()=>({mutateAsync:state.revoke}),
 }));
@@ -28,6 +29,7 @@ describe('browser push permission controls (mocked, no network)',()=>{
     state.configured=false;state.register.mockReset();state.revoke.mockReset().mockResolvedValue(undefined);
     state.invalidate.mockReset().mockResolvedValue(undefined);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
+    vi.stubGlobal('isSecureContext',true);
     Object.defineProperty(navigator,'serviceWorker',{configurable:true,value:{ready:Promise.resolve({pushManager:{getSubscription:async()=>null}})}});
     vi.stubGlobal('PushManager',class{});
     vi.stubGlobal('Notification',{requestPermission:vi.fn(async()=> 'denied')});
@@ -45,7 +47,7 @@ describe('browser push permission controls (mocked, no network)',()=>{
     state.configured=true;renderControl();
     expect(Notification.requestPermission).not.toHaveBeenCalled();
     await act(async()=>button('Enable on this device').click());
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('not permitted');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('not granted');
     expect(Notification.requestPermission).toHaveBeenCalledTimes(1);
     expect(state.register).not.toHaveBeenCalled();
   });
@@ -59,20 +61,20 @@ describe('browser push permission controls (mocked, no network)',()=>{
   it('revocation failures are explicit and do not say the session was revoked',async()=>{
     state.revoke.mockRejectedValue(new Error('test failure'));renderControl();
     await act(async()=>button('Disable this session').click());
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('Could not revoke');
+    expect(Array.from(container.querySelectorAll('[role="alert"]')).some(p=>p.textContent?.includes('Could not revoke'))).toBe(true);
   });
   it('registers a real PushManager-shaped subscription only after user permission, with school association',async()=>{
     state.configured=true;
     vi.mocked(Notification.requestPermission).mockResolvedValue('granted');
     const subscription={endpoint:'https://fcm.googleapis.com/synthetic',expirationTime:null,
-      options:{applicationServerKey:new Uint8Array([97]).buffer},
+      options:{applicationServerKey:new Uint8Array([4,...Array(64).fill(97)]).buffer},
       toJSON:()=>({keys:{p256dh:'synthetic-public-key',auth:'synthetic-auth'}})};
     const subscribe=vi.fn(async()=>subscription);
     state.worker={pushManager:{getSubscription:async()=>null,subscribe}};
     renderControl();
     expect(subscribe).not.toHaveBeenCalled();
     await act(async()=>button('Enable on this device').click());
-    expect(subscribe).toHaveBeenCalledWith({userVisibleOnly:true,applicationServerKey:new Uint8Array([97])});
+    expect(subscribe).toHaveBeenCalledWith({userVisibleOnly:true,applicationServerKey:new Uint8Array([4,...Array(64).fill(97)])});
     expect(state.register).toHaveBeenCalledWith({data:expect.objectContaining({
       schoolId:1,subscription:{endpoint:subscription.endpoint,expirationTime:null,
         keys:{p256dh:'synthetic-public-key',auth:'synthetic-auth'}},
@@ -93,11 +95,28 @@ describe('browser push permission controls (mocked, no network)',()=>{
   it('reports persistence failure without claiming subscription success',async()=>{
     state.configured=true;vi.mocked(Notification.requestPermission).mockResolvedValue('granted');
     state.worker={pushManager:{getSubscription:async()=>({endpoint:'https://fcm.googleapis.com/synthetic',
-      expirationTime:null,options:{applicationServerKey:new Uint8Array([97]).buffer},
+      expirationTime:null,options:{applicationServerKey:new Uint8Array([4,...Array(64).fill(97)]).buffer},
       toJSON:()=>({keys:{p256dh:'synthetic-public-key',auth:'synthetic-auth'}})})}};
     state.register.mockRejectedValue(new Error('Synthetic storage failure'));
     renderControl();await act(async()=>button('Enable on this device').click());
-    expect(container.textContent).toContain('Synthetic storage failure');
+    expect(container.textContent).toContain('server could not save');
+    expect(container.textContent).not.toContain('Synthetic storage failure');
+    expect(container.querySelector('[role="alert"]')?.className).toContain('text-[#991b1b]');
     expect(container.textContent).not.toContain('This device is subscribed');
+  });
+  it('shows worker failures as red alerts without exposing unexpected browser error data',async()=>{
+    state.configured=true;state.worker=new Error('sensitive browser details');
+    vi.mocked(Notification.requestPermission).mockResolvedValue('granted');
+    renderControl();await act(async()=>button('Enable on this device').click());
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('worker could not start');
+    expect(container.textContent).not.toContain('sensitive browser details');
+    expect(state.register).not.toHaveBeenCalled();
+  });
+  it('explains unsupported/insecure contexts without requesting permission',()=>{
+    vi.stubGlobal('isSecureContext',false);
+    renderControl();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('HTTPS');
+    expect(Notification.requestPermission).not.toHaveBeenCalled();
+    expect(button('Enable on this device').disabled).toBe(true);
   });
 });

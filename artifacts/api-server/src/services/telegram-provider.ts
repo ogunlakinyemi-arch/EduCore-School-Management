@@ -1,6 +1,7 @@
 import {createHash} from "node:crypto";
 import type {ProviderSendResult,ProviderFailureCategory} from "./communication-providers";
 import {developmentPaymentNotificationsSuppressed} from "../lib/development-payment-notification-policy";
+import {logger} from "../lib/logger";
 
 export interface TelegramHealth {configured:boolean;ready:boolean;reason:string;botUsername:string|null;botId:string|null}
 let health:TelegramHealth={configured:false,ready:false,reason:"NOT_CHECKED",botUsername:null,botId:null};
@@ -21,7 +22,16 @@ export function getTelegramHealth(env:NodeJS.ProcessEnv=process.env):TelegramHea
   return {...health};
 }
 export class TelegramApiError extends Error{
-  constructor(readonly code:number,readonly retryAfter=0){super("Telegram request failed");}
+  constructor(readonly code:number,readonly retryAfter=0,
+    readonly category:"NETWORK_UNAVAILABLE"|"TIMEOUT"|"INVALID_RESPONSE"="NETWORK_UNAVAILABLE"){super("Telegram request failed");}
+}
+export function telegramHealthFailure(error:unknown){
+  if(!(error instanceof TelegramApiError))return "BOT_UNAVAILABLE";
+  if([401,404].includes(error.code))return "INVALID_TOKEN";
+  if(error.code===403)return "PROVIDER_FORBIDDEN";
+  if(error.code===429)return "RATE_LIMITED";
+  if(error.code>=500)return "PROVIDER_UNAVAILABLE";
+  return error.code ? "BOT_UNAVAILABLE" : error.category;
 }
 /** No caller may log a request URL, caught transport error, Bot API body or token. */
 export async function telegramApi(method:"getMe"|"getWebhookInfo"|"getUpdates"|"sendMessage",body:unknown,
@@ -32,7 +42,9 @@ export async function telegramApi(method:"getMe"|"getWebhookInfo"|"getUpdates"|"
       method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),
       redirect:"error",signal:AbortSignal.timeout(8000),
     });
-    const data=await response.json() as any;
+    let data:any;
+    try{data=await response.json();}
+    catch{throw new TelegramApiError(response.ok?0:response.status,0,"INVALID_RESPONSE");}
     if(!response.ok||data?.ok!==true){
       const code=Number(data?.error_code??response.status);
       const retry=Number(data?.parameters?.retry_after);
@@ -40,23 +52,34 @@ export async function telegramApi(method:"getMe"|"getWebhookInfo"|"getUpdates"|"
         Number.isSafeInteger(retry)&&retry>0?Math.min(retry,604800):0);
     }
     return data.result;
-  }catch(error){if(error instanceof TelegramApiError)throw error;throw new TelegramApiError(0);}
+  }catch(error){
+    if(error instanceof TelegramApiError)throw error;
+    const name=(error as {name?:string}|null)?.name;
+    throw new TelegramApiError(0,0,name==="AbortError"||name==="TimeoutError"?"TIMEOUT":"NETWORK_UNAVAILABLE");
+  }
 }
 export async function refreshTelegramHealth(schemaReady:boolean,env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch){
   if(!telegramDevelopment(env)||!env.TELEGRAM_BOT_TOKEN||!env.SESSION_SECRET||env.SESSION_SECRET.length<32){
     health=getTelegramHealth(env);return health;
   }
   credentialHash=digest(env.TELEGRAM_BOT_TOKEN);checkedAt=Date.now();
+  let stage:"getMe"|"getWebhookInfo"="getMe";
   try{
     const bot=await telegramApi("getMe",{},env,transport);
     if(bot?.is_bot!==true||!Number.isSafeInteger(bot.id)||!/^[A-Za-z0-9_]{5,32}$/.test(bot.username??""))
-      throw new TelegramApiError(0);
+      throw new TelegramApiError(0,0,"INVALID_RESPONSE");
+    stage="getWebhookInfo";
     const webhook=await telegramApi("getWebhookInfo",{},env,transport);
+    if(!webhook||typeof webhook.url!=="string")throw new TelegramApiError(0,0,"INVALID_RESPONSE");
     const reason=webhook?.url?"WEBHOOK_CONFLICT":!schemaReady?"SCHEMA_NOT_READY":"READY";
     health={configured:true,ready:reason==="READY",reason,botUsername:bot.username,botId:String(bot.id)};
   }catch(error){
-    health={configured:true,ready:false,reason:error instanceof TelegramApiError&&[401,404].includes(error.code)
-      ?"INVALID_TOKEN":"BOT_UNAVAILABLE",botUsername:null,botId:null};
+    const reason=telegramHealthFailure(error);
+    // Never pass caught errors, URLs, response bodies or credentials to logging.
+    logger.warn({event:"TELEGRAM_HEALTH_CHECK_FAILED",stage,reason,
+      status:error instanceof TelegramApiError&&[400,401,403,404,429,500,502,503,504].includes(error.code)?error.code:0},
+      "Telegram read-only configuration check failed");
+    health={configured:true,ready:false,reason,botUsername:null,botId:null};
   }
   return getTelegramHealth(env);
 }

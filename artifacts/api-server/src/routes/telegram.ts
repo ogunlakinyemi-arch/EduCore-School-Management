@@ -10,7 +10,11 @@ import {dispatchCommunicationDeliveries} from "../services/communication-service
 import {logger} from "../lib/logger";
 const router=Router();
 router.use(requireAuthentication());
-router.use((_req,res,next)=>telegramDevelopment(process.env)?next():res.status(404).json({error:"Development channel only"}));
+router.use((req,res,next)=>{
+  if(telegramDevelopment(process.env)){next();return;}
+  if(req.path==="/health")logger.warn({event:"TELEGRAM_HEALTH_CHECK_BLOCKED",reason:"DEVELOPMENT_ONLY"},"Telegram check is Development-only");
+  res.status(404).json({error:"Development channel only",reason:"DEVELOPMENT_ONLY"});
+});
 const run=(fn:(req:Request,res:any)=>Promise<void>)=>(req:Request,res:any,next:any)=>{void fn(req,res).catch(e=>{
   if(e instanceof z.ZodError)return res.status(400).json({error:"Invalid Telegram request"});
   if(e?.code==="23505")return res.status(409).json({error:"This Telegram account is already linked. Unlink it before linking another parent."});
@@ -76,8 +80,18 @@ router.post("/health",run(async(req,res)=>{
   sameOrigin(req);
   if(Date.now()-lastOwnerCheck<10000){res.status(429).json({error:"Wait ten seconds before checking again"});return;}
   lastOwnerCheck=Date.now();
-  const {botId:_botId,...h}=await checkTelegramRuntimeHealth(pool);
-  await audit(pool,getUserContext(req).user.id,null,"TELEGRAM_CONFIGURATION_CHECK");
+  let stage:"CHECK_STORAGE_UNAVAILABLE"|"CHECK_AUDIT_UNAVAILABLE"="CHECK_STORAGE_UNAVAILABLE";
+  let h:Omit<ReturnType<typeof getTelegramHealth>,"botId">;
+  try{
+    const {botId:_botId,...result}=await checkTelegramRuntimeHealth(pool);
+    h=result;
+    stage="CHECK_AUDIT_UNAVAILABLE";
+    await audit(pool,getUserContext(req).user.id,null,"TELEGRAM_CONFIGURATION_CHECK");
+  }catch{
+    logger.warn({event:"TELEGRAM_HEALTH_CHECK_FAILED",reason:stage},"Telegram check storage unavailable");
+    res.status(503).set("Cache-Control","no-store").json({error:"Telegram check storage unavailable",reason:stage});return;
+  }
+  if(!h.ready)logger.warn({event:"TELEGRAM_HEALTH_CHECK_NOT_READY",reason:h.reason},"Telegram configuration is not ready");
   res.set("Cache-Control","no-store").json({...h,linked:false,consented:false,parentEligible:false,
     policyAllowed:false,pending:false,pendingAccountLabel:null});
 }));

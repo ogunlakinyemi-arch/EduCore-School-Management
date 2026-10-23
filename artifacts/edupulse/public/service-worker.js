@@ -1,6 +1,6 @@
 /* EduCore only stores checked public static assets and its generic offline shell. */
 const CACHE_PREFIX = 'educore-safe-static-';
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const MAX_STATIC_ENTRIES = 80;
 const OFFLINE_FILE = 'offline.html';
@@ -105,28 +105,36 @@ async function cachePublicShell(cache, relativePath, allowedType, expectedConten
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const cache = await caches.open(STATIC_CACHE);
-    await cachePublicShell(
-      cache,
-      OFFLINE_FILE,
-      /^text\/html(?:\s*;|$)/i,
-      '<meta name="educore-offline-shell" content="safe">',
-    );
-    await Promise.all(SAFE_ICON_FILES.map((file) =>
-      cachePublicShell(cache, file, /^(?:image\/svg\+xml|image\/png)(?:\s*;|$)/i),
-    ));
+    // Offline caching is optional, not a prerequisite for push activation.
+    // Proxies may mark even public files private. Never cache those responses,
+    // but don't leave the entire worker redundant because warming was refused.
+    try {
+      const cache = await caches.open(STATIC_CACHE);
+      await Promise.allSettled([
+        cachePublicShell(cache, OFFLINE_FILE, /^text\/html(?:\s*;|$)/i,
+          '<meta name="educore-offline-shell" content="safe">'),
+        ...SAFE_ICON_FILES.map((file) =>
+          cachePublicShell(cache, file, /^(?:image\/svg\+xml|image\/png)(?:\s*;|$)/i)),
+      ]);
+      await trimStaticCache(cache);
+    } catch {
+      // Storage may also be unavailable in private/restricted browsing.
+    }
     // Keep only safe resources under the app's own base path.
-    await trimStaticCache(cache);
     await self.skipWaiting();
   })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    const names = await caches.keys();
-    await Promise.all(names
-      .filter((name) => name.startsWith(CACHE_PREFIX) && name !== STATIC_CACHE)
-      .map((name) => caches.delete(name)));
+    try {
+      const names = await caches.keys();
+      await Promise.all(names
+        .filter((name) => name.startsWith(CACHE_PREFIX) && name !== STATIC_CACHE)
+        .map((name) => caches.delete(name)));
+    } catch {
+      // Optional cache access must not prevent activation for push.
+    }
     await self.clients.claim();
   })());
 });

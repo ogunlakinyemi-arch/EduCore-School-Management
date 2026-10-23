@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { validTelegramUrl } from './telegram-url';
+import { notificationErrorClass, telegramCheckError, telegramReasons } from './notification-errors';
 import { useGetAuthorizedContext, useGetTelegramStatus, getGetTelegramStatusQueryKey, useCheckTelegramHealth, useCreateTelegramLink, useConfirmTelegramLink, useUnlinkTelegram } from '@workspace/api-client-react';
 
 export function telegramGate(s?: { ready: boolean; policyAllowed: boolean; linked: boolean; consented: boolean; parentEligible: boolean }) {
@@ -46,7 +47,7 @@ export function ParentTelegramControl({ schoolId }: { schoolId: number }) {
   const canStart = parentRole && !!s && s.parentEligible && s.ready && s.policyAllowed && !s.linked;
   return <section className="panel p-5" aria-label="Telegram" data-testid="panel-telegram">
     <div className="eyebrow">Telegram</div>
-    <p className="mt-2 text-sm" role="status" data-testid="text-telegram-state">{state}</p>
+    <p className={q.isError || (s && !s.ready) ? notificationErrorClass : 'mt-2 text-sm'} role={q.isError || (s && !s.ready) ? 'alert' : 'status'} data-testid="text-telegram-state">{state}</p>
     {s?.pending && s.pendingAccountLabel && <p className="mt-1 text-sm" data-testid="text-telegram-pending">Waiting to confirm Telegram account: {s.pendingAccountLabel}</p>}
     {q.isError && <button type="button" className="mt-2 text-xs font-bold underline" onClick={() => void q.refetch()}>Retry</button>}
     {canStart && (!s?.pending || s.invitationOnly) && <>
@@ -60,14 +61,14 @@ export function ParentTelegramControl({ schoolId }: { schoolId: number }) {
     {s?.pending && parentRole && s.parentEligible && s.ready && s.policyAllowed && <div className="mt-3 text-sm">
       {s.schoolName && <p data-testid="text-telegram-school">School: {s.schoolName}</p>}
       {!!s.children?.length && <p data-testid="text-telegram-children">Children: {s.children.join(', ')}</p>}
-      {s.phoneCheck && <p data-testid="text-telegram-phone">{s.phoneCheck === 'MATCH' ? 'Shared phone matches your record.' : 'Shared phone does not match your record. Confirmation is disabled.'}</p>}
+      {s.phoneCheck && <p role={s.phoneCheck === 'MATCH' ? 'status' : 'alert'} className={s.phoneCheck === 'MATCH' ? '' : notificationErrorClass} data-testid="text-telegram-phone">{s.phoneCheck === 'MATCH' ? 'Shared phone matches your record.' : 'Shared phone does not match your record. Confirmation is disabled.'}</p>}
       {!s.invitationOnly && <label className="mt-2 flex items-start gap-2"><input type="checkbox" data-testid="checkbox-telegram-confirm-consent" checked={confirmConsent} onChange={e => setConfirmConsent(e.target.checked)} />
         <span>I consent to Telegram messages about my verified linked children, subject to each school's current permissions. I can withdraw at any time.</span></label>}</div>}
     {s?.pending && !s.invitationOnly && parentRole && s.parentEligible && s.ready && s.policyAllowed && <button type="button" data-testid="button-telegram-confirm" className="mt-3 min-h-11 rounded-lg border px-4 disabled:opacity-50" disabled={busy || !confirmConsent || s.phoneCheck === 'MISMATCH'}
       onClick={() => void confirm.mutateAsync({ data: { schoolId, consent: true } }).then(() => { ifCurrent(() => { setLink(null); setMsg(''); }); return refresh(); }).catch(fail('Could not confirm yet. Start the bot chat first.'))}>Confirm this Telegram account</button>}
     {s && (s.linked || s.pending || s.consented) && <button type="button" data-testid="button-telegram-unlink" className="mt-3 ml-2 min-h-11 rounded-lg border px-4 disabled:opacity-50" disabled={busy}
       onClick={() => void unlink.mutateAsync().then(() => { ifCurrent(() => { setLink(null); setConsent(false); setMsg(''); }); return refresh(); }).catch(fail('Could not unlink.'))}>Unlink and withdraw consent</button>}
-    {msg && <p role="alert" className="mt-2 text-sm">{msg}</p>}
+    {msg && <p role="alert" className={notificationErrorClass}>{msg}</p>}
   </section>;
 }
 
@@ -78,7 +79,9 @@ export function OwnerTelegramHealth() {
     <h2 className="display-font text-xl font-bold">Telegram bot configuration</h2>
     <p className="text-sm">This check calls Telegram getMe and getWebhookInfo only. It never sends a message and does not prove delivery.</p>
     <button type="button" data-testid="button-telegram-health" className="min-h-11 rounded-lg border px-4 disabled:opacity-50" disabled={check.isPending} onClick={() => check.mutate()}>Check bot configuration</button>
-    {check.isError && <p role="alert">Check failed. Try again.</p>}
-    {s && <p role="status" data-testid="text-telegram-health">{s.ready ? 'Configuration looks ready' : 'Not ready'}{s.botUsername ? ` (@${s.botUsername})` : ''}. {s.reason}</p>}
+    {check.isError && <p role="alert" className={notificationErrorClass}>{telegramCheckError(check.error)}</p>}
+    {s && !check.isError && !check.isPending && <p role={s.ready ? 'status' : 'alert'} className={s.ready ? 'text-sm' : notificationErrorClass} data-testid="text-telegram-health">
+      {s.ready ? 'Configuration looks ready. This does not prove delivery.' :
+        (Object.hasOwn(telegramReasons, s.reason) ? telegramReasons[s.reason] : telegramReasons.BOT_UNAVAILABLE)}</p>}
   </section>;
 }

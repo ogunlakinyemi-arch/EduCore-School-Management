@@ -1,10 +1,44 @@
 import {describe,it,expect,vi} from "vitest";
+const diagnostics=vi.hoisted(()=>({warn:vi.fn()}));
+vi.mock("../lib/logger",()=>({logger:diagnostics}));
 import {refreshTelegramHealth,getTelegramHealth,createTelegramProvider} from "./telegram-provider";
 const env={NODE_ENV:"test",TELEGRAM_BOT_TOKEN:"123456:fixture_token_not_real",SESSION_SECRET:"fixture-encryption-key-01234567890123456789"};
 const ok=(method:string)=>new Response(JSON.stringify({ok:true,result:method==="getMe"
   ?{id:123456,is_bot:true,username:"FixtureBot"}:{url:""}}),{status:200});
 const healthy=vi.fn(async(url:any)=>ok(String(url).split("/").at(-1)!));
 describe("Telegram transport/configuration (fake HTTP only)",()=>{
+  it.each([
+    [403,"PROVIDER_FORBIDDEN"],[429,"RATE_LIMITED"],[503,"PROVIDER_UNAVAILABLE"],
+  ])("classifies HTTP %s without exposing provider descriptions",async(status,reason)=>{
+    const result=await refreshTelegramHealth(true,env,vi.fn(async()=>new Response(
+      JSON.stringify({ok:false,error_code:status,description:env.TELEGRAM_BOT_TOKEN}),{status})) as any);
+    expect(result.reason).toBe(reason);
+    expect(JSON.stringify(result)).not.toContain(env.TELEGRAM_BOT_TOKEN);
+  });
+  it("distinguishes timeout, network and invalid JSON without leaking caught messages",async()=>{
+    for(const [failure,reason] of [
+      [new DOMException(env.TELEGRAM_BOT_TOKEN,"TimeoutError"),"TIMEOUT"],
+      [new Error(env.TELEGRAM_BOT_TOKEN),"NETWORK_UNAVAILABLE"],
+    ] as const){
+      const result=await refreshTelegramHealth(true,env,vi.fn(async()=>{throw failure;}) as any);
+      expect(result.reason).toBe(reason);expect(JSON.stringify(result)).not.toContain(env.TELEGRAM_BOT_TOKEN);
+    }
+    expect((await refreshTelegramHealth(true,env,vi.fn(async()=>new Response("sensitive html")) as any)).reason).toBe("INVALID_RESPONSE");
+    expect(JSON.stringify(diagnostics.warn.mock.calls)).not.toContain(env.TELEGRAM_BOT_TOKEN);
+    expect(JSON.stringify(diagnostics.warn.mock.calls)).not.toContain("sensitive html");
+    expect(diagnostics.warn).toHaveBeenCalledWith(expect.objectContaining({
+      event:"TELEGRAM_HEALTH_CHECK_FAILED",stage:"getMe",reason:"INVALID_RESPONSE",
+    }),expect.any(String));
+  });
+  it("records the failed read-only method without exposing webhook response data",async()=>{
+    const transport=vi.fn(async(url:any)=>String(url).endsWith("getMe")?ok("getMe"):
+      new Response("sensitive webhook body",{status:502}));
+    expect((await refreshTelegramHealth(true,env,transport as any)).reason).toBe("PROVIDER_UNAVAILABLE");
+    expect(diagnostics.warn).toHaveBeenLastCalledWith(expect.objectContaining({
+      stage:"getWebhookInfo",reason:"PROVIDER_UNAVAILABLE",status:502,
+    }),expect.any(String));
+    expect(JSON.stringify(diagnostics.warn.mock.calls)).not.toContain("sensitive webhook body");
+  });
   it("never enables a missing token, Production or missing encryption",async()=>{
     expect(getTelegramHealth({NODE_ENV:"test"}).reason).toBe("TOKEN_MISSING");
     expect(getTelegramHealth({...env,NODE_ENV:"production"}).ready).toBe(false);
