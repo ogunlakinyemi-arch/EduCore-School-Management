@@ -2,6 +2,14 @@
 
 2026-10-23. Source changes only; no service restart or publication.
 
+**Historical correction report:** the Development-only Telegram restriction
+described below was subsequently replaced by an explicit Production opt-in.
+It is not the current activation policy. See
+[Telegram setup](telegram-production-setup.md) and the
+[Production Telegram/push activation handoff](notification-production-activation.md)
+for current gates, Production presence results and Owner steps. The push
+installation analysis below still applies; source preparation is not publication.
+
 ## Causes and correction
 
 - **Push installation:** public GET/HEAD observations at the published

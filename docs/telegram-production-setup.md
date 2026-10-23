@@ -4,6 +4,10 @@ This is a source implementation, not an activation or delivery verification.
 No Telegram calls, Production changes, real sends, restarts or publishing are
 authorized by implementation/testing alone.
 
+For the current Production presence inventory, exact Publishing UI steps,
+Autoscale worker limitation and combined Telegram/VAPID activation sequence, see
+[Production notification activation](notification-production-activation.md).
+
 ## Required server-only configuration
 
 - `TELEGRAM_BOT_TOKEN`: valid credential for the intended Production bot.
