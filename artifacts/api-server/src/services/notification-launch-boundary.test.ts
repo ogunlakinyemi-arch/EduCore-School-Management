@@ -34,6 +34,29 @@ describe("first-school notification boundary", () => {
       .toEqual({ IN_APP: true, EMAIL: false, PUSH: false, TELEGRAM: false, SMS: false });
   });
 
+  it("Production Telegram opt-in cannot bypass the unset launch cutoff, even with an injected provider", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("EDUCORE_PRODUCTION_TELEGRAM_ENABLED", "true");
+    vi.stubEnv("EDUCORE_NOTIFICATION_LIVE_FROM", "");
+    expect(notificationChannelAvailability({
+      NODE_ENV: "production", EDUCORE_PRODUCTION_TELEGRAM_ENABLED: "true",
+    }).TELEGRAM).toBe(false);
+    const pool = { query: vi.fn(), connect: vi.fn() } as unknown as CommunicationDispatchPool;
+    const send = vi.fn();
+    const result = await dispatchCommunicationDeliveries(pool, 10, {
+      allowConfiguredProviders: true, channels: ["TELEGRAM"], notificationIds: [42],
+      providers: {
+        email: { provider: "fixture", channel: "email", send },
+        sms: { provider: "fixture", channel: "sms", send },
+        telegram: { provider: "fixture", channel: "telegram", send },
+      },
+    });
+    expect(result.claimed).toBe(0);
+    expect(pool.connect).not.toHaveBeenCalled();
+    expect(pool.query).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it.each(["production", "deployment-marker"])("performs no claims/writes/provider sends under the %s hold", async mode => {
     vi.stubEnv("NODE_ENV", mode === "production" ? "production" : "test");
     vi.stubEnv("REPLIT_DEPLOYMENT", mode === "deployment-marker" ? "1" : "");

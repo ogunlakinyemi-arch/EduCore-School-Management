@@ -75,8 +75,13 @@ configuration. No source fix can establish these provider-side facts.
   obeys the cutoff. Validate Production VAPID locally, confirm released service
   worker/browser permission and real-user subscriptions before approved tests.
 - Telegram retains its independent explicit Production opt-in and readiness/
-  consent checks. Leave its Production opt-in absent/false. A cutoff alone cannot
-  enable Telegram.
+  consent checks. The Owner subsequently approved saving
+  `EDUCORE_PRODUCTION_TELEGRAM_ENABLED=true` in Production configuration, and the
+  non-secret setting was saved/read back. No restart or publication followed.
+  The launch cutoff remains unset: this opt-in cannot bypass the dispatch hold.
+  Runtime bot readiness, storage and parent consent remain separate prerequisites.
+  A later release must include the launch guard; do not publish an older bundle
+  with the new opt-in. Configuration approval is not permission to poll or send.
 - SMS remains unavailable and excluded from dispatch.
 - Before release review database schema/storage and the approved SQL tool target;
   no Production SQL was run for this work. Unit SQL-shape checks are not live

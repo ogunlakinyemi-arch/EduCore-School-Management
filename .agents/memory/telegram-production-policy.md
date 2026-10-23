@@ -28,3 +28,15 @@ and prohibited real API calls or runtime activation during implementation.
 **How to apply:** Report configuration existence separately from credential
 validity, storage readiness, provider acceptance and physical receipt. Obtain
 explicit approval for live verification and use a controlled consenting recipient.
+
+The Owner approved the explicit Production Telegram opt-in independently of
+external delivery launch. Do not reapply a blanket "Telegram must stay opted out"
+rule when the notification launch cutoff is deliberately held.
+
+**Why:** On 2026-10-23 the Owner requested actual Production configuration
+enablement while expressly prohibiting a cutoff change, queue release, provider
+contact, restart or publication.
+
+**How to apply:** Keep configuration opt-in separate from effective delivery.
+Preserve the fail-closed cutoff and TEST-history isolation; configuration approval
+does not authorize publishing an older unguarded bundle, bot polling or messages.
