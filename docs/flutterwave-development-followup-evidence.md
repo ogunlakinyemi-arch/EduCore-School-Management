@@ -436,6 +436,21 @@ LIVE activation occurred. **HOLD** remains mandatory.
 
 ## 9. Owner handoff — four blockers, none resolved
 
+**Launch prioritization clarification:** see the main package's
+[payment-only launch-gate assessment](flutterwave-live-development-approval-package.md#launch-gate-assessment--payment-activation-only).
+The Owner confirms the published school application works. The four OPEN items
+below are not four interchangeable payment-function defects: `eda97466…` permits
+a separately scoped independent provenance review; a historical 28000 explanation
+can be risk-reviewed only with approved evidence of a healthy current financial
+path. Neither acceptance exists yet. Resource mapping is required for the
+financial target; exact-resource recovery is required before its schema changes.
+The more direct verified source blocker is the deliberately disabled LIVE
+checkout/transport/workflow, whose safe completion also needs actual merchant,
+recipient and transaction-bound verification-contract evidence.
+**Next action is the one Flutterwave evidence packet specified in the main
+assessment**, not more export tests, historical searching or unrelated UX work.
+No new external evidence, runtime acceptance or waiver is claimed.
+
 Focused review **2026-10-23**: repository working tree was clean before this
 documentation-only update. Existing evidence/tests were reused, not rerun.
 A fresh read-only `getDeploymentInfo({})` again returned only

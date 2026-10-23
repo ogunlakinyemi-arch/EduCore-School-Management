@@ -3,6 +3,17 @@ name: Subscription allocation and disclosure policy
 description: User-approved future student allocation, history protection and Owner-only full-split disclosure.
 ---
 
+Scope clarification: the Owner confirms the published school application works;
+the reported real-school onboarding obstacle is Flutterwave LIVE payment
+activation, not a general school-product failure.
+
+**Why:** The Owner explicitly separated working published school functionality
+from payment readiness and requested the shortest safe LIVE path.
+
+**How to apply:** Keep payment-gate assessments separate from unrelated product
+or UX work. This statement is Owner evidence about school functionality, not
+proof of LIVE charging, financial finalization or settlement.
+
 The requested future student subscription gross is NGN 5,000 per student per
 school term. School entitlement is NGN 1,900 through the school-only checkout
 subaccount; all remaining proceeds after actual provider fees/taxes belong to

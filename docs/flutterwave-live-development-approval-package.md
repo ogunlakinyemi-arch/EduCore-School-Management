@@ -2,6 +2,57 @@
 
 Evidence date: **2026-10-23**. **NOT approved for application-database migration or LIVE activation.**
 
+## Launch-gate assessment — payment activation only
+
+The Owner confirms the published school application works. This package concerns
+**Flutterwave LIVE payments**, not a claim that ordinary school operations are
+broken. The earlier four-blocker handoff is an evidence inventory, not four
+equally mandatory reasons to postpone all product onboarding.
+
+**Decision: HOLD for LIVE payments. This is not a configuration-only release.**
+Current repository source explicitly refuses LIVE checkout and HTTP transport
+in `FlutterwaveLiveAdapter`; reports `checkoutEnabled: false`; defaults workflow
+and independent verification to disabled; and retains a non-successful webhook
+response when processing is unreleased. Credentials or an enabled-mode flag
+cannot complete this path. This source inspection does not attest the serving
+revision's contents, and the Owner's working-app confirmation does not establish
+LIVE financial processing.
+
+### Mandatory gates versus reviewable gaps
+
+| Item | Launch classification and shortest completion route |
+|---|---|
+| Usable LIVE checkout, independent verification and durable finalization | **Hard functional blocker in current source.** Finish the real transport/reader and production wiring, not merely flip constants or return webhook success. Development can implement against a confirmed provider contract and reuse existing fixtures; actual acceptance requires separately authorized target/provider work. No paper exception substitutes for safe charging, authenticated delivery, idempotent finalization or uncertain-COMMIT handling. |
+| Merchant identity, LIVE collection eligibility, school recipient ownership, fees and exact allocation/report contract | **Hard financial prerequisite. Owner + Flutterwave evidence.** Reviewed dashboard/account evidence and the actual transaction-bound recipient report/reader contract are needed. Existing support statements and synthetic tests do not establish this merchant's entitlement, school allocation or fee behavior. Do not invent a report endpoint or treat TEST settlement as LIVE proof. |
+| Installed schema and actual serving API/worker resource | **Hard target/release prerequisite**, not evidence the school application is broken. Existing records establish drafts and disposable execution, not installation on the intended serving target. Owner must attest revision/configuration → writable resource/branch; ask Replit/resource owner only if that linkage is unavailable. Development can prepare exact release wiring/review, but cannot establish installation without separately approved target inspection/apply. |
+| Exact-resource recovery | **Hard prerequisite before any required application schema change.** Owner/resource provider supplies resource-bound inventory and independently accepted isolated-restore evidence under separate approval. It is not itself proof checkout is broken, nor something an offline dump or provenance exception can replace. |
+| Historical `eda97466…` source | **Reviewable provenance gap**, not inherently a payment-function defect. Exact bytes remain unresolved. An independently reviewed Development-only exception with catalog/preservation assessment may satisfy that scoped provenance gate; it does not prove source identity, waive current schema safety or authorize Production release. Later target/release scope needs its own explicit review. No exception exists yet. |
+| Historical 28000 root cause | **Conditional operational risk, not automatically a permanent launch blocker.** Active authentication failures on the intended financial path are a hard blocker. A missing historical explanation may be risk-accepted independently if separately authorized evidence proves the intended current API/worker path authenticates and processes safely, with incident scope and residual risk recorded. Present Development success and a working school UI do not establish that financial-path evidence. No current-path acceptance or risk acceptance is claimed here. |
+| Two restored CHECK text/tree differences | **Not an unresolved semantic defect:** existing native structural/behavior evidence establishes the two expressions' equivalence. Preserve exact discrepancies and obtain explicit recovery-review acceptance where relevant; do not rewrite definitions or repeat the completed matrix. |
+| Settlement observation and signed-in acceptance | **Acceptance obligations, not excuses to redo unrelated UX.** Reuse the Owner's school-app confirmation for that stated scope. It does not replace a bounded payment journey or genuine allocation evidence. Controlled LIVE financial evidence, including any bank-credit/cost observation, requires separate authorization; a general-release exception cannot relabel an unobserved settlement as proven. |
+
+**Required economics remain unchanged:** ₦5,000 SCV3 checkout; exactly one school
+`flat_subaccount` receiving ₦1,900; no ratio and no Partner checkout recipient;
+eligible Partner ₦100 is an internal payable only. Actual provider costs are
+reconciled separately. Historical SCV2 references, allocations and behavior
+must remain intact.
+
+**Single next action:** the Owner obtains one redacted Flutterwave LIVE evidence
+packet confirming **this merchant's LIVE collection approval/identity, the
+school-only ₦1,900 flat allocation from ₦5,000 and fee ordering/bearer, and the
+exact supported transaction-bound recipient/allocation report contract**
+(documented schema/read mechanism, identifiers and available genuine sample).
+Use existing authenticated dashboard evidence first; ask Flutterwave Support
+only for missing confirmations. No API call, transaction or configuration
+change is authorized by this request. This directly unblocks implementing and
+reviewing the deliberately disabled verifier/checkout path without guessing.
+If the evidence cannot substantiate the required economics, stop before
+implementation or charging; do not alter the approved policy.
+
+No completed tests were rerun, no runtime code/gates changed, and no blocker was
+newly closed. Required target/recovery, financial acceptance and explicit
+activation approvals remain pending. **HOLD remains in force.**
+
 **Current decision: HOLD.** The follow-up in §9 explains the raw-export failure
 and establishes semantic equivalence of the two CHECK expressions without
 rewriting their SQL or erasing the exact-text discrepancy. External provenance,
