@@ -6,7 +6,7 @@ import {
   getGetSchoolAttendanceScheduleQueryKey,
 } from '@workspace/api-client-react';
 import type { SchoolAttendanceSchedule, SchoolAttendanceScheduleRules } from '@workspace/api-client-react';
-import { Button, ErrorState, Field } from '@/components/shared';
+import { Button, Field } from '@/components/shared';
 
 const DAYS: [number, string][] = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMES: [keyof SchoolAttendanceSchedule, string][] = [
@@ -85,7 +85,12 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
   }, [view, key, initKey]);
 
   if (query.isLoading) return <div className="panel p-6 text-sm text-[hsl(var(--muted-foreground))]" role="status">Loading attendance schedule…</div>;
-  if (query.isError) return <ErrorState retry={() => query.refetch()} message={`Attendance schedule could not be loaded. ${errMsg(query.error)}`} />;
+  if (query.isError) return <div role="alert" data-testid="error-attendance-schedule"
+    className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] p-5 text-sm text-[hsl(var(--destructive))]">
+    <p className="font-semibold">Attendance schedule could not be loaded for the selected school.</p>
+    <p className="mt-2">Retry loading. If the problem continues, ask your School Admin to review the saved schedule and your access to this school.</p>
+    <Button variant="outline" onClick={() => void query.refetch()} testId="button-retry-attendance-schedule">Retry loading schedule</Button>
+  </div>;
   if (!view || !draft || initKey !== key) return <div className="panel p-6 text-sm" role="status">Loading attendance schedule…</div>;
 
   const errors = validateSchedule(draft, reason);
@@ -127,6 +132,7 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
           <span className="text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-schedule-revision">Revision {view.revision}</span>
           {dirty && <span className="rounded-full bg-[hsl(var(--accent)/.25)] px-2 py-0.5 text-xs font-bold" data-testid="status-schedule-dirty">Unsaved changes</span>}
         </div>
+        {view.revision === 0 && <p role="status" data-testid="text-schedule-unconfigured">No attendance schedule has been saved for this school. These are suggested defaults; review and save them to configure the schedule.</p>}
         {ro && <p role="status" data-testid="text-schedule-readonly">Read-only. Only the School Admin can change this school's schedule; Platform Owner access is read-only.</p>}
         <p><strong>Precedence:</strong> <span data-testid="text-precedence">{view.precedence.join(' → ')}</span></p>
         <ul className="list-disc space-y-1 pl-5 text-xs text-[hsl(var(--muted-foreground))]">

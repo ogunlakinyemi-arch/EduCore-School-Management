@@ -5,14 +5,20 @@ import type { Server } from 'node:http';
 // Route and real authorization checks, with only transport authentication and
 // PostgreSQL replaced. These tests never connect to an environment database.
 const fixture = vi.hoisted(() => ({
-  context: {} as any, schedules: new Map<number, any>(), writes: 0,
+  context: {} as any, schedules: new Map<number, any>(), writes: 0, reads: [] as string[],
 }));
 vi.mock('@workspace/db', () => {
   const query = async (sql: string, values: any[] = []) => {
     if (/SELECT[\s\S]*FROM audit_logs/i.test(sql)) {
+      fixture.reads.push(sql);
+      // audit_logs uses "timestamp", not created_at. The previous permissive
+      // mock hid the exact undefined-column error seen by the real endpoint.
+      if (/\bcreated_at\b/i.test(sql)) {
+        throw Object.assign(new Error('column "created_at" does not exist'), { code: '42703' });
+      }
       const schoolId = values.find(value => typeof value === 'number');
       const saved = typeof schoolId === 'number' ? fixture.schedules.get(schoolId) : undefined;
-      return { rows: saved ? [{ metadata: structuredClone(saved) }] : [] };
+      return { rows: saved ? [{ metadata: structuredClone(saved), effectiveAt: '2026-10-23T08:00:00Z' }] : [] };
     }
     if (/INSERT INTO audit_logs/i.test(sql)) {
       fixture.schedules.set(values[1], JSON.parse(values[4])); fixture.writes++;
@@ -45,10 +51,44 @@ beforeAll(async () => {
 });
 afterAll(async () => { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); });
 beforeEach(() => {
-  fixture.schedules.clear(); fixture.writes = 0;
+  fixture.schedules.clear(); fixture.writes = 0; fixture.reads = [];
   fixture.context = { user: { id: 71, firstName: 'Development', lastName: 'Fixture' }, roles: [membership()] };
 });
 describe('existing attendance schedule API contract', () => {
+  it('reads the established audit timestamp column for an existing schedule', async () => {
+    fixture.schedules.set(7, { revision: 3, schedule: { ...structuredClone(defaultAttendanceSchedule), fridayClosing: '12:30' } });
+    fixture.schedules.set(8, { revision: 99, schedule: structuredClone(defaultAttendanceSchedule) });
+    const response = await request('GET');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ revision: 3, effectiveAt: '2026-10-23T08:00:00.000Z', schedule: { fridayClosing: '12:30' } });
+    expect(fixture.reads[0]).toContain('"timestamp" AS "effectiveAt"');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+  it('returns unsaved defaults with no effective timestamp when this school has no schedule', async () => {
+    fixture.schedules.set(8, { revision: 99, schedule: structuredClone(defaultAttendanceSchedule) });
+    const response = await request('GET');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ revision: 0, effectiveAt: null, schedule: defaultAttendanceSchedule });
+    expect(fixture.writes).toBe(0);
+  });
+  it('rejects unauthorized tenant/role reads before querying schedule data', async () => {
+    for (const roles of [[membership('SCHOOL_ADMIN',8)],[membership('SCHOOL_ADMIN',7,'INACTIVE')],[membership('PARENT')]]) {
+      fixture.context.roles = roles;
+      expect((await request('GET')).status).toBe(404);
+    }
+    expect(fixture.reads).toEqual([]);
+  });
+  it('rejects missing school scope without reading another tenant', async () => {
+    expect((await fetch(`${base}/school/attendance/schedule`)).status).toBe(400);
+    expect(fixture.reads).toEqual([]);
+  });
+  it('returns an explicit review error instead of overwriting a corrupt saved schedule', async () => {
+    fixture.schedules.set(7, { revision: 1, schedule: {} });
+    const response = await request('GET');
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: 'Saved attendance schedule is invalid; administrator review required' });
+    expect(fixture.writes).toBe(0);
+  });
   it('saves and reloads closing/review times for the authorized school only', async () => {
     const initial = await (await request('GET')).json() as { revision: number };
     const schedule = { ...structuredClone(defaultAttendanceSchedule),
@@ -56,7 +96,7 @@ describe('existing attendance schedule API contract', () => {
     const response = await request('PUT',7,{revision:initial.revision,schedule,reason:'Reviewed closing times'});
     expect(response.status).toBe(200);
     const saved = await response.json(); expect(saved).toMatchObject({revision:1,schedule});
-    expect(await (await request('GET')).json()).toEqual(saved);
+    expect(await (await request('GET')).json()).toMatchObject(saved);
     expect(fixture.schedules.has(8)).toBe(false);
     const conflict = await request('PUT',7,{revision:0,schedule,reason:'Stale revision'});
     expect(conflict.status).toBe(409); expect(fixture.writes).toBe(1);

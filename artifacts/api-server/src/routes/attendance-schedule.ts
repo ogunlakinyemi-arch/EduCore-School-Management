@@ -23,7 +23,12 @@ export function createAttendanceScheduleRouter(notify: AttendanceReviewNotice) {
   router.use(["/school/attendance/schedule", "/school/attendance/assess"], requireAuthentication());
   router.get("/school/attendance/schedule", run(async (req, res) => {
     const id = school(req);
-    assertSchoolAccess(req, id, ["SCHOOL_ADMIN", "STAFF"]);
+    const context=assertSchoolAccess(req, id, ["SCHOOL_ADMIN", "STAFF"]);
+    const activeReader=context.roles.some(role=>role.status==="ACTIVE" && (
+      (role.schoolId===id && ["SCHOOL_ADMIN","STAFF"].includes(role.role)) ||
+      (role.schoolId===null && role.role==="PLATFORM_OWNER")
+    ));
+    if(!activeReader)throw new AuthError(404,"Resource not found","CROSS_TENANT_ACCESS_ATTEMPT");
     res.setHeader("Cache-Control", "no-store");
     res.json({ ...await readAttendanceSchedule(pool, id), precedence: attendanceRulePrecedence });
   }));

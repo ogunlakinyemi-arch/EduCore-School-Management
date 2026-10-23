@@ -61,7 +61,7 @@ export const attendanceRulePrecedence = [
   "Notification intent obeys school rules plus Owner policy and recipient preferences at dispatch",
 ];
 export async function readAttendanceSchedule(db: AttendanceDb, schoolId: number) {
-  const rows = await db.query(`SELECT metadata,created_at AS "effectiveAt" FROM audit_logs
+  const rows = await db.query(`SELECT metadata,"timestamp" AS "effectiveAt" FROM audit_logs
     WHERE school_id=$1 AND action=$2 AND module='Attendance' ORDER BY id DESC LIMIT 1`,
   [schoolId, ATTENDANCE_SCHEDULE_ACTION]);
   const saved = rows.rows[0]?.metadata;

@@ -9,11 +9,11 @@ const base = {
   fridayMissingTagOut: '13:30', classroomDeadline: '09:00', duplicateSeconds: 30, offlineMaxHours: 48, closures: [], exemptions: [],
   rules: { entryEnabled: true, exitEnabled: true, lateness: true, absenceReview: true, classroomAnomalies: true, missingTagOut: true, offlineSync: true, notifications: false, allowEarlyExit: false, allowReentry: true, provisionalClassPresence: true },
 };
-const st = vi.hoisted(() => ({ data: null as any, isError: false, mutate: vi.fn(), assess: vi.fn(), invalidate: vi.fn(), keys: [] as any[] }));
+const st = vi.hoisted(() => ({ data: null as any, isError: false, mutate: vi.fn(), assess: vi.fn(), invalidate: vi.fn(), refetch: vi.fn(), keys: [] as any[] }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: st.invalidate }) }));
 vi.mock('@workspace/api-client-react', () => ({
   getGetSchoolAttendanceScheduleQueryKey: (p: any) => ['/api/school/attendance/schedule', p],
-  useGetSchoolAttendanceSchedule: (p: any) => { st.keys.push(p.schoolId); return { data: st.isError ? undefined : st.data, isLoading: false, isError: st.isError, error: new Error('boom'), refetch: vi.fn() }; },
+  useGetSchoolAttendanceSchedule: (p: any) => { st.keys.push(p.schoolId); return { data: st.isError ? undefined : st.data, isLoading: false, isError: st.isError, error: new Error('Internal server error: column created_at; private SQL details'), refetch: st.refetch }; },
   useUpdateSchoolAttendanceSchedule: () => ({ mutate: st.mutate, isPending: false }),
   useAssessSchoolAttendance: () => ({ mutate: st.assess, isPending: false }),
 }));
@@ -114,8 +114,24 @@ describe('school attendance schedule', () => {
     expect(box.querySelectorAll('fieldset[disabled]').length).toBeGreaterThan(0);
   });
   it('shows load error with retry', () => {
+    st.refetch.mockClear();
     st.isError = true; render(1, true);
     expect(q('[role=alert]').textContent).toContain('could not be loaded');
+    expect(q('[role=alert]').className).toContain('text-[hsl(var(--destructive))]');
+    expect(q('[role=alert]').textContent).toContain('selected school');
+    expect(q('[role=alert]').textContent).not.toMatch(/Internal server error|created_at|private SQL/);
+    click(q('[data-testid=button-retry-attendance-schedule]'));
+    expect(st.refetch).toHaveBeenCalledTimes(1);
+    act(() => { st.isError = false; }); render(1, true);
+    expect(q('[data-testid=form-attendance-schedule]')).toBeTruthy();
+    expect(q('[role=alert]')).toBeNull();
+  });
+  it('labels unsaved defaults as unconfigured instead of pretending they are persisted', () => {
+    st.data = { schedule: structuredClone(base), revision: 0, precedence: [] };
+    render(7, true);
+    expect(q('[data-testid=text-schedule-unconfigured]').textContent).toContain('suggested defaults');
+    expect(q('[data-testid=text-schedule-revision]').textContent).toContain('0');
+    expect((q('input[aria-label="Friday school closing"]') as HTMLInputElement).value).toBe(base.fridayClosing);
   });
   it('resets draft on tenant change and ignores late response from old tenant', () => {
     render(1, true);

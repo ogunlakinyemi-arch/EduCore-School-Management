@@ -51,3 +51,12 @@ column look verified while failing to exercise the actual save/read cycle.
 isolated PostgreSQL using the established executable contract. Document any
 existing drift separately; do not silently rename application database columns
 or apply a reconciliation migration without approval.
+
+SQL-read mocks must enforce the selected column contract rather than accept
+every query mentioning a known table.
+
+**Why:** A permissive metadata-read mock accepted a nonexistent audit timestamp
+column, hiding a regression that failed even for an unsaved schedule.
+
+**How to apply:** Keep mocks consistent with the established table projection,
+including timestamp names, and exercise both existing-row and no-row reads.
