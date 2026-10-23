@@ -48,6 +48,16 @@ afterEach(() => { act(() => root.unmount()); host.remove(); });
 const render = () => act(async () => root.render(<LiveReadinessPage />));
 
 describe('live readiness', () => {
+  it('discards a previous Owner request that finishes after another Owner signs in',async()=>{
+    let finish!: (r: ReturnType<typeof report>)=>void;
+    m.ctx.mockReturnValue({data:{isPlatformOwner:true,user:{id:1}},isLoading:false});
+    m.mutateAsync.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+    await render();await fill();await run();
+    m.ctx.mockReturnValue({data:{isPlatformOwner:true,user:{id:2}},isLoading:false});
+    await render();await act(async()=>finish(report()));
+    expect(q('text-review-hash')).toBeNull();
+    expect((q('input-evidence') as HTMLTextAreaElement).value).toBe('');
+  });
   it('clears Owner evidence/report when switching between two authenticated Owner identities',async()=>{
     m.ctx.mockReturnValue({data:{isPlatformOwner:true,user:{id:1}},isLoading:false});
     m.mutateAsync.mockResolvedValue(report());

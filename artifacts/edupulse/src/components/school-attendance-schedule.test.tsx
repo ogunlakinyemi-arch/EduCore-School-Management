@@ -42,9 +42,33 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); box.remove(); });
 
 describe('school attendance schedule', () => {
+  it('submits the school closing/review times through the existing tenant API and reloads the saved values', () => {
+    render(7, true);
+    const values: Record<string,string> = {
+      'Weekday school closing':'15:00','Friday school closing':'12:30',
+      'Missing tag-out window opens':'15:15','Missing tag-out window ends':'17:00',
+      'Friday missing tag-out check':'13:30',
+    };
+    for (const [label,value] of Object.entries(values))
+      type(q(`input[aria-label="${label}"]`) as HTMLInputElement,value);
+    type(q('textarea') as HTMLTextAreaElement,'Approved school closing times');
+    act(() => { q('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); });
+    const [request,callbacks] = st.mutate.mock.calls[0];
+    expect(request.params).toEqual({schoolId:7});
+    expect(request.data).toMatchObject({revision:4,reason:'Approved school closing times',
+      schedule:{weekdaysClosing:'15:00',fridayClosing:'12:30',missingTagOutStart:'15:15',
+        missingTagOutEnd:'17:00',fridayMissingTagOut:'13:30'}});
+    const response={...st.data,revision:5,schedule:structuredClone(request.data.schedule)};
+    act(() => { st.data=response; callbacks.onSuccess(response); });
+    render(7,true);
+    for (const [label,value] of Object.entries(values))
+      expect((q(`input[aria-label="${label}"]`) as HTMLInputElement).value).toBe(value);
+    expect(q('[data-testid=text-schedule-revision]').textContent).toContain('5');
+    expect(st.invalidate).toHaveBeenCalledWith({queryKey:['/api/school/attendance/schedule',{schoolId:7}]});
+  });
   it('shows defaults, precedence and revision', () => {
     render(1, true);
-    expect((box.querySelector('input[type=time]') as HTMLInputElement).value).toBe('06:30');
+    expect((box.querySelector('input[aria-label="Arrival opens"]') as HTMLInputElement).value).toBe('06:30');
     expect(q('[data-testid=text-precedence]').textContent).toContain('Closure → Approved correction');
     expect(q('[data-testid=text-schedule-revision]').textContent).toContain('4');
     expect((q('input[aria-label="Operating day Sat"]') as HTMLInputElement).checked).toBe(false);

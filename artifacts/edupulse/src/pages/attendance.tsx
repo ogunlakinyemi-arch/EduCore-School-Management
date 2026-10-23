@@ -14,6 +14,7 @@ import {
   StatusPill, TenantPicker, useTenant, cx, time,
 } from '@/components/shared';
 import { SchoolAttendanceSchedulePanel } from '@/components/school-attendance-schedule';
+import { Link } from 'wouter';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 
 type Tab = 'events' | 'history' | 'reports' | 'discrepancies' | 'schedule';
@@ -35,7 +36,7 @@ export function AttendancePage() {
   const isPlatformOwner = contextQuery.data?.isPlatformOwner === true;
   const tenantRoles = contextQuery.data?.roles?.filter(role => role.schoolId === schoolId && role.status === 'ACTIVE').map(role => role.role) ?? [];
   const isSchoolAdmin = tenantRoles.includes('SCHOOL_ADMIN');
-  const isTeacherView = !isPlatformOwner && tenantRoles.includes('TEACHER');
+  const isTeacherView = !isPlatformOwner && !isSchoolAdmin && tenantRoles.includes('TEACHER');
   const canWrite = !isPlatformOwner && (isSchoolAdmin || tenantRoles.includes('TEACHER') || tenantRoles.includes('STAFF'));
   const canCorrect = !isPlatformOwner && isSchoolAdmin;
 
@@ -68,7 +69,7 @@ export function AttendancePage() {
 
   return (
     <div className="fade-up">
-      <PageHeading eyebrow="Operations / Attendance" title="Attendance, with context." description="School entry, classroom presence, and reconciliation in one auditable view." action={<div className="flex items-center gap-3"><TenantPicker /><Button variant="outline" onClick={refresh}><RefreshCw size={15} />Refresh</Button>{canWrite && <Button onClick={() => setModal('manual')}><Plus size={15} />Record event</Button>}</div>} />
+      <PageHeading eyebrow="Operations / Attendance" title="Attendance, with context." description="School entry, classroom presence, and reconciliation in one auditable view." action={<div className="flex flex-wrap items-center gap-3"><TenantPicker />{canCorrect && <Link href="/attendance/schedule" className="rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm font-bold" data-testid="link-attendance-schedule">Schedule</Link>}<Button variant="outline" onClick={refresh}><RefreshCw size={15} />Refresh</Button>{canWrite && <Button onClick={() => setModal('manual')}><Plus size={15} />Record event</Button>}</div>} />
       <div className="panel mb-5 p-4 text-sm">Gate Entry / Tag-in and Exit / Tag-out are separate from classroom attendance.
         Accepted morning NFC Tag-in records provisional class presence once per school day, labelled <strong>NFC_GATE_AUTO</strong>.
         This is not teacher roll-call or biometric confirmation. Tag-out records exit only; it never removes class presence.
@@ -82,10 +83,10 @@ export function AttendancePage() {
             <Metric label="Awaiting exit scan" value={summary?.present ?? summary?.studentsPresent ?? 'Not available'} detail="Recorded gate state, not location proof" icon={Clock3} accent />
             <Metric label="Discrepancies" value={summary?.discrepancies ?? summary?.mismatches ?? 'Not available'} detail="Requires review" icon={AlertTriangle} />
           </div>
-          {tab === 'schedule' && <div className="mb-4 flex gap-1 rounded-xl bg-[hsl(var(--muted)/.45)] p-1">{(['events', 'history', 'reports', 'discrepancies', 'schedule'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={cx('rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors', tab === item ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}>{item}</button>)}</div>}
+          {tab === 'schedule' && <div className="mb-4 flex flex-wrap gap-1 rounded-xl bg-[hsl(var(--muted)/.45)] p-1">{(['events', 'history', 'reports', 'discrepancies', 'schedule'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={cx('rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors', tab === item ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}>{item}</button>)}</div>}
           {tab === 'schedule' ? <SchoolAttendanceSchedulePanel key={schoolId} schoolId={schoolId} canEdit={canCorrect} /> : <div className="panel overflow-hidden">
             <div className="flex flex-col gap-4 border-b border-[hsl(var(--border))] p-5 md:flex-row md:items-center md:justify-between">
-              <div className="flex gap-1 rounded-xl bg-[hsl(var(--muted)/.45)] p-1">
+              <div className="flex flex-wrap gap-1 rounded-xl bg-[hsl(var(--muted)/.45)] p-1">
                 {(['events', 'history', 'reports', 'discrepancies', 'schedule'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={cx('rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors', tab === item ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}>{item}</button>)}
               </div>
               <div className="flex flex-wrap gap-2">

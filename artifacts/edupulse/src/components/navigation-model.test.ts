@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { buildNavSections, navMode } from './navigation-model';
 
 describe('navigation model', () => {
+  it('puts the authorized school schedule directly under Attendance, without adding it for teachers', () => {
+    expect(buildNavSections(['/attendance','/attendance/schedule'],'admin'))
+      .toEqual([{id:'attendance',label:'Attendance',hrefs:['/attendance','/attendance/schedule']}]);
+    expect(buildNavSections(['/attendance'],'teacher').flatMap(s=>s.hrefs)).not.toContain('/attendance/schedule');
+  });
   it('keeps every authorized link exactly once', () => {
     const hrefs = ['/', '/students', '/library', '/unknown', '/settings-x'];
     const flat = buildNavSections(hrefs, 'admin').flatMap(s => s.hrefs).sort();

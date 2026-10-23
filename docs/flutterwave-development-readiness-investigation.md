@@ -1,5 +1,10 @@
 # Flutterwave LIVE readiness — Development investigation, 2026-10-22
 
+**Current follow-up:** see [Development approval package](flutterwave-live-development-approval-package.md)
+for the verified historical source of one ledger hash, the remaining provenance
+gap, current safe checks and the unapproved rehearsal/apply sequence. Earlier
+observations below do not confer current migration or release approval.
+
 ## Safety boundary
 
 No LIVE key was enabled. Checkout, verification transport, financial webhook

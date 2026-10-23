@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "scope": "OFFLINE_DEVELOPMENT_REVIEW_ONLY",
+  "stages": [
+    {
+      "name": "webhook-inbox",
+      "upSha256": "ab644e6a38bdd1d9d4ef63f52cd971a05153e777b65d730567dac1ed231f874d",
+      "downSha256": "fd3475aa057a05f8c6dd7bace8e8ae8a47e64366240839be2631ab94cf9f3d39"
+    },
+    {
+      "name": "finalization",
+      "upSha256": "62f70bc39f92852fd8219b0da063fc2299f3530fd8a4356fe197049f40eb4b1a",
+      "downSha256": "0914fc1b11c8fbce2f8cadfd11e7da23788b34537919c14c7f28f3a3b5843cc5"
+    },
+    {
+      "name": "workflow",
+      "upSha256": "a7e83947d2338d762a1830814d68f2be470e19866c46be84a8bccfad08d3c67a",
+      "downSha256": "047805b8591ded4276595721c2d7a3f71f267d77e0a43d37b07523a263f3f4b7"
+    },
+    {
+      "name": "readiness",
+      "upSha256": "88e4bfa3eae084e6072b33d77125f9dc17bc74d5445fea1b28458522d9991a8c",
+      "downSha256": "98b933998cc2e12e531267e72a8f70023ae7f8b2d1744cc7ef4ad101a006495f"
+    }
+  ]
+}

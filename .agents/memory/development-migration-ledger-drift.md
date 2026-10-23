@@ -24,3 +24,15 @@ Discover migration-history tables independently for each database target instead
 **Why:** The Production replica exposed platform-owned history in `_system`, while Development held application migration history in `drizzle`. A verification summary using the Production table name on Development caused an otherwise valid correction transaction to roll back.
 
 **How to apply:** Query the catalog for ledger tables before constructing baseline or verification SQL. Include the discovered ledger schema in data fingerprints, preserve its existing rows, and do not assume the two environments share a migration-history implementation.
+
+Search retained forensic reports and historical SQL blobs before declaring a
+ledger hash's source unknown. Checking only current files and a branch tip is
+insufficient. An exact historical hash establishes source text, not execution.
+
+**Why:** Reordering supporting-key declarations changed a checked-in SQL hash;
+an older matching blob remained available even when both current branch tips
+differed. Journal timestamps could not establish that source identity.
+
+**How to apply:** Verify the full digest against the actual historical blob.
+Keep an unrecovered hash explicitly unresolved; never reconstruct its SQL from
+timestamps or rewrite the ledger to match current text.

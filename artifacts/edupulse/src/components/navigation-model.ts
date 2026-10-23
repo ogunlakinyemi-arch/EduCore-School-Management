@@ -8,7 +8,7 @@ export const adminGroups: NavGroupDef[] = [
   { id: 'employees-staff', label: 'Employees & Staff', hrefs: ['/employees', '/teacher-assignments', '/teacher-duty', '/employee-nfc'] },
   { id: 'classes-subjects', label: 'Classes & Subjects', hrefs: ['/classes', '/subjects', '/curriculum', '/lesson-notes'] },
   { id: 'academics', label: 'Academics', hrefs: ['/academics', '/academic-calendar', '/timetable', '/promotion'] },
-  { id: 'attendance', label: 'Attendance', hrefs: ['/attendance'] },
+  { id: 'attendance', label: 'Attendance', hrefs: ['/attendance', '/attendance/schedule'] },
   { id: 'assessments-results', label: 'Assessments & Results', hrefs: ['/academic-work', '/results'] },
   { id: 'finance', label: 'Finance', hrefs: ['/finance', '/finance-workspace', '/subscriptions', '/subscription-enforcement'] },
   { id: 'communication', label: 'Communication', hrefs: ['/communications', '/inbox'] },

@@ -1,5 +1,11 @@
 # LIVE readiness additive migration review — 2026-10-21
 
+**2026-10-23 follow-up:** the [Development approval package](flutterwave-live-development-approval-package.md)
+pins all eight up/down hashes and records current target/provenance/recovery
+blockers. It adds offline/mocked checks only; no new native rehearsal or
+application-target migration was performed. The representative-target PASS
+below must not be treated as current application-target approval.
+
 ## Decision
 
 **Confirmed split follow-up (2026-10-21):** structured Merchant-fee-bearer and LIVE

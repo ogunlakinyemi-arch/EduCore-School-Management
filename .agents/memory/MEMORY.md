@@ -19,6 +19,7 @@
 - [Vitest JSX environment gates](vitest-jsx-environment-gates.md) — read runtime-stubbed environment flags inside components before branching in JSX; also check production builds.
 - [Same-day class history](same-day-class-history.md) — attendance reports must not attribute an earlier event to a class a student joined later that day.
 - [Disposable PostgreSQL process lifetime](disposable-postgres-lifetime.md) — one-off shell launches can die after the call; use a tracked background task for migration tests.
+- [Isolated SQL rehearsal boundaries](isolated-sql-rehearsal-boundaries.md) — clean executable/environment gates and catalog-lock observations must not weaken disposable-target safeguards.
 - [Schema dump controls](pg-dump-restrict-tokens.md) — normalize restrict delimiters for comparisons; persistent-client replays also leave the search path empty.
 - [Webhook-independent test checkout](webhook-independent-test-checkout.md) — TEST checkout can use independent backend verification while missing webhook authentication fails closed.
 - [Owner membership history](owner-membership-history.md) — preserve an earlier Owner's membership as inactive history when reconciling a verified replacement identity.
@@ -81,7 +82,7 @@
 - [Bulk onboarding photos](bulk-onboarding-photos.md) — existing/imported rosters need private per-person photo completion without blocking imports or re-creating records.
 - [Public registration policy](public-registration-policy.md) — only School Admin/Partner applications; Owner approval before operational access; preserve existing users.
 - [Application decision confirmation](application-decision-confirmation.md) — transport failure is not rollback; reconcile status without repeating decisions or notifications.
-- [Admin form presentation](admin-form-presentation-policy.md) — opt confirmed Owner/Admin forms into viewport dialogs without changing authorization, saving or unrelated financial flows.
+- [Dashboard overlay policy](admin-form-presentation-policy.md) — all roles are in UX scope; genuine overlays above content, inline expansions in flow, unchanged authorization and saving.
 - [Provisional attendance](attendance-notification-controls.md) — morning Tag-in is provisional class presence, never biometric proof; retain notification governance snapshots.
 - [Telegram invitation authority](telegram-invitation-authority.md) — Admin-known links start onboarding only; final chat binding requires a fresh parent-owned token and consent.
 - [Production DB outage signals](production-db-outage-signals.md) — pool termination crashes the API; DB failures masquerade as 401 sign-outs; 28000 reason isn't logged.

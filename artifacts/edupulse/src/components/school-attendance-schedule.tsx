@@ -15,6 +15,9 @@ const TIMES: [keyof SchoolAttendanceSchedule, string][] = [
   ['missingTagOutStart', 'Missing tag-out window opens'], ['missingTagOutEnd', 'Missing tag-out window ends'],
   ['fridayMissingTagOut', 'Friday missing tag-out check'], ['classroomDeadline', 'Classroom presence deadline'],
 ];
+const CLOSING_KEYS = new Set<keyof SchoolAttendanceSchedule>([
+  'weekdaysClosing', 'fridayClosing', 'missingTagOutStart', 'missingTagOutEnd', 'fridayMissingTagOut',
+]);
 const RULES: [keyof SchoolAttendanceScheduleRules, string, string][] = [
   ['entryEnabled', 'Gate entry', 'Accept Tag-in at the gate.'],
   ['exitEnabled', 'Gate exit', 'Accept Tag-out; exit never removes class presence.'],
@@ -135,11 +138,20 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
         </ul>
       </div>
 
-      <fieldset disabled={ro} className="panel space-y-4 p-5">
+      <fieldset disabled={ro} className="panel min-w-0 space-y-3 p-5">
+        <legend className="eyebrow px-1">Closing times and missing tag-out review</legend>
+        <p className="text-sm text-[hsl(var(--muted-foreground))]">Times use {draft.timezone}. A missing tag-out creates a review item; it never proves physical absence.</p>
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {TIMES.filter(([key]) => CLOSING_KEYS.has(key)).map(([key, label]) => <Field key={key} label={label}>
+            <input type="time" step={60} aria-label={label} value={String(draft[key]).slice(0, 5)} onChange={e => set(key, e.target.value as never)} />
+          </Field>)}
+        </div>
+      </fieldset>
+      <fieldset disabled={ro} className="panel min-w-0 space-y-4 p-5">
         <legend className="eyebrow px-1">Calendar and times</legend>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Timezone"><input value={draft.timezone} onChange={e => set('timezone', e.target.value)} placeholder="Africa/Lagos" /></Field>
-          {TIMES.map(([k, label]) => <Field key={k} label={label}><input type="time" step={60} value={String(draft[k]).slice(0, 5)} onChange={e => set(k, e.target.value as never)} /></Field>)}
+          {TIMES.filter(([key]) => !CLOSING_KEYS.has(key)).map(([k, label]) => <Field key={k} label={label}><input type="time" step={60} aria-label={label} value={String(draft[k]).slice(0, 5)} onChange={e => set(k, e.target.value as never)} /></Field>)}
           <Field label="Duplicate tap window (seconds)"><input type="number" min={5} max={600} value={draft.duplicateSeconds} onChange={e => set('duplicateSeconds', Number(e.target.value))} /></Field>
           <Field label="Offline event limit (hours)"><input type="number" min={1} max={8784} value={draft.offlineMaxHours} onChange={e => set('offlineMaxHours', Number(e.target.value))} /></Field>
         </div>
@@ -185,7 +197,7 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
         {draft.exemptions.map((x, i) => {
           const upd = (p: Partial<typeof x>) => set('exemptions', draft.exemptions.map((y, j) => j === i ? { ...y, ...p } : y));
           return (
-            <div key={i} className="grid items-end gap-3 sm:grid-cols-[7rem_9rem_9rem_1fr_auto]">
+            <div key={i} className="grid min-w-0 items-end gap-3 sm:grid-cols-2 xl:grid-cols-[7rem_9rem_9rem_minmax(0,1fr)_auto]">
               <Field label="Student ID"><input type="number" min={1} value={x.studentId || ''} onChange={e => upd({ studentId: Number(e.target.value) })} /></Field>
               <Field label="Exempt from"><input type="date" value={x.from} onChange={e => upd({ from: e.target.value })} /></Field>
               <Field label="Exempt to"><input type="date" value={x.to} onChange={e => upd({ to: e.target.value })} /></Field>
@@ -203,7 +215,7 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
           {showErrors && errors.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-[hsl(var(--destructive))]" data-testid="list-schedule-errors">{errors.map(m => <li key={m}>{m}</li>)}</ul>}
           {saveError && <p role="alert" className="text-sm text-[hsl(var(--destructive))]" data-testid="text-save-error">Could not save: {saveError}</p>}
           {saved && !dirty && <p role="status" className="text-sm" data-testid="text-save-success">Schedule saved.</p>}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={update.isPending || !dirty} testId="button-save-schedule">{update.isPending ? 'Saving…' : 'Save schedule'}</Button>
             <Button variant="outline" disabled={!dirty || update.isPending} onClick={() => { setDraft(structuredClone(view.schedule)); setReason(''); setShowErrors(false); setSaveError(''); }}>Discard changes</Button>
           </div>
@@ -214,7 +226,7 @@ export function SchoolAttendanceSchedulePanel({ schoolId, canEdit }: { schoolId:
         <div className="panel space-y-3 p-5">
           <h3 className="text-sm font-bold">Run absence review</h3>
           <p className="text-xs text-[hsl(var(--muted-foreground))]">Creates review items for students with no attendance record today. It does not mark anyone physically absent.</p>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button variant="outline" disabled={assess.isPending || dirty} onClick={() => runAssess(0)} testId="button-run-assessment">{assess.isPending ? 'Reviewing…' : 'Run review'}</Button>
             {cursor != null && <Button variant="outline" disabled={assess.isPending} onClick={() => runAssess(cursor)} testId="button-continue-assessment">Continue next batch</Button>}
           </div>

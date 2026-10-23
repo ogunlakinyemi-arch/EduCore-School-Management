@@ -1,4 +1,7 @@
+// @vitest-environment jsdom
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createRoot } from 'react-dom/client';
+import { act, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -14,6 +17,7 @@ const state = vi.hoisted(() => ({
   } as any,
   ownerDirectoryCalls: [] as any[],
   librarian: false,
+  loading: false,
 }));
 
 vi.mock('@clerk/react', () => ({
@@ -23,11 +27,12 @@ vi.mock('@clerk/react', () => ({
 vi.mock('./fee-payment-notifications', () => ({ FeePaymentNotifications: () => null }));
 vi.mock('@/pages/communication-inbox', () => ({ CommunicationInboxBadge: () => null }));
 vi.mock('@/components/subscription-access-banner', () => ({ SubscriptionAccessBanner: () => null }));
+vi.mock('@/components/pwa-install', () => ({ PwaInstall: () => null }));
 vi.mock('@/hooks/use-phase9-api', () => ({
   usePhase9List: () => ({ data: { canManageLoans: state.librarian, canManageCatalogue: state.librarian, canAssignStaff: false } }),
 }));
 vi.mock('@workspace/api-client-react', () => ({
-  useGetAuthorizedContext: () => ({ data: state.context, isLoading: false }),
+  useGetAuthorizedContext: () => ({ data: state.context, isLoading: state.loading }),
   useGetCurrentUserSchools: () => ({ data: [] }),
   getGetCurrentUserSchoolsQueryKey: () => ['user-schools'],
   useListOwnerSchoolDirectory: (params: any, options: any) => {
@@ -38,7 +43,7 @@ vi.mock('@workspace/api-client-react', () => ({
     ] }, isLoading: false };
   },
   getListOwnerSchoolDirectoryQueryKey: (params: any) => ['owner-school-directory', params],
-  useListPlatformNotifications: () => ({ data: [] }),
+  useListPlatformNotifications: () => { useState(null); return { data: [] }; },
   getListPlatformNotificationsQueryKey: () => ['platform-notifications'],
 }));
 vi.mock('wouter', () => ({
@@ -142,5 +147,45 @@ describe('tenant session isolation', () => {
     expect(html).toContain('tenant-context-error');
     expect(html).toContain('Could not verify your account context');
     expect(html).not.toContain('Prior account dashboard');
+  });
+});
+
+describe('mobile navigation lifecycle', () => {
+  it('locks background scrolling, contains keyboard focus and restores it after Escape, backdrop or resize', () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT:true });
+    state.loading=false;
+    state.context={isPlatformOwner:false,user:{name:'Development fixture'},roles:[{role:'STUDENT',schoolId:12,status:'ACTIVE'}]};
+    const host=document.createElement('div'); document.body.append(host);
+    const root=createRoot(host), priorOverflow=document.body.style.overflow, priorWidth=window.innerWidth;
+    try {
+      Object.defineProperty(window,'innerWidth',{value:360,writable:true,configurable:true});
+      act(()=>root.render(<Shell><div>Content</div></Shell>));
+      const open=host.querySelector<HTMLButtonElement>('[data-testid=button-open-navigation]')!;
+      const show=()=>act(()=>{open.focus();open.click();});
+      show();
+      expect(document.body.style.overflow).toBe('hidden');
+      const sidebar=host.querySelector('[data-testid=sidebar]')!;
+      expect(sidebar.contains(document.activeElement)).toBe(true);
+      const controls=sidebar.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),select:not([disabled]),[tabindex="0"]');
+      controls[controls.length-1].focus();
+      act(()=>document.activeElement!.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true})));
+      expect(document.activeElement).toBe(controls[0]);
+      act(()=>document.activeElement!.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+      expect(document.body.style.overflow).toBe(priorOverflow); expect(document.activeElement).toBe(open);
+      expect(host.querySelector('[data-testid=button-dismiss-menu]')).toBeNull();
+      show(); act(()=>host.querySelector<HTMLButtonElement>('[data-testid=button-dismiss-menu]')!.click());
+      expect(document.body.style.overflow).toBe(priorOverflow); expect(document.activeElement).toBe(open);
+      show(); window.innerWidth=1024; act(()=>window.dispatchEvent(new Event('resize')));
+      expect(host.querySelector('[data-testid=button-dismiss-menu]')).toBeNull();
+      expect(document.body.style.overflow).toBe(priorOverflow);
+    } finally { act(()=>root.unmount()); host.remove(); window.innerWidth=priorWidth; document.body.style.overflow=priorOverflow; }
+  });
+  it('keeps the hook order stable when authorization finishes loading', () => {
+    const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+    try {
+      state.loading=true; act(()=>root.render(<Shell>Content</Shell>));
+      state.loading=false; expect(()=>act(()=>root.render(<Shell>Content</Shell>))).not.toThrow();
+      expect(host.textContent).toContain('Content');
+    } finally { state.loading=false;act(()=>root.unmount());host.remove(); }
   });
 });

@@ -85,6 +85,7 @@ const nav: NavItem[] = [
   { href: '/notification-settings', label: 'Notification settings', icon: Settings2, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
   { href: '/platform/attendance', label: 'Attendance Monitor', icon: ClipboardCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/attendance/schedule', label: 'Schedule', icon: Calendar, roles: ['SCHOOL_ADMIN'] },
   { href: '/library', label: 'Library', icon: Library, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'STUDENT'] },
   { href: '/operations', label: 'Operations', icon: Wrench, roles: ['SCHOOL_ADMIN', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
@@ -151,6 +152,41 @@ export function Shell({ children }: { children: ReactNode }) {
     { status: 'all' },
     { query: { enabled: isPlatformOwner, queryKey: getListOwnerSchoolDirectoryQueryKey({ status: 'all' }) } },
   );
+  const notificationsQuery = useListPlatformNotifications({ query: { enabled: isPlatformOwner, queryKey: getListPlatformNotificationsQueryKey() } });
+  // Keep mobile navigation a viewport overlay without leaving background pages
+  // scrollable or trapping users after a resize/navigation.
+  useEffect(() => { setOpen(false); }, [location]);
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const sidebar = document.querySelector<HTMLElement>('[data-testid="sidebar"]');
+    const controls = () => Array.from(sidebar?.querySelectorAll<HTMLElement>(
+      'a[href],button:not([disabled]),select:not([disabled]),[tabindex="0"]',
+    ) ?? []);
+    controls()[0]?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setOpen(false); }
+      if (event.key !== 'Tab' || document.querySelector('[role="dialog"]')) return;
+      const items = controls(), first = items[0], last = items.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && (document.activeElement === first || !sidebar?.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !sidebar?.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    const resize = () => { if (window.innerWidth >= 768) setOpen(false); };
+    document.addEventListener('keydown', keydown);
+    window.addEventListener('resize', resize);
+    return () => {
+      document.removeEventListener('keydown', keydown);
+      window.removeEventListener('resize', resize);
+      document.body.style.overflow = previousOverflow;
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, [open]);
 
   if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
   
@@ -163,12 +199,11 @@ export function Shell({ children }: { children: ReactNode }) {
     }
   }
 
-  const notificationsQuery = useListPlatformNotifications({ query: { enabled: isPlatformOwner, queryKey: getListPlatformNotificationsQueryKey() } });
   const hasUnread = notificationsQuery.data?.some((n: any) => !n.isRead) || false;
 
   return (
     <div className="app-shell min-h-[100dvh] text-[hsl(var(--foreground))]">
-      <aside className={cx('fixed inset-y-0 left-0 z-40 flex w-[260px] -translate-x-full flex-col bg-[hsl(var(--sidebar))] p-5 transition-transform md:translate-x-0', open && 'translate-x-0')} data-testid="sidebar">
+      <aside className={cx('fixed inset-y-0 left-0 z-40 flex w-[260px] max-w-[85vw] -translate-x-full flex-col overflow-y-auto bg-[hsl(var(--sidebar))] p-5 transition-transform md:translate-x-0', open && 'translate-x-0')} data-testid="sidebar">
         <div className="mb-8 flex items-center justify-between px-2">
           <IconLogo />
           <button onClick={() => setOpen(false)} className="text-[hsl(var(--sidebar-foreground))] md:hidden" aria-label="Close navigation" data-testid="button-close-navigation"><X size={18} /></button>
@@ -275,13 +310,13 @@ export function Shell({ children }: { children: ReactNode }) {
 
 export function PageHeading({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: ReactNode }) {
   return (
-    <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end fade-up">
-      <div>
+    <div className="mb-8 flex min-w-0 flex-col justify-between gap-5 lg:flex-row lg:items-end fade-up">
+      <div className="min-w-0 flex-1 break-words">
         <div className="eyebrow mb-2">{eyebrow}</div>
         <h1 className="display-font text-3xl font-bold text-[hsl(var(--foreground))] md:text-4xl" data-testid={`heading-${title.toLowerCase().replaceAll(' ', '-')}`}>{title}</h1>
         {description && <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">{description}</p>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className="min-w-0 max-w-full [&>div]:flex-wrap lg:max-w-[55%]">{action}</div>}
     </div>
   );
 }
@@ -399,25 +434,9 @@ export function ActivityFeed({ items = [] as any[] }: { items?: any[] }) {
 }
 
 export function Modal({ title, eyebrow, children, onClose, viewport = false }: { title: string; eyebrow?: string; children: ReactNode; onClose: () => void; viewport?: boolean }) {
-  // Opt in only confirmed affected screens; unrelated flows keep their presentation.
-  if (viewport) return <ViewportFormDialog title={title} eyebrow={eyebrow} onClose={onClose}>{children}</ViewportFormDialog>;
-  const dialog = (
-    <div role={viewport ? 'dialog' : undefined} aria-modal={viewport || undefined} aria-label={viewport ? title : undefined} className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/.25)] p-4 backdrop-blur-sm fade-up">
-      <div className="panel max-h-[90dvh] w-full max-w-lg overflow-auto p-6 md:p-8 shadow-2xl">
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            {eyebrow && <div className="eyebrow mb-1.5">{eyebrow}</div>}
-            <h2 className="display-font text-2xl font-bold">{title}</h2>
-          </div>
-          <button onClick={onClose} className="rounded-xl p-2 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" aria-label="Close dialog" data-testid="button-close-dialog">
-            <X size={20} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-  return dialog;
+  // All modals use the Radix viewport dialog: portal, focus trap, Escape, scroll lock, focus restore.
+  void viewport;
+  return <ViewportFormDialog title={title} eyebrow={eyebrow} onClose={onClose}>{children}</ViewportFormDialog>;
 }
 
 export function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) { 

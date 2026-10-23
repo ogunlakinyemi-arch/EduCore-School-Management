@@ -3,7 +3,7 @@ import { useGetAuthorizedContext, useListEmployees, useGetStudentSelfProfile, ge
 import { BookOpen, LibraryBig, BookCopy, Clock3, History, Settings2, ChartNoAxesColumn, RotateCcw, CornerDownLeft, Search, ChevronRight, BookmarkPlus, Tag, UserRoundPlus } from 'lucide-react';
 import { AddButton, RecordDialog, StatusLine, WorkspaceIntro, WorkspaceList, WorkspaceTabs, phase9Input, phase9Label, type FormField } from '@/components/phase9-workspace';
 import { toPayload, useLibraryAction, usePhase9List } from '@/hooks/use-phase9-api';
-import { Button, EmptyState, ErrorState, Metric, PageHeading, SkeletonPage, StatusPill, TenantPicker, date, useTenant } from '@/components/shared';
+import { Button, EmptyState, Modal, ErrorState, Metric, PageHeading, SkeletonPage, StatusPill, TenantPicker, date, useTenant } from '@/components/shared';
 
 type Area = 'catalogue' | 'loans' | 'overdue' | 'directory' | 'reports' | 'settings';
 type Book = { id: number; schoolId: number; title: string; subtitle: string | null; isbn: string | null; authorId: number | null; authorName: string | null; publisherId: number | null; publisherName: string | null; categoryId: number | null; categoryName: string | null; subject: string | null; description: string | null; publicationYear: number | null; edition: string | null; coverReference: string | null; language: string; shelfLocation: string | null; status: string; totalCopies: number; availableCopies: number };
@@ -116,8 +116,8 @@ function BookDetail({ book, schoolId, admin, userId, role, onClose, onEdit }: { 
     try { await action.mutateAsync({ path: 'loans', data: { copyId: copy.id, borrowerType: role, borrowerUserId: userId, ...(role === 'STUDENT' ? { borrowerStudentId: selfStudentId } : {}), idempotencyKey: crypto.randomUUID() } }); setFailure(''); }
     catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not borrow this copy.'); }
   };
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/.3)] p-4 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-label={book.title} className="panel max-h-[90dvh] w-full max-w-2xl overflow-y-auto p-6 shadow-2xl md:p-8">
-    <div className="flex justify-between gap-5"><div><div className="eyebrow">Catalogue / {book.categoryName ?? 'Book'}</div><h2 className="display-font mt-2 text-2xl font-bold">{book.title}</h2>{book.subtitle && <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{book.subtitle}</p>}</div><Button variant="quiet" onClick={onClose}>Close</Button></div>
+  return <Modal title={book.title} eyebrow={`Catalogue / ${book.categoryName ?? 'Book'}`} onClose={onClose}><div data-testid="library-book-detail">
+    {book.subtitle && <p className="text-sm text-[hsl(var(--muted-foreground))]">{book.subtitle}</p>}
     <p className="mt-4 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{book.description || 'No description has been added yet.'}</p>
     <div className="mt-5 grid grid-cols-2 gap-3 rounded-xl bg-[hsl(var(--secondary)/.45)] p-4 text-xs sm:grid-cols-3">{[['Author', book.authorName], ['Publisher', book.publisherName], ['ISBN', book.isbn], ['Subject', book.subject], ['Shelf', book.shelfLocation], ['Language', book.language]].map(([label, value]) => <div key={label}><div className="eyebrow">{label}</div><strong className="mt-1 block">{value || '—'}</strong></div>)}</div>
     {admin && <div className="mt-5 flex flex-wrap gap-2"><Button variant="outline" onClick={onEdit}>Edit title</Button><AddButton label="Register copy" onClick={() => setAddCopy(true)} /></div>}
@@ -126,7 +126,7 @@ function BookDetail({ book, schoolId, admin, userId, role, onClose, onEdit }: { 
     {failure && <p role="alert" className="mt-4 text-sm text-[hsl(var(--destructive))]">{failure}</p>}
     {addCopy && <RecordDialog title="Register a copy" fields={[{ key: 'copyCode', label: 'Unique copy code', required: true }, { key: 'barcode', label: 'Barcode' }, { key: 'location', label: 'Location' }, { key: 'condition', label: 'Condition', type: 'select', options: ['NEW', 'GOOD', 'FAIR', 'POOR'].map(value => ({ value, label: phase9Label(value) })) }, { key: 'acquiredOn', label: 'Acquired on', type: 'date' }, { key: 'acquisitionReference', label: 'Acquisition reference' }]} values={{}} onClose={() => setAddCopy(false)} pending={action.isPending} error={failure} onSave={async values => { try { await action.mutateAsync({ path: `books/${book.id}/copies`, data: toPayload(values) }); setAddCopy(false); setFailure(''); } catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not register copy.'); } }} />}
     {changing && <CopyStatus copy={changing} schoolId={schoolId} onClose={() => setChanging(null)} />}
-  </section></div>;
+  </div></Modal>;
 }
 
 function CopyStatus({ copy, schoolId, onClose }: { copy: Copy; schoolId: number; onClose: () => void }) {

@@ -4,3 +4,4 @@
 # No need to store the pnpm store twice.
 .local
 /reports/software-remediation/generated/
+/generated-artifacts/
