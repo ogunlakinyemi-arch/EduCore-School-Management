@@ -20,7 +20,7 @@ router.get("/schools/:schoolId/community-dashboard",requireAuthentication(),(req
       COALESCE(notice.created_at,ce.updated_at) AS "changedAt",
       COALESCE(notice.metadata->>'change','CURRENT') AS change
       FROM school_calendar_events ce
-      LEFT JOIN LATERAL(SELECT a.created_at,a.metadata FROM audit_logs a
+      LEFT JOIN LATERAL(SELECT a."timestamp" AS created_at,a.metadata FROM audit_logs a
         WHERE a.school_id=ce.school_id AND a.record_id=ce.id AND a.action='School calendar notice'
           AND a.module='Calendar' ORDER BY a.id DESC LIMIT 1) notice ON true
       WHERE ce.school_id=$1 AND ($2::boolean OR ce.audience && $3::text[])

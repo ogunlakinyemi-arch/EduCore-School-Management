@@ -139,6 +139,18 @@ describe("school community: real isolated PostgreSQL",()=>{
     expect((await get()).body.notices.map((n:any)=>n.id).sort()).toEqual([1,2,4]);
     expect((await fetch(base+"/schools/1/community-dashboard",{method:"POST"})).status).toBe(404);
   });
+  it.each([false,true])("loads both endpoints through the shared timestamp reader (saved=%s)",async(saved)=>{
+    state.roles=[role("SCHOOL_ADMIN")];
+    if(saved)await schedule();
+    const attendance=await get("/school/attendance/schedule?schoolId=1");
+    expect(attendance.status).toBe(200);
+    expect(attendance.body).toMatchObject({revision:saved?2:0,effectiveAt:saved?now.replace("Z",".000Z"):null});
+    const community=await get();
+    expect(community.body.error).toBeUndefined();
+    expect(community.status).toBe(200);
+    expect(community.body.closing).toMatchObject({configured:saved,revision:saved?2:0});
+    expect(state.queued).not.toHaveBeenCalled();
+  });
   it("persists all five weekday closing times through the schedule API and projects them read-only",async()=>{
     state.roles=[role("SCHOOL_ADMIN")];
     const closingByWeekday={'1':'14:00','2':'13:30','3':'13:45','4':'13:15','5':'12:30'};

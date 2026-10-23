@@ -60,3 +60,14 @@ column, hiding a regression that failed even for an unsaved schedule.
 
 **How to apply:** Keep mocks consistent with the established table projection,
 including timestamp names, and exercise both existing-row and no-row reads.
+
+Verify the full routed response of each affected endpoint, not only its shared
+schedule/history helper.
+
+**Why:** A shared-reader correction passed helper-level PostgreSQL checks while
+a later query in the dashboard handler still selected the same nonexistent
+audit column.
+
+**How to apply:** Reuse realistic disposable fixtures and request both complete
+endpoints, including empty-data cases; SQL validates projections even when no
+rows match.
