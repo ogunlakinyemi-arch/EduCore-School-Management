@@ -43,11 +43,13 @@ to bypass the launch guard.
 not only in a summary. Keep browser subscription diagnostics scoped to the current
 device; an Owner's absent subscription must not disable other recipients.
 
-Production email screenshot evidence conflicts with automated presence metadata.
+Screenshot evidence must be matched to exact key names and environment scope.
 
-**Why:** A visible configuration entry and a false presence result do not
-establish that a setting is missing or loaded by the serving process.
+**Why:** A visible credential does not establish provider selection or sender
+configuration. Development-only settings with the same names do not establish
+Production presence, and saved presence does not prove serving-process loading.
 
-**How to apply:** Report unresolved configuration, confirm full saved key names
-and intended app, and never add duplicate settings or silently choose Resend from
-key presence. No source-only check proves provider/domain authorization.
+**How to apply:** Use Production-scoped presence metadata, including shared
+settings, and compare the exact lookup names and configuration scopes. Report
+unresolved conflicts rather than adding duplicates or silently choosing Resend
+from credential presence. No source-only check proves provider/domain authorization.
