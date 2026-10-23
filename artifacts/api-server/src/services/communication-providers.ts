@@ -107,6 +107,8 @@ export class CommunicationProviderConfigurationError extends Error {
 
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_FROM_NAME = "Yetenia EduCore";
+// Owner-approved public company contact, not a fallback Resend sending identity.
+const COMPANY_CONTACT_EMAIL = "ogunlakinyemi@gmail.com";
 const SAFE_PROVIDER_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
 const NIGERIAN_MOBILE_PREFIX = "(?:70|80|81|90|91)";
 const NIGERIAN_MOBILE_NUMBER = /^(?:70|80|81|90|91)\d{8}$/;
@@ -495,6 +497,7 @@ export function createEmailProvider(
     return new ResendEmailProvider({
       apiKey: env.RESEND_API_KEY,
       from: env.EMAIL_FROM.replace(/^Yemait EduCore(?=\s*<)/, DEFAULT_FROM_NAME),
+      replyTo: COMPANY_CONTACT_EMAIL,
       // Development never contacts real parents merely because a key exists.
       allowedRecipients: env.NODE_ENV === "production" ? undefined :
         (env.RESEND_DEVELOPMENT_RECIPIENTS ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean),
@@ -516,8 +519,13 @@ export function createEmailProvider(
 export class ResendEmailProvider implements EmailProvider {
   readonly provider = "resend";
   readonly channel = "email" as const;
-  constructor(private readonly config: { apiKey: string; from: string; allowedRecipients?: readonly string[] }, private readonly options: CommunicationProviderOptions = {}) {
-    if (!config.apiKey.trim() || !validEmail(config.from.replace(/^.*<([^>]+)>$/, "$1"))) {
+  constructor(private readonly config: { apiKey: string; from: string; replyTo?: string; allowedRecipients?: readonly string[] }, private readonly options: CommunicationProviderOptions = {}) {
+    const fromAddress = config.from.replace(/^.*<([^>]+)>$/, "$1");
+    // These Google-owned domains cannot be verified by the company in Resend.
+    // Other sending domains still require verification in the Resend account.
+    if (!config.apiKey.trim() || !validEmail(fromAddress) ||
+        /@(gmail\.com|googlemail\.com)$/i.test(fromAddress) ||
+        (config.replyTo !== undefined && !validEmail(config.replyTo))) {
       throw new CommunicationProviderConfigurationError("email", "resend");
     }
   }
@@ -539,7 +547,8 @@ export class ResendEmailProvider implements EmailProvider {
         headers: { authorization: `Bearer ${this.config.apiKey}`, "content-type": "application/json",
           ...(message.idempotencyKey ? { "Idempotency-Key": message.idempotencyKey } : {}) },
         body: JSON.stringify({ from: this.config.from, to: [message.to], subject: message.subject,
-          text: message.body, ...(message.html ? { html: message.html } : {}) }),
+          text: message.body, ...(message.html ? { html: message.html } : {}),
+          ...(this.config.replyTo ? { reply_to: this.config.replyTo } : {}) }),
       });
       // A 5xx may follow provider acceptance. Hold for reconciliation rather
       // than retrying after Resend's finite idempotency retention window.

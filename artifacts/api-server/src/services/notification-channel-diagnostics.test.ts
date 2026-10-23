@@ -28,6 +28,7 @@ describe("Owner channel diagnostics without sending or changing launch authoriza
     [{COMMUNICATION_EMAIL_PROVIDER:"http",COMMUNICATION_EMAIL_ENDPOINT:undefined},"COMMUNICATION_EMAIL_ENDPOINT"],
     [{COMMUNICATION_EMAIL_PROVIDER:"http",COMMUNICATION_EMAIL_ENDPOINT:"https://fixture.example.invalid"},"COMMUNICATION_EMAIL_API_KEY"],
     [{EMAIL_FROM:"not an email sender"},"EMAIL_FROM"],
+    [{EMAIL_FROM:"Company <fixture@gmail.com>"},"Gmail/Googlemail"],
     [{RESEND_API_KEY:undefined},"Resend credential"],
   ])("reports a precise Email configuration blocker without selecting a fallback (%j)",(overrides,detail)=>{
     const status=notificationChannelReadiness({...configured,...overrides});

@@ -113,7 +113,7 @@ export function emailSetupDetail(env: NodeJS.ProcessEnv = process.env): string {
   }
   if (developmentPaymentNotificationsSuppressed(env)) return "Email sending is restricted by the Development notification safety lock.";
   if (!notificationChannelConfiguration(env).EMAIL) return selected === "resend"
-    ? "EMAIL_FROM is invalid for the selected Resend provider. The saved sender must pass local format validation."
+    ? "EMAIL_FROM must be a valid sender on a Resend-verified domain, not a Gmail/Googlemail address. The company contact can be used as Reply-To, not as a Resend From address."
     : "COMMUNICATION_EMAIL_ENDPOINT is invalid for the selected HTTP Email provider; it must be a valid HTTPS endpoint.";
   return "Email is configured for preference setup. Provider/domain authorization and recipient delivery are not verified by this local check.";
 }

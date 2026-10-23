@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import {
   createEmailProvider, createCommunicationProviders,
-  createDevelopmentCommunicationProviders, CommunicationProviderConfigurationError,
+  createDevelopmentCommunicationProviders, CommunicationProviderConfigurationError, ResendEmailProvider,
 } from "./communication-providers";
 import { logger } from "../lib/logger";
 
@@ -41,6 +41,7 @@ describe("Resend transactional email integration (no live network)", () => {
     });
     expect(JSON.parse(String(request.body))).toEqual({
       from: "Yetenia EduCore <notifications@yetenia.com>", to: [message.to], subject: message.subject, text: message.body,
+      reply_to: "ogunlakinyemi@gmail.com",
     });
     expect(JSON.stringify(result)).not.toContain(env.RESEND_API_KEY);
   });
@@ -51,8 +52,44 @@ describe("Resend transactional email integration (no live network)", () => {
       .send({ ...message, html: "<p>Update</p>" });
     const request = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1];
     expect(JSON.parse(String(request.body))).toMatchObject({
-      from: "School <updates@example.test>", html: "<p>Update</p>",
+      from: "School <updates@example.test>", html: "<p>Update</p>", reply_to: "ogunlakinyemi@gmail.com",
     });
+  });
+
+  it("keeps the company contact as Reply-To without allowing per-message From overrides", async () => {
+    const fetch = transport(200);
+    await createEmailProvider(env, { fetch }).send({ ...message, from: "ogunlakinyemi@gmail.com" });
+    const request = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      from: "Yetenia EduCore <notifications@yetenia.com>",
+      reply_to: "ogunlakinyemi@gmail.com",
+    });
+  });
+
+  it.each(["fixture@gmail.com", "Company <fixture@GMAIL.COM>", "Company <fixture@googlemail.com>"])(
+    "fails closed on a Google-owned Resend From domain: %s", sender => {
+      const fetch = transport(200);
+      expect(() => createEmailProvider({ ...env, EMAIL_FROM: sender }, { fetch }))
+        .toThrow(CommunicationProviderConfigurationError);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["not-an-address", "fixture@example.test\r\nBcc: other@example.test"])(
+    "rejects an invalid Reply-To without contacting Resend: %s", replyTo => {
+      const fetch = transport(200);
+      expect(() => new ResendEmailProvider({
+        apiKey: "synthetic-only", from: "sender@example.test", replyTo,
+      }, { fetch })).toThrow(CommunicationProviderConfigurationError);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not impose a company Reply-To on independently constructed Resend adapters", async () => {
+    const fetch = transport(200);
+    await new ResendEmailProvider({ apiKey: "synthetic-only", from: "sender@example.test" }, { fetch }).send(message);
+    const request = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(JSON.parse(String(request.body))).not.toHaveProperty("reply_to");
   });
 
   it.each(["RESEND_API_KEY", "EMAIL_FROM"])("fails closed with missing %s and never calls the network", async key => {
