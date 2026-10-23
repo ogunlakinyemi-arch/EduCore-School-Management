@@ -10,6 +10,12 @@ The later export-workflow correction below is verified in a fresh disposable
 cluster only; upstream raw output and managed Publish behavior are not fixed
 or approved by that result.
 
+**Focused owner handoff:** [follow-up evidence §9](flutterwave-development-followup-evidence.md#9-owner-handoff--four-blockers-none-resolved)
+contains the concise four-blocker checklist and exact unsent escalation request.
+Read-only deployment metadata was rechecked on 2026-10-23; it exposes none of the
+missing resource/recovery/authentication evidence. **0 of 4 blockers resolved**;
+existing tests were reused without reruns. No provenance exception was recorded.
+
 **Update:** The user separately authorized the disposable-only SQL rehearsal.
 It is completed in §8, with recorded failures and limitations. This authorization
 does not extend to any application database, ledger, service or external resource.

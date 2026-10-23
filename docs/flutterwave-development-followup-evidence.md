@@ -433,3 +433,70 @@ acceptance blockers remain open. No application connections/migrations, ledger
 access/edit, secret/config changes, provider calls/transactions, worker
 resumption, notifications, service restarts, Production changes, publishing or
 LIVE activation occurred. **HOLD** remains mandatory.
+
+## 9. Owner handoff — four blockers, none resolved
+
+Focused review **2026-10-23**: repository working tree was clean before this
+documentation-only update. Existing evidence/tests were reused, not rerun.
+A fresh read-only `getDeploymentInfo({})` again returned only
+`additionalUrls, deploymentType, hasSuccessfulBuild, isDeployed, primaryUrl,
+success, visibility`: published autoscale, successful build, but no resource
+binding, recovery identity or authentication reason. The earlier bounded log
+sample (§3 of the main package) still supplies only unclassified 28000 errors;
+no new runtime-log sweep was performed. **No blocker can be closed from these
+observations.** Existing test passes do not supply the missing external facts.
+
+### Concise owner checklist
+
+| Blocker / recipient | Evidence required to close it | Status |
+|---|---|---|
+| 1. Published mapping — deployment/configuration owner; platform if needed | Actually serving immutable revision + effective configuration snapshot → exact provider resource/branch/writable primary ID, separately for API and worker (or attested shared-pool deployed artifact). Redacted attestation, UTC time and verifier role. | OPEN |
+| 2. Recovery — owner of the resource established in 1 | Exact source resource + backup/recovery-point ID/time/scope/retention, then separately approved isolated restore lineage and accepted schema/data/financial-history verification, discrepancies and RPO/RTO results. Inventory alone does not close restore acceptance. | OPEN |
+| 3. Historical 28000 — database/proxy authentication owner | Exact incident UTC window, serving-at-incident revision/process/resource and correlated privileged FATAL reason/event reference. If the event or window cannot be recovered, record UNKNOWN; current connectivity is not a diagnosis. | OPEN |
+| 4. `eda97466…` — original migration executor/archive custodian; independent reviewer if irrecoverable | Exact original bytes matching full SHA-256 below and separate execution/target evidence, or a recorded, independently reviewed Development-only provenance exception with catalog/preservation assessment. Neither route permits ledger rewriting. | OPEN |
+
+Detailed collection fields and limits remain in §6; do not repeat completed
+export/CHECK tests or local Git searches to substitute for these records.
+
+### Exact escalation request — owner to send, not sent here
+
+**Subject: Evidence only — published database mapping, recovery, historical 28000 and missing migration source**
+
+> We are keeping Flutterwave readiness on HOLD. Please provide the following
+> evidence for Yetenia EduCore, routing each item to its authorized owner:
+>
+> 1. Attest the actually serving API revision/build and each worker's effective
+> configuration snapshot, mapped to provider/database resource ID, branch and
+> writable primary. If they share one pool, attest that deployed artifact's
+> wiring. The previously listed successful build
+> `497eebd6-a7ed-4731-91da-963f25e8c2c4` is a reference only, not proof it serves.
+> 2. For that exact resource, identify the usable backup/recovery point, UTC time,
+> scope and retention. Supply any existing authorized isolated-restore acceptance
+> and source-point → destination lineage, verification results, discrepancies
+> and RPO/RTO. If absent, state NOT VERIFIED and propose a procedure for separate
+> approval; do not perform a restore now.
+> 3. Recover the historical 28000 incident window and affected revision/process,
+> then provide the correlated privileged PostgreSQL/proxy FATAL reason and
+> event reference for its mapped resource. The retained sample had 98 occurrences
+> in 100 returned entries, not 98 confirmed distinct incidents. Its exact window
+> is not supplied in this handoff; do not infer one or diagnose from code alone.
+> 4. Ask the original executor/archive custodian for the exact SQL artifact
+> with SHA-256
+> `eda974665826aa4d5affc07f24f658122ac81502a7190313f0edcd99d24206ba`,
+> plus available execution/target evidence. Current associated SQL and the
+> completed local search do not establish that source. If irrecoverable, request
+> independent review of an explicit Development-only provenance exception and
+> preservation assessment; do not mark the source recovered.
+>
+> Return redacted evidence references, resource/build IDs, UTC timestamps,
+> verifier roles and any unavailable fields. Do not send credentials, connection
+> strings, personal/financial records or unredacted logs. This is an evidence
+> request only: no application database connections/migrations, ledger access or
+> edits, secret/config changes, provider calls/transactions, worker resumption,
+> notifications, service restarts, Production changes, publishing or LIVE
+> activation are authorized. If collection requires any such action, stop and
+> identify the separate approval needed.
+
+**Outcome: 0 of 4 blockers resolved.** No escalation was sent and no new
+external evidence, provenance exception or execution approval was obtained.
+Other provider/merchant/runtime gates remain unchanged. **HOLD continues.**
