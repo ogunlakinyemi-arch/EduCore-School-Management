@@ -53,6 +53,9 @@ Production presence, and saved presence does not prove serving-process loading.
 settings, and compare the exact lookup names and configuration scopes. Report
 unresolved conflicts rather than adding duplicates or silently choosing Resend
 from credential presence. No source-only check proves provider/domain authorization.
+An email received from the company domain establishes that message's receipt,
+not that EduCore sent it or that the app's configured API key uses the same
+provider account. Keep that distinction when explaining sender readiness.
 
 The Owner's company contact mailbox is already correctly published on the public
 website. Configuring EduCore email routing does not authorize changing that site.
