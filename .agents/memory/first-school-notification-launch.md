@@ -16,8 +16,17 @@ not be converted to live identities by backdating the cutoff or rewriting creati
 timestamps. Any explicit promotion mechanism requires separate review. In-App
 history remains available under existing authorization. After the cutoff, dates
 alone cannot classify new QA data; keep QA in Development or hold external sends.
-The guard is source-only until an approved release; never restart/publish or
-configure it merely to validate readiness.
+Launch activation was explicitly authorized by the Owner on 2026-10-23 using
+a current UTC cutoff strictly after retained TEST history. This authorization
+does not permit backdating, promoting TEST identities, changing channel defaults,
+or sending real verification messages.
+
+**Why:** The Owner approved Production launch while explicitly preserving consent,
+recipient authorization, school permissions and existing selections.
+
+**How to apply:** Preserve the approved Production cutoff across future releases;
+do not move it forward on each publish or backward to admit existing accounts.
+Publication and runtime loading must be verified separately from a saved setting.
 
 Local Email/Push setup readiness must remain separate from delivery permission.
 
