@@ -13,6 +13,13 @@ A verified published URL and successful build do not establish the runtime
 database binding. The deployment metadata response observed on 1 October 2026
 did not include a database-resource ID or recovery-point inventory.
 
+On 2026-10-24, the owner explicitly confirmed that the published app uses the
+`neondb` resource shown in Replit's Production Database settings and reported
+screenshots of enabled scheduled backups, dated restore points and seven-day
+PITR. This is owner-provided UI evidence, not an API-verified runtime binding
+or a resource-bound isolated restore drill. It does not establish the current
+availability of any point on a later date.
+
 **Why:** Deployment availability, database identity and backup recoverability
 are separate evidence requirements. A rolled-back Development schema rehearsal
 also does not test restoration of Production data.

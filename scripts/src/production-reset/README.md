@@ -1,6 +1,6 @@
 # Production test-tenant reset: preflight only
 
-**No destructive executor exists.** This command opens no database connections,
+**This preflight command has no destructive execution path.** It opens no database connections,
 imports no application pool, reads no environment credentials, invokes no provider
 or auth API, and never publishes. It does not run at application startup/build.
 
@@ -10,6 +10,12 @@ Development-only. Consequently this implementation stops at the requested safe
 fallback: offline dry-run/preflight. Neither an operator JSON file, a claimed
 `verified:true`, nor a confirmation token can unlock deletion. `--execute` is
 recognized only to reject it, before even reading evidence.
+
+A separate controlled operator executor is documented in [CLEANUP.md](CLEANUP.md).
+It does not unlock this command's `--execute`. Its Owner-attestation mechanism is
+distinct from API certification and requires fresh primary, backup/restore,
+maintenance and retention evidence plus a reviewed preview and exact token.
+Implementing it does not authorize a Production connection or execution.
 
 ## Commands
 

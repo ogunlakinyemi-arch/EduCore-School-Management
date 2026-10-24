@@ -13,6 +13,7 @@
     "test:dev-backup": "node --test ./src/dev-backup/safety.test.mjs",
     "test:dev-backup:synthetic": "env -i PATH=\"$PATH\" HOME=\"$HOME\" LANG=C.UTF-8 NODE_ENV=test node --test ./src/dev-backup/integration.test.mjs",
     "production-reset:preflight": "node ./src/production-reset/cli.mjs",
+    "production-reset:cleanup": "node ./src/production-reset/cleanup-cli.mjs",
     "test:production-reset": "node --test ./src/production-reset/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
