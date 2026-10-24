@@ -26,18 +26,20 @@ The legacy `/api/device/attendance/events` and `X-Device-Credential` remain unch
 
 ```json
 {
-  "event_id": "terminal-100-event-0001",
-  "device_id": 100,
-  "school_id": 10,
-  "terminal_name": "Example entry gate",
-  "uid": "A1B2C3D4",
+  "event_id": "vendor-185-test-0001",
+  "device_id": 185,
+  "school_id": 446,
+  "terminal_name": "MAIN GATE",
+  "uid": "REPLACE_WITH_ACTUAL_CARD_UID",
   "event_type": "CARD_SCAN",
-  "timestamp": "2026-10-15T08:30:00",
-  "firmware": "example"
+  "timestamp": "REPLACE_WITH_ACTUAL_TIMESTAMP",
+  "firmware": "1.0.0"
 }
 ```
 
-IDs above are placeholders, not existing credentials or production identities.
+The example does not establish that device 185 is assigned to school 446.
+Replace the UID and timestamp placeholders with valid values before use; the
+literal placeholder strings are not accepted by the endpoint.
 School/device IDs are positive integers (decimal strings also accepted), and must
 match the authenticated registered device. The server never trusts `terminal_name`
 for identity or direction. Event IDs contain 1–128 letters/digits/`_.:-`; optional
