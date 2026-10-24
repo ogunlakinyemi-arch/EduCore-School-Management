@@ -1,10 +1,45 @@
 import {describe,expect,it} from "vitest";
 import sharp from "sharp";
-import {printableCardBrand,SAFE_CARD_BRAND,studentCardPalette} from "./nfc-card-brand";
+import {employeeCardPalette,printableCardBrand,SAFE_CARD_BRAND,studentCardPalette} from "./nfc-card-brand";
 import {buildNfcPrintablePdf} from "./nfc-printable-pdf";
 import {printableFrontText} from "./nfc-printable-test-utils";
 const logo=async(r:number,g:number,b:number)=>({
   bytes:await sharp({create:{width:50,height:25,channels:3,background:{r,g,b}}}).png().toBuffer(),width:50,height:25,
+});
+
+describe("distinct logo-derived employee palettes",()=>{
+  const gap=(a:string,b:string)=>rgb(a).reduce((sum,v,i)=>sum+(v-rgb(b)[i]!)**2,0);
+  it("selects an alternate logo hue, not the Student dominant or configured colors",async()=>{
+    const image=await crest([[170,20,35],[230,180,20]]);
+    const student=await studentCardPalette(image);
+    const employee=await employeeCardPalette(image,"#0055BB");
+    const [r,g,b]=rgb(employee.primary);
+    expect(r).toBeGreaterThan(b!+.2);
+    expect(g).toBeGreaterThan(b!+.2); // actual gold alternate
+    expect(gap(employee.primary,student.primary)).toBeGreaterThan(.08);
+    expect(contrast(employee.primary)).toBeGreaterThanOrEqual(4.5);
+    expect(await employeeCardPalette(image,"#AABBCC")).toEqual(employee);
+  });
+  it.each([[180,20,35],[10,110,70],[15,30,150],[255,240,0],[0,0,0],[240,240,240]])(
+    "creates a deterministic distinguishable fallback for a sparse %s/%s/%s logo",async(r,g,b)=>{
+      const image=await crest([[r,g,b]]);
+      const student=await studentCardPalette(image);
+      const employee=await employeeCardPalette(image);
+      expect(gap(employee.primary,student.primary)).toBeGreaterThan(.08);
+      expect(contrast(employee.primary)).toBeGreaterThanOrEqual(4.5);
+      expect(await employeeCardPalette(image)).toEqual(employee);
+      expect(new Set(Object.values(employee)).size).toBe(3);
+    });
+  it("ignores transparent and unusable logos and still differs from Students",async()=>{
+    const transparent={bytes:await sharp({create:{width:10,height:10,channels:4,
+      background:{r:255,g:0,b:0,alpha:0}}}).png().toBuffer(),width:10,height:10};
+    for(const image of [null,transparent,{bytes:Buffer.from("bad"),width:1,height:1}]) {
+      const employee=await employeeCardPalette(image,"#773399");
+      const student=await studentCardPalette(image,"#773399");
+      expect(gap(employee.primary,student.primary)).toBeGreaterThan(.08);
+      expect(contrast(employee.primary)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });
 describe("official card logo branding",()=>{
   it("uses a deterministic safe default when missing or unusable",async()=>{

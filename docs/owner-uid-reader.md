@@ -113,9 +113,13 @@ within its hue for at least 4.5:1 white text/icon contrast. Distinct logo accent
 colors are retained where possible; single-color crests get related tonal accents.
 Transparent/white backgrounds are ignored. If extraction is unavailable, use the
 saved primary school color or a restrained default, also contrast-adjusted.
-Teacher/Staff fronts use both school colors, and reverses retain school branding.
-Configured school colors are authoritative there; absent settings use logo-derived
-colors and a safe fallback. Student identity details are ONLY name, permanent
+Employee fronts (Teacher, Staff, Driver and Accountant) use another distinct logo
+hue rather than the Student dominant hue. Sparse or monochrome logos use a
+deterministic complementary fallback; white NFC icons/text retain at least 4.5:1
+contrast. Employee labels reflect the current employee type, never a generic
+Staff label for every employee. Reverse sides use Yetenia Technologies Limited
+ownership, EduCore product/service details and yetenia.com contact details, not
+school ownership/contact branding. Student identity details are ONLY name, permanent
 registration/admission number and the actual assigned NFC UID. Do not print class,
 student role or school registration number on Student fronts. These cards last
 until graduation. Employee role/department designation remains unchanged.

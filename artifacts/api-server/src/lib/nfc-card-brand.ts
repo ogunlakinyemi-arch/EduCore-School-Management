@@ -16,7 +16,7 @@ const distance = (a:number[],b:number[]) => a.reduce((sum,v,i)=>sum+(v-b[i]!)**2
 /** Logo-first Student palette. White paper/transparent pixels are not brand colours.
  * Keep actual secondary hues where present; otherwise use restrained tonal accents.
  * The band is darkened in the same hue to guarantee white text/icon contrast. */
-export async function studentCardPalette(logo?:PrintableImage|null, fallbackPrimary?:string|null) {
+async function logoColors(logo?:PrintableImage|null) {
   let colors:number[][]=[];
   if(logo) {
     try {
@@ -37,14 +37,53 @@ export async function studentCardPalette(logo?:PrintableImage|null, fallbackPrim
       colors=chromatic.length?chromatic:ranked;
     } catch { /* Unavailable/invalid logos use the configured school fallback below. */ }
   }
-  const original=colors[0]??(pdfBrandColor(fallbackPrimary)??SAFE_CARD_BRAND).split(" ").map(Number);
+  return colors;
+}
+
+function readableBand(original:number[]) {
   let band=[...original];
   // A little headroom preserves >=4.5:1 even after PDF decimal rounding.
   while(luminance(band)>.17) band=band.map(v=>v*.92);
+  return band;
+}
+
+export async function studentCardPalette(logo?:PrintableImage|null, fallbackPrimary?:string|null) {
+  const colors=await logoColors(logo);
+  const original=colors[0]??(pdfBrandColor(fallbackPrimary)??SAFE_CARD_BRAND).split(" ").map(Number);
+  const band=readableBand(original);
   const secondary=colors.slice(1).find(rgb=>distance(rgb,original)>.12)??tintColor(band,.32);
   const tertiary=colors.slice(1).find(rgb=>distance(rgb,original)>.12&&distance(rgb,secondary)>.12)
     ??tintColor(secondary,.4);
   return {primary:colorString(band),secondary:colorString(secondary),tertiary:colorString(tertiary)};
+}
+
+function hue(rgb:number[]) {
+  const [r,g,b]=rgb as [number,number,number];
+  const max=Math.max(...rgb),min=Math.min(...rgb),delta=max-min;
+  if(delta<.05) return null;
+  return ((max===r?(g-b)/delta:max===g?(b-r)/delta+2:(r-g)/delta+4)*60+360)%360;
+}
+const hueGap=(a:number,b:number)=>Math.min(Math.abs(a-b),360-Math.abs(a-b));
+
+/** Select another real logo hue, not a light/dark variant of the Student band.
+ * Sparse/monochrome/invalid logos get a deterministic complementary hue instead.
+ * Configured primary is only an extraction fallback, just as for Students. */
+export async function employeeCardPalette(logo?:PrintableImage|null, fallbackPrimary?:string|null) {
+  const colors=await logoColors(logo);
+  const original=colors[0]??(pdfBrandColor(fallbackPrimary)??SAFE_CARD_BRAND).split(" ").map(Number);
+  const studentBand=readableBand(original),studentHue=hue(original);
+  const alternate=colors.slice(1).find(color=>{
+    const h=hue(color);
+    return h!==null && (studentHue===null || hueGap(studentHue,h)>=45)
+      && distance(readableBand(color),studentBand)>.08;
+  });
+  // HSV complementary color with enough saturation/value to remain recognizable
+  // even when the logo is black, almost white, or extremely dark.
+  const h=((studentHue??180)+180)%360, c=.65*.82, x=c*(1-Math.abs(h/60%2-1)),m=.65-c;
+  const sector=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];
+  const band=readableBand(alternate??sector.map(v=>v+m));
+  return {primary:colorString(band),secondary:colorString(tintColor(band,.32)),
+    tertiary:colorString(tintColor(band,.6))};
 }
 export async function printableCardPalette(logo?:PrintableImage|null, primary?:string|null, secondary?:string|null) {
   const p=pdfBrandColor(primary) ?? await printableCardBrand(logo);

@@ -27,7 +27,7 @@ export function CardBrandSettings({ schoolId }: { schoolId: number }) {
   return (
     <form className="panel mb-6 p-5" onSubmit={e => { e.preventDefault(); setSaved(false); m.mutate(); }} data-testid="form-card-brand">
       <h2 className="display-font text-lg font-bold">Card brand colors</h2>
-      <p className="mb-3 text-sm text-[hsl(var(--muted-foreground))]">These colors apply to Teacher/Staff fronts and card reverses. Student decorations are extracted from the school logo; the primary setting is used only if extraction is unavailable. Unset school colors use a restrained fallback. Current branding stays until you save.</p>
+      <p className="mb-3 text-sm text-[hsl(var(--muted-foreground))]">Card fronts use colors extracted from the school logo. Employees use a distinct alternate logo hue, or a complementary color when needed. The primary setting is an extraction fallback; official reverses use Yetenia/EduCore branding. Current settings stay until you save.</p>
       {q.isError ? <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">{backendError(q.error)} <button type="button" className="underline" onClick={() => void q.refetch()}>Retry</button></p> : q.isLoading ? <div className="skeleton h-16" /> : (
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
           <Field label="Primary color (#RRGGBB)"><input value={primary} maxLength={7} placeholder="#1A2B3C" onChange={e => setPrimary(e.target.value)} className="font-mono" data-testid="input-brand-primary" /></Field>

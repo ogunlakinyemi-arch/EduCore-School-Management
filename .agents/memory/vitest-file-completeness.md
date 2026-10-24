@@ -8,3 +8,10 @@ Compare requested test files with the actual executed-file summary before claimi
 **Why:** An invitation audit requested both TypeScript and TSX frontend tests, but the frontend's TSX-only configuration silently omitted a named TypeScript test while the command succeeded. The omitted test passed when run under a compatible configuration.
 
 **How to apply:** Check executed file counts and names, not only exit status. Run excluded, relevant files separately with an appropriate configuration instead of reporting them as covered or unnecessarily broadening the application's test configuration.
+
+Also verify argument forwarding: a literal `--` reaching Vitest can stop parsing
+file filters and launch the entire suite. Prefer direct filtered-package
+`exec vitest run <files>` and confirm the actual executed-file list.
+
+**Why:** The package-script forwarding path unexpectedly ran unrelated integration
+suites and caused contention/timeouts in otherwise passing focused route tests.

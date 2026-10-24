@@ -3,7 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import type { PrintableImage } from "./nfc-printable-images";
-import { printableCardPalette, studentCardPalette } from "./nfc-card-brand";
+import { employeeCardPalette, SAFE_CARD_BRAND, studentCardPalette } from "./nfc-card-brand";
+import type { EmployeeCardRole } from "./nfc-card-roles";
 import QRCode from "qrcode";
 
 const PAGE_WIDTH = 85.6 * 72 / 25.4;
@@ -148,7 +149,7 @@ export type PrintableCardPdfData = {
   schoolState: string | null;
   schoolPhone: string | null;
   schoolEmail: string | null;
-  personType: "Student" | "Teacher" | "Staff";
+  personType: "Student" | EmployeeCardRole;
   personName: string;
   permanentNumber: string;
   cardUid?:string|null;
@@ -259,10 +260,10 @@ function frontContent(
   const logo = images.find((item) => item.name === "SchoolLogo");
   if (logo) commands.push(imageCommand(logo,14,PAGE_HEIGHT-42,29,31));
 
-  // Student decorations come from its logo palette; employees retain school settings.
+  // Both fronts use logo-derived palettes, with a separate employee band hue.
   commands.push(`${tint(.7)} rg 0 32 m 42 0 l 0 0 l h f`);
   commands.push(`${accent} rg ${PAGE_WIDTH-53} 29 m ${PAGE_WIDTH} 52 l ${PAGE_WIDTH} 29 l h f`);
-  if(student) commands.push(`${tertiary??tint(.58)} rg ${PAGE_WIDTH-36} 29 m ${PAGE_WIDTH} 43 l ${PAGE_WIDTH} 29 l h f`);
+   commands.push(`${tertiary??tint(.58)} rg ${PAGE_WIDTH-36} 29 m ${PAGE_WIDTH} 43 l ${PAGE_WIDTH} 29 l h f`);
   commands.push(`${TEAL} rg 0 0 ${PAGE_WIDTH} 31 re f`);
   commands.push(`${accent} rg 0 36 m 48 0 l 39 0 l 0 29 l h f`);
   commands.push(`${student?accent:tint(.58)} rg 0 26 m 34 0 l 28 0 l 0 20 l h f`);
@@ -298,12 +299,12 @@ function frontContent(
       commands.push(`${(x+(col+4)*unit).toFixed(4)} ${(y+(qr.size-row+3)*unit).toFixed(4)} ${unit.toFixed(4)} ${unit.toFixed(4)} re f`);
     commands.push(label("VERIFY ID",x+5,y-5,4.8));
   }
-  const footerInk=student?WHITE:headerInk(TEAL);
+  const footerInk=WHITE;
   commands.push(`q ${footerInk} rg 72 11 7 9 re f ${footerInk} RG 1.9 w 1 J`);
   commands.push("83 8 m 87 12 87 20 83 24 c S");
   commands.push("89 5 m 95 11 95 21 89 27 c S");
   commands.push("95 2 m 103 10 103 22 95 30 c S Q");
-  commands.push(bold(`${data.personType.toUpperCase()} ID`,115,11,10.5,100,footerInk));
+  commands.push(bold(`${student?"STUDENT":data.personType} ID`,115,11,10.5,100,footerInk));
   commands.push("Q",`0.85 0.9 0.93 RG 0.7 w ${rounded(1,1,PAGE_WIDTH-2,PAGE_HEIGHT-2,8)} S`);
   return commands.join("\n");
 }
@@ -316,8 +317,6 @@ function backContent(
 ) {
   const label = (value: string, x: number, y: number, size: number, color = INK) =>
     text(value, x, y, size, color, font, used);
-  const address = [data.schoolAddress, data.schoolCity, data.schoolState].filter(Boolean).join(", ");
-  const contact = [data.schoolPhone, data.schoolEmail].filter(Boolean).join(" | ");
   const commands = [
     `${TEAL} rg 0 ${PAGE_HEIGHT - 23} ${PAGE_WIDTH} 23 re f`,
     label("PROPERTY OF YETENIA TECHNOLOGIES LIMITED", 12, PAGE_HEIGHT - 15, 8, headerInk(TEAL)),
@@ -327,9 +326,9 @@ function backContent(
     label("Use only for authorized identification and access purposes.", 12, PAGE_HEIGHT - 62, 6.2),
     label("If found, please return this card to the issuing school", 12, PAGE_HEIGHT - 77, 6.2),
     label("or the appropriate authority.", 12, PAGE_HEIGHT - 87, 6.2),
-    fittedText(data.schoolName, 12, PAGE_HEIGHT - 104, 6.5, TEAL, font, used),
-    ...(address ? [fittedText(address, 12, PAGE_HEIGHT - 114, 5.8, INK, font, used)] : []),
-    ...(contact ? [fittedText(contact, 12, PAGE_HEIGHT - 123, 5.8, INK, font, used)] : []),
+    label("Yetenia Technologies Limited | yetenia.com", 12, PAGE_HEIGHT - 104, 7),
+    label("EduCore | School management and NFC identification", 12, PAGE_HEIGHT - 115, 6.2),
+    label("Attendance, school entry and family notifications", 12, PAGE_HEIGHT - 125, 6),
     label("Please do not tamper with or damage the NFC card.", 12, 16, 5.8),
     label("Copyright YETENIA TECHNOLOGIES LIMITED | Yetenia EduCore", 12, 9.5, 5.2),
   ];
@@ -350,7 +349,6 @@ function binaryImageObject(image: PrintableImage) {
 /** Two vector-print pages at exact landscape CR80 dimensions; no PDF metadata. */
 export async function buildNfcPrintablePdf(data: PrintableCardPdfData): Promise<Buffer> {
   const font = await loadEmbeddedFont();
-  const brand = await printableCardPalette(data.schoolLogo,data.primaryColor,data.secondaryColor);
   const usedCharacters = new Map<number, { cid: number; codePoint: number; glyphId: number }>();
   const images: ImageObject[] = [];
   if (data.schoolLogo) images.push({ name: "SchoolLogo", image: data.schoolLogo, objectId: 0 });
@@ -360,11 +358,11 @@ export async function buildNfcPrintablePdf(data: PrintableCardPdfData): Promise<
   const frontResources = images.length
     ? ` /XObject << ${images.map((image) => `/${image.name} ${image.objectId} 0 R`).join(" ")} >>`
     : "";
-  const studentBrand=data.personType==="Student"
-    ?await studentCardPalette(data.schoolLogo,data.primaryColor):null;
+  const frontBrand=await (data.personType==="Student"?studentCardPalette:employeeCardPalette)(
+    data.schoolLogo,data.primaryColor);
   const front = frontContent(data, images, font, usedCharacters,
-    studentBrand?.primary??brand.primary,studentBrand?.secondary??brand.secondary,studentBrand?.tertiary);
-  const back = backContent(data, font, usedCharacters, brand.primary);
+    frontBrand.primary,frontBrand.secondary,frontBrand.tertiary);
+  const back = backContent(data, font, usedCharacters, SAFE_CARD_BRAND);
   const backContentId = 7 + images.length;
   const fontFileId = backContentId + 1;
   const fontDescriptorId = fontFileId + 1;

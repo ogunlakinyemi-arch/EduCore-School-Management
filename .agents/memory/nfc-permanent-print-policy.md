@@ -15,7 +15,8 @@ and Teacher/Staff variants. Student decoration colors must be extracted from eac
 school's logo, NOT fixed blue/cyan/green. Darken the dominant hue for white text
 and NFC icon readability, use other logo hues or tonal accents, and fall back to
 the saved school primary/restrained default only when extraction fails. Employee variants
-retain school primary/secondary colors. Never copy the reference child's portrait,
+use a distinct alternate logo hue or complementary fallback, not the Student
+dominant band or configured employee colors. Never copy the reference child's portrait,
 example identity or example QR into actual cards.
 
 **Why:** The user supplied a Student reference after requesting both Student and
@@ -24,6 +25,20 @@ be extracted from the school logo." Preserve the layout, not the example colors.
 
 **How to apply:** Preserve the shared school-first design family and use only
 authorized current school/person images and identity data in real renders.
+
+Employee cards follow the supplied school-first Parent/Guardian reference layout
+without creating Parent/Guardian cards. Label the actual employee type precisely:
+Teacher, Staff, Driver or other supported school employment type (e.g. Accountant).
+Keep employee number/department details; never add student class. The reverse is
+Yetenia Technologies Limited ownership and EduCore product/contact branding only,
+not school-specific ownership or school contact details.
+
+**Why:** The user explicitly requested distinct logo-derived employee colors,
+role-specific labels including Driver, and "Let the back be yetenia details."
+
+**How to apply:** Keep preview and downloaded CR80 output on the same renderer,
+preserve scoped read-only printing eligibility, and do not broaden attendance,
+billing or device permissions merely to support a printable role.
 
 Official Student, Teacher and Staff card generation, download, print, issue, reprint, assignment, reassignment, activation and replacement are Platform Owner-only. School Admin access is preview-only. Teachers must not preview Student ID cards.
 

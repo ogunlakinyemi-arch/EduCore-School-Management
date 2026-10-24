@@ -1,4 +1,5 @@
 import { AuthError } from "../middlewares/auth";
+import { employeeCardRole } from "./nfc-card-roles";
 
 export type PrintableSnapshot = {
   cardId: number;
@@ -116,9 +117,9 @@ export function resolvePrintableIdentity(
       !snapshot.employeeBindingStatus) {
     throw new AuthError(409, "The NFC card has no single current person assignment");
   }
-  const employeeType = snapshot.employeeType.trim().toUpperCase();
-  if (!["TEACHER","STAFF"].includes(employeeType)) {
-    throw new PrintableUnsupportedIdentityError("Printable NFC cards support Teachers, Staff and Students only");
+  const role = employeeCardRole(snapshot.employeeType);
+  if (!role) {
+    throw new PrintableUnsupportedIdentityError("This employee role is not supported for printable NFC cards");
   }
   const bindingStatus = snapshot.employeeBindingStatus.toUpperCase();
   const cardStatus = snapshot.cardStatus.toLowerCase();
@@ -132,7 +133,7 @@ export function resolvePrintableIdentity(
     throw new AuthError(409, "The current employee assignment is missing required identity data");
   }
   return {
-    personType: (employeeType === "TEACHER" ? "Teacher" : "Staff") as "Teacher" | "Staff",
+    personType: role,
     personName: snapshot.employeeName,
     permanentNumber: snapshot.employeeNo,
     photoPath: snapshot.employeePhoto,

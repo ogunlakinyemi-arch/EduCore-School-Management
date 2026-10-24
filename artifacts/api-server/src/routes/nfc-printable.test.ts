@@ -273,14 +273,14 @@ describe("GET /cards/:cardId/printable", () => {
     expect((await fetch(`${baseUrl}/cards/41/printable?schoolId=9`)).status).toBe(409);
   });
 
-  it("rejects unsupported Driver employee bindings with 422", async () => {
+  it("rejects unknown employee roles instead of silently labelling them Staff", async () => {
     state.snapshot = {
       ...studentCard(),
       studentId: null,
       studentStatus: null,
       employeeBindingCount: 1,
       employeeId: 202,
-      employeeType: "DRIVER",
+      employeeType: "UNKNOWN_ROLE",
       employeeStatus: "ACTIVE",
       employeeName: "Unsupported Driver",
       employeeNo: "EMP-202",
@@ -288,6 +288,23 @@ describe("GET /cards/:cardId/printable", () => {
     };
     expect((await fetch(`${baseUrl}/cards/41/printable?schoolId=9`)).status).toBe(422);
   });
+
+  it.each([["TEACHER","Teacher"],["STAFF","Staff"],["DRIVER","Driver"],["ACCOUNTANT","Accountant"]])(
+    "prints the exact %s role and previews the identical PDF without mutations",async(employeeType,label)=>{
+      state.snapshot={...studentCard(),studentId:null,studentStatus:null,
+        employeeBindingCount:1,employeeId:202,employeeType,employeeStatus:"ACTIVE",
+        employeeName:"Current Employee",employeeNo:"EMP-202",employeeBindingStatus:"ACTIVE",
+        designation:"Transport Department"};
+      const download=await fetch(`${baseUrl}/cards/41/printable?schoolId=9`);
+      expect(download.status).toBe(200);
+      const pdf=Buffer.from(await download.arrayBuffer());
+      expect(printableFrontText(pdf)).toContain(`${label}\n`);
+      expect(printableFrontText(pdf)).toContain(`${label} ID`);
+      const preview=await fetch(`${baseUrl}/cards/41/preview?schoolId=9`);
+      expect(preview.status).toBe(200);
+      expect(vi.mocked(rasterOfficialCard).mock.calls.at(-1)![0]).toEqual(pdf);
+      expect(mockPool.query.mock.calls.every(([sql])=>/^\s*SELECT/i.test(sql))).toBe(true);
+    });
 
   it("prints an eligible Staff assignment with its permanent employee identity", async () => {
     state.snapshot = { ...studentCard(),studentId:null,studentStatus:null,

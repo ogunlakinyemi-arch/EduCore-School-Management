@@ -756,3 +756,17 @@ mtime_ms = 1792858435972
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/d4b9027d-528d-4df8-99bb-4fdd018d1706/4c22b2cd-bf41-4865-befe-15b6d3017c41"
 storage_version_token = "1792858436507575"
 content_type = "image/png"
+
+[[outputs]]
+id = "e51_JNiUI6P-Eb1NPWF6k"
+uri = "file://generated-artifacts/employee-card-layout-preview.png"
+type = "image"
+title = "Employee ID card layout preview"
+description = "Fictional same-school examples showing Student versus Teacher, Staff and Driver colors, plus the Yetenia/EduCore reverse. No real identities or valid verification tokens."
+logical_id = "6f8294af-9854-4da0-a10e-dfda49bcacc8"
+content_hash = "sha256:96cd696056e483999d8e7bcfa25739f3d012c52237e234b2aadf48eeeb254526"
+size = 371167
+mtime_ms = 1792866490610
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/6f8294af-9854-4da0-a10e-dfda49bcacc8/7d516fd6-a97c-42b0-9c56-c1b4d22489c3"
+storage_version_token = "1792866513032637"
+content_type = "image/png"
