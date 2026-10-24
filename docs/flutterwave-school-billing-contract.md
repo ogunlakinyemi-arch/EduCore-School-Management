@@ -83,7 +83,7 @@ No Production access, secret inspection/changes, shared setting changes, LIVE
 activation, real provider calls/charges, transfers or publishing are authorized
 or performed by this implementation.
 
-## Executed verification
+## Recorded billing-context/refund verification
 
 Final targeted API pass: **223 passed, 0 failed across 8 files**:
 
@@ -113,6 +113,36 @@ authenticated dashboard/browser or real Flutterwave acceptance. No shared API
 restart was requested against an unverified database target; rollout must run
 the updated backend before the dashboard can consume the new endpoint. Until
 then a missing endpoint safely disables school payment controls.
+
+## Focused split-preservation and blocking follow-up
+
+The user confirms there are currently no real schools. Fictional schools and
+reviews used in disposable tests do not establish a real merchant/subaccount
+binding or authorize LIVE release.
+
+The model remains NGN 5,000 gross per student per term: NGN 1,900 to the school,
+NGN 3,100 to Yetenia before provider fees, and an eligible Partner's NGN 100 only
+as an internal accrued liability. Checkout has exactly one school subaccount,
+not a third Partner recipient. Accrual is neither a payout nor Paid commission.
+Without an eligible Partner, no Partner liability is created.
+
+Existing runtime gates already require selected-school LIVE ownership evidence,
+matching immutable review, unexpired authority and passing release/webhook/schema
+checks before provider contact. No runtime or migration changes were necessary.
+The workflow regressions now cover missing/other-school bindings, unverified
+ownership or subaccounts, TEST/placeholder evidence, merchant/subaccount/school
+scope mismatch, altered ownership-document hashes, non-merchant fee bearing,
+disabled/incomplete release or webhook configuration, and missing/disabled target
+release approval. Rejections assert no provider calls or checkout/financial
+writes. Positive fictional fixtures assert the exact one-recipient checkout and
+separate gross, fees and internal Partner liability, with and without eligibility.
+
+Executed focused pass: **207 passed across 4 files**: workflow PostgreSQL (107),
+runtime (37), configuration (37), split authority (26). API TypeScript and
+whitespace checks passed. All SQL setup/mutations were confined to the existing
+disposable test cluster; no shared database or migration files were changed.
+No actual secret values, Production settings, deployments or providers were
+accessed. This follow-up changed tests/documentation only, not activation state.
 
 ## Exact changed files
 

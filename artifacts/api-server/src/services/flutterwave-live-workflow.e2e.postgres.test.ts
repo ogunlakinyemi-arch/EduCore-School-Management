@@ -51,6 +51,14 @@ describe("released runtime through fictional V3 HTTP and disposable PostgreSQL",
   const checkoutInput=()=>({actorId:1,schoolId:10,studentId:1,termId:1,
     idempotencyKey:"runtime-checkout-fixture-0001",email:"payer@example.invalid"});
   const checkout=()=>initializeLiveSubscriptionCheckout(pool,checkoutInput(),runtimeEnv(),runtimeFetch);
+  async function expectNoCheckoutOrFinancialWrites(){
+    expect(runtimeFetch).not.toHaveBeenCalled();
+    for(const table of ["flutterwave_live_subscription_intents","flutterwave_live_checkout_attempts",
+      "flutterwave_live_collection_evidence","flutterwave_live_partner_accruals",
+      "flutterwave_live_official_receipts","flutterwave_live_commission_batches","flutterwave_live_commission_items"]){
+      expect(await count(table),table).toBe(0);
+    }
+  }
   beforeAll(async()=>{
     await pool.query(await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-runtime.up.sql",import.meta.url),"utf8"));
   });
@@ -92,6 +100,8 @@ describe("released runtime through fictional V3 HTTP and disposable PostgreSQL",
     const body=JSON.parse(String(runtimeFetch.mock.calls[0]![1]?.body));
     expect(body).toMatchObject({amount:5000,currency:"NGN",
       subaccounts:[{id:school,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]});
+    expect(body.subaccounts).toEqual([{id:school,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]);
+    expect(body.amount-body.subaccounts[0].transaction_charge).toBe(3100);
     expect(await count("flutterwave_live_partner_accruals")).toBe(0);
   });
   it("never retries an ambiguous checkout acceptance",async()=>{
@@ -103,8 +113,60 @@ describe("released runtime through fictional V3 HTTP and disposable PostgreSQL",
   });
   it("fails before HTTP when school config is missing, without using a TEST recipient",async()=>{
     await pool.query("TRUNCATE flutterwave_live_school_configuration");
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28 WHERE id=1");
     await expect(checkout()).rejects.toHaveProperty("code","LIVE_SCHOOL_CONFIGURATION_REQUIRED");
-    expect(runtimeFetch).not.toHaveBeenCalled();
+    const context=await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv());
+    expect(context).toMatchObject({mode:"LIVE",reason:"SCHOOL_AUTHORITY_REQUIRED"});
+    expect(context.students).toHaveLength(2);
+    expect(context.students.every(s=>!s.checkoutAllowed&&s.checkoutUrl===null)).toBe(true);
+    await expectNoCheckoutOrFinancialWrites();
+  });
+  it("cannot borrow another school's binding or send its missing school allocation to the merchant",async()=>{
+    // Both schools are disposable fixtures, never actual merchant onboarding.
+    await expect(initializeLiveSubscriptionCheckout(pool,{...checkoutInput(),actorId:3,schoolId:20},
+      runtimeEnv(),runtimeFetch)).rejects.toHaveProperty("code","LIVE_SCHOOL_CONFIGURATION_REQUIRED");
+    await expectNoCheckoutOrFinancialWrites();
+  });
+  it.each([
+    ["unverified ownership",{schoolOwnershipVerified:false},"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"],
+    ["unverified LIVE subaccount",{liveSubaccountVerified:false},"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"],
+    ["TEST evidence",{environment:"TEST"},"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"],
+    ["placeholder subaccount",{schoolSubaccountId:"RS_SCHOOL_LIVE_SUBACCOUNT_ID"},"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"],
+    ["other school",{schoolId:20},"LIVE_SPLIT_AUTHORITY_SCOPE_MISMATCH"],
+    ["other merchant",{merchantScope:"other_fixture_merchant"},"LIVE_SPLIT_AUTHORITY_SCOPE_MISMATCH"],
+    ["other subaccount",{schoolSubaccountId:"RS_OtherFictionalSchool123"},"LIVE_SPLIT_AUTHORITY_SCOPE_MISMATCH"],
+    ["unreviewed ownership document",{schoolOwnershipEvidenceSha256:"c".repeat(64)},"LIVE_SPLIT_AUTHORITY_HASH_MISMATCH"],
+    ["non-merchant fee bearer",{dashboardFeeBearer:"CUSTOMER"},"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"],
+  ] as const)("blocks %s before checkout, without TEST or merchant-only fallback",async(_label,patch,code)=>{
+    await pool.query("TRUNCATE flutterwave_live_school_configuration");
+    await sql(`INSERT INTO flutterwave_live_school_configuration
+      (merchant_scope,school_id,authority_review_id,authority_evidence)
+      SELECT $1,10,id,$2::jsonb FROM flutterwave_live_authority_reviews WHERE school_id=10`,
+    [merchant,JSON.stringify({...authorityEvidence(),...patch})]);
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28 WHERE id=1");
+    await expect(checkout()).rejects.toHaveProperty("code",code);
+    const context=await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv());
+    expect(context).toMatchObject({mode:"LIVE",reason:"SCHOOL_AUTHORITY_REQUIRED"});
+    expect(context.students.every(s=>!s.checkoutAllowed&&s.checkoutUrl===null)).toBe(true);
+    await expectNoCheckoutOrFinancialWrites();
+  });
+  it.each([
+    ["LIVE disabled",{EDUCORE_FLUTTERWAVE_LIVE_ENABLED:"false"}],
+    ["TEST selected",{EDUCORE_FLUTTERWAVE_MODE:"TEST"}],
+    ["release unapproved",{EDUCORE_FLUTTERWAVE_RELEASE:undefined}],
+    ["webhook bound to TEST",{EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT:"TEST"}],
+    ["missing LIVE verifier",{FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:undefined}],
+    ["shared TEST/LIVE verifier",{FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH:hash}],
+  ] as const)("blocks checkout with %s despite a fictional valid school review",async(_label,patch)=>{
+    await expect(initializeLiveSubscriptionCheckout(pool,checkoutInput(),{...runtimeEnv(),...patch},runtimeFetch))
+      .rejects.toHaveProperty("code","LIVE_RELEASE_CONFIGURATION_BLOCKED");
+    await expectNoCheckoutOrFinancialWrites();
+  });
+  it.each(["missing","disabled"])("blocks checkout with a %s target release approval",async state=>{
+    if(state==="missing")await pool.query("TRUNCATE flutterwave_live_release_manifests");
+    else await sql("UPDATE flutterwave_live_release_manifests SET enabled=false");
+    await expect(checkout()).rejects.toHaveProperty("code","LIVE_TARGET_RELEASE_NOT_APPROVED");
+    await expectNoCheckoutOrFinancialWrites();
   });
   it("blocks all outbound HTTP if a required target history guard is disabled",async()=>{
     await pool.query("ALTER TABLE flutterwave_live_allocation_reviews DISABLE TRIGGER live_allocation_review_history");
@@ -128,7 +190,33 @@ describe("released runtime through fictional V3 HTTP and disposable PostgreSQL",
     expect(await count("flutterwave_live_partner_accruals")).toBe(1);
     expect((await sql("SELECT amount_minor,state FROM flutterwave_live_partner_accruals"))[0])
       .toMatchObject({amount_minor:10000,state:"ACCRUED"});
+    expect((await sql(`SELECT gross_minor::int,school_minor::int,merchant_gross_minor::int,
+      partner_accrual_minor::int,provider_fee_minor::int,additional_fee_minor::int
+      FROM flutterwave_live_collection_evidence`))[0]).toEqual({
+      gross_minor:500000,school_minor:190000,merchant_gross_minor:310000,
+      partner_accrual_minor:10000,provider_fee_minor:6500,additional_fee_minor:500,
+    });
+    expect(await count("flutterwave_live_commission_batches")).toBe(0);
+    expect(await count("flutterwave_live_commission_items")).toBe(0);
+    expect(runtimeFetch.mock.calls.every(([url])=>String(url).endsWith("/payments")
+      ||String(url).endsWith("/transactions/8801/verify"))).toBe(true);
     expect(await count("flutterwave_live_official_receipts")).toBe(1);
+  });
+  it("retains the 1900/3100 allocation with no eligible partner and invents no liability or payout",async()=>{
+    await sql("UPDATE school_partner_attributions SET status='INACTIVE'");
+    const intent=await reviewed();
+    await processReleasedLiveWebhook(pool,runtimeRaw(intent),{"verif-hash":hash},runtimeEnv(),runtimeFetch);
+    const body=JSON.parse(String(runtimeFetch.mock.calls.find(([url])=>String(url).endsWith("/payments"))![1]?.body));
+    expect(body).toMatchObject({amount:5000,currency:"NGN"});
+    expect(body.subaccounts).toEqual([{id:school,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]);
+    expect((await sql(`SELECT gross_minor::int,school_minor::int,merchant_gross_minor::int,partner_accrual_minor::int
+      FROM flutterwave_live_collection_evidence`))[0]).toEqual({
+      gross_minor:500000,school_minor:190000,merchant_gross_minor:310000,partner_accrual_minor:0,
+    });
+    expect(await count("flutterwave_live_partner_accruals")).toBe(0);
+    expect(await count("flutterwave_live_commission_batches")).toBe(0);
+    expect(runtimeFetch.mock.calls.every(([url])=>String(url).endsWith("/payments")
+      ||String(url).endsWith("/transactions/8801/verify"))).toBe(true);
   });
   it("does not finalize missing allocation evidence and redelivery succeeds only after review",async()=>{
     const session=await checkout();
