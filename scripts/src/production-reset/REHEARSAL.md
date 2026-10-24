@@ -1,8 +1,10 @@
-# Deterministic isolated relationship rehearsal — NOT RUN
+# Deterministic isolated relationship and executor rollback rehearsal
 
-This procedure is prepared for a separately approved future run. During this
-change, only offline tests and SQL-printer tests are authorized. No PostgreSQL
-cluster is started, SQL executed or application reset performed.
+Passed on 2026-10-24 in a newly created, private, socket-only PostgreSQL 16.10
+cluster, including the actual executor rollback tests below. See
+[REHEARSAL-RESULTS.md](REHEARSAL-RESULTS.md) for scope and source hashes.
+No existing application database, Production connection or real reset was used.
+Further runs still require explicit isolated-rehearsal approval.
 
 ## Scope
 
@@ -20,13 +22,14 @@ It runs the actual preflight SQL generator against that fixture. It verifies:
 - A school `inactive` label is representable and rolled back. This is **not**
   evidence that all app authorization paths treat that label as archival.
 
-It does **not** certify the full Production schema, live resource binding,
-backup restoration, auth/provider behavior, the controlled executor state machine
-against a real database, or readiness for real deletion. Those remain separate.
+The separate executor harness reaches actual local DELETEs and checks rollback,
+protected-record refusal, competing sessions and stale previews. It never sends
+COMMIT. It does **not** certify the full Production schema, live resource binding,
+backup restoration, auth/provider behavior or readiness for real deletion.
 The database filename/connection checks are deliberately incompatible with the
 Production cleanup CLI. Do not edit its primary gates to run a local fixture.
 
-## Offline commands permitted now
+## Offline commands
 
 From the workspace root:
 
@@ -40,7 +43,7 @@ node scripts/src/production-reset/rehearsal.mjs --print-sql
 The printer imports no pg client, reads no credentials and has no execute,
 connection-string, host or target flag. Its output is byte-for-byte deterministic.
 
-## Exact future commands — require isolated-rehearsal approval first
+## Exact rerun commands — require isolated-rehearsal approval first
 
 Run from the workspace root only after approval. PostgreSQL 16 `initdb`, `pg_ctl`
 and `psql` must already be available. A missing tool/version is a blocker, not
@@ -106,11 +109,15 @@ node scripts/src/production-reset/rehearsal.mjs --print-sql >"$WORK/rehearsal.sq
 psql -X -w -h "$WORK/socket" -p 55483 -U rehearsal_admin -d reset_rehearsal \
   -v ON_ERROR_STOP=1 -v fixture_data="$WORK/data" -v fixture_socket="$WORK/socket" \
   -f "$WORK/rehearsal.sql"
+node scripts/src/production-reset/executor-isolated.mjs \
+  --data-dir "$WORK/data" --socket-dir "$WORK/socket"
 ISOLATED_REHEARSAL
 ```
 
-Expected successful output ends with
-`FICTIONAL_RELATIONSHIP_REHEARSAL_PASS_NOT_PRODUCTION_OR_EXECUTOR_CERTIFICATION`.
+Expected successful output includes
+`FICTIONAL_RELATIONSHIP_REHEARSAL_PASS_NOT_PRODUCTION_OR_EXECUTOR_CERTIFICATION`,
+then executor JSON with `status: "PASS"`, all five named checks and
+`commitStatementsSent: 0`.
 Any error/nonzero exit is failure. The SQL checks the exact newly created data
 directory, socket directory, fixed port, database/role, absence of TCP listeners
 and empty public/system schemas **before fixture DDL**. Never provide an existing

@@ -64,5 +64,7 @@ unchanged: they reject modifications to protected records, including hypothetica
 NULL/status updates. Enabling an actual current-binding/status transition requires
 a separately reviewed operation and acceptance contract, not bypassing those checks.
 
-See [REHEARSAL.md](REHEARSAL.md) for deterministic fictional SQL and exact future
-disposable-cluster commands. Only offline tests were run for this change.
+See [REHEARSAL.md](REHEARSAL.md) for deterministic fictional SQL and exact
+disposable-cluster commands. The local relationship and executor rollback checks
+have now passed; [REHEARSAL-RESULTS.md](REHEARSAL-RESULTS.md) records their limits.
+Passing refusal/rollback checks does not unblock removal of protected tenant roots.

@@ -5,6 +5,8 @@ import { spawnSync } from "node:child_process";
 import { retentionResolution, retentionRule } from "./retention.mjs";
 import { rehearsalSql, rehearsalMain } from "./rehearsal.mjs";
 import { preflightSql } from "./sql.mjs";
+import { isolatedExecutorTests } from "./executor-isolated.mjs";
+import { createHash } from "node:crypto";
 
 const table = (name, selectedRows = 0) => ({ name, totalRows: Math.max(1, selectedRows), selectedRows });
 const fk = (child, nullable, parent = "schools") => ({
@@ -137,4 +139,20 @@ test("documented isolated shell parses offline without executing a command", () 
   assert.ifError(parsed.error);
   assert.equal(parsed.status, 0, parsed.stderr);
   assert.match(doc, /PGPASSFILE=\/dev\/null PGSERVICEFILE=\/dev\/null/);
+});
+
+test("isolated executor harness refuses non-fixture and mismatched paths before a connection", async () => {
+  for (const input of [
+    { data: "/tmp/other/data", socket: "/tmp/other/socket" },
+    { data: "/tmp/educore-reset-rehearsal.FICTIONAL/data", socket: "/tmp/different/socket" },
+    { data: "/remote/data", socket: "/remote/socket" },
+  ]) await assert.rejects(isolatedExecutorTests(input), /FRESH_PRIVATE_REHEARSAL_PATH_REQUIRED|EXACT_LOCAL_PATHS_REQUIRED/);
+});
+
+test("recorded local receipt matches the tested fixture and executor source", () => {
+  const receipt = fs.readFileSync(new URL("./REHEARSAL-RESULTS.md", import.meta.url), "utf8");
+  const sha = text => createHash("sha256").update(text).digest("hex");
+  assert.ok(receipt.includes(sha(rehearsalSql())), "fixture changed: isolated verification must be repeated");
+  assert.ok(receipt.includes(sha(fs.readFileSync(new URL("./cleanup-executor.mjs", import.meta.url), "utf8"))),
+    "executor changed: isolated verification must be repeated");
 });

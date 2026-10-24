@@ -24,8 +24,10 @@ blockers and the remaining operator decisions. No detachment or inactive/archive
 mutation is implied. Do not delete/repoint history merely to make the gate pass.
 
 A deterministic fictional relationship/rollback rehearsal and exact future
-isolated commands are in [REHEARSAL.md](REHEARSAL.md). The SQL printer is offline;
-the database procedure has not been run or authorized by this implementation.
+isolated commands are in [REHEARSAL.md](REHEARSAL.md). The relationship rehearsal
+and five actual executor rollback/refusal checks passed against fictional local
+PostgreSQL on 2026-10-24; see [REHEARSAL-RESULTS.md](REHEARSAL-RESULTS.md).
+This does not resolve Production retention blockers or authorize Production access.
 
 ## Offline by default
 

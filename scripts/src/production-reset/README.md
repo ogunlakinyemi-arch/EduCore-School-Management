@@ -18,7 +18,8 @@ maintenance and retention evidence plus a reviewed preview and exact token.
 Implementing it does not authorize a Production connection or execution.
 Preserve-in-place retention is resolved in [RETENTION.md](RETENTION.md), with
 per-constraint blockers included in both reports. [REHEARSAL.md](REHEARSAL.md)
-provides exact future isolated commands; only offline tests are authorized now.
+provides exact isolated commands. Local rehearsal/rollback results are recorded in
+[REHEARSAL-RESULTS.md](REHEARSAL-RESULTS.md); Production remains blocked.
 
 ## Commands
 
