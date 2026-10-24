@@ -15,6 +15,9 @@ async function readEvidence(file) {
 }
 
 export async function main(args, output = console.log) {
+  // pnpm may forward its run-script separator verbatim. Consume only one
+  // leading separator; do not hide duplicate flags or separators inside options.
+  if (args[0] === "--") args = args.slice(1);
   const flags = new Set(["--dry-run", "--print-sql", "--execute", "--help"]);
   const values = new Set(["--school-ids", "--evidence-file", "--compare-with", "--confirm"]);
   const options = new Map();

@@ -21,6 +21,9 @@ environment-based target inference, URL flag, force option or retained-data over
 # Offline plan only, zero connections. Exit 2 means BLOCKED, not release-ready.
 pnpm --filter @workspace/scripts run production-reset:preflight --school-ids 9
 
+# An explicit package-manager separator is also supported:
+pnpm --filter @workspace/scripts run production-reset:preflight -- --school-ids 1,2 --dry-run
+
 # Print a single read-only SELECT for later independent operator review.
 # This prints SQL; it DOES NOT execute it.
 pnpm --filter @workspace/scripts run production-reset:preflight --school-ids 9 --print-sql
@@ -41,6 +44,8 @@ pnpm --filter @workspace/scripts run test:production-reset
 Blocked dry-run reports return exit 2 intentionally so CI/shell automation cannot
 mistake them for permission to proceed. Help and SQL printing return 0. Malformed,
 stale (>15 minutes), wrong-environment or wrong-scope evidence is rejected.
+One leading package-manager `--` is accepted; duplicate options, repeated
+separators and separators inside the option list are still rejected.
 Before/after comparisons must also fit that freshness window; a longer maintenance
 operation needs a separately reviewed evidence policy, not a bypass.
 

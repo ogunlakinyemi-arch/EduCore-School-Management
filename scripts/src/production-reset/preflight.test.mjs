@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { CANDIDATE_TABLES, MANIFEST_VERSION, dependencyOrder, schoolIds } from "./manifest.mjs";
 import { createReport, compareEvidence } from "./preflight.mjs";
 import { preflightSql } from "./sql.mjs";
@@ -192,6 +194,68 @@ test("CLI default is blocked offline; unknown flags and confirmation bypasses fa
   await assert.rejects(main(["--school-ids", "9", "--school-ids", "10"]));
 });
 
+test("exact pnpm separator invocation produces a blocked dry-run report, not a parsing error", () => {
+  const result = spawnSync("pnpm", ["--filter", "@workspace/scripts", "run",
+    "production-reset:preflight", "--", "--school-ids", "1,2", "--dry-run"], {
+    cwd: fileURLToPath(new URL("../../../", import.meta.url)), encoding: "utf8",
+    timeout: 15_000,
+  });
+  assert.ifError(result.error);
+  // pnpm can wrap the CLI's deliberate exit 2 as its own nonzero status.
+  assert.notEqual(result.status, 0);
+  assert.doesNotMatch(result.stdout + result.stderr, /INVALID_OR_DUPLICATE_ARGUMENT/);
+  const report = JSON.parse(result.stdout.slice(result.stdout.indexOf("{"),
+    result.stdout.lastIndexOf("}") + 1));
+  assert.deepEqual(report.selectedSchoolIds, [1, 2]);
+  assert.equal(report.dryRun, true);
+  assert.equal(report.readyForDeletion, false);
+  assert.equal(report.executionAvailable, false);
+  assert.equal(report.databaseConnectionsOpened, 0);
+  assert.equal(report.mutationsPerformed, 0);
+});
+
+test("forwarded separator accepts documented modes but never enables execution", async () => {
+  for (const prefix of [[], ["--"]]) {
+    const output = [];
+    assert.equal(await main([...prefix, "--school-ids", "1,2", "--dry-run"],
+      value => output.push(value)), 2);
+    assert.deepEqual(JSON.parse(output.pop()).selectedSchoolIds, [1, 2]);
+    assert.equal(await main([...prefix, "--school-ids", "1,2", "--dry-run", "--print-sql"],
+      value => output.push(value)), 0);
+    assert.match(output.pop(), /production_reset_preflight/);
+    assert.equal(await main([...prefix, "--help"], value => output.push(value)), 0);
+    assert.match(output.pop(), /--evidence-file/);
+    assert.equal(await main([...prefix, "--school-ids", "1,2", "--execute",
+      "--confirm", "PRODUCTION-TEST-RESET:fictional", "--evidence-file", "/nonexistent/file"],
+    value => output.push(value)), 2);
+    const refused = JSON.parse(output.pop());
+    assert.equal(refused.databaseConnectionsOpened, 0);
+    assert.equal(refused.mutationsPerformed, 0);
+    assert.ok(refused.blockers.includes("DESTRUCTIVE_EXECUTION_UNAVAILABLE_REGARDLESS_OF_CONFIRMATION"));
+  }
+});
+
+test("leading package separator never conceals duplicate flags or malformed separators", async () => {
+  for (const args of [
+    ["--school-ids", "1,2", "--dry-run", "--dry-run"],
+    ["--school-ids", "1,2", "--school-ids", "3"],
+    ["--school-ids", "1,2", "--execute", "--execute"],
+    ["--school-ids", "1,2", "--print-sql", "--print-sql"],
+    ["--school-ids", "1,2", "--evidence-file", "/unused", "--evidence-file", "/unused"],
+    ["--school-ids", "1,2", "--compare-with", "/unused", "--compare-with", "/unused"],
+    ["--school-ids", "1,2", "--confirm", "one", "--confirm", "two"],
+    ["--help", "--help"],
+    ["--", "--", "--school-ids", "1,2"],
+    ["--school-ids", "1,2", "--", "--dry-run"],
+  ]) {
+    for (const prefix of [[], ["--"]]) {
+      await assert.rejects(main([...prefix, ...args], () => {
+        assert.fail("invalid arguments must not print a plan or read evidence");
+      }), /INVALID_OR_DUPLICATE_ARGUMENT/);
+    }
+  }
+});
+
 test("CLI reads only private evidence and never echoes arbitrary secret-like fields", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "reset-offline-test-"));
   const file = path.join(dir, "fixture.json");
@@ -201,6 +265,8 @@ test("CLI reads only private evidence and never echoes arbitrary secret-like fie
     await writeFile(file, JSON.stringify(e), { mode: 0o600 });
     const output = [];
     assert.equal(await main(["--school-ids", "9", "--evidence-file", file],
+      value => output.push(value)), 2);
+    assert.equal(await main(["--", "--school-ids", "9", "--dry-run", "--evidence-file", file],
       value => output.push(value)), 2);
     assert.ok(!output[0].includes(e.arbitrary));
     await writeFile(path.join(dir, "public.json"), JSON.stringify(e), { mode: 0o644 });
