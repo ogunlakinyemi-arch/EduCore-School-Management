@@ -17,3 +17,16 @@ audit authorship as evidence that someone is disposable. Refuse the entire batch
 for a non-Owner identity with out-of-scope tenant associations rather than
 silently blocking legitimate access. Restoration must be a separate Owner action
 and must not activate previously inactive users or reconstruct memberships.
+
+Archived test Partners may reuse their verified email to apply again, but must
+receive a fresh internal account/application/profile, never the archived account.
+Reusing the external Clerk identity must not transfer old sessions, roles,
+schools, invitations, access or ownership. Active-account duplicates stay blocked.
+
+**Why:** The user clarified: "They should be able to use the same email if they
+wanted to apply as parnters again but it should not take them to previous
+accounts it should be new ones."
+
+**How to apply:** Treat internal account identity, not email, as the access and
+ownership boundary. Require explicit fresh-session reapplication and Owner
+approval; never make old-account restoration a side effect of reapplication.

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { clerkClient } from "@clerk/express";
+import { clerkClient, getAuth } from "@clerk/express";
+import { submitPartnerReapplication } from "../services/partner-account-reapplication";
 import { pool } from "@workspace/db";
 import { AuthError, assertRoles, getUserContext, handleAuthError, requireAuthentication } from "../middlewares/auth";
 import { applicationInput, applicationDecision, applicationFields, applicationJoin,
@@ -17,6 +18,14 @@ async function application(id: number) {
   return (await pool.query(`SELECT ${applicationFields} ${applicationJoin} WHERE a.id=$1`, [id])).rows[0];
 }
 
+router.post("/account-application/partner-reapplication", run(async (req,res) => {
+  const { userId,sessionId } = getAuth(req);
+  if (!userId || !sessionId) throw new AuthError(401,"Sign in with your verified email before reapplying.");
+  const parsed = applicationInput.safeParse(req.body);
+  if (!parsed.success || parsed.data.applicantType !== "PARTNER") throw new AuthError(400,"Complete a valid new Partner application.");
+  const id = await submitPartnerReapplication(userId,sessionId,parsed.data);
+  res.status(201).json(await application(id));
+}));
 router.get("/account-application", requireAuthentication(), run(async (req,res) => {
   const c = getUserContext(req);
   const result = await pool.query(`SELECT ${applicationFields} ${applicationJoin} WHERE a.user_id=$1`, [c.user.id]);

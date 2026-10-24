@@ -3,7 +3,7 @@ import { assertArchiveAccess, ArchiveAccessError } from "../../../../scripts/src
 import { AuthError } from "../middlewares/auth";
 
 export async function assertTestArchiveAccess(
-  input: { userId?: number | null; email?: string | null; schoolId?: number; partnerId?: number },
+  input: { userId?: number | null; email?: string | null; schoolId?: number; partnerId?: number; reapplicationUserId?: number },
   db: { query: (...args: any[]) => Promise<any> } = pool,
 ) {
   try { await assertArchiveAccess(db, input); }

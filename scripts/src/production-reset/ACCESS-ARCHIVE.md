@@ -27,6 +27,15 @@ No Production operation was performed while building it.
 - Invalid/unreadable ledger evidence fails closed. Validate complete
   BLOCK/RESTORE chains; a restore cannot silently change the archived identities.
 
+### Explicit same-email Partner reapplication
+
+The email reservation is not a permanent ban on a new Partner application.
+[PARTNER-REAPPLICATION.md](PARTNER-REAPPLICATION.md) documents the separately
+verified fresh-session path, new internal account/profile and approval boundary.
+It never restores the original account or transfers old session access/history.
+Ordinary same-email provisioning and archived account/root checks still deny
+re-entry; the exception applies only to a recorded fresh account association.
+
 Clerk may still recognize its own session. We do **not** claim that its cookie,
 JWT or sign-in credential was physically revoked. EduCore refuses that account's
 protected requests. Previously downloaded information cannot be erased remotely.

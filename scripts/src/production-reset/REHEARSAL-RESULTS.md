@@ -92,3 +92,32 @@ only to that earlier rollback-only harness.
 The operating boundary and remaining whole-system archival limitations are in
 `ACCESS-ARCHIVE.md`. This is local implementation evidence, not permission or
 readiness evidence for a real account revocation.
+
+## Same-email Partner reapplication refinement
+
+The earlier access receipt above describes the original email-denial policy.
+The explicit fresh-account exception is documented in `PARTNER-REAPPLICATION.md`;
+ordinary old-account and generic same-email re-entry denials remain enforced.
+
+- **11 actual local PostgreSQL/HTTP tests passed:** new same-email application,
+  blank privileges/pending approval, old-session/refreshed-token denial, new
+  Partner profile/role only, active duplicate rejection, idempotent pending-request
+  recovery, later fresh sessions, separate Owner restoration, independent
+  new-profile archival/restoration, verified Partner-only input and repeated fresh
+  reapplication after a subsequent archive without consuming the new session.
+- Archived user, application, profile, memberships, invitations, finance and
+  device/card/history ownership remained unchanged in the preservation checks.
+- The real migration preserved populated fixture rows and refused duplicate
+  application atomically. It was not applied to any shared database.
+- **3 new React component tests passed**, plus **20 existing application UI tests**.
+- **112 authentication/invitation regressions** and **53 offline reset tests** passed.
+- API build and API/web TypeScript checks passed.
+- OpenAPI clients and validators were regenerated before verification.
+- Provider calls were mocked; no new or changed Clerk identities or real sends.
+- Production connections/mutations, shared settings/secrets and publishing: **none**.
+
+Tested reapplication service SHA-256:
+`583a62d9412ee549389cc4567a931f7aef93b12efbf8e2e98da54933e8cf0827`.
+The 12 original access-archive PostgreSQL checks also passed again with the
+updated account-aware archive planner.
+Live authenticated browser/Clerk verification was not performed.

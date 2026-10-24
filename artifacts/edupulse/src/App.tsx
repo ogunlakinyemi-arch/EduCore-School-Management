@@ -163,6 +163,8 @@ export function ProtectedRoutes() {
         <h1 className="display-font text-2xl font-bold">Unable to verify your access</h1>
         <p className="mt-3 text-sm">EduCore could not verify your portal access. Retry the access check without signing in again.</p>
         <Button className="mt-5" onClick={() => void contextQuery.refetch()}>Retry access check</Button>
+        {(contextQuery.error as { data?: { code?: string } } | null)?.data?.code === 'ARCHIVED_TEST_ACCESS_BLOCKED' &&
+          <a className="mt-4 block text-sm underline" href={`${import.meta.env.BASE_URL}apply`}>Apply again as a Partner without reopening the archived account</a>}
       </div>
     </div>;
   }

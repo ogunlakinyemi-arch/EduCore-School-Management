@@ -22,7 +22,9 @@ export const appUsers = pgTable(
   "app_users",
   {
     id: serial("id").primaryKey(),
-    clerkUserId: text("clerk_user_id").notNull(),
+    // Reapplications authenticate through an explicit session/account association.
+    // The archived row keeps its original Clerk binding; never move that binding.
+    clerkUserId: text("clerk_user_id"),
     email: text("email").notNull(),
     firstName: text("first_name"),
     lastName: text("last_name"),

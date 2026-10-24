@@ -4,9 +4,9 @@ import type { ApplicantType } from '@/lib/application-intent';
 
 const inputCls = 'mt-1 w-full min-w-0 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 text-sm';
 
-export function ApplicationForm({ values, onChange, errors, formError, pending, onSubmit, submitLabel = 'Submit Application' }: {
+export function ApplicationForm({ values, onChange, errors, formError, pending, onSubmit, submitLabel = 'Submit Application', partnerOnly = false }: {
   values: ApplicationValues; onChange: (v: ApplicationValues) => void; errors: FieldErrors;
-  formError?: string | null; pending?: boolean; onSubmit: () => void; submitLabel?: string;
+  formError?: string | null; pending?: boolean; onSubmit: () => void; submitLabel?: string; partnerOnly?: boolean;
 }) {
   const school = values.applicantType === 'SCHOOL_ADMIN';
   const set = (k: keyof ApplicationValues) => (e: { target: { value: string } }) => onChange({ ...values, [k]: e.target.value });
@@ -15,9 +15,9 @@ export function ApplicationForm({ values, onChange, errors, formError, pending, 
     <form noValidate className="w-full min-w-0 max-w-sm space-y-4" data-testid="form-application"
       onSubmit={(e: FormEvent) => { e.preventDefault(); onSubmit(); }}>
       <label className="block text-sm font-semibold">Applying as
-        <select data-testid="select-applicant-type" className={inputCls} value={values.applicantType}
+        <select data-testid="select-applicant-type" className={inputCls} value={values.applicantType} disabled={partnerOnly}
           onChange={e => onChange(switchApplicantType(values, e.target.value as ApplicantType))}>
-          <option value="SCHOOL_ADMIN">School Admin</option><option value="PARTNER">Partner</option>
+          {!partnerOnly && <option value="SCHOOL_ADMIN">School Admin</option>}<option value="PARTNER">Partner</option>
         </select>
       </label>
       {school ? (

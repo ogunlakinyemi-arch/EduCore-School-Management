@@ -1,10 +1,12 @@
 import { pgTable, serial, integer, text, timestamp, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { appUsers, schools, partnerProfiles, partnerReferralLinks } from "./edupulse";
+import { partnerAccountReapplications } from "./partner-account-reapplications";
 
 export const accountApplications = pgTable("account_applications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => appUsers.id),
+  reapplicationId: integer("reapplication_id").references(() => partnerAccountReapplications.id),
   applicantType: text("applicant_type").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -27,7 +29,9 @@ export const accountApplications = pgTable("account_applications", {
   notificationStatus: text("notification_status").notNull().default("NOT_REQUESTED"),
 }, (t) => [
   uniqueIndex("account_applications_user_unique").on(t.userId),
-  uniqueIndex("account_applications_email_unique").on(sql`lower(${t.email})`),
+  uniqueIndex("account_applications_email_unique").on(sql`lower(${t.email})`).where(sql`${t.reapplicationId} IS NULL`),
+  uniqueIndex("account_applications_reapplication_unique").on(t.reapplicationId),
+  check("account_applications_reapplication_partner_check", sql`${t.reapplicationId} IS NULL OR ${t.applicantType}='PARTNER'`),
   index("account_applications_status_created_idx").on(t.status, t.createdAt),
   check("account_applications_type_check", sql`${t.applicantType} IN ('SCHOOL_ADMIN','PARTNER')`),
   check("account_applications_partner_type_check", sql`${t.partnerType} IS NULL OR (${t.applicantType}='PARTNER' AND ${t.partnerType} IN ('BUSINESS','INDIVIDUAL'))`),

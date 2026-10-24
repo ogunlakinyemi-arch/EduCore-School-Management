@@ -985,6 +985,75 @@ export const SubmitAccountApplicationResponse = zod.object({
 })
 
 
+/**
+ * Explicit same-email Partner reapplication after verified fresh sign-in. Creates an isolated pending account; never restores archived access.
+ */
+export const reapplyPartnerAccountBodyFullNameMin = 2;
+export const reapplyPartnerAccountBodyFullNameMax = 200;
+
+export const reapplyPartnerAccountBodyEmailMax = 254;
+
+export const reapplyPartnerAccountBodyPhoneMin = 7;
+export const reapplyPartnerAccountBodyPhoneMax = 32;
+
+export const reapplyPartnerAccountBodyCityMax = 100;
+
+export const reapplyPartnerAccountBodyStateMax = 100;
+
+export const reapplyPartnerAccountBodySchoolNameMin = 2;
+export const reapplyPartnerAccountBodySchoolNameMax = 200;
+
+export const reapplyPartnerAccountBodyBusinessNameMax = 200;
+
+export const reapplyPartnerAccountBodyAddressMax = 500;
+
+export const reapplyPartnerAccountBodyReferralTokenMin = 16;
+export const reapplyPartnerAccountBodyReferralTokenMax = 256;
+
+
+
+export const ReapplyPartnerAccountBody = zod.object({
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "fullName": zod.string().min(reapplyPartnerAccountBodyFullNameMin).max(reapplyPartnerAccountBodyFullNameMax),
+  "email": zod.string().email().max(reapplyPartnerAccountBodyEmailMax).describe('Required applicant-provided email for School Admin and Partner; must match the verified sign-in account email.'),
+  "partnerType": zod.enum(['BUSINESS', 'INDIVIDUAL']).optional().describe('Required for Partner; omitted for School Admin.'),
+  "phone": zod.string().min(reapplyPartnerAccountBodyPhoneMin).max(reapplyPartnerAccountBodyPhoneMax),
+  "city": zod.string().max(reapplyPartnerAccountBodyCityMax).optional(),
+  "state": zod.string().max(reapplyPartnerAccountBodyStateMax).optional(),
+  "schoolName": zod.string().min(reapplyPartnerAccountBodySchoolNameMin).max(reapplyPartnerAccountBodySchoolNameMax).optional(),
+  "businessName": zod.string().max(reapplyPartnerAccountBodyBusinessNameMax).optional(),
+  "address": zod.string().max(reapplyPartnerAccountBodyAddressMax).optional(),
+  "referralToken": zod.string().min(reapplyPartnerAccountBodyReferralTokenMin).max(reapplyPartnerAccountBodyReferralTokenMax).optional()
+})
+
+export const ReapplyPartnerAccountResponse = zod.object({
+  "id": zod.number().int(),
+  "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),
+  "fullName": zod.string(),
+  "partnerType": zod.union([zod.literal('BUSINESS'),zod.literal('INDIVIDUAL'),zod.literal(null)]).nullish(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "schoolName": zod.string().nullish(),
+  "businessName": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.string(),
+  "reviewedAt": zod.string().nullish(),
+  "reviewerName": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish(),
+  "notificationStatus": zod.enum(['NOT_REQUESTED', 'SENDING', 'ACCEPTED', 'FAILED', 'UNKNOWN', 'UNAVAILABLE']),
+  "notificationReason": zod.string().nullish(),
+  "notificationRetryAllowed": zod.boolean().optional(),
+  "notificationCanReconcile": zod.boolean().optional(),
+  "notificationDeliveryConfirmed": zod.boolean().optional(),
+  "notificationProviderMessageId": zod.string().nullish()
+})
+
+
 export const GetAccountApplicationsResponseItem = zod.object({
   "id": zod.number().int(),
   "applicantType": zod.enum(['SCHOOL_ADMIN', 'PARTNER']),

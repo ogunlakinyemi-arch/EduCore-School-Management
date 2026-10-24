@@ -125,6 +125,10 @@ database, skip that guard or treat this fixture's snapshots as Production eviden
 
 ### Separate existing-account access rehearsal
 
+For the same-email Partner refinement, use the dedicated
+`reapplication-rehearsal.sh`, documented in `PARTNER-REAPPLICATION.md`. It uses a
+fresh socket-only fixture, not a dump or connection to a current database.
+
 For the access-revocation checks, run the same clean isolated shell in another
 fresh temporary cluster, replacing **only** `executor-isolated.mjs` with
 `access-archive-isolated.mjs`. Keep every path, ownership, environment and cleanup

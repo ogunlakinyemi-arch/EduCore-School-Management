@@ -111,6 +111,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AccountApplication"
+  /account-application/partner-reapplication:
+    post:
+      operationId: reapplyPartnerAccount
+      tags: [identity]
+      description: Explicit same-email Partner reapplication after verified fresh sign-in. Creates an isolated pending account; never restores archived access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountApplicationInput"
+      responses:
+        "201":
+          description: New pending Partner application or recovery of the same committed request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountApplication"
+        "403":
+          description: Verified fresh sign-in required
+        "409":
+          description: Active account or application reserves the email
   /platform/account-applications:
     get:
       operationId: getAccountApplications

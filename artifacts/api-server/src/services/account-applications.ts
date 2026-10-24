@@ -6,6 +6,7 @@ import { AuthError, type UserContext } from "../middlewares/auth";
 import { auditAccountApplication as audit } from "./account-application-audit";
 export { notifyApplicationDecision } from "./account-application-notifications";
 import { z } from "zod";
+import { eligibleArchivedPartner } from "./partner-account-reapplication";
 
 const text = (max: number, min = 1) => z.string().trim().min(min).max(max);
 export function normalizeApplicationPhone(value: string) {
@@ -114,6 +115,13 @@ export async function decideApplication(actor: UserContext, id: number, decision
     if (a.status !== "PENDING") throw new AuthError(409, "Application has already been decided");
     if (a.user_id === actor.user.id) throw new AuthError(403, "You cannot review your own application");
     await assertNewApplicant(client, a.user_id);
+    if (decision.status === "APPROVED" && a.reapplication_id) {
+      const r = (await client.query(`SELECT clerk_user_id FROM partner_account_reapplications
+        WHERE id=$1 AND new_user_id=$2`, [a.reapplication_id,a.user_id])).rows[0];
+      if (!r || a.applicant_type !== "PARTNER") throw new AuthError(409,"The new account association could not be verified.");
+      await assertTestArchiveAccess({ userId:a.user_id,email:a.email,reapplicationUserId:a.user_id },client);
+      await eligibleArchivedPartner(client,a.email,r.clerk_user_id,a.user_id);
+    }
     let schoolId: number | null = null, partnerId: number | null = null;
     if (decision.status === "APPROVED") {
       const account = await client.query(`SELECT status,email FROM app_users WHERE id=$1`, [a.user_id]);

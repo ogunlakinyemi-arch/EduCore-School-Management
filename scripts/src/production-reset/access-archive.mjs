@@ -55,9 +55,16 @@ export async function assertArchiveAccess(db, input) {
     [input.userId]);
     if (owner.rows.length) return;
   }
-  const normalized = email(input.email);
-  if (archives.some(m => input.userId && m.userIds.includes(input.userId)
-      || normalized && m.emails.includes(normalized))) throw new ArchiveAccessError("ARCHIVED_TEST_ACCESS_BLOCKED");
+  let normalized = email(input.email);
+  // A fresh account may reuse an email, never a revoked internal identity.
+  if (archives.some(m => input.userId && m.userIds.includes(input.userId))) throw new ArchiveAccessError("ARCHIVED_TEST_ACCESS_BLOCKED");
+  if (input.userId && input.reapplicationUserId === input.userId) {
+    const fresh = await db.query(`SELECT 1 FROM partner_account_reapplications
+      WHERE new_user_id=$1 AND email=$2`, [input.userId,normalized]);
+    check(fresh.rows.length === 1, "INVALID_REAPPLICATION_ACCOUNT_ASSOCIATION");
+    normalized = ""; // Ignore only old email associations, not any user/root block.
+  }
+  if (archives.some(m => normalized && m.emails.includes(normalized))) throw new ArchiveAccessError("ARCHIVED_TEST_ACCESS_BLOCKED");
   if (!input.userId && !normalized) return;
   // Re-evaluate associations as well as the captured IDs: later membership or
   // roster edits cannot re-enable an archived scope for a different identity.
@@ -82,6 +89,10 @@ export async function prepareAccessArchive(db, input) {
   const schools = await db.query("SELECT id FROM schools WHERE id=ANY($1::int[]) ORDER BY id", [schoolIds]);
   const partners = await db.query("SELECT id FROM partner_profiles WHERE id=ANY($1::int[]) ORDER BY id", [partnerIds]);
   check(schools.rows.length === schoolIds.length && partners.rows.length === partnerIds.length, "ARCHIVE_SCOPE_NOT_FOUND");
+  const registry = await db.query("SELECT to_regclass('public.partner_account_reapplications') IS NOT NULL AS ready");
+  const freshIds = registry.rows[0]?.ready
+    ? (await db.query("SELECT new_user_id FROM partner_account_reapplications")).rows.map(r => r.new_user_id) : [];
+  const fresh = new Set(freshIds);
   const owners = await db.query(`SELECT DISTINCT u.id,lower(trim(u.email)) AS email
     FROM app_users u JOIN school_memberships m ON m.user_id=u.id
     WHERE m.role='PLATFORM_OWNER' AND m.school_id IS NULL`);
@@ -111,19 +122,24 @@ export async function prepareAccessArchive(db, input) {
   SELECT COALESCE(l.user_id,u.id) AS user_id,l.school_id,l.partner_id,
     lower(trim(COALESCE(l.email,u.email))) AS email,lower(trim(u.email)) AS account_email,l.role
   FROM links l LEFT JOIN app_users u ON u.id=l.user_id
-    OR (l.user_id IS NULL AND lower(trim(u.email))=lower(trim(l.email)))`)).rows;
+    OR (l.user_id IS NULL AND lower(trim(u.email))=lower(trim(l.email))
+      AND NOT(u.id=ANY($1::int[])))`, [freshIds])).rows;
   const inScope = r => schoolIds.includes(r.school_id) || partnerIds.includes(r.partner_id);
   const selected = associations.filter(inScope);
   const userIds = [...new Set(selected.map(r => r.user_id).filter(id => id && !ownerIds.has(id)))].sort((a, b) => a - b);
   const emails = [...new Set(selected.filter(r => !ownerIds.has(r.user_id))
     .flatMap(r => [email(r.email),email(r.account_email)]).filter(e => e && !ownerEmails.has(e)))].sort();
-  const mixed = associations.filter(r => !inScope(r) && !ownerIds.has(r.user_id)
-    && (userIds.includes(r.user_id) || emails.includes(email(r.email))));
-  check(mixed.length === 0, "ARCHIVE_ACCOUNT_HAS_OUT_OF_SCOPE_ACCESS");
   const existing = await activeAccessArchives(db);
+  const allFresh = ids => ids.length > 0 && ids.every(id => fresh.has(id));
+  const mixed = associations.filter(r => !inScope(r) && !ownerIds.has(r.user_id)
+    && (userIds.includes(r.user_id) || emails.includes(email(r.email))
+      && !(r.user_id && !userIds.includes(r.user_id) && (fresh.has(r.user_id) || allFresh(userIds)))
+      && !(r.user_id == null && allFresh(userIds)
+        && existing.some(m => m.schoolIds.includes(r.school_id) || m.partnerIds.includes(r.partner_id)))));
+  check(mixed.length === 0, "ARCHIVE_ACCOUNT_HAS_OUT_OF_SCOPE_ACCESS");
   check(!existing.some(m => m.schoolIds.some(id => schoolIds.includes(id))
     || m.partnerIds.some(id => partnerIds.includes(id)) || m.userIds.some(id => userIds.includes(id))
-    || m.emails.some(e => emails.includes(e))), "ARCHIVE_SCOPE_ALREADY_BLOCKED");
+    || m.emails.some(e => emails.includes(e)) && !allFresh(userIds) && !allFresh(m.userIds)), "ARCHIVE_SCOPE_ALREADY_BLOCKED");
   const body = { version: 1, schoolIds, partnerIds, userIds, emails };
   return {
     ...body, planDigest: digest(body), userCount: userIds.length,

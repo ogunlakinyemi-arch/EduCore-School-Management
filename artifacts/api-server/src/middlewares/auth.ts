@@ -3,6 +3,7 @@ import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { enforceRequestSubscription } from "../services/subscription-request-access";
 import { pool } from "@workspace/db";
 import { assertTestArchiveAccess } from "../services/test-account-archive-access";
+import { resolveReapplicationUser } from "../services/partner-account-reapplication";
 
 export const ROLES = [
   "PLATFORM_OWNER",
@@ -58,7 +59,12 @@ export function getUserContext(req: Request): UserContext {
   return context;
 }
 
-export async function provisionCurrentUser(clerkUserId: string) {
+export async function provisionCurrentUser(clerkUserId: string, sessionId?: string) {
+  const reapplied = await resolveReapplicationUser(clerkUserId, sessionId);
+  if (reapplied) {
+    await assertTestArchiveAccess({ userId: reapplied.id, email: reapplied.email, reapplicationUserId: reapplied.id });
+    return reapplied;
+  }
   const existing = await pool.query(
     `SELECT id, clerk_user_id AS "clerkUserId", email, first_name AS "firstName",
        last_name AS "lastName", phone, status
@@ -101,8 +107,8 @@ export async function provisionCurrentUser(clerkUserId: string) {
   return result.rows[0];
 }
 
-export async function loadUserContext(clerkUserId: string): Promise<UserContext> {
-  const user = await provisionCurrentUser(clerkUserId);
+export async function loadUserContext(clerkUserId: string, sessionId?: string): Promise<UserContext> {
+  const user = await provisionCurrentUser(clerkUserId, sessionId);
   assertUserActive(user.status);
   const application = await pool.query(
     `SELECT status FROM account_applications WHERE user_id=$1 AND status<>'APPROVED'`,
@@ -226,10 +232,10 @@ function respondAuthError(res: Response, error: unknown) {
 
 export function requireAuthentication(): RequestHandler {
   return (req, res, next) => {
-    const { userId } = getAuth(req);
+    const { userId, sessionId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Authentication required" });
 
-    return void loadUserContext(userId)
+    return void loadUserContext(userId, sessionId ?? undefined)
       .then(async (context) => {
         (req as Request & { edupulseUser?: UserContext }).edupulseUser = context;
         if (context.applicationStatus && !(

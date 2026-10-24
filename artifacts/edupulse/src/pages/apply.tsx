@@ -9,6 +9,7 @@ import {
 import { applyErrorMessage, clearApplicationIntent, readApplicationIntent } from '@/lib/application-intent';
 import { clearDraft, emptyValues, loadDraft, validateApplication, type ApplicationValues, type FieldErrors } from '@/lib/application-draft';
 import { ApplicationForm } from '@/components/application-form';
+import { PartnerReapplication } from '@/components/partner-reapplication';
 
 
 export function ApplicationPortal({ pendingAccess = false, autoSubmit = false }: { pendingAccess?: boolean; autoSubmit?: boolean }) {
@@ -62,6 +63,9 @@ export function ApplicationPortal({ pendingAccess = false, autoSubmit = false }:
   );
 
   if (q.isLoading) return shell(<div role="status" className="text-sm">Checking your application…</div>);
+  if ((q.error as { data?: { code?: string } } | null)?.data?.code === 'ARCHIVED_TEST_ACCESS_BLOCKED') {
+    return shell(<PartnerReapplication />);
+  }
   if (q.isError || !q.data) return shell(
     <div>
       <p className="text-sm text-[hsl(var(--destructive))]">We could not load your application status.</p>
