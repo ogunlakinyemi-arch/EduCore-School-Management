@@ -11,6 +11,11 @@ import type { AttendanceStatus4b96100 } from './attendanceStatus4b96100';
 import type { IdentificationMethod4b96100 } from './identificationMethod4b96100';
 
 export interface AttendanceEvent4b96100 {
+  /**
+     * UID of this event's referenced card
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   schoolId: number;
   /** @nullable */

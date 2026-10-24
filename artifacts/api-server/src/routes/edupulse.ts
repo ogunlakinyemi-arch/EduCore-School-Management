@@ -483,6 +483,8 @@ router.get("/students", async (req, res) => {
       )))`;
     const result = await pool.query(`
       SELECT st.id, st.school_id AS "schoolId", st.admission_no AS "admissionNo", st.email,
+        (SELECT nc.uid FROM nfc_cards nc WHERE nc.school_id=st.school_id AND nc.student_id=st.id
+          AND nc.status IN ('active','locked','inactive') ORDER BY nc.id DESC LIMIT 1) AS "nfcUid",
         (SELECT CASE WHEN au.clerk_user_id IS NULL THEN 'PENDING' ELSE au.status END FROM app_users au WHERE au.id=st.user_id) AS "accountStatus",
         st.first_name AS "firstName", st.last_name AS "lastName", st.middle_name AS "middleName",
         st.date_of_birth AS "dateOfBirth", st.photo AS "passportUrl", st.admission_date AS "admissionDate",
@@ -656,6 +658,8 @@ router.get("/students/:studentId", async (req, res) => {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
     const result = await pool.query(`
        SELECT st.id, st.school_id AS "schoolId", st.admission_no AS "admissionNo", st.email,
+         (SELECT nc.uid FROM nfc_cards nc WHERE nc.school_id=st.school_id AND nc.student_id=st.id
+           AND nc.status IN ('active','locked','inactive') ORDER BY nc.id DESC LIMIT 1) AS "nfcUid",
          st.first_name AS "firstName", st.last_name AS "lastName", st.middle_name AS "middleName",
          st.date_of_birth AS "dateOfBirth", st.photo AS "passportUrl", st.admission_date AS "admissionDate",
          LOWER(st.admission_status) AS "admissionStatus", st.address, st.previous_school AS "previousSchool",

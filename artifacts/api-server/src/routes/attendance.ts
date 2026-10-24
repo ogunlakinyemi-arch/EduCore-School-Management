@@ -4,6 +4,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { joinSecurityAttendance, recordAuthenticatedNfcDenial } from "../services/security-attendance-integration";
 import { issueReplacement } from "../services/student-card-replacement";
+import { attendanceCardUidSql } from "../services/owner-uid-reader";
 import {
   AuthError,
   assertSchoolAccess,
@@ -714,7 +715,8 @@ router.get("/school/attendance/events", requireAuthentication(), run(async (req,
     `SELECT e.id,e.school_id AS "schoolId",e.student_id AS "studentId",e.employee_id AS "employeeId",
       e.device_id AS "deviceId",${eventClass} AS "classId",${eventSection} AS "section",
       e.event_type AS "eventType",e.identification_method AS "identificationMethod",
-      e.attendance_status AS status,e.result,e.occurred_at AS "occurredAt",e.created_at AS "createdAt"
+      e.attendance_status AS status,e.result,e.occurred_at AS "occurredAt",e.created_at AS "createdAt",
+      ${attendanceCardUidSql("e")} AS "cardUid"
      FROM attendance_events e WHERE ${conditions.join(" AND ")} ORDER BY e.occurred_at DESC LIMIT 500`, values,
   );
   res.json(result.rows);
@@ -763,7 +765,7 @@ router.get("/school/attendance/students/:studentId", requireAuthentication(), ru
      const assigned=await pool.query(`SELECT 1 FROM teacher_class_assignments t JOIN employees e ON e.id=t.employee_id JOIN student_class_assignments a ON a.school_class_id=t.school_class_id WHERE e.user_id=$1 AND t.school_id=$2 AND a.student_id=$3 AND t.status='ACTIVE' AND a.status='ACTIVE'`,[ctx.user.id,schoolId,studentId]);
      if(!assigned.rows[0]) throw new AuthError(404,"Student not found");
    }
-  const r=await pool.query(`SELECT id,school_id AS "schoolId",student_id AS "studentId",device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",occurred_at AS "occurredAt",attendance_status AS status,result,created_at AS "createdAt" FROM attendance_events WHERE school_id=$1 AND student_id=$2 ORDER BY occurred_at DESC LIMIT 500`,[schoolId,studentId]); res.json(r.rows);
+  const r=await pool.query(`SELECT e.id,e.school_id AS "schoolId",e.student_id AS "studentId",e.device_id AS "deviceId",e.event_type AS "eventType",e.identification_method AS "identificationMethod",e.occurred_at AS "occurredAt",e.attendance_status AS status,e.result,e.created_at AS "createdAt",${attendanceCardUidSql("e")} AS "cardUid" FROM attendance_events e WHERE e.school_id=$1 AND e.student_id=$2 ORDER BY e.occurred_at DESC LIMIT 500`,[schoolId,studentId]); res.json(r.rows);
 }));
 
 router.get("/school/attendance/classes/:classId", requireAuthentication(), run(async (req,res) => {

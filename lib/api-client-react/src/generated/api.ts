@@ -118,6 +118,7 @@ import type {
   BehaviourRecord,
   BehaviourRecordInput,
   BehaviourRecordPatch,
+  BindOwnerUidReader201,
   BiometricEnrollment,
   BiometricEnrollmentInput,
   BiometricProviderEventInput,
@@ -410,6 +411,7 @@ import type {
   HandleStaffNfcFlutterwaveWebhookBody,
   HealthStatus,
   IngestEmployeeNfcAttendanceBody,
+  IngestOwnerUidRead200,
   InspectPeopleImportParams,
   InvitationDiagnostics,
   LessonNote,
@@ -553,8 +555,11 @@ import type {
   OwnPayrollPayslip,
   OwnerAttendanceClass,
   OwnerAttendanceReport,
+  OwnerReaderReason,
   OwnerSchoolDirectory,
   OwnerSchoolOverview,
+  OwnerUidInventory,
+  OwnerUidRead,
   Parent,
   ParentCareSummary,
   ParentChild,
@@ -919,6 +924,350 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetOwnerUidInventoryUrl = () => {
+
+
+
+
+  return `/api/platform/uid-inventory`
+}
+
+/**
+ * @summary Read Owner UID-only reader bindings and captured UID inventory
+ */
+export const getOwnerUidInventory = async ( options?: Parameters<typeof customFetch>[1]): Promise<OwnerUidInventory> => {
+
+  return customFetch<OwnerUidInventory>(getGetOwnerUidInventoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerUidInventoryQueryKey = () => {
+    return [
+    `/api/platform/uid-inventory`
+    ] as const;
+    }
+
+
+export const getGetOwnerUidInventoryQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerUidInventory>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerUidInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerUidInventoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerUidInventory>>> = ({ signal }) => getOwnerUidInventory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerUidInventory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerUidInventoryQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerUidInventory>>>
+export type GetOwnerUidInventoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read Owner UID-only reader bindings and captured UID inventory
+ */
+
+export function useGetOwnerUidInventory<TData = Awaited<ReturnType<typeof getOwnerUidInventory>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerUidInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerUidInventoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getBindOwnerUidReaderUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/owner-reader`
+}
+
+/**
+ * @summary Assign an unassigned NFC reader to the authenticated Platform Owner for UID-only capture
+ */
+export const bindOwnerUidReader = async (deviceId: number,
+    ownerReaderReason: OwnerReaderReason, options?: Parameters<typeof customFetch>[1]): Promise<BindOwnerUidReader201> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BindOwnerUidReader201>(getBindOwnerUidReaderUrl(deviceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerReaderReason)
+  }
+);}
+
+
+
+
+
+export const getBindOwnerUidReaderMutationKey = () => ['bindOwnerUidReader'] as const;
+
+export const getBindOwnerUidReaderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bindOwnerUidReader>>, TError,BindOwnerUidReaderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bindOwnerUidReader>>, TError,BindOwnerUidReaderMutationVariables, TContext> => {
+
+const mutationKey = getBindOwnerUidReaderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bindOwnerUidReader>>, BindOwnerUidReaderMutationVariables> = (props) => {
+          const {deviceId,data} = props ?? {};
+
+          return  bindOwnerUidReader(deviceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BindOwnerUidReaderMutationResult = NonNullable<Awaited<ReturnType<typeof bindOwnerUidReader>>>
+    export type BindOwnerUidReaderMutationBody = BodyType<OwnerReaderReason>
+    export type BindOwnerUidReaderMutationError = ErrorType<unknown>
+    export type BindOwnerUidReaderMutationVariables = {deviceId: number;data: BodyType<OwnerReaderReason>}
+
+    /**
+ * @summary Assign an unassigned NFC reader to the authenticated Platform Owner for UID-only capture
+ */
+export const useBindOwnerUidReader = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bindOwnerUidReader>>, TError,BindOwnerUidReaderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bindOwnerUidReader>>,
+        TError,
+        BindOwnerUidReaderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBindOwnerUidReaderMutationOptions(options));
+    }
+
+export const getUnlinkOwnerUidReaderUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/owner-reader/unlink`
+}
+
+/**
+ * @summary Explicitly release Owner context and revoke its reader credential
+ */
+export const unlinkOwnerUidReader = async (deviceId: number,
+    ownerReaderReason: OwnerReaderReason, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getUnlinkOwnerUidReaderUrl(deviceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerReaderReason)
+  }
+);}
+
+
+
+
+
+export const getUnlinkOwnerUidReaderMutationKey = () => ['unlinkOwnerUidReader'] as const;
+
+export const getUnlinkOwnerUidReaderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkOwnerUidReader>>, TError,UnlinkOwnerUidReaderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkOwnerUidReader>>, TError,UnlinkOwnerUidReaderMutationVariables, TContext> => {
+
+const mutationKey = getUnlinkOwnerUidReaderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkOwnerUidReader>>, UnlinkOwnerUidReaderMutationVariables> = (props) => {
+          const {deviceId,data} = props ?? {};
+
+          return  unlinkOwnerUidReader(deviceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkOwnerUidReaderMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkOwnerUidReader>>>
+    export type UnlinkOwnerUidReaderMutationBody = BodyType<OwnerReaderReason>
+    export type UnlinkOwnerUidReaderMutationError = ErrorType<unknown>
+    export type UnlinkOwnerUidReaderMutationVariables = {deviceId: number;data: BodyType<OwnerReaderReason>}
+
+    /**
+ * @summary Explicitly release Owner context and revoke its reader credential
+ */
+export const useUnlinkOwnerUidReader = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkOwnerUidReader>>, TError,UnlinkOwnerUidReaderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkOwnerUidReader>>,
+        TError,
+        UnlinkOwnerUidReaderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnlinkOwnerUidReaderMutationOptions(options));
+    }
+
+export const getIngestOwnerUidReadUrl = () => {
+
+
+
+
+  return `/api/v1/owner-reader/uid-events`
+}
+
+/**
+ * Separate Owner-reader Bearer device credential, not a Clerk session or school credential. Only active Owner-bound NFC devices may report; timestamps within five minutes. No school or attendance fields accepted.
+ * @summary Authenticated physical reader UID report; never dispatches attendance
+ */
+export const ingestOwnerUidRead = async (ownerUidRead: OwnerUidRead, options?: Parameters<typeof customFetch>[1]): Promise<IngestOwnerUidRead200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<IngestOwnerUidRead200>(getIngestOwnerUidReadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerUidRead)
+  }
+);}
+
+
+
+
+
+export const getIngestOwnerUidReadMutationKey = () => ['ingestOwnerUidRead'] as const;
+
+export const getIngestOwnerUidReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestOwnerUidRead>>, TError,IngestOwnerUidReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestOwnerUidRead>>, TError,IngestOwnerUidReadMutationVariables, TContext> => {
+
+const mutationKey = getIngestOwnerUidReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestOwnerUidRead>>, IngestOwnerUidReadMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestOwnerUidRead(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestOwnerUidReadMutationResult = NonNullable<Awaited<ReturnType<typeof ingestOwnerUidRead>>>
+    export type IngestOwnerUidReadMutationBody = BodyType<OwnerUidRead>
+    export type IngestOwnerUidReadMutationError = ErrorType<unknown>
+    export type IngestOwnerUidReadMutationVariables = {data: BodyType<OwnerUidRead>}
+
+    /**
+ * @summary Authenticated physical reader UID report; never dispatches attendance
+ */
+export const useIngestOwnerUidRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestOwnerUidRead>>, TError,IngestOwnerUidReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestOwnerUidRead>>,
+        TError,
+        IngestOwnerUidReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIngestOwnerUidReadMutationOptions(options));
+    }
 
 export const getGetSchoolCommunityDashboardUrl = (schoolId: number,
     params?: GetSchoolCommunityDashboardParams,) => {

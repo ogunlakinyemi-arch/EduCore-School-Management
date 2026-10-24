@@ -178,7 +178,7 @@ function AttendancePrintDocument({
         {activeFilters.map(filter => <div className="school-document-field" key={filter}><dt>Applied filter</dt><dd>{filter}</dd></div>)}
       </dl>
       <table className="school-document-table">
-        <thead><tr><th>Student / staff</th><th>Event time</th><th>Event</th><th>Status</th><th>Identification method</th><th>Section</th></tr></thead>
+        <thead><tr><th>Student / staff</th><th>Event time</th><th>Event</th><th>Status</th><th>Identification method</th><th>Section</th><th>Card UID at event</th></tr></thead>
         <tbody>{rows.map((row, index) => <tr key={row.id ?? index}>
           <td>{row.studentId != null ? `${row.studentName || `Student #${row.studentId}`}` : row.employeeId != null ? `${row.employeeName || `Staff #${row.employeeId}`}` : 'Attendance record'}</td>
           <td>{row.occurredAt ? new Date(row.occurredAt).toLocaleString('en-NG') : ''}</td>
@@ -186,6 +186,7 @@ function AttendancePrintDocument({
           <td>{row.status ?? ''}</td>
           <td>{row.identificationMethod ?? ''}</td>
           <td>{row.section ?? ''}</td>
+          <td>{row.cardUid || 'Not available'}</td>
         </tr>)}</tbody>
       </table>
     </article>
@@ -195,7 +196,7 @@ function AttendancePrintDocument({
 function AttendanceTable({ rows, discrepancy, canCorrect, loading, onCorrect, onResolve }: { rows: any[]; discrepancy: boolean; canCorrect: boolean; loading: boolean; onCorrect: (row: any) => void; onResolve: (row: any) => void }) {
   if (loading) return <div className="p-8 text-sm text-[hsl(var(--muted-foreground))]">Loading attendance records…</div>;
   if (!rows.length) return <EmptyState icon={ClipboardCheck} title={discrepancy ? 'No discrepancies found' : 'No attendance events found'} description="Try another date or filter. Values are sourced from recorded attendance only." />;
-  return <div className="divide-y divide-[hsl(var(--border)/.6)]">{rows.map((row: any, index) => <div key={row.id ?? index} className="grid gap-2 px-5 py-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-center md:px-6"><div><div className="font-semibold">{row.studentId != null ? `Student ${row.studentName || row.studentId}` : row.employeeId != null ? `Staff ${row.employeeName || row.employeeId}` : 'Attendance record'}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.eventType || row.kind || 'Reconciliation discrepancy'}</div></div><div className="text-sm">{time(row.occurredAt || row.detectedAt || row.createdAt)}</div><div><StatusPill value={row.status || 'UNKNOWN'} /></div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.identificationMethod || row.note || '—'}</div><div className="flex justify-end gap-2">{!discrepancy && canCorrect && <Button variant="outline" onClick={() => onCorrect(row)}>Correct</Button>}{discrepancy && canCorrect && <Button variant="outline" onClick={() => onResolve(row)}>Review</Button>}</div></div>)}</div>;
+  return <div className="divide-y divide-[hsl(var(--border)/.6)]">{rows.map((row: any, index) => <div key={row.id ?? index} className="grid gap-2 px-5 py-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-center md:px-6"><div><div className="font-semibold">{row.studentId != null ? `Student ${row.studentName || row.studentId}` : row.employeeId != null ? `Staff ${row.employeeName || row.employeeId}` : 'Attendance record'}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.eventType || row.kind || 'Reconciliation discrepancy'}</div>{!discrepancy && <div className="font-mono text-[11px] text-[hsl(var(--muted-foreground))]" data-testid={`card-uid-${row.id ?? index}`}>Card UID at event: {row.cardUid || 'Not available'}</div>}</div><div className="text-sm">{time(row.occurredAt || row.detectedAt || row.createdAt)}</div><div><StatusPill value={row.status || 'UNKNOWN'} /></div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.identificationMethod || row.note || '—'}</div><div className="flex justify-end gap-2">{!discrepancy && canCorrect && <Button variant="outline" onClick={() => onCorrect(row)}>Correct</Button>}{discrepancy && canCorrect && <Button variant="outline" onClick={() => onResolve(row)}>Review</Button>}</div></div>)}</div>;
 }
 
 function ManualForm({ schoolId, onDone, onCancel }: { schoolId: number; onDone: () => void; onCancel: () => void }) {

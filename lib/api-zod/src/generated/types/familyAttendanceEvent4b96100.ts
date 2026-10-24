@@ -11,6 +11,11 @@ import type { FamilyAttendanceEvent4b96100DiscrepancyStatus } from './familyAtte
 import type { IdentificationMethod4b96100 } from './identificationMethod4b96100';
 
 export interface FamilyAttendanceEvent4b96100 {
+  /**
+     * Authorized child's event-time card UID when available.
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   studentId: number;
   schoolId: number;

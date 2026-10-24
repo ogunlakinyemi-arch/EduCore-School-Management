@@ -1,0 +1,132 @@
+ownerUidInventory:
+  get:
+    operationId: getOwnerUidInventory
+    tags: [platform]
+    summary: Read Owner UID-only reader bindings and captured UID inventory
+    responses:
+      "200":
+        description: Platform Owner only; no credentials are returned
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OwnerUidInventory"
+ownerUidBinding:
+  post:
+    operationId: bindOwnerUidReader
+    tags: [platform]
+    summary: Assign an unassigned NFC reader to the authenticated Platform Owner for UID-only capture
+    parameters:
+      - { name: deviceId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/OwnerReaderReason" }
+    responses:
+      "201":
+        description: Device credential shown once; never a school attendance credential
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId, purpose, credential]
+              properties:
+                deviceId: { type: integer }
+                purpose: { type: string, enum: [OWNER_UID_READER] }
+                credential: { type: string }
+ownerUidUnlink:
+  post:
+    operationId: unlinkOwnerUidReader
+    tags: [platform]
+    summary: Explicitly release Owner context and revoke its reader credential
+    parameters:
+      - { name: deviceId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/OwnerReaderReason" }
+    responses:
+      "200": { description: Released for a separate explicit school assignment }
+ownerUidEvent:
+  post:
+    operationId: ingestOwnerUidRead
+    tags: [platform]
+    summary: Authenticated physical reader UID report; never dispatches attendance
+    description: Separate Owner-reader Bearer device credential, not a Clerk session or school credential. Only active Owner-bound NFC devices may report; timestamps within five minutes. No school or attendance fields accepted.
+    security:
+      - OwnerUidReaderKey: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/OwnerUidRead" }
+    responses:
+      "200":
+        description: Captured inventory UID or identical retry; never an attendance receipt
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [success, uid, duplicate, purpose]
+              properties:
+                success: { type: boolean }
+                uid: { type: string }
+                duplicate: { type: boolean }
+                purpose: { type: string, enum: [UID_INVENTORY_ONLY] }
+components:
+  securitySchemes:
+    OwnerUidReaderKey:
+      type: http
+      scheme: bearer
+      description: Dedicated Owner UID-reader device credential, revoked on unlink.
+  schemas:
+    OwnerReaderReason:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    OwnerUidRead:
+      type: object
+      additionalProperties: false
+      required: [event_id, device_id, uid, event_type, timestamp]
+      properties:
+        event_id: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,128}$' }
+        device_id:
+          oneOf:
+            - { type: string, pattern: '^EDUCORE(?:0[1-9]|[1-9][0-9]+)$' }
+            - { type: integer, minimum: 1, maximum: 9007199254740991, deprecated: true }
+            - { type: string, pattern: '^[1-9][0-9]*$', deprecated: true }
+        uid: { type: string, pattern: '^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$' }
+        event_type: { type: string, enum: [CARD_SCAN] }
+        timestamp: { type: string, description: Actual scan ISO timestamp within five minutes; retry unchanged. }
+    OwnerUidInventory:
+      type: object
+      required: [readers, inventory]
+      properties:
+        readers:
+          type: array
+          items: { $ref: "#/components/schemas/OwnerUidReader" }
+        inventory:
+          type: array
+          items: { $ref: "#/components/schemas/CapturedUid" }
+    OwnerUidReader:
+      type: object
+      required: [deviceId, serialNumber, name, ownerUserId, lastReadAt]
+      properties:
+        deviceId: { type: integer }
+        serialNumber: { type: string }
+        name: { type: string }
+        ownerUserId: { type: integer }
+        lastReadAt: { type: [string, "null"] }
+    CapturedUid:
+      type: object
+      required: [uid, readerDeviceId, capturedAt, assigned, schoolId, studentId, status]
+      properties:
+        uid: { type: string }
+        readerDeviceId: { type: integer }
+        capturedAt: { type: string }
+        assigned: { type: boolean }
+        schoolId: { type: [integer, "null"] }
+        studentId: { type: [integer, "null"] }
+        status: { type: [string, "null"] }

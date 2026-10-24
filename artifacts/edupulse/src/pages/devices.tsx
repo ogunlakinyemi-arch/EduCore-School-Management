@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { OwnerUidReaderSection, BindOwnerReaderForm, UnlinkSchoolDeviceForm, useUidInventory } from '@/components/owner-uid-reader';
 import { TerminalDirection } from '@/components/terminal-direction';
 import { useQueryClient } from '@tanstack/react-query';
 import { Smartphone, Plus, Search, ShieldCheck, Tag, Loader2, Link as LinkIcon, Building2 } from 'lucide-react';
@@ -32,6 +33,16 @@ export function DevicesPage() {
       d.schoolName?.toLowerCase().includes(lower)
     );
   }, [devices, search]);
+
+  const inventory = useUidInventory();
+  const readerIds = new Set((inventory.data?.readers ?? []).map(r => r.deviceId));
+  const visible = filteredDevices.filter(d => !readerIds.has(d.id) && (d as any).purpose !== 'OWNER_UID_READER');
+  // Without a successful inventory lookup an Owner reader could look unassigned.
+  const inventoryUnsafe = !inventory.data;
+  const sections = [
+    { key: 'unassigned', title: 'Unassigned', desc: 'Registered inventory not linked to any school or owner reader.', empty: 'No unassigned devices.', list: visible.filter(d => !d.schoolId) },
+    { key: 'assigned', title: 'Assigned school devices', desc: 'Hardware linked to a school for attendance.', empty: 'No devices are assigned to schools.', list: visible.filter(d => !!d.schoolId) },
+  ];
 
   const done = () => {
     setModal(null);
@@ -80,6 +91,11 @@ export function DevicesPage() {
             </div>
           </div>
 
+          {inventoryUnsafe && <p role="status" className="mb-4 text-sm font-medium text-[hsl(var(--destructive))]" data-testid="text-inventory-unsafe">Owner reader state is unavailable, so Assign and Use as UID reader are disabled until it loads.</p>}
+          {sections.map(sec => (
+          <section key={sec.key} className="mb-8" data-testid={`section-${sec.key}`}>
+          <h2 className="display-font text-xl font-bold">{sec.title}</h2>
+          <p className="mb-3 text-sm text-[hsl(var(--muted-foreground))]">{sec.desc}</p>
           <div className="panel overflow-hidden">
             <div className="hidden grid-cols-[1.5fr_1fr_1.5fr_1fr_auto] gap-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/.3)] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] md:grid">
               <span>Device Profile</span>
@@ -88,7 +104,7 @@ export function DevicesPage() {
               <span>Status</span>
               <span />
             </div>
-            {filteredDevices.length ? filteredDevices.map((dev) => (
+            {sec.list.length ? sec.list.map((dev) => (
               <div key={dev.id} className="grid gap-3 border-b border-[hsl(var(--border)/.6)] px-5 py-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] last:border-0 md:grid-cols-[1.5fr_1fr_1.5fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div>
                   <div className="font-bold text-sm text-[hsl(var(--foreground))]">{dev.name}</div>
@@ -126,15 +142,38 @@ export function DevicesPage() {
                   )}
                 </div>
                 <div>
-                  <Button variant="outline" onClick={() => setModal({ edit: dev })}>
-                    Configure
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" disabled={sec.key === 'unassigned' && inventoryUnsafe} onClick={() => setModal({ edit: dev })} testId={`button-${sec.key}-${dev.id}`}>
+                      {sec.key === 'unassigned' ? 'Assign' : 'Configure'}
+                    </Button>
+                    {sec.key === 'unassigned' && ['NFC', 'HYBRID'].includes(dev.deviceType) && (
+                      <Button variant="outline" disabled={inventoryUnsafe} onClick={() => setModal({ bind: dev })}>Use as UID reader</Button>
+                    )}
+                    {sec.key === 'assigned' && (
+                      <Button variant="outline" onClick={() => setModal({ unlink: dev })}>Unlink</Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )) : (
-              <EmptyState icon={Smartphone} title="No devices found" description="Register a new device to start tracking hardware inventory." />
+              <EmptyState icon={Smartphone} title="No devices found" description={sec.empty} />
             )}
           </div>
+          </section>
+          ))}
+
+          <OwnerUidReaderSection inventory={inventory} />
+
+          {modal?.bind && (
+            <Modal title="Bind Owner UID reader" eyebrow={modal.bind.serialNumber} onClose={() => setModal(null)}>
+              <BindOwnerReaderForm device={modal.bind} onCancel={() => setModal(null)} onDone={() => setModal(null)} />
+            </Modal>
+          )}
+          {modal?.unlink && (
+            <Modal title="Unlink school device" eyebrow={modal.unlink.serialNumber} onClose={() => setModal(null)}>
+              <UnlinkSchoolDeviceForm device={modal.unlink} onCancel={() => setModal(null)} onDone={done} />
+            </Modal>
+          )}
 
           {modal?.create && (
             <Modal title="Register New Device" eyebrow="Hardware Provisioning" onClose={() => setModal(null)}>

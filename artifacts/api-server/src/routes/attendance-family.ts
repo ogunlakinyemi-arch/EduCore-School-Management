@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { pool } from "@workspace/db";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
+import { attendanceCardUidSql } from "../services/owner-uid-reader";
 import {
   assertRoles,
   AuthError,
@@ -65,6 +66,7 @@ async function attendanceForStudent(
         ae.event_date AS date, ae.event_type AS "eventType",
         ae.attendance_status AS status, ae.occurred_at AS "occurredAt",
         ae.identification_method AS "identificationMethod",
+        ${attendanceCardUidSql("ae")} AS "cardUid",
         discrepancy.status AS "discrepancyStatus"
        FROM attendance_events ae
        LEFT JOIN LATERAL (

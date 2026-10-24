@@ -130,6 +130,7 @@ export function StudentsPage() {
                     <span className="font-mono bg-[hsl(var(--secondary))] px-1.5 py-0.5 rounded text-[10px]">{student.admissionNo}</span>
                     <span>{date(student.joinedAt)}</span>
                   </div>
+                  <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]" data-testid={`text-student-nfc-uid-${student.id}`}>Current assigned NFC UID: <span className="font-mono">{student.nfcUid || 'Not available'}</span></div>
                 </div>
                 <div>
                   <div className="text-sm font-bold">{student.className}</div>

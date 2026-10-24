@@ -26,6 +26,7 @@ const dbMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const client = {
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("SELECT metadata FROM audit_logs WHERE module='Devices'")) return result();
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return result();
       if (sql.includes("SELECT id,school_id AS \"schoolId\",location,school_class_id AS \"classId\"")) {
         return result([{

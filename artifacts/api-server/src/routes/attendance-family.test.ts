@@ -141,12 +141,18 @@ describe("family attendance read access", () => {
   it("returns only attendance fields for an actively linked child", async () => {
     const response = await call("/parent/children/11/attendance?from=2025-03-01&to=2025-03-31");
     expect(response.status).toBe(200);
-    const rows = await response.json();
+    const rows = await response.json() as Array<Record<string, unknown>>;
     expect(rows).toEqual(state.events);
     const attendanceQuery = state.queryCalls.find(({ sql }) => sql.includes("FROM attendance_events ae"));
     expect(attendanceQuery?.values).toEqual([11, 1, "2025-03-01", "2025-03-31"]);
     expect(attendanceQuery?.sql).toContain("LIMIT 500");
-    expect(attendanceQuery?.sql).not.toMatch(/device_id|nfc_card_id|biometric|actor_user_id|failure_reason/i);
+    expect(attendanceQuery?.sql).not.toMatch(/device_id|biometric|actor_user_id|failure_reason/i);
+    // The requested UID is resolved through the event's card; internal card IDs
+    // remain absent from the family response rather than forbidding safe joins.
+    expect(attendanceQuery?.sql).toContain('AS "cardUid"');
+    expect(attendanceQuery?.sql).toContain("c.id=ae.nfc_card_id");
+    expect(attendanceQuery?.sql).toContain("c.school_id=ae.school_id");
+    expect(rows.every((row: Record<string, unknown>) => !("nfcCardId" in row) && !("nfc_card_id" in row))).toBe(true);
   });
 
   it("returns 404 for unrelated child IDs and children linked across schools", async () => {

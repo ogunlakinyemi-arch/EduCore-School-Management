@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request } from "express";
 import { createHash, randomBytes } from "node:crypto";
 import { pool } from "@workspace/db";
 import { TERMINAL_DIRECTION_ACTION, terminalDirectionSql } from "../lib/terminal-contract";
+import { assertNotOwnerReader } from "../services/owner-uid-reader";
 import { AuthError, assertRoles, getUserContext, requireAuthentication } from "../middlewares/auth";
 import {
   partnerSchoolRegistrationFields,
@@ -295,6 +296,7 @@ router.post("/platform/devices/:deviceId/assign", run(async (req, res) => {
      await client.query("BEGIN");
      const old = await client.query(`SELECT id,school_id AS "schoolId",location,school_class_id AS "classId" FROM platform_devices WHERE id=$1 FOR UPDATE`, [id]);
      if (!old.rows[0]) throw new AuthError(404, "Device not found");
+     await assertNotOwnerReader(client, id);
      if (req.body?.classId != null) {
        const klass = await client.query(`SELECT id FROM school_classes WHERE id=$1 AND school_id=$2`, [Number(req.body.classId), schoolId]);
        if (!klass.rows[0]) throw new AuthError(400, "classId is not a class in the assigned school");
@@ -378,6 +380,7 @@ router.patch("/platform/devices/:deviceId", run(async (req, res) => {
     await client.query("BEGIN");
       const before = await client.query(`SELECT id,school_id AS "schoolId",location,school_class_id AS "classId" FROM platform_devices WHERE id=$1 FOR UPDATE`, [deviceId]);
      if (!before.rows[0]) throw new AuthError(404, "Device not found");
+      if (schoolId !== undefined && schoolId !== null) await assertNotOwnerReader(client, deviceId);
       const reassigned = (req.body?.schoolId !== undefined && before.rows[0].schoolId !== schoolId) ||
         status === "UNASSIGNED";
       const targetSchoolId = schoolId === undefined ? before.rows[0].schoolId : schoolId;

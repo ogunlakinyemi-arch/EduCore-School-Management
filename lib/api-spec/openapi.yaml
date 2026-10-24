@@ -34,6 +34,14 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /platform/uid-inventory:
+    $ref: "./owner-uid-reader.yaml#/ownerUidInventory"
+  /platform/devices/{deviceId}/owner-reader:
+    $ref: "./owner-uid-reader.yaml#/ownerUidBinding"
+  /platform/devices/{deviceId}/owner-reader/unlink:
+    $ref: "./owner-uid-reader.yaml#/ownerUidUnlink"
+  /v1/owner-reader/uid-events:
+    $ref: "./owner-uid-reader.yaml#/ownerUidEvent"
   /schools/{schoolId}/community-dashboard:
     $ref: "./school-community.yaml#/paths/~1schools~1{schoolId}~1community-dashboard"
   /school/attendance/schedule:
@@ -6030,6 +6038,11 @@ paths:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1reminders"
 components:
   securitySchemes:
+    OwnerUidReaderKey:
+      type: http
+      scheme: bearer
+      bearerFormat: identifier.secret
+      description: Dedicated UID-only Owner reader credential; never accepted for school attendance.
     TerminalDeviceKey:
       type: http
       scheme: bearer
@@ -6848,6 +6861,7 @@ components:
       type: object
       required: [id, schoolId, admissionNo, firstName, lastName, gender, className, section, status, subscriptionStatus, cardStatus, joinedAt]
       properties:
+        nfcUid: { type: [string, "null"], description: Currently assigned school-scoped NFC UID; not an event-time UID. }
         id: { type: integer }
         schoolId: { type: integer }
         admissionNo: { type: string }
@@ -8547,6 +8561,7 @@ components:
       type: object
       required: [id, schoolId, deviceId, eventType, identificationMethod, occurredAt, status, createdAt]
       properties:
+        cardUid: { type: [string, "null"], description: UID of this event's referenced card, scoped to the event school and student. }
         id: { type: integer }
         schoolId: { type: integer }
         studentId: { type: ["integer", "null"] }
@@ -8619,6 +8634,7 @@ components:
       type: object
       required: [id, studentId, schoolId, date, eventType, status, occurredAt, identificationMethod]
       properties:
+        cardUid: { type: [string, "null"], description: Authorized child's event-time card UID when available. }
         id: { type: integer }
         studentId: { type: integer }
         schoolId: { type: integer }

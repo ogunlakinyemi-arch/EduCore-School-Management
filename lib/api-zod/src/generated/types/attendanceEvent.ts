@@ -11,6 +11,11 @@ import type { AttendanceStatus } from './attendanceStatus';
 import type { IdentificationMethod } from './identificationMethod';
 
 export interface AttendanceEvent {
+  /**
+     * UID of this event's referenced card
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   schoolId: number;
   /** @nullable */

@@ -8,6 +8,105 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Read Owner UID-only reader bindings and captured UID inventory
+ */
+export const GetOwnerUidInventoryResponse = zod.object({
+  "readers": zod.array(zod.object({
+  "deviceId": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "ownerUserId": zod.number().int(),
+  "lastReadAt": zod.string().nullable()
+})),
+  "inventory": zod.array(zod.object({
+  "uid": zod.string(),
+  "readerDeviceId": zod.number().int(),
+  "capturedAt": zod.string(),
+  "assigned": zod.boolean(),
+  "schoolId": zod.number().int().nullable(),
+  "studentId": zod.number().int().nullable(),
+  "status": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Assign an unassigned NFC reader to the authenticated Platform Owner for UID-only capture
+ */
+
+
+
+export const BindOwnerUidReaderParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const bindOwnerUidReaderBodyReasonMin = 3;
+export const bindOwnerUidReaderBodyReasonMax = 500;
+
+
+
+export const BindOwnerUidReaderBody = zod.object({
+  "reason": zod.string().min(bindOwnerUidReaderBodyReasonMin).max(bindOwnerUidReaderBodyReasonMax)
+})
+
+export const BindOwnerUidReaderResponse = zod.object({
+  "deviceId": zod.number().int(),
+  "purpose": zod.enum(['OWNER_UID_READER']),
+  "credential": zod.string()
+})
+
+
+/**
+ * @summary Explicitly release Owner context and revoke its reader credential
+ */
+
+
+
+export const UnlinkOwnerUidReaderParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const unlinkOwnerUidReaderBodyReasonMin = 3;
+export const unlinkOwnerUidReaderBodyReasonMax = 500;
+
+
+
+export const UnlinkOwnerUidReaderBody = zod.object({
+  "reason": zod.string().min(unlinkOwnerUidReaderBodyReasonMin).max(unlinkOwnerUidReaderBodyReasonMax)
+})
+
+export const UnlinkOwnerUidReaderResponse = zod.unknown()
+
+
+/**
+ * Separate Owner-reader Bearer device credential, not a Clerk session or school credential. Only active Owner-bound NFC devices may report; timestamps within five minutes. No school or attendance fields accepted.
+ * @summary Authenticated physical reader UID report; never dispatches attendance
+ */
+export const ingestOwnerUidReadBodyEventIdRegExp = new RegExp('^[A-Za-z0-9_.:-]{1,128}$');
+export const ingestOwnerUidReadBodyDeviceIdOneRegExp = new RegExp('^EDUCORE(?:0[1-9]|[1-9][0-9]+)$');
+export const ingestOwnerUidReadBodyDeviceIdTwoMax = 9007199254740991;
+
+export const ingestOwnerUidReadBodyDeviceIdThreeRegExp = new RegExp('^[1-9][0-9]*$');
+export const ingestOwnerUidReadBodyUidRegExp = new RegExp('^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$');
+
+
+export const IngestOwnerUidReadBody = zod.object({
+  "event_id": zod.string().regex(ingestOwnerUidReadBodyEventIdRegExp),
+  "device_id": zod.union([zod.string().regex(ingestOwnerUidReadBodyDeviceIdOneRegExp),zod.number().int().min(1).max(ingestOwnerUidReadBodyDeviceIdTwoMax),zod.string().regex(ingestOwnerUidReadBodyDeviceIdThreeRegExp)]),
+  "uid": zod.string().regex(ingestOwnerUidReadBodyUidRegExp),
+  "event_type": zod.enum(['CARD_SCAN']),
+  "timestamp": zod.string().describe('Actual scan ISO timestamp within five minutes; retry unchanged.')
+})
+
+export const IngestOwnerUidReadResponse = zod.object({
+  "success": zod.boolean(),
+  "uid": zod.string(),
+  "duplicate": zod.boolean(),
+  "purpose": zod.enum(['UID_INVENTORY_ONLY'])
+})
+
+
 
 
 
@@ -9362,6 +9461,7 @@ export const GetParentChildAttendanceQueryParams = zod.object({
 })
 
 export const GetParentChildAttendanceResponseItem = zod.object({
+  "cardUid": zod.string().nullish().describe('Authorized child\'s event-time card UID when available.'),
   "id": zod.number().int(),
   "studentId": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -9384,6 +9484,7 @@ export const GetOwnAttendanceQueryParams = zod.object({
 })
 
 export const GetOwnAttendanceResponseItem = zod.object({
+  "cardUid": zod.string().nullish().describe('Authorized child\'s event-time card UID when available.'),
   "id": zod.number().int(),
   "studentId": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -9413,6 +9514,7 @@ export const GetStudentOwnAttendanceByIdQueryParams = zod.object({
 })
 
 export const GetStudentOwnAttendanceByIdResponseItem = zod.object({
+  "cardUid": zod.string().nullish().describe('Authorized child\'s event-time card UID when available.'),
   "id": zod.number().int(),
   "studentId": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -10578,6 +10680,7 @@ export const ListSchoolAttendanceEventsQueryParams = zod.object({
 })
 
 export const ListSchoolAttendanceEventsResponseItem = zod.object({
+  "cardUid": zod.string().nullish().describe('UID of this event\'s referenced card'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullish(),
@@ -10618,6 +10721,7 @@ export const GetStudentAttendanceQueryParams = zod.object({
 })
 
 export const GetStudentAttendanceResponseItem = zod.object({
+  "cardUid": zod.string().nullish().describe('UID of this event\'s referenced card'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullish(),
@@ -10657,6 +10761,7 @@ export const GetClassAttendanceQueryParams = zod.object({
 })
 
 export const GetClassAttendanceResponseItem = zod.object({
+  "cardUid": zod.string().nullish().describe('UID of this event\'s referenced card'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullish(),
@@ -10784,6 +10889,7 @@ export const CreateManualAttendanceBody = zod.object({
 }).describe('Exactly one of studentId or employeeId must be provided. Staff attendance supports school entry and exit only.')
 
 export const CreateManualAttendanceResponse = zod.object({
+  "cardUid": zod.string().nullish().describe('UID of this event\'s referenced card'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullish(),
@@ -10828,6 +10934,7 @@ export const CorrectAttendanceBody = zod.object({
 })
 
 export const CorrectAttendanceResponse = zod.object({
+  "cardUid": zod.string().nullish().describe('UID of this event\'s referenced card'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullish(),
@@ -10881,6 +10988,7 @@ export const IngestDeviceAttendanceEventBody = zod.object({
 }).describe('NFC resolves the current student from the UID in the authenticated device\'s school. Fingerprint events require studentId and matched provider evidence.')
 
 export const IngestDeviceAttendanceEventResponse = zod.object({
+  "cardUid": zod.string().nullish().describe('UID of this event\'s referenced card'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullish(),
@@ -11041,6 +11149,7 @@ export const IngestBiometricProviderEventBody = zod.object({
 })
 
 export const IngestBiometricProviderEventResponse = zod.object({
+  "cardUid": zod.string().nullish().describe('UID of this event\'s referenced card'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int().nullish(),
@@ -11987,6 +12096,7 @@ export const ListStudentsQueryParams = zod.object({
 })
 
 export const ListStudentsResponseItem = zod.object({
+  "nfcUid": zod.string().nullish().describe('Currently assigned school-scoped NFC UID; not an event-time UID.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "admissionNo": zod.string(),
@@ -12068,6 +12178,7 @@ export const CreateStudentBody = zod.object({
 })
 
 export const CreateStudentResponse = zod.object({
+  "nfcUid": zod.string().nullish().describe('Currently assigned school-scoped NFC UID; not an event-time UID.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "admissionNo": zod.string(),
@@ -12120,6 +12231,7 @@ export const GetStudentQueryParams = zod.object({
 })
 
 export const GetStudentResponse = zod.object({
+  "nfcUid": zod.string().nullish().describe('Currently assigned school-scoped NFC UID; not an event-time UID.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "admissionNo": zod.string(),
@@ -12197,6 +12309,7 @@ export const UpdateStudentBody = zod.object({
 })
 
 export const UpdateStudentResponse = zod.object({
+  "nfcUid": zod.string().nullish().describe('Currently assigned school-scoped NFC UID; not an event-time UID.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "admissionNo": zod.string(),
@@ -12253,6 +12366,7 @@ export const UpdateStudentStatusBody = zod.object({
 })
 
 export const UpdateStudentStatusResponse = zod.object({
+  "nfcUid": zod.string().nullish().describe('Currently assigned school-scoped NFC UID; not an event-time UID.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "admissionNo": zod.string(),
@@ -13581,6 +13695,7 @@ export const AssignTeacherClassResponse = zod.object({
  * @summary Get the authenticated student's own profile
  */
 export const GetStudentSelfProfileResponse = zod.object({
+  "nfcUid": zod.string().nullish().describe('Currently assigned school-scoped NFC UID; not an event-time UID.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "admissionNo": zod.string(),

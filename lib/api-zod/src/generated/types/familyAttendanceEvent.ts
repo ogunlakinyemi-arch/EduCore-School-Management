@@ -11,6 +11,11 @@ import type { FamilyAttendanceEventDiscrepancyStatus } from './familyAttendanceE
 import type { IdentificationMethod } from './identificationMethod';
 
 export interface FamilyAttendanceEvent {
+  /**
+     * Authorized child's event-time card UID when available.
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   studentId: number;
   schoolId: number;

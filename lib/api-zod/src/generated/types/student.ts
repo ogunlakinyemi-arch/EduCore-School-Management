@@ -12,6 +12,11 @@ import type { StudentStatus } from './studentStatus';
 import type { StudentSubscriptionStatus } from './studentSubscriptionStatus';
 
 export interface Student {
+  /**
+     * Currently assigned school-scoped NFC UID; not an event-time UID.
+     * @nullable
+     */
+  nfcUid?: string | null;
   id: number;
   schoolId: number;
   admissionNo: string;

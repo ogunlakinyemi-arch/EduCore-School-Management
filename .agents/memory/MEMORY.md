@@ -92,3 +92,4 @@
 - [First-school notification launch](first-school-notification-launch.md) — existing data is TEST-only; preserve history and separate external launch from credential presence.
 - [Parent publication notices](parent-notification-publication-policy.md) — publication and notice intent are atomic; corrected republications differ from retries.
 - [Notification selections](notification-selection-policy.md) — Allowed never implies send; exact event selections, Owner ceilings and current preferences govern delivery.
+- [Owner UID reader purpose](owner-reader-purpose-policy.md) — same hardware, exclusive Owner inventory versus school attendance contexts; preserve event-time UIDs.

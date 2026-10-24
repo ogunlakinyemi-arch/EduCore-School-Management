@@ -2184,6 +2184,11 @@ export const StudentCardStatus = {
 } as const;
 
 export interface Student {
+  /**
+     * Currently assigned school-scoped NFC UID; not an event-time UID.
+     * @nullable
+     */
+  nfcUid?: string | null;
   id: number;
   schoolId: number;
   admissionNo: string;
@@ -5204,6 +5209,11 @@ export const AttendanceEventResult = {
 } as const;
 
 export interface AttendanceEvent {
+  /**
+     * UID of this event's referenced card
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   schoolId: number;
   /** @nullable */
@@ -5346,6 +5356,11 @@ export const FamilyAttendanceEventDiscrepancyStatus = {
 } as const;
 
 export interface FamilyAttendanceEvent {
+  /**
+     * Authorized child's event-time card UID when available.
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   studentId: number;
   schoolId: number;
@@ -13425,6 +13440,59 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface OwnerReaderReason {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type OwnerUidReadEventType = typeof OwnerUidReadEventType[keyof typeof OwnerUidReadEventType];
+
+
+export const OwnerUidReadEventType = {
+  CARD_SCAN: 'CARD_SCAN',
+} as const;
+
+export interface OwnerUidRead {
+  /** @pattern ^[A-Za-z0-9_.:-]{1,128}$ */
+  event_id: string;
+  device_id: string | number;
+  /** @pattern ^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$ */
+  uid: string;
+  event_type: OwnerUidReadEventType;
+  /** Actual scan ISO timestamp within five minutes; retry unchanged. */
+  timestamp: string;
+}
+
+export interface OwnerUidReader {
+  deviceId: number;
+  serialNumber: string;
+  name: string;
+  ownerUserId: number;
+  /** @nullable */
+  lastReadAt: string | null;
+}
+
+export interface CapturedUid {
+  uid: string;
+  readerDeviceId: number;
+  capturedAt: string;
+  assigned: boolean;
+  /** @nullable */
+  schoolId: number | null;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  status: string | null;
+}
+
+export interface OwnerUidInventory {
+  readers: OwnerUidReader[];
+  inventory: CapturedUid[];
+}
+
 export interface CommunityClosing {
   configured: boolean;
   date: string;
@@ -16481,6 +16549,11 @@ export const Student4b96100CardStatus = {
 } as const;
 
 export interface Student4b96100 {
+  /**
+     * Currently assigned school-scoped NFC UID; not an event-time UID.
+     * @nullable
+     */
+  nfcUid?: string | null;
   id: number;
   schoolId: number;
   admissionNo: string;
@@ -19468,6 +19541,11 @@ export const AttendanceEvent4b96100Result = {
 } as const;
 
 export interface AttendanceEvent4b96100 {
+  /**
+     * UID of this event's referenced card
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   schoolId: number;
   /** @nullable */
@@ -19610,6 +19688,11 @@ export const FamilyAttendanceEvent4b96100DiscrepancyStatus = {
 } as const;
 
 export interface FamilyAttendanceEvent4b96100 {
+  /**
+     * Authorized child's event-time card UID when available.
+     * @nullable
+     */
+  cardUid?: string | null;
   id: number;
   studentId: number;
   schoolId: number;
@@ -22642,6 +22725,33 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type BindOwnerUidReader201Purpose = typeof BindOwnerUidReader201Purpose[keyof typeof BindOwnerUidReader201Purpose];
+
+
+export const BindOwnerUidReader201Purpose = {
+  OWNER_UID_READER: 'OWNER_UID_READER',
+} as const;
+
+export type BindOwnerUidReader201 = {
+  deviceId: number;
+  purpose: BindOwnerUidReader201Purpose;
+  credential: string;
+};
+
+export type IngestOwnerUidRead200Purpose = typeof IngestOwnerUidRead200Purpose[keyof typeof IngestOwnerUidRead200Purpose];
+
+
+export const IngestOwnerUidRead200Purpose = {
+  UID_INVENTORY_ONLY: 'UID_INVENTORY_ONLY',
+} as const;
+
+export type IngestOwnerUidRead200 = {
+  success: boolean;
+  uid: string;
+  duplicate: boolean;
+  purpose: IngestOwnerUidRead200Purpose;
+};
 
 export type GetSchoolCommunityDashboardParams = {
 view?: GetSchoolCommunityDashboardView;

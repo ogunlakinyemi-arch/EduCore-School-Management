@@ -180,7 +180,7 @@ describe("vendor terminal endpoint with the existing attendance handler (mocked 
     expect(fixture.receipts[0].metadata).toMatchObject({ eventId: request.event_id, originalTimestamp: request.timestamp });
     expect(fixture.queries.filter(sql => sql === "COMMIT")).toHaveLength(1);
   });
-  it.each(["wrong.secret", "terminal.wrong", "malformed"])("rejects credential %s", async key => {
+  it.each(["wrong.secret", "terminal.wrong", "owner_uid_inventory.secret", "malformed"])("rejects credential %s", async key => {
     expect((await send(payload(), { key })).status).toBe(401);
     expect(fixture.events).toHaveLength(0);
   });
