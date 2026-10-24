@@ -6,6 +6,7 @@ import { assertLiveApplicationContext, releasedLiveApplicationContext, type Live
 import { readLiveFamilyAccess } from "../services/flutterwave-live-family-access";
 import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
 import { GetMyLiveSubscriptionAccessQueryParams, GetMySubscriptionEnforcementResponse } from "@workspace/api-zod";
+import { liveReleaseConfiguration } from "../lib/flutterwave-live-release";
 
 const selection = GetMyLiveSubscriptionAccessQueryParams.strict();
 
@@ -21,7 +22,8 @@ export function createLiveFamilyAccessRouter(deps:{pool:StudentSubscriptionSqlPo
     requireAuthentication()(req,res,async error => {
       if (error) { next(error); return; }
       try {
-        if (!context || !(deps.development ?? (process.env.NODE_ENV==="development"&&!process.env.REPLIT_DEPLOYMENT))) {
+        if (!context || !((deps.development ?? (process.env.NODE_ENV==="development"&&!process.env.REPLIT_DEPLOYMENT))
+          ||liveReleaseConfiguration().ready)) {
           throw new AuthError(503,"LIVE_SUBSCRIPTION_UNAVAILABLE");
         }
         assertLiveApplicationContext(context);

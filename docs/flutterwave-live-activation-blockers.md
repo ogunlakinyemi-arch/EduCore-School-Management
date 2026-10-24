@@ -1,5 +1,15 @@
 # Flutterwave LIVE activation — blocked, not operational
 
+## Development implementation update
+
+The separately gated SCV3 runtime is now implemented. See
+`flutterwave-live-runtime-release.md` for its default-disabled checkout,
+callback, independently verified signed-webhook finalization, migration drafts
+and release checks. The observations below describe the pre-implementation
+inspection; they are not a claim that those code gaps still exist.
+No application database migrations or Production settings were changed.
+Operational prerequisites remain outstanding.
+
 ## Inspection scope
 
 Read-only configuration, source and Production-routed database inspection on

@@ -1,5 +1,6 @@
 /** Normalized independent evidence, NOT webhook claims or echoed checkout metadata.
- * No implementation capable of contacting LIVE Flutterwave is supplied.
+ * The separate default-disabled runtime supplies V3 collection readback plus a
+ * reviewed transaction-bound provider allocation report.
  */
 export interface LiveCollectionEvidence {
   environment: string;
@@ -37,7 +38,7 @@ export class LiveFinalizationBlocked extends Error {
   }
 }
 
-/** No env flag, credential or existing LIVE adapter can enable this boundary. */
+/** Retained default refusal; operational callers must pass the separately gated verifier. */
 export const blockedLiveCollectionVerifier: LiveCollectionVerifier = Object.freeze({
   enabled: false,
   environment: "LIVE",

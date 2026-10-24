@@ -9,6 +9,128 @@ import * as zod from 'zod';
 
 
 /**
+ * School Admin only. Server fixes NGN 5000 and one reviewed school flat_subaccount NGN 1900. Default disabled; uncertain provider initialization must be reconciled, never retried as another charge.
+ * @summary Initialize a separately released LIVE SCV3 checkout
+ */
+
+
+
+export const initializeLiveSchoolSubscriptionBodyIdempotencyKeyRegExp = new RegExp('^[A-Za-z0-9_-]{16,100}$');
+
+
+export const InitializeLiveSchoolSubscriptionBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "idempotencyKey": zod.string().regex(initializeLiveSchoolSubscriptionBodyIdempotencyKeyRegExp)
+})
+
+export const InitializeLiveSchoolSubscriptionResponse = zod.object({
+  "reference": zod.string(),
+  "checkoutUrl": zod.string().url()
+})
+
+
+/**
+ * A redirect never fabricates webhook authentication. Finalization requires a signed webhook, independent V3 readback and reviewed transaction-bound allocation report.
+ * @summary Independently verify a LIVE browser return without trusting redirect status
+ */
+export const verifyLiveSchoolSubscriptionCallbackQueryTransactionIdRegExp = new RegExp('^[1-9][0-9]{0,15}$');
+export const verifyLiveSchoolSubscriptionCallbackQueryTxRefRegExp = new RegExp('^SCV3_live_[A-Za-z0-9_-]{8,80}$');
+
+
+export const VerifyLiveSchoolSubscriptionCallbackQueryParams = zod.object({
+  "transaction_id": zod.coerce.string().regex(verifyLiveSchoolSubscriptionCallbackQueryTransactionIdRegExp),
+  "tx_ref": zod.coerce.string().regex(verifyLiveSchoolSubscriptionCallbackQueryTxRefRegExp),
+  "status": zod.coerce.string().optional().describe('Untrusted provider redirect hint; never authority.')
+})
+
+export const VerifyLiveSchoolSubscriptionCallbackResponse = zod.object({
+  "processed": zod.boolean(),
+  "status": zod.enum(['VERIFIED', 'HELD', 'AWAITING_AUTHENTICATED_WEBHOOK'])
+})
+
+
+/**
+ * @summary Owner-only credential-safe LIVE configuration and target release check
+ */
+export const GetLiveSchoolSubscriptionReleaseCheckResponse = zod.object({
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "schoolReadiness": zod.string().optional(),
+  "transactionFinalization": zod.string().optional()
+})
+
+
+/**
+ * @summary Record an Owner-reviewed real school LIVE subaccount, without provider creation
+ */
+export const recordLiveSchoolConfigurationBodyEvidenceMerchantScopeRegExp = new RegExp('^[A-Za-z0-9_-]{8,80}$');
+
+export const recordLiveSchoolConfigurationBodyEvidenceSchoolSubaccountIdRegExp = new RegExp('^RS_[A-Za-z0-9]{12,80}$');
+export const recordLiveSchoolConfigurationBodyEvidenceDashboardFeeBearerEvidenceSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const recordLiveSchoolConfigurationBodyEvidenceSchoolOwnershipEvidenceSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const RecordLiveSchoolConfigurationBody = zod.object({
+  "expiresAt": zod.coerce.date(),
+  "evidence": zod.object({
+  "version": zod.literal(1),
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "environment": zod.enum(['LIVE']),
+  "merchantScope": zod.string().regex(recordLiveSchoolConfigurationBodyEvidenceMerchantScopeRegExp),
+  "schoolId": zod.number().int().min(1),
+  "schoolSubaccountId": zod.string().regex(recordLiveSchoolConfigurationBodyEvidenceSchoolSubaccountIdRegExp),
+  "dashboardFeeBearer": zod.enum(['MERCHANT']),
+  "dashboardFeeBearerEvidenceSha256": zod.string().regex(recordLiveSchoolConfigurationBodyEvidenceDashboardFeeBearerEvidenceSha256RegExp),
+  "liveSubaccountVerified": zod.literal(true),
+  "schoolOwnershipVerified": zod.literal(true),
+  "schoolOwnershipEvidenceSha256": zod.string().regex(recordLiveSchoolConfigurationBodyEvidenceSchoolOwnershipEvidenceSha256RegExp)
+})
+})
+
+export const RecordLiveSchoolConfigurationResponse = zod.object({
+  "recorded": zod.boolean(),
+  "reviewId": zod.number().int().optional(),
+  "duplicate": zod.boolean().optional(),
+  "operationallyEnabled": zod.boolean().optional(),
+  "paid": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Bind an Owner-reviewed provider transaction allocation report to a LIVE collection
+ */
+export const recordLiveTransactionAllocationReviewBodyReferenceRegExp = new RegExp('^SCV3_live_[A-Za-z0-9_-]{8,80}$');
+export const recordLiveTransactionAllocationReviewBodyTransactionIdRegExp = new RegExp('^[1-9][0-9]{0,15}$');
+export const recordLiveTransactionAllocationReviewBodyEvidenceSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const recordLiveTransactionAllocationReviewBodySchoolSubaccountIdRegExp = new RegExp('^RS_[A-Za-z0-9]{12,80}$');
+export const recordLiveTransactionAllocationReviewBodyProviderReferenceMax = 200;
+
+
+
+export const RecordLiveTransactionAllocationReviewBody = zod.object({
+  "reference": zod.string().regex(recordLiveTransactionAllocationReviewBodyReferenceRegExp),
+  "transactionId": zod.string().regex(recordLiveTransactionAllocationReviewBodyTransactionIdRegExp),
+  "evidenceSha256": zod.string().regex(recordLiveTransactionAllocationReviewBodyEvidenceSha256RegExp),
+  "schoolSubaccountId": zod.string().regex(recordLiveTransactionAllocationReviewBodySchoolSubaccountIdRegExp),
+  "providerReference": zod.string().min(1).max(recordLiveTransactionAllocationReviewBodyProviderReferenceMax),
+  "grossMinor": zod.literal(500000),
+  "schoolMinor": zod.literal(190000),
+  "currency": zod.enum(['NGN']),
+  "source": zod.enum(['FLUTTERWAVE_TRANSACTION_REPORT'])
+})
+
+export const RecordLiveTransactionAllocationReviewResponse = zod.object({
+  "recorded": zod.boolean(),
+  "reviewId": zod.number().int().optional(),
+  "duplicate": zod.boolean().optional(),
+  "operationallyEnabled": zod.boolean().optional(),
+  "paid": zod.boolean().optional()
+})
+
+
+/**
  * @summary Owner confirms first student assignment of an authenticated captured available UID
  */
 

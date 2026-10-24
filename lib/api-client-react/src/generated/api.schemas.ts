@@ -13440,6 +13440,151 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface LiveSchoolCheckoutInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @pattern ^[A-Za-z0-9_-]{16,100}$ */
+  idempotencyKey: string;
+}
+
+export interface LiveSchoolCheckoutSession {
+  reference: string;
+  checkoutUrl: string;
+}
+
+export type LiveCallbackResultStatus = typeof LiveCallbackResultStatus[keyof typeof LiveCallbackResultStatus];
+
+
+export const LiveCallbackResultStatus = {
+  VERIFIED: 'VERIFIED',
+  HELD: 'HELD',
+  AWAITING_AUTHENTICATED_WEBHOOK: 'AWAITING_AUTHENTICATED_WEBHOOK',
+} as const;
+
+export interface LiveCallbackResult {
+  processed: boolean;
+  status: LiveCallbackResultStatus;
+}
+
+export interface LiveRuntimeReleaseCheck {
+  ready: boolean;
+  blockers: string[];
+  schoolReadiness?: string;
+  transactionFinalization?: string;
+}
+
+export interface LiveReviewResult {
+  recorded: boolean;
+  reviewId?: number;
+  duplicate?: boolean;
+  operationallyEnabled?: boolean;
+  paid?: boolean;
+}
+
+export type LiveSchoolAuthorityEvidenceVersion = typeof LiveSchoolAuthorityEvidenceVersion[keyof typeof LiveSchoolAuthorityEvidenceVersion];
+
+
+export const LiveSchoolAuthorityEvidenceVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type LiveSchoolAuthorityEvidenceProvider = typeof LiveSchoolAuthorityEvidenceProvider[keyof typeof LiveSchoolAuthorityEvidenceProvider];
+
+
+export const LiveSchoolAuthorityEvidenceProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type LiveSchoolAuthorityEvidenceEnvironment = typeof LiveSchoolAuthorityEvidenceEnvironment[keyof typeof LiveSchoolAuthorityEvidenceEnvironment];
+
+
+export const LiveSchoolAuthorityEvidenceEnvironment = {
+  LIVE: 'LIVE',
+} as const;
+
+export type LiveSchoolAuthorityEvidenceDashboardFeeBearer = typeof LiveSchoolAuthorityEvidenceDashboardFeeBearer[keyof typeof LiveSchoolAuthorityEvidenceDashboardFeeBearer];
+
+
+export const LiveSchoolAuthorityEvidenceDashboardFeeBearer = {
+  MERCHANT: 'MERCHANT',
+} as const;
+
+export interface LiveSchoolAuthorityEvidence {
+  version: LiveSchoolAuthorityEvidenceVersion;
+  provider: LiveSchoolAuthorityEvidenceProvider;
+  environment: LiveSchoolAuthorityEvidenceEnvironment;
+  /** @pattern ^[A-Za-z0-9_-]{8,80}$ */
+  merchantScope: string;
+  /** @minimum 1 */
+  schoolId: number;
+  /** @pattern ^RS_[A-Za-z0-9]{12,80}$ */
+  schoolSubaccountId: string;
+  dashboardFeeBearer: LiveSchoolAuthorityEvidenceDashboardFeeBearer;
+  /** @pattern ^[a-f0-9]{64}$ */
+  dashboardFeeBearerEvidenceSha256: string;
+  liveSubaccountVerified: true;
+  schoolOwnershipVerified: true;
+  /** @pattern ^[a-f0-9]{64}$ */
+  schoolOwnershipEvidenceSha256: string;
+}
+
+export interface LiveSchoolConfigurationInput {
+  expiresAt: string;
+  evidence: LiveSchoolAuthorityEvidence;
+}
+
+export type LiveAllocationReviewInputGrossMinor = typeof LiveAllocationReviewInputGrossMinor[keyof typeof LiveAllocationReviewInputGrossMinor];
+
+
+export const LiveAllocationReviewInputGrossMinor = {
+  NUMBER_500000: 500000,
+} as const;
+
+export type LiveAllocationReviewInputSchoolMinor = typeof LiveAllocationReviewInputSchoolMinor[keyof typeof LiveAllocationReviewInputSchoolMinor];
+
+
+export const LiveAllocationReviewInputSchoolMinor = {
+  NUMBER_190000: 190000,
+} as const;
+
+export type LiveAllocationReviewInputCurrency = typeof LiveAllocationReviewInputCurrency[keyof typeof LiveAllocationReviewInputCurrency];
+
+
+export const LiveAllocationReviewInputCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type LiveAllocationReviewInputSource = typeof LiveAllocationReviewInputSource[keyof typeof LiveAllocationReviewInputSource];
+
+
+export const LiveAllocationReviewInputSource = {
+  FLUTTERWAVE_TRANSACTION_REPORT: 'FLUTTERWAVE_TRANSACTION_REPORT',
+} as const;
+
+export interface LiveAllocationReviewInput {
+  /** @pattern ^SCV3_live_[A-Za-z0-9_-]{8,80}$ */
+  reference: string;
+  /** @pattern ^[1-9][0-9]{0,15}$ */
+  transactionId: string;
+  /** @pattern ^[a-f0-9]{64}$ */
+  evidenceSha256: string;
+  /** @pattern ^RS_[A-Za-z0-9]{12,80}$ */
+  schoolSubaccountId: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  providerReference: string;
+  grossMinor: LiveAllocationReviewInputGrossMinor;
+  schoolMinor: LiveAllocationReviewInputSchoolMinor;
+  currency: LiveAllocationReviewInputCurrency;
+  source: LiveAllocationReviewInputSource;
+}
+
 export interface OwnerReaderReason {
   /**
      * @minLength 3
@@ -22725,6 +22870,21 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type VerifyLiveSchoolSubscriptionCallbackParams = {
+/**
+ * @pattern ^[1-9][0-9]{0,15}$
+ */
+transaction_id: string;
+/**
+ * @pattern ^SCV3_live_[A-Za-z0-9_-]{8,80}$
+ */
+tx_ref: string;
+/**
+ * Untrusted provider redirect hint; never authority.
+ */
+status?: string;
+};
 
 export type AssignCapturedUidToStudentBody = {
   uid: string;

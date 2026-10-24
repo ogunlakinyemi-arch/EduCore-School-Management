@@ -21,6 +21,7 @@ import communicationReceiptRouter from "./routes/communication-receipts";
 import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
 import { studentSubscriptionFlutterwaveWebhookRouter } from "./routes/student-subscription-webhooks";
 import { studentSubscriptionLiveWebhookRouter } from "./routes/student-subscription-live-webhooks";
+import flutterwaveLiveRuntimeRouter from "./routes/flutterwave-live-runtime";
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 import { rejectSimulationWebhook } from "./middlewares/local-split-simulation";
@@ -135,6 +136,7 @@ app.use("/api/exam-record",express.json({limit:"8mb"}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/api", flutterwaveLiveRuntimeRouter);
 app.use("/api", router);
 app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) return next(error);

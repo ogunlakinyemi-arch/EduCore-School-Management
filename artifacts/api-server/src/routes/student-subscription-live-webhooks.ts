@@ -7,6 +7,7 @@ import { blockedLiveWorkflow, type LiveWorkflowCapability } from "../lib/flutter
 import { blockedLiveCollectionVerifier, type LiveCollectionVerifier } from "../lib/flutterwave-live-verification";
 import { persistAuthenticatedLiveWebhookReceipt } from "../services/flutterwave-live-webhook-inbox";
 import { processLiveWorkflow } from "../services/flutterwave-live-lifecycle";
+import { processReleasedLiveWebhook } from "../services/flutterwave-live-runtime";
 
 /** Server-owned dependencies only; request data and environment flags cannot
  * provide capabilities. Enabled dependencies belong to isolated fictional tests.
@@ -17,6 +18,7 @@ export function createStudentSubscriptionLiveWebhookRouter(deps: {
   authenticator?: () => Pick<FlutterwaveLiveAdapter,"authenticateWebhook"> | null;
   capability?: LiveWorkflowCapability;
   verifier?: LiveCollectionVerifier;
+  runtime?:{env:NodeJS.ProcessEnv;fetcher:typeof fetch};
 }): IRouter {
   const router=Router();
   const capability=deps.capability??blockedLiveWorkflow;
@@ -25,6 +27,20 @@ export function createStudentSubscriptionLiveWebhookRouter(deps: {
     res.setHeader("Cache-Control","no-store");
     if(!Buffer.isBuffer(req.body)||req.body.length===0||req.body.length>65_536){
       res.status(400).json({error:"Webhook body is invalid",processed:false});return;
+    }
+    // Explicit future operational release only. Existing TEST/default diagnostic
+    // behavior is untouched; default env never reaches a provider or the new schema.
+    if((deps.runtime?.env??process.env).EDUCORE_FLUTTERWAVE_RELEASE==="SCV3_V1" && !deps.authenticator){
+      try {
+        const result=await processReleasedLiveWebhook(deps.pool,req.body,req.headers,
+          deps.runtime?.env??process.env,deps.runtime?.fetcher??fetch);
+        res.status(200).json(result);
+      }catch(error){
+        const denied=error instanceof Error&&"code" in error&&error.code==="LIVE_WEBHOOK_AUTHENTICATION_FAILED";
+        res.status(denied?401:503).json({error:denied?"LIVE webhook authentication failed":
+          "LIVE processing unavailable or requires reconciliation",processed:false});
+      }
+      return;
     }
     let adapter:Pick<FlutterwaveLiveAdapter,"authenticateWebhook">|null;
     try{adapter=(deps.authenticator??configuredLiveStudentSubscriptionAdapter)();}

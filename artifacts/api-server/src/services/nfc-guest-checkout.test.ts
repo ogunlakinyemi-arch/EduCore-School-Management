@@ -142,7 +142,13 @@ describe("Guest NFC TEST checkout and server verification", () => {
     )).toBeNull();
     expect(fake.query).not.toHaveBeenCalled();
   });
-  it("reserves the fixed bound charge before one provider POST and uses a guest callback", async () => {
+  it.each(["LEGACY_TEST","DEDICATED_TEST","LIVE_BOUND_WITH_DEDICATED_TEST"])(
+    "reserves the fixed TEST charge with %s verification and uses a guest callback", async mode => {
+    if(mode!=="LEGACY_TEST"){
+      vi.stubEnv("FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH","fictional-dedicated-test-hash");
+      vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH",mode==="DEDICATED_TEST"?"":"fictional-live-only-hash");
+      vi.stubEnv("EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT",mode==="DEDICATED_TEST"?"TEST":"LIVE");
+    }
     expect(await reserveGuestNfcPayment({ query: fake.query }, {
       subscriptionId: 9, schoolId: 44, studentId: 7, sessionId: 2, termId: 3,
     }, fake.row.reference, 10)).toBe(17);

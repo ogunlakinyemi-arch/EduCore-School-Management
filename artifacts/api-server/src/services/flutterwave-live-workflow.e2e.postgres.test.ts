@@ -33,9 +33,149 @@ import { listLiveOperatorReceipts,reviewLiveReceipt } from "./flutterwave-live-o
 import { readLiveApplicationReceipt,readLiveSchoolSubscriptionStudents } from "./flutterwave-live-application";
 import { readSchoolSubscription,assertSubscriptionAccess } from "./subscription-enforcement";
 import { createLiveFamilyAccessRouter } from "../routes/flutterwave-live-family-access";
+import { initializeLiveSubscriptionCheckout,processReleasedLiveWebhook,verifyLiveCallback } from "./flutterwave-live-runtime";
+import { saveLiveAllocationReview,saveLiveSchoolConfiguration } from "./flutterwave-live-configuration";
 
 // Fixture capability is NEVER mounted in the app, stored in env or exported.
 const capability={enabled:true},merchant="merchant_fixture_live",school="RS_FictionalSchool123",hash="fictional-workflow-live-verifier";
+const runtimeEnv=():NodeJS.ProcessEnv=>({NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",
+  EDUCORE_FLUTTERWAVE_LIVE_ENABLED:"true",EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT:"LIVE",
+  EDUCORE_FLUTTERWAVE_RELEASE:"SCV3_V1",EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE:merchant,
+  FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-fictional-runtime-only",FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:hash,
+  FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH:"fictional-separate-test-verifier",PUBLIC_APP_URL:"https://payment.invalid"});
+const runtimeFetch=vi.fn<typeof fetch>();
+describe("released runtime through fictional V3 HTTP and disposable PostgreSQL",()=>{
+  let currentReference="";
+  const runtimeRaw=(intent:any,status="successful")=>raw(intent,status,8801);
+  const checkoutInput=()=>({actorId:1,schoolId:10,studentId:1,termId:1,
+    idempotencyKey:"runtime-checkout-fixture-0001",email:"payer@example.invalid"});
+  const checkout=()=>initializeLiveSubscriptionCheckout(pool,checkoutInput(),runtimeEnv(),runtimeFetch);
+  beforeAll(async()=>{
+    await pool.query(await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-runtime.up.sql",import.meta.url),"utf8"));
+  });
+  beforeEach(async()=>{
+    await pool.query("TRUNCATE flutterwave_live_release_manifests");
+    await pool.query(`INSERT INTO flutterwave_live_release_manifests
+      VALUES('SCV3_V1',$1,true,2,$2,now())`,[merchant,"d".repeat(64)]);
+    await pool.query(`INSERT INTO flutterwave_live_school_configuration
+      (merchant_scope,school_id,authority_review_id,authority_evidence)
+      SELECT $1,10,id,$2::jsonb FROM flutterwave_live_authority_reviews WHERE school_id=10 ORDER BY id DESC LIMIT 1`,
+    [merchant,JSON.stringify(authorityEvidence())]);
+    currentReference="";
+    runtimeFetch.mockReset().mockImplementation(async(url,init)=>{
+      if(String(url).endsWith("/payments")){
+        currentReference=JSON.parse(String(init?.body)).tx_ref;
+        return new Response(JSON.stringify({status:"success",data:{link:"https://checkout.flutterwave.com/v3/hosted/pay/fictionalSession"}}));
+      }
+      return new Response(JSON.stringify({status:"success",data:{id:8801,tx_ref:currentReference,flw_ref:"FLW-8801",
+        status:"successful",currency:"NGN",amount:5000,charged_amount:5000,app_fee:65,merchant_fee:5}}));
+    });
+  });
+  afterAll(async()=>{
+    await pool.query(`TRUNCATE flutterwave_live_checkout_attempts,flutterwave_live_allocation_reviews,
+      flutterwave_live_school_configuration,flutterwave_live_release_manifests`);
+    await pool.query(await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-runtime.down.sql",import.meta.url),"utf8"));
+  });
+  async function reviewed(){
+    const session=await checkout();
+    const intent=(await sql("SELECT * FROM flutterwave_live_subscription_intents WHERE reference=$1",[session.reference]))[0];
+    await saveLiveAllocationReview(pool,{actorId:2,reference:intent.reference,transactionId:"8801",
+      evidenceSha256:"e".repeat(64),schoolSubaccountId:school,providerReference:"FLW-8801",
+      grossMinor:500000,schoolMinor:190000,currency:"NGN",source:"FLUTTERWAVE_TRANSACTION_REPORT"},runtimeEnv(),runtimeFetch);
+    return intent;
+  }
+  it("creates one fixed allocation checkout; repeated requests reuse the same provider URL",async()=>{
+    const first=await checkout(),second=await checkout();
+    expect(second).toEqual(first);
+    expect(runtimeFetch.mock.calls.filter(([url])=>String(url).endsWith("/payments"))).toHaveLength(1);
+    const body=JSON.parse(String(runtimeFetch.mock.calls[0]![1]?.body));
+    expect(body).toMatchObject({amount:5000,currency:"NGN",
+      subaccounts:[{id:school,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]});
+    expect(await count("flutterwave_live_partner_accruals")).toBe(0);
+  });
+  it("never retries an ambiguous checkout acceptance",async()=>{
+    runtimeFetch.mockRejectedValueOnce(new Error("Fictional accepted then lost response"));
+    await expect(checkout()).rejects.toHaveProperty("code","LIVE_CHECKOUT_RECONCILIATION_REQUIRED");
+    await expect(checkout()).rejects.toHaveProperty("code","LIVE_CHECKOUT_RECONCILIATION_REQUIRED");
+    expect(runtimeFetch).toHaveBeenCalledTimes(1);
+    expect((await sql("SELECT state FROM flutterwave_live_checkout_attempts"))[0].state).toBe("UNKNOWN");
+  });
+  it("fails before HTTP when school config is missing, without using a TEST recipient",async()=>{
+    await pool.query("TRUNCATE flutterwave_live_school_configuration");
+    await expect(checkout()).rejects.toHaveProperty("code","LIVE_SCHOOL_CONFIGURATION_REQUIRED");
+    expect(runtimeFetch).not.toHaveBeenCalled();
+  });
+  it("blocks all outbound HTTP if a required target history guard is disabled",async()=>{
+    await pool.query("ALTER TABLE flutterwave_live_allocation_reviews DISABLE TRIGGER live_allocation_review_history");
+    try{
+      await expect(checkout()).rejects.toHaveProperty("code","LIVE_TARGET_SCHEMA_UNAVAILABLE");
+      expect(runtimeFetch).not.toHaveBeenCalled();
+      expect(await count("flutterwave_live_checkout_attempts")).toBe(0);
+    }finally{
+      await pool.query("ALTER TABLE flutterwave_live_allocation_reviews ENABLE TRIGGER live_allocation_review_history");
+    }
+  });
+  it("returns HTTP 200 only after signed, independently verified durable finalization; duplicate credits once",async()=>{
+    const intent=await reviewed(),body=runtimeRaw(intent);
+    for(let i=0;i<2;i++){
+      const response=await fetch(`${base}/webhook-runtime`,{method:"POST",
+        headers:{"content-type":"application/json","verif-hash":hash},body});
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({processed:true,outcome:"COLLECTION_VERIFIED",duplicate:i===1});
+    }
+    expect(await count("flutterwave_live_collection_evidence")).toBe(1);
+    expect(await count("flutterwave_live_partner_accruals")).toBe(1);
+    expect((await sql("SELECT amount_minor,state FROM flutterwave_live_partner_accruals"))[0])
+      .toMatchObject({amount_minor:10000,state:"ACCRUED"});
+    expect(await count("flutterwave_live_official_receipts")).toBe(1);
+  });
+  it("does not finalize missing allocation evidence and redelivery succeeds only after review",async()=>{
+    const session=await checkout();
+    const intent=(await sql("SELECT * FROM flutterwave_live_subscription_intents WHERE reference=$1",[session.reference]))[0];
+    const rawBody=runtimeRaw(intent);
+    await expect(processReleasedLiveWebhook(pool,rawBody,{"verif-hash":hash},runtimeEnv(),runtimeFetch))
+      .rejects.toHaveProperty("code","LIVE_TRANSACTION_ALLOCATION_EVIDENCE_REQUIRED");
+    expect(await count("flutterwave_live_partner_accruals")).toBe(0);
+    await reviewed();
+    expect(await processReleasedLiveWebhook(pool,rawBody,{"verif-hash":hash},runtimeEnv(),runtimeFetch))
+      .toMatchObject({processed:true});
+  });
+  it.each(["failed","pending"])("never credits %s collection claims",async status=>{
+    const intent=await reviewed();
+    if(status==="failed")
+      expect(await processReleasedLiveWebhook(pool,runtimeRaw(intent,status),{"verif-hash":hash},runtimeEnv(),runtimeFetch))
+        .toMatchObject({outcome:"HELD"});
+    else await expect(processReleasedLiveWebhook(pool,runtimeRaw(intent,status),{"verif-hash":hash},runtimeEnv(),runtimeFetch)).rejects.toThrow();
+    expect(await count("flutterwave_live_partner_accruals")).toBe(0);
+  });
+  it("callback verifies independently, never fabricates a signed webhook or credits commission",async()=>{
+    const intent=await reviewed();
+    expect(await verifyLiveCallback(pool,{reference:intent.reference,transactionId:"8801"},runtimeEnv(),runtimeFetch))
+      .toEqual({processed:false,status:"AWAITING_AUTHENTICATED_WEBHOOK"});
+    expect(await count("flutterwave_live_webhook_receipts")).toBe(0);
+    expect(await count("flutterwave_live_partner_accruals")).toBe(0);
+    await processReleasedLiveWebhook(pool,runtimeRaw(intent),{"verif-hash":hash},runtimeEnv(),runtimeFetch);
+    expect(await verifyLiveCallback(pool,{reference:intent.reference,transactionId:"8801"},runtimeEnv(),runtimeFetch))
+      .toEqual({processed:true,status:"VERIFIED"});
+    await expect(verifyLiveCallback(pool,{reference:intent.reference,transactionId:"8802"},runtimeEnv(),runtimeFetch))
+      .rejects.toHaveProperty("code","LIVE_CALLBACK_UNMATCHED");
+  });
+  it("school reviews are append-only Owner-authorized and placeholders remain invalid",async()=>{
+    const input={actorId:2,evidence:authorityEvidence(),expiresAt:new Date(Date.now()+86400_000).toISOString()};
+    expect(await saveLiveSchoolConfiguration(pool,input)).toMatchObject({recorded:true,operationallyEnabled:false});
+    await expect(saveLiveSchoolConfiguration(pool,{...input,actorId:1})).rejects.toThrow();
+    await expect(saveLiveSchoolConfiguration(pool,{...input,evidence:{...authorityEvidence(),
+      schoolSubaccountId:"RS_SCHOOL_LIVE_SUBACCOUNT_ID"}})).rejects.toThrow();
+    await expect(pool.query("UPDATE flutterwave_live_school_configuration SET school_id=20")).rejects.toThrow();
+  });
+  it("populated runtime rollback refuses to erase audit/history",async()=>{
+    const down=await readFile(new URL("../../../../lib/db/dev-reconciliation/flutterwave-live-runtime.down.sql",import.meta.url),"utf8");
+    const client=await pool.connect();
+    try {await expect(client.query(down)).rejects.toThrow("Preserve populated");await client.query("ROLLBACK");}
+    finally{client.release();}
+    expect(await count("flutterwave_live_release_manifests")).toBe(1);
+  });
+});
 let pool:InstanceType<typeof DatabasePool>,directory:string,postgres:ChildProcess,server:ReturnType<express.Express["listen"]>,base:string;
 let workflowUp:string,workflowDown:string,readinessUp:string,readinessDown:string;
 const fixtures=`
@@ -122,6 +262,9 @@ beforeAll(async()=>{
     FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-fictional-workflow-only",FLUTTERWAVE_WEBHOOK_VERIF_HASH:hash});
   // Actual ingress factory and kernel; fictional auth/verification and local DB.
   const app=express();
+  app.use("/webhook-runtime",express.raw({type:"application/json"}),createStudentSubscriptionLiveWebhookRouter({
+    pool,runtime:{env:runtimeEnv(),fetcher:runtimeFetch},
+  }));
   app.use("/platform/live-readiness/evidence-preview",express.json({limit:"16kb"}));
   app.use("/family-disabled",createLiveFamilyAccessRouter({pool,development:true}));
   app.use("/family-non-development",createLiveFamilyAccessRouter({pool,development:false,

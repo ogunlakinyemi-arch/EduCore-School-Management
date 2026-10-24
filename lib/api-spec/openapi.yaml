@@ -34,6 +34,16 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /flutterwave/live/checkout:
+    $ref: "./flutterwave-live-runtime.yaml#/checkout"
+  /flutterwave/live/callback:
+    $ref: "./flutterwave-live-runtime.yaml#/callback"
+  /flutterwave/live/release-check:
+    $ref: "./flutterwave-live-runtime.yaml#/releaseCheck"
+  /flutterwave/live/school-configuration:
+    $ref: "./flutterwave-live-runtime.yaml#/schoolConfiguration"
+  /flutterwave/live/allocation-review:
+    $ref: "./flutterwave-live-runtime.yaml#/allocationReview"
   /platform/uid-inventory/assign:
     $ref: "./owner-uid-reader.yaml#/capturedUidAssignment"
   /platform/uid-inventory/cards/{cardId}/unlink:

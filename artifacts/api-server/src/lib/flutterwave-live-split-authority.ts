@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { fixedSplitInstructions } from "./flutterwave-split-policy";
 import { LiveFinalizationBlocked } from "./flutterwave-live-verification";
+import { confirmedLiveSplitModel } from "./flutterwave-live-model";
+export { confirmedLiveSplitModel } from "./flutterwave-live-model";
 
 /** Support confirms the model, NOT a merchant's current dashboard or recipients.
  * Evidence is a reviewed document commitment, never a credential or release flag.
@@ -22,18 +24,6 @@ const authoritySchema = z.object({
   schoolOwnershipEvidenceSha256: digest,
 }).strict();
 export type LiveSplitAuthorityEvidence = z.infer<typeof authoritySchema>;
-
-export const confirmedLiveSplitModel = Object.freeze({
-  supportConfirmation: "USER_WRITTEN_FIXED_SUBACCOUNT_MERCHANT" as const,
-  currency: "NGN" as const,
-  amount: 5000 as const,
-  schoolAmount: 1900 as const,
-  transactionChargeType: "flat_subaccount" as const,
-  transactionSplitRatio: "OMITTED" as const,
-  feeBearer: "MERCHANT" as const,
-  eligiblePartnerAmount: 100 as const,
-  partnerPayment: "INTERNAL_TERM_END_OWNER_APPROVAL_EXPORT" as const,
-});
 
 function parseAuthority(value: unknown): LiveSplitAuthorityEvidence {
   const result = authoritySchema.safeParse(value);

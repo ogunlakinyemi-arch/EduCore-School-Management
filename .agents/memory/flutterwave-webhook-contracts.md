@@ -3,6 +3,21 @@ name: Flutterwave webhook contract evidence
 description: Version-specific provider documentation is required before assuming webhook authentication or refund payload shape.
 ---
 
+Preparing LIVE support must preserve working TEST verification. Do not rebind
+or duplicate a shared webhook verifier based on a requested variable spelling
+alone; first establish the actual configured name and independent dashboard
+correspondence for TEST and LIVE.
+
+**Why:** The user explicitly required Development-only LIVE preparation while
+preserving TEST, without Production settings, migrations, real payment-record
+changes, charges or publishing. Source changes and synthetic acceptance do not
+authorize those operational steps.
+
+**How to apply:** Inspect secret existence only, document the exact selector
+contract, and leave dashboard-backed secret provisioning and LIVE binding for
+separate authorization. Never copy an existing private verifier to invent the
+missing independent TEST configuration.
+
 The V3 and general Flutterwave webhook pages reviewed on 2026-10-19 both document
 constant-time verification of the shared `verif-hash`. That documentation is not
 proof of the actual merchant dashboard's selected version or matching private

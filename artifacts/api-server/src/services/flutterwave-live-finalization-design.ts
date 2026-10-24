@@ -44,10 +44,11 @@ async function verifyBounded(verifier: LiveCollectionVerifier, intent: any, tran
 }
 
 /**
- * OFFLINE DESIGN ONLY. Not imported by any route, worker, factory or checkout.
- * The default verifier is unconditionally disabled before DB access.
- * Tests explicitly inject fictional independent evidence and a disposable pool.
- * Even a committed result is not operational processing/activation/HTTP200 authority.
+ * Strict transactional finalization kernel (legacy "Design" name retained).
+ * The default verifier is disabled before DB access. The SCV3 runtime separately
+ * checks release authorization and supplies V3 readback plus reviewed allocation
+ * evidence. A kernel commit alone never authorizes an HTTP 200: only that runtime
+ * ingress may acknowledge after the coordinated lifecycle commit succeeds.
  */
 export async function finalizeLiveSubscriptionDesign(
   pool: StudentSubscriptionSqlPool,

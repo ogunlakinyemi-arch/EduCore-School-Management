@@ -84,6 +84,20 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     expect(configuredTestAdapter("FLUTTERWAVE", { NODE_ENV: "production",
       FLUTTERWAVE_LIVE_SECRET_KEY: live().FLUTTERWAVE_LIVE_SECRET_KEY })).toBeNull();
   });
+  it.each(["TEST","LIVE"])("dedicated TEST verifier authenticates only TEST with shared scope %s",scope=>{
+    const testHash="fictional-dedicated-test-verifier";
+    const env:NodeJS.ProcessEnv={NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"TEST",
+      EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT:scope,
+      FLUTTERWAVE_TEST_SECRET_KEY:"FLWSECK_TEST-fictional-test-key",
+      FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH:testHash,
+      ...(scope==="LIVE"?{FLUTTERWAVE_WEBHOOK_VERIF_HASH:"fictional-live-dashboard-verifier"}:{})};
+    const adapter=configuredTestAdapter("FLUTTERWAVE",env) as FlutterwaveTestAdapter;
+    expect(adapter).toBeInstanceOf(FlutterwaveTestAdapter);
+    expect(()=>adapter.authenticateWebhook({"verif-hash":testHash})).not.toThrow();
+    for(const hash of [undefined,"fictional-live-dashboard-verifier","wrong-test-verifier"]){
+      expect(()=>adapter.authenticateWebhook({"verif-hash":hash})).toThrow();
+    }
+  });
   it("TEST factory never reads the generic credential, even outside Development", () => {
     const env: NodeJS.ProcessEnv = { NODE_ENV: "production", FLUTTERWAVE_TEST_SECRET_KEY: "FLWSECK_TEST-fictional-test-key" };
     Object.defineProperty(env, "FLUTTERWAVE_SECRET_KEY", { get() { throw new Error("Generic credential must not be read"); } });

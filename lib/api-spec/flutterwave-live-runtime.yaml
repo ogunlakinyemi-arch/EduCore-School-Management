@@ -1,0 +1,175 @@
+checkout:
+  post:
+    operationId: initializeLiveSchoolSubscription
+    tags: [finance]
+    summary: Initialize a separately released LIVE SCV3 checkout
+    description: School Admin only. Server fixes NGN 5000 and one reviewed school flat_subaccount NGN 1900. Default disabled; uncertain provider initialization must be reconciled, never retried as another charge.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/LiveSchoolCheckoutInput" }
+    responses:
+      "200":
+        description: A persisted checkout session, reused on an identical request
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveSchoolCheckoutSession" }
+      "400": { description: Invalid input }
+      "401": { description: Sign-in required }
+      "403": { description: Active School Admin membership required; Owner excluded }
+      "503": { description: Missing release/configuration or uncertain checkout requiring reconciliation }
+callback:
+  get:
+    operationId: verifyLiveSchoolSubscriptionCallback
+    tags: [finance]
+    security: []
+    summary: Independently verify a LIVE browser return without trusting redirect status
+    description: A redirect never fabricates webhook authentication. Finalization requires a signed webhook, independent V3 readback and reviewed transaction-bound allocation report.
+    parameters:
+      - { in: query, name: transaction_id, required: true, schema: { type: string, pattern: "^[1-9][0-9]{0,15}$" } }
+      - { in: query, name: tx_ref, required: true, schema: { type: string, pattern: "^SCV3_live_[A-Za-z0-9_-]{8,80}$" } }
+      - { in: query, name: status, required: false, schema: { type: string }, description: Untrusted provider redirect hint; never authority. }
+    responses:
+      "200":
+        description: Independently verified and already durably finalized
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveCallbackResult" }
+      "202":
+        description: Awaiting authenticated finalization or held
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveCallbackResult" }
+      "400": { description: Invalid callback identifiers }
+      "503": { description: "Verification unavailable, pending, failed or mismatched; never paid" }
+releaseCheck:
+  get:
+    operationId: getLiveSchoolSubscriptionReleaseCheck
+    tags: [finance]
+    summary: Owner-only credential-safe LIVE configuration and target release check
+    responses:
+      "200":
+        description: Readiness blockers; does not imply per-school or per-transaction readiness
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveRuntimeReleaseCheck" }
+      "401": { description: Sign-in required }
+      "403": { description: Platform Owner required }
+schoolConfiguration:
+  post:
+    operationId: recordLiveSchoolConfiguration
+    tags: [finance]
+    summary: Record an Owner-reviewed real school LIVE subaccount, without provider creation
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/LiveSchoolConfigurationInput" }
+    responses:
+      "200":
+        description: Append-only review recorded; does not enable checkout
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveReviewResult" }
+      "400": { description: Invalid input }
+      "401": { description: Sign-in required }
+      "403": { description: Platform Owner required }
+      "503": { description: "Target schema, authority or evidence unavailable" }
+allocationReview:
+  post:
+    operationId: recordLiveTransactionAllocationReview
+    tags: [finance]
+    summary: Bind an Owner-reviewed provider transaction allocation report to a LIVE collection
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/LiveAllocationReviewInput" }
+    responses:
+      "200":
+        description: Immutable report commitment recorded, not a paid assertion
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveReviewResult" }
+      "400": { description: Invalid input }
+      "401": { description: Sign-in required }
+      "403": { description: Platform Owner required }
+      "503": { description: "Release, provider readback or transaction evidence mismatch" }
+components:
+  schemas:
+    LiveSchoolCheckoutInput:
+      type: object
+      additionalProperties: false
+      required: [schoolId, studentId, termId, idempotencyKey]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        idempotencyKey: { type: string, pattern: "^[A-Za-z0-9_-]{16,100}$" }
+    LiveSchoolCheckoutSession:
+      type: object
+      required: [reference, checkoutUrl]
+      properties:
+        reference: { type: string }
+        checkoutUrl: { type: string, format: uri }
+    LiveCallbackResult:
+      type: object
+      required: [processed, status]
+      properties:
+        processed: { type: boolean }
+        status: { type: string, enum: [VERIFIED, HELD, AWAITING_AUTHENTICATED_WEBHOOK] }
+    LiveRuntimeReleaseCheck:
+      type: object
+      required: [ready, blockers]
+      properties:
+        ready: { type: boolean }
+        blockers: { type: array, items: { type: string } }
+        schoolReadiness: { type: string }
+        transactionFinalization: { type: string }
+    LiveReviewResult:
+      type: object
+      required: [recorded]
+      properties:
+        recorded: { type: boolean }
+        reviewId: { type: integer }
+        duplicate: { type: boolean }
+        operationallyEnabled: { type: boolean }
+        paid: { type: boolean }
+    LiveSchoolConfigurationInput:
+      type: object
+      additionalProperties: false
+      required: [evidence, expiresAt]
+      properties:
+        expiresAt: { type: string, format: date-time }
+        evidence: { $ref: "#/components/schemas/LiveSchoolAuthorityEvidence" }
+    LiveSchoolAuthorityEvidence:
+      type: object
+      additionalProperties: false
+      required: [version, provider, environment, merchantScope, schoolId, schoolSubaccountId, dashboardFeeBearer, dashboardFeeBearerEvidenceSha256, liveSubaccountVerified, schoolOwnershipVerified, schoolOwnershipEvidenceSha256]
+      properties:
+        version: { type: integer, enum: [1] }
+        provider: { type: string, enum: [FLUTTERWAVE] }
+        environment: { type: string, enum: [LIVE] }
+        merchantScope: { type: string, pattern: "^[A-Za-z0-9_-]{8,80}$" }
+        schoolId: { type: integer, minimum: 1 }
+        schoolSubaccountId: { type: string, pattern: "^RS_[A-Za-z0-9]{12,80}$" }
+        dashboardFeeBearer: { type: string, enum: [MERCHANT] }
+        dashboardFeeBearerEvidenceSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        liveSubaccountVerified: { type: boolean, enum: [true] }
+        schoolOwnershipVerified: { type: boolean, enum: [true] }
+        schoolOwnershipEvidenceSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+    LiveAllocationReviewInput:
+      type: object
+      additionalProperties: false
+      required: [reference, transactionId, evidenceSha256, schoolSubaccountId, providerReference, grossMinor, schoolMinor, currency, source]
+      properties:
+        reference: { type: string, pattern: "^SCV3_live_[A-Za-z0-9_-]{8,80}$" }
+        transactionId: { type: string, pattern: "^[1-9][0-9]{0,15}$" }
+        evidenceSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        schoolSubaccountId: { type: string, pattern: "^RS_[A-Za-z0-9]{12,80}$" }
+        providerReference: { type: string, minLength: 1, maxLength: 200 }
+        grossMinor: { type: integer, enum: [500000] }
+        schoolMinor: { type: integer, enum: [190000] }
+        currency: { type: string, enum: [NGN] }
+        source: { type: string, enum: [FLUTTERWAVE_TRANSACTION_REPORT] }

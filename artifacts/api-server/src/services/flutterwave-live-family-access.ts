@@ -4,7 +4,7 @@ import { AuthError } from "../middlewares/auth";
 import { readManualSchoolState } from "./school-subscription-lock";
 import { subscriptionPolicy } from "./subscription-enforcement-policy";
 import {
-  assertLiveApplicationContext, liveVerifiedIssuance, readLiveApplicationReceipt,
+  assertLiveApplicationContext, assertLiveTargetReadRelease, liveVerifiedIssuance, readLiveApplicationReceipt,
   type LiveApplicationContext,
 } from "./flutterwave-live-application";
 import { GetMySubscriptionEnforcementResponseItem } from "@workspace/api-zod";
@@ -16,6 +16,7 @@ import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
 export async function readLiveFamilyAccess(db: CommunicationQueryClient, actorId: number,
   context: LiveApplicationContext, selection: {studentId?: number; audience?: "student" | "parent"} = {}) {
   assertLiveApplicationContext(context);
+  await assertLiveTargetReadRelease(db,context);
   if (!Number.isSafeInteger(actorId) || actorId <= 0) throw new AuthError(401, "Sign-in required");
   const children = (await db.query<{schoolId:number;studentId:number;schoolName:string;studentName:string;isSelf:boolean;isParent:boolean}>(
     `SELECT DISTINCT st.school_id AS "schoolId",st.id AS "studentId",sc.name AS "schoolName",

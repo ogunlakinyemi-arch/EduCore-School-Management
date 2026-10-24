@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "@workspace/db";
 import { AuthError, assertSchoolOperationalAccess, getUserContext, requireAuthentication } from "../middlewares/auth";
 import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
+import { flutterwaveTestWebhookVerifier } from "../lib/flutterwave-live-config";
 import { createGuestNfcCheckout, verifyGuestNfcCheckout, reserveGuestNfcPayment } from "../services/nfc-guest-checkout";
 import { configuredStudentSubscriptionCheckoutBaseUrl } from "../lib/student-subscription-return-url";
 import { assertStudentNfcPaymentAccess } from "../lib/student-nfc-obligations";
@@ -114,7 +115,7 @@ export async function createBoundNfcPaymentLink(req: Request, subscriptionId: nu
         // Reserve a payment before the link; only the guest action initializes provider checkout.
         let configured = false;
         try { configured = !!configuredStudentNfcTestAdapter(); } catch { /* Configuration fails closed. */ }
-        if (!process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || !configured) {
+        if (!flutterwaveTestWebhookVerifier() || !configured) {
           throw new AuthError(503, "Configure sandbox webhook verification before sharing a provider checkout");
         }
         paymentId = await reserveGuestNfcPayment(db, scope, reference, getUserContext(req).user.id);

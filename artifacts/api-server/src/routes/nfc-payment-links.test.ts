@@ -145,7 +145,13 @@ describe("NFC link routed input and operational authorization", () => {
     expect(response.status).toBe(503);
     expect(state.query.mock.calls.some(([sql]) => sql.includes("INSERT"))).toBe(false);
   });
-  it("reserves payment before inserting the sandbox link and respects the existing isolation CHECK", async () => {
+  it.each(["LEGACY_TEST","DEDICATED_TEST","LIVE_BOUND_WITH_DEDICATED_TEST"])(
+    "reserves a sandbox link with %s verification and preserves isolation", async mode => {
+    if(mode!=="LEGACY_TEST"){
+      vi.stubEnv("FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH","fictional-dedicated-test-hash");
+      vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH",mode==="DEDICATED_TEST"?"":"fictional-live-only-hash");
+      vi.stubEnv("EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT",mode==="DEDICATED_TEST"?"TEST":"LIVE");
+    }
     vi.mocked(configuredStudentNfcTestAdapter).mockReturnValue({
       provider: "flutterwave", generateReference: () => "student_valid_test_payment",
     } as any);

@@ -3,7 +3,7 @@ import { isFlutterwaveTestCheckoutUrl } from "../flutterwave-checkout-url";
 import { assertNoLocalSplitSimulation } from "../local-split-simulation-barrier";
 import { studentAllocationPolicy } from "../student-allocation-policy";
 import { newStudentPaymentReference } from "../student-allocation-policy";
-import { flutterwaveLiveStatus } from "../flutterwave-live-config";
+import { flutterwaveLiveStatus,flutterwaveLiveWebhookVerifier } from "../flutterwave-live-config";
 
 export type FeePaymentStatus = "pending" | "succeeded" | "failed";
 
@@ -651,7 +651,7 @@ export class FlutterwaveLiveAdapter extends FlutterwaveV3Adapter {
     if (!flutterwaveLiveStatus(env).configurationReady) {
       throw new PaymentProviderError("Flutterwave LIVE configuration is disabled, missing or mismatched");
     }
-    super({ secretKey: env.FLUTTERWAVE_LIVE_SECRET_KEY!, webhookSecret: env.FLUTTERWAVE_WEBHOOK_VERIF_HASH! }, options, "LIVE");
+    super({ secretKey: env.FLUTTERWAVE_LIVE_SECRET_KEY!, webhookSecret: flutterwaveLiveWebhookVerifier(env)! }, options, "LIVE");
   }
 
   override generateReference(): string {

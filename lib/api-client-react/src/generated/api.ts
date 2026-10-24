@@ -533,8 +533,15 @@ import type {
   ListTransportRequestsParams,
   ListTransportRouteStaffParams,
   ListTransportRoutesParams,
+  LiveAllocationReviewInput,
+  LiveCallbackResult,
   LiveEvidencePreviewInput,
   LiveEvidencePreviewReport,
+  LiveReviewResult,
+  LiveRuntimeReleaseCheck,
+  LiveSchoolCheckoutInput,
+  LiveSchoolCheckoutSession,
+  LiveSchoolConfigurationInput,
   LocalFlutterwaveSplitSimulation,
   LocalFlutterwaveSplitSimulationInput,
   LostCardInput,
@@ -896,6 +903,7 @@ import type {
   UpsertTransportAssignmentFeePlanParams,
   VendorTerminalEvent,
   VendorTerminalReceipt,
+  VerifyLiveSchoolSubscriptionCallbackParams,
   VerifyManualBankTransferParams,
   VerifyMyStaffNfcPaymentParams,
   VerifyOfficialCardQr200,
@@ -932,6 +940,433 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getInitializeLiveSchoolSubscriptionUrl = () => {
+
+
+
+
+  return `/api/flutterwave/live/checkout`
+}
+
+/**
+ * School Admin only. Server fixes NGN 5000 and one reviewed school flat_subaccount NGN 1900. Default disabled; uncertain provider initialization must be reconciled, never retried as another charge.
+ * @summary Initialize a separately released LIVE SCV3 checkout
+ */
+export const initializeLiveSchoolSubscription = async (liveSchoolCheckoutInput: LiveSchoolCheckoutInput, options?: Parameters<typeof customFetch>[1]): Promise<LiveSchoolCheckoutSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LiveSchoolCheckoutSession>(getInitializeLiveSchoolSubscriptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(liveSchoolCheckoutInput)
+  }
+);}
+
+
+
+
+
+export const getInitializeLiveSchoolSubscriptionMutationKey = () => ['initializeLiveSchoolSubscription'] as const;
+
+export const getInitializeLiveSchoolSubscriptionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeLiveSchoolSubscription>>, TError,InitializeLiveSchoolSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initializeLiveSchoolSubscription>>, TError,InitializeLiveSchoolSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getInitializeLiveSchoolSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeLiveSchoolSubscription>>, InitializeLiveSchoolSubscriptionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  initializeLiveSchoolSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitializeLiveSchoolSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof initializeLiveSchoolSubscription>>>
+    export type InitializeLiveSchoolSubscriptionMutationBody = BodyType<LiveSchoolCheckoutInput>
+    export type InitializeLiveSchoolSubscriptionMutationError = ErrorType<void>
+    export type InitializeLiveSchoolSubscriptionMutationVariables = {data: BodyType<LiveSchoolCheckoutInput>}
+
+    /**
+ * @summary Initialize a separately released LIVE SCV3 checkout
+ */
+export const useInitializeLiveSchoolSubscription = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeLiveSchoolSubscription>>, TError,InitializeLiveSchoolSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initializeLiveSchoolSubscription>>,
+        TError,
+        InitializeLiveSchoolSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getInitializeLiveSchoolSubscriptionMutationOptions(options));
+    }
+
+export const getVerifyLiveSchoolSubscriptionCallbackUrl = (params: VerifyLiveSchoolSubscriptionCallbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/flutterwave/live/callback?${stringifiedParams}` : `/api/flutterwave/live/callback`
+}
+
+/**
+ * A redirect never fabricates webhook authentication. Finalization requires a signed webhook, independent V3 readback and reviewed transaction-bound allocation report.
+ * @summary Independently verify a LIVE browser return without trusting redirect status
+ */
+export const verifyLiveSchoolSubscriptionCallback = async (params: VerifyLiveSchoolSubscriptionCallbackParams, options?: Parameters<typeof customFetch>[1]): Promise<LiveCallbackResult> => {
+
+  return customFetch<LiveCallbackResult>(getVerifyLiveSchoolSubscriptionCallbackUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyLiveSchoolSubscriptionCallbackQueryKey = (params?: VerifyLiveSchoolSubscriptionCallbackParams,) => {
+    return [
+    `/api/flutterwave/live/callback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getVerifyLiveSchoolSubscriptionCallbackQueryOptions = <TData = Awaited<ReturnType<typeof verifyLiveSchoolSubscriptionCallback>>, TError = ErrorType<void>>(params: VerifyLiveSchoolSubscriptionCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof verifyLiveSchoolSubscriptionCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getVerifyLiveSchoolSubscriptionCallbackQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof verifyLiveSchoolSubscriptionCallback>>> = ({ signal }) => verifyLiveSchoolSubscriptionCallback(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof verifyLiveSchoolSubscriptionCallback>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type VerifyLiveSchoolSubscriptionCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof verifyLiveSchoolSubscriptionCallback>>>
+export type VerifyLiveSchoolSubscriptionCallbackQueryError = ErrorType<void>
+
+
+/**
+ * @summary Independently verify a LIVE browser return without trusting redirect status
+ */
+
+export function useVerifyLiveSchoolSubscriptionCallback<TData = Awaited<ReturnType<typeof verifyLiveSchoolSubscriptionCallback>>, TError = ErrorType<void>>(
+ params: VerifyLiveSchoolSubscriptionCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof verifyLiveSchoolSubscriptionCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getVerifyLiveSchoolSubscriptionCallbackQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLiveSchoolSubscriptionReleaseCheckUrl = () => {
+
+
+
+
+  return `/api/flutterwave/live/release-check`
+}
+
+/**
+ * @summary Owner-only credential-safe LIVE configuration and target release check
+ */
+export const getLiveSchoolSubscriptionReleaseCheck = async ( options?: Parameters<typeof customFetch>[1]): Promise<LiveRuntimeReleaseCheck> => {
+
+  return customFetch<LiveRuntimeReleaseCheck>(getGetLiveSchoolSubscriptionReleaseCheckUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveSchoolSubscriptionReleaseCheckQueryKey = () => {
+    return [
+    `/api/flutterwave/live/release-check`
+    ] as const;
+    }
+
+
+export const getGetLiveSchoolSubscriptionReleaseCheckQueryOptions = <TData = Awaited<ReturnType<typeof getLiveSchoolSubscriptionReleaseCheck>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveSchoolSubscriptionReleaseCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveSchoolSubscriptionReleaseCheckQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveSchoolSubscriptionReleaseCheck>>> = ({ signal }) => getLiveSchoolSubscriptionReleaseCheck({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveSchoolSubscriptionReleaseCheck>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveSchoolSubscriptionReleaseCheckQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveSchoolSubscriptionReleaseCheck>>>
+export type GetLiveSchoolSubscriptionReleaseCheckQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner-only credential-safe LIVE configuration and target release check
+ */
+
+export function useGetLiveSchoolSubscriptionReleaseCheck<TData = Awaited<ReturnType<typeof getLiveSchoolSubscriptionReleaseCheck>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveSchoolSubscriptionReleaseCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveSchoolSubscriptionReleaseCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordLiveSchoolConfigurationUrl = () => {
+
+
+
+
+  return `/api/flutterwave/live/school-configuration`
+}
+
+/**
+ * @summary Record an Owner-reviewed real school LIVE subaccount, without provider creation
+ */
+export const recordLiveSchoolConfiguration = async (liveSchoolConfigurationInput: LiveSchoolConfigurationInput, options?: Parameters<typeof customFetch>[1]): Promise<LiveReviewResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LiveReviewResult>(getRecordLiveSchoolConfigurationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(liveSchoolConfigurationInput)
+  }
+);}
+
+
+
+
+
+export const getRecordLiveSchoolConfigurationMutationKey = () => ['recordLiveSchoolConfiguration'] as const;
+
+export const getRecordLiveSchoolConfigurationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordLiveSchoolConfiguration>>, TError,RecordLiveSchoolConfigurationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordLiveSchoolConfiguration>>, TError,RecordLiveSchoolConfigurationMutationVariables, TContext> => {
+
+const mutationKey = getRecordLiveSchoolConfigurationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordLiveSchoolConfiguration>>, RecordLiveSchoolConfigurationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordLiveSchoolConfiguration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordLiveSchoolConfigurationMutationResult = NonNullable<Awaited<ReturnType<typeof recordLiveSchoolConfiguration>>>
+    export type RecordLiveSchoolConfigurationMutationBody = BodyType<LiveSchoolConfigurationInput>
+    export type RecordLiveSchoolConfigurationMutationError = ErrorType<void>
+    export type RecordLiveSchoolConfigurationMutationVariables = {data: BodyType<LiveSchoolConfigurationInput>}
+
+    /**
+ * @summary Record an Owner-reviewed real school LIVE subaccount, without provider creation
+ */
+export const useRecordLiveSchoolConfiguration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordLiveSchoolConfiguration>>, TError,RecordLiveSchoolConfigurationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordLiveSchoolConfiguration>>,
+        TError,
+        RecordLiveSchoolConfigurationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordLiveSchoolConfigurationMutationOptions(options));
+    }
+
+export const getRecordLiveTransactionAllocationReviewUrl = () => {
+
+
+
+
+  return `/api/flutterwave/live/allocation-review`
+}
+
+/**
+ * @summary Bind an Owner-reviewed provider transaction allocation report to a LIVE collection
+ */
+export const recordLiveTransactionAllocationReview = async (liveAllocationReviewInput: LiveAllocationReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<LiveReviewResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LiveReviewResult>(getRecordLiveTransactionAllocationReviewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(liveAllocationReviewInput)
+  }
+);}
+
+
+
+
+
+export const getRecordLiveTransactionAllocationReviewMutationKey = () => ['recordLiveTransactionAllocationReview'] as const;
+
+export const getRecordLiveTransactionAllocationReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordLiveTransactionAllocationReview>>, TError,RecordLiveTransactionAllocationReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordLiveTransactionAllocationReview>>, TError,RecordLiveTransactionAllocationReviewMutationVariables, TContext> => {
+
+const mutationKey = getRecordLiveTransactionAllocationReviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordLiveTransactionAllocationReview>>, RecordLiveTransactionAllocationReviewMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordLiveTransactionAllocationReview(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordLiveTransactionAllocationReviewMutationResult = NonNullable<Awaited<ReturnType<typeof recordLiveTransactionAllocationReview>>>
+    export type RecordLiveTransactionAllocationReviewMutationBody = BodyType<LiveAllocationReviewInput>
+    export type RecordLiveTransactionAllocationReviewMutationError = ErrorType<void>
+    export type RecordLiveTransactionAllocationReviewMutationVariables = {data: BodyType<LiveAllocationReviewInput>}
+
+    /**
+ * @summary Bind an Owner-reviewed provider transaction allocation report to a LIVE collection
+ */
+export const useRecordLiveTransactionAllocationReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordLiveTransactionAllocationReview>>, TError,RecordLiveTransactionAllocationReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordLiveTransactionAllocationReview>>,
+        TError,
+        RecordLiveTransactionAllocationReviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordLiveTransactionAllocationReviewMutationOptions(options));
+    }
 
 export const getAssignCapturedUidToStudentUrl = () => {
 

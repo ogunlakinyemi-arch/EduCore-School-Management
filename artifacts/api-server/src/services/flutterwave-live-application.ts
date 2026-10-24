@@ -1,13 +1,30 @@
 import type { CommunicationQueryClient } from "./communication-service";
 import { requireLiveWorkflow, type LiveWorkflowCapability } from "../lib/flutterwave-live-workflow-gate";
 import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
+import { liveReleaseConfiguration } from "../lib/flutterwave-live-release";
 
 export type LiveApplicationContext = { merchantScope: string; capability: LiveWorkflowCapability };
-// Not configurable through env, HTTP, school settings or dashboard controls.
-export function releasedLiveApplicationContext(): LiveApplicationContext | undefined { return undefined; }
+// Explicit future production release only; defaults and Development stay legacy.
+// Financial readers still require immutable issuance/evidence and fail on absent schema.
+export function releasedLiveApplicationContext(): LiveApplicationContext | undefined {
+  const config=liveReleaseConfiguration();
+  return config.ready?{merchantScope:config.merchantScope,capability:Object.freeze({enabled:true})}:undefined;
+}
 export function assertLiveApplicationContext(context: LiveApplicationContext) {
   requireLiveWorkflow(context.capability);
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(context.merchantScope)) throw new LiveFinalizationBlocked("LIVE_APPLICATION_SCOPE_INVALID");
+}
+
+/** Real configured runtime reads must independently check their target manifest.
+ * Fixture capability injection without real release configuration stays isolated. */
+export async function assertLiveTargetReadRelease(db:CommunicationQueryClient,context:LiveApplicationContext) {
+  assertLiveApplicationContext(context);
+  if(liveReleaseConfiguration().ready){
+    const approved=(await db.query(`SELECT release_id FROM flutterwave_live_release_manifests
+      WHERE release_id='SCV3_V1' AND merchant_scope=$1 AND enabled AND verified_at IS NOT NULL`,
+    [context.merchantScope])).rows[0];
+    if(!approved)throw new LiveFinalizationBlocked("LIVE_TARGET_RELEASE_NOT_APPROVED");
+  }
 }
 
 /** Fixed internal alias i. A receipt fingerprint or collection alone is not
@@ -45,6 +62,7 @@ export const liveVerifiedIssuance = `i.environment='LIVE' AND i.state='COLLECTIO
 export async function readLiveSchoolSubscriptionStudents(db: CommunicationQueryClient,
   schoolId: number,termId: number,context: LiveApplicationContext) {
   assertLiveApplicationContext(context);
+  await assertLiveTargetReadRelease(db,context);
   if (![schoolId,termId].every(id=>Number.isSafeInteger(id)&&id>0)) throw new LiveFinalizationBlocked("LIVE_APPLICATION_SCOPE_INVALID");
   return db.query<{studentId:number;paid:boolean;waived:boolean;pending:boolean;unknown:boolean;amountMinor:number}>(
     `SELECT st.id AS "studentId",
@@ -66,6 +84,7 @@ export async function readLiveSchoolSubscriptionStudents(db: CommunicationQueryC
 export async function readLiveApplicationReceipt(db: CommunicationQueryClient,
   scope:{intentId:number;schoolId:number;studentId:number;termId:number},context:LiveApplicationContext) {
   assertLiveApplicationContext(context);
+  await assertLiveTargetReadRelease(db,context);
   if(!Object.values(scope).every(id=>Number.isSafeInteger(id)&&id>0))throw new LiveFinalizationBlocked("LIVE_APPLICATION_SCOPE_INVALID");
   const row=(await db.query(`SELECT r.snapshot,i.on_hold AS held,(${liveVerifiedIssuance}) AS entitled
     FROM flutterwave_live_subscription_intents i
@@ -76,7 +95,8 @@ export async function readLiveApplicationReceipt(db: CommunicationQueryClient,
   if(!row)throw new LiveFinalizationBlocked("LIVE_OFFICIAL_RECEIPT_UNAVAILABLE");
   const receipt=row.snapshot as Record<string,unknown>;
   // Whitelist payer-safe fields even if a future stored template adds allocations.
-  return {environment:"LIVE",recorded:true,held:row.held,activated:row.entitled,operationallyProcessed:false,
+  return {environment:"LIVE",recorded:true,held:row.held,activated:row.entitled,
+    operationallyProcessed:liveReleaseConfiguration().ready,
     receipt:Object.fromEntries(["environment","receiptNumber","reference","grossAmountMinor","currency","schoolName",
       "studentName","sessionName","termName","paidAt","verifiedAt"].map(key=>[key,receipt[key]??null]))};
 }

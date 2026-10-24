@@ -600,6 +600,13 @@ customer receipt or live operational evidence. Final run results are recorded be
 
 ## Dedicated LIVE credential update — 2026-10-20
 
+**Superseded Development-code status (2026-10-24):** the separately gated SCV3
+runtime now implements checkout, callback verification and authenticated durable
+webhook finalization. For the current exact secret-name contract, dedicated TEST
+selector, fail-closed release checks and remaining dashboard actions, use
+`flutterwave-live-runtime-release.md`. The historical implementation notes below
+do not authorize settings, migration application, real transactions or release.
+
 **Result: dedicated-name wiring PASS; durable LIVE processing and activation
 BLOCKED.** This section supersedes earlier instructions naming generic
 `FLUTTERWAVE_SECRET_KEY` / `FLUTTERWAVE_PUBLIC_KEY` as LIVE inputs. Work was
@@ -618,7 +625,8 @@ limited to Development source, synthetic tests and this checklist.
 - The expected LIVE webhook variable remains
   **`FLUTTERWAVE_WEBHOOK_VERIF_HASH`**, explicitly bound by
   `EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT=LIVE` only in a separately authorized
-  future runtime. There is no new `FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH` selector.
+  future runtime. The current optional `FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH`
+  selector is not required; conflicting LIVE names fail closed.
   Actual dashboard correspondence remains unverified.
 - TEST uses `FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH` when provided. The legacy shared
   verifier can be a TEST fallback only when not LIVE-bound. Missing dedicated

@@ -47,8 +47,8 @@ async function hold(client: StudentSubscriptionSqlClient,intent: any,receiptId: 
     VALUES($1,'LIVE','SIGNED_ADVERSE_EVENT') ON CONFLICT(receipt_id) DO NOTHING`,[receiptId]);
 }
 
-/** Coordinated kernel: default capability AND verifier both refuse. No runtime
- * caller receives an enabled capability; only disposable-fixture E2E tests do.
+/** Coordinated kernel: default capability AND verifier both refuse. Only the
+ * separately gated SCV3 runtime or disposable-fixture tests supply dependencies.
  * Existing shared/SANDBOX access enforcement/readers are intentionally untouched.
  */
 export async function processLiveWorkflow(pool: StudentSubscriptionSqlPool,receiptId: number,rawBody: Buffer,

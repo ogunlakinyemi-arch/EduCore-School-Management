@@ -4,6 +4,19 @@ description: Why review tooling must exclude application credentials and disting
 ---
 Keep offline review tooling credential-free and command-allow-listed. Database-connected review, validation and mutations require a separately approved target/procedure; they must not reuse the ordinary application connection implicitly.
 
+Configuration-only diagnostics must also keep their entire import graph free of
+application authorization and database initialization, not merely skip database
+queries in their main function.
+
+**Why:** Loading shared metadata through an authorization-dependent helper can
+initialize the application database before a configuration-only command reaches
+its offline branch. An absent database URL should not prevent an offline check.
+
+**How to apply:** Share pure model/configuration modules and exercise the actual
+CLI in a credential-free environment. Assert its structured output and empty
+stderr; an exit code alone cannot distinguish an expected blocked result from
+an import-time crash.
+
 Compiler remediation does not authorize running browser-fixture commands. Validate fixture JSON and ownership helpers with synthetic inputs only unless execution is separately approved.
 
 **Why:** Existing fixture utilities can create/delete Clerk identities and provision/retire database records. Fixing their types is not permission to exercise those operations.

@@ -622,8 +622,9 @@ describe("online checkout reservation and claim safety", () => {
   });
 
   it("settles Flutterwave only after scoped admin reconciliation when the webhook hash is absent", async () => {
-    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
-    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "FLWSECK_TEST-safety_fixture_123456789");
+    // Isolate the missing-webhook case; generic credentials are no longer TEST inputs.
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "FLWSECK_TEST-safety_fixture_123456789");
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
     vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "");
     let reference = "";
     const transport = vi.fn(async (url: URL, init?: RequestInit) => {

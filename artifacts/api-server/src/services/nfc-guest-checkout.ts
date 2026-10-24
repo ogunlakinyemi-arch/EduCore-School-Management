@@ -4,6 +4,7 @@ import { pool } from "@workspace/db";
 import { nfcPayableTermPredicate } from "../lib/nfc-payable-term";
 import { AuthError } from "../middlewares/auth";
 import { configuredStudentNfcTestAdapter } from "../lib/fee-providers/factory";
+import { flutterwaveTestWebhookVerifier } from "../lib/flutterwave-live-config";
 import { PaymentProviderError } from "../lib/fee-providers";
 import { configuredStudentSubscriptionCheckoutBaseUrl } from "../lib/student-subscription-return-url";
 import { ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
@@ -20,7 +21,7 @@ function adapterForGuest() {
   requireNfcLinkDevelopment();
   try {
     const adapter = configuredStudentNfcTestAdapter();
-    if (!adapter || !process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH
+    if (!adapter || !flutterwaveTestWebhookVerifier()
         || !configuredStudentSubscriptionCheckoutBaseUrl()) throw new Error();
     return adapter;
   } catch {

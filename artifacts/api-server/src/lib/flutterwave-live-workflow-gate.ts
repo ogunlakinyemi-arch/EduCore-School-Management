@@ -1,7 +1,8 @@
 import { LiveFinalizationBlocked } from "./flutterwave-live-verification";
 
-/** No runtime flag or secret can turn this release gate on. Enabled capabilities
- * may be injected ONLY by isolated-fixture tests, never from HTTP request data. */
+/** Default denied. The SCV3 runtime may construct a capability only AFTER
+ * server configuration plus target release manifest/schema checks. Fixtures
+ * inject capabilities independently; HTTP request data is never authority. */
 export interface LiveWorkflowCapability { readonly enabled: boolean }
 export const blockedLiveWorkflow: LiveWorkflowCapability = Object.freeze({ enabled: false });
 export function requireLiveWorkflow(capability: LiveWorkflowCapability = blockedLiveWorkflow) {
