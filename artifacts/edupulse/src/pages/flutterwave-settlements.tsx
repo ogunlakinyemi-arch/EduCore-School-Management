@@ -19,6 +19,8 @@ import type {
   FlutterwaveRecipient, FlutterwaveSplitPayment, FlutterwaveSplitDashboard, FlutterwaveSplitScope,
 } from '@workspace/api-client-react';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, useTenant, money } from '@/components/shared';
+import { BankProviderSelect } from '@/components/bank-provider-select';
+import { hasTransferCode } from '@/lib/bank-selection';
 import { LiveReadinessAccess } from '@/components/live-readiness-access';
 
 const entry = 'w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm';
@@ -44,13 +46,14 @@ function BankForm({ scopes, onDone }: { scopes: FlutterwaveSplitScope[]; onDone:
   const submit = useSubmitFlutterwaveSplitRecipient();
   const qc = useQueryClient();
   const [idx, setIdx] = useState(0);
-  const [bankCode, setBankCode] = useState('');
+  const [bank, setBank] = useState({ bankName: '', bankCode: '' });
+  const bankCode = bank.bankCode;
   const [accountNumber, setAccountNumber] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [businessEmail, setBusinessEmail] = useState('');
   const [attest, setAttest] = useState(false);
   const scope = scopes[idx];
-  const valid = !!scope && /^\d{3,6}$/.test(bankCode.trim()) && /^\d{10}$/.test(accountNumber) && /^\+?\d{10,15}$/.test(contactPhone.trim()) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(businessEmail.trim()) && attest;
+  const valid = !!scope && !!bank.bankName && hasTransferCode(bankCode) && /^\d{10}$/.test(accountNumber) && /^\+?\d{10,15}$/.test(contactPhone.trim()) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(businessEmail.trim()) && attest;
   const go = (e: FormEvent) => {
     e.preventDefault();
     if (!valid || !scope) return;
@@ -73,7 +76,7 @@ function BankForm({ scopes, onDone }: { scopes: FlutterwaveSplitScope[]; onDone:
         </select>
       </label>
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block text-xs font-bold">Bank code<input className={`${entry} mt-1`} inputMode="numeric" value={bankCode} onChange={e => setBankCode(e.target.value)} data-testid="input-bank-code" /></label>
+        <BankProviderSelect value={bank} onSelect={b => setBank({ bankName: b.bankName, bankCode: b.bankCode })} label="Bank" testId="input-bank-provider" />
         <label className="block text-xs font-bold">Account number (10 digits)<input className={`${entry} mt-1`} inputMode="numeric" maxLength={10} autoComplete="off" value={accountNumber} onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ''))} data-testid="input-account-number" /></label>
         <label className="block text-xs font-bold">Contact phone<input className={`${entry} mt-1`} inputMode="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} data-testid="input-contact-phone" /></label>
         <label className="block text-xs font-bold">Business email<input className={`${entry} mt-1`} type="email" required maxLength={254} value={businessEmail} onChange={e => setBusinessEmail(e.target.value)} data-testid="input-business-email" /></label>

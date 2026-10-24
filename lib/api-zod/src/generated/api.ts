@@ -9571,6 +9571,23 @@ export const ListPendingFeeAdjustmentsResponse = zod.array(ListPendingFeeAdjustm
 
 
 /**
+ * Authenticated institution catalogue only. Confirmed codes come from the configured Flutterwave NG catalogue, not static routing-code guesses. Catalogue presence is not transfer approval.
+ * @summary Read the canonical Nigerian bank and digital-provider directory
+ */
+export const GetPaymentAccountProvidersResponse = zod.object({
+  "status": zod.enum(['AVAILABLE', 'UNAVAILABLE']),
+  "catalogueEnvironment": zod.enum(['TEST', 'LIVE']).nullable(),
+  "message": zod.string(),
+  "providers": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "code": zod.string().nullable(),
+  "transferCodeVerified": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

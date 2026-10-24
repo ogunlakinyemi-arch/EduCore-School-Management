@@ -57,8 +57,12 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : '
 const isReservedNfcCategory = (name: string) => /nfc.*subscription|subscription.*nfc/i.test(name);
 type Tab = 'overview' | 'invoices' | 'transfers' | 'adjustments' | 'structures' | 'bulk' | 'refunds' | 'reports' | 'nfc' | 'categories' | 'controls';
 
-function BankTransferSettings({ schoolId, settings, canEdit, onSaved }: { schoolId: number; settings: FinanceSettings; canEdit: boolean; onSaved: (message: string) => void }) {
+import { BankProviderSelect } from '@/components/bank-provider-select';
+import { useBankSelectionGuard } from '@/lib/bank-selection';
+
+export function BankTransferSettings({ schoolId, settings, canEdit, onSaved }: { schoolId: number; settings: FinanceSettings; canEdit: boolean; onSaved: (message: string) => void }) {
   const update = useUpdateFinanceSettings();
+  const bankAllowed = useBankSelectionGuard();
   const [enabled, setEnabled] = useState(settings.bankTransferEnabled);
   const [bankName, setBankName] = useState(settings.bankName ?? '');
   const [accountName, setAccountName] = useState(settings.accountName ?? '');
@@ -70,6 +74,7 @@ function BankTransferSettings({ schoolId, settings, canEdit, onSaved }: { school
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
+    if (bankName !== (settings.bankName ?? '') && !bankAllowed({ bankName, bankCode: '' }, null, false)) { setFailure('Choose a bank from the directory.'); return; }
     if (enabled && !complete) { setFailure('Add a bank name, account name and valid 10-digit Nigerian account number before enabling transfers.'); return; }
     try {
       const saved = await update.mutateAsync({ params: { schoolId }, data: {
@@ -88,7 +93,7 @@ function BankTransferSettings({ schoolId, settings, canEdit, onSaved }: { school
     <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="eyebrow">School-approved destination</div><h2 className="display-font mt-2 text-xl font-bold">Bank transfer account</h2></div><StatusPill value={settings.bankTransferEnabled ? 'ACTIVE' : 'INACTIVE'} /></div>
     <p className={`mt-3 ${note}`}>Only enabled details are shared with parents. Disabling transfers removes the payment instructions and submission option from their invoice view.</p>
     {canEdit ? <form onSubmit={save} className="mt-6 space-y-4">
-      <Field label="Bank name"><input required={enabled} minLength={enabled ? 2 : undefined} maxLength={100} value={bankName} onChange={e => setBankName(e.target.value)} className={entry} data-testid="input-finance-bank-name" /></Field>
+      <BankProviderSelect value={{ bankName, bankCode: '' }} onSelect={b => setBankName(b.bankName)} requireCode={false} required={enabled} testId="input-finance-bank-name" />
       <Field label="Account name"><input required={enabled} minLength={enabled ? 2 : undefined} maxLength={150} value={accountName} onChange={e => setAccountName(e.target.value)} className={entry} data-testid="input-finance-account-name" /></Field>
       <Field label="Account number · 10 digits"><input type="text" inputMode="numeric" pattern={enabled ? '[0-9]{10}' : undefined} maxLength={10} required={enabled} value={accountNumber} onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ''))} className={`${entry} font-mono tracking-widest`} data-testid="input-finance-account-number" /></Field>
       <label className="flex items-center gap-3 rounded-xl bg-[hsl(var(--secondary))] p-4 text-sm font-bold"><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} data-testid="checkbox-finance-bank-enabled" />Enable these approved details for parent transfers</label>

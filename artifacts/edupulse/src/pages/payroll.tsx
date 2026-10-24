@@ -12,6 +12,7 @@ import {
 } from '@workspace/api-client-react';
 import type { PayrollEmployeeProfile, PayrollItem, PayrollTransfer } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Info, Metric, Modal, PageHeading, SkeletonPage, StatusPill, TenantPicker, useTenant } from '@/components/shared';
+import { useBankSelectionGuard } from '@/lib/bank-selection';
 import { BankFields, FRESH_MS, Freshness, IdentityBoundary, Notice, OutcomeBadge, PrintButton, PrintStyles, ProviderBanner, Tabs, csvDownload, currentMonth, entry, errMsg, minorToInput, monthLabel, netOf, ngn, note, toMinor } from './payroll-common';
 
 type Scope = 'COMPANY' | 'SCHOOL';
@@ -71,10 +72,12 @@ function ProfileEditor({ emp, onSave, onClose, saving, error }: { emp: PayrollEm
   const [sal, setSal] = useState(minorToInput(emp.monthlySalaryMinor)); const [al, setAl] = useState(minorToInput(emp.allowanceMinor)); const [de, setDe] = useState(minorToInput(emp.deductionMinor));
   const [bank, setBank] = useState({ bankName: emp.bankName ?? '', bankCode: emp.bankCode ?? '', accountName: emp.accountName ?? emp.fullName, accountNumber: '' });
   const [local, setLocal] = useState('');
+  const bankAllowed = useBankSelectionGuard();
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const a = toMinor(sal), b = toMinor(al), c = toMinor(de);
     if ([a, b, c].some(Number.isNaN) || a < 1) { setLocal('Enter valid naira amounts; salary must be above zero.'); return; }
+    if (!bankAllowed(bank, { bankName: emp.bankName ?? '', bankCode: emp.bankCode ?? '' })) { setLocal('Choose a bank with a verified transfer code from the directory before saving.'); return; }
     onSave({ employeeId: emp.employeeId, monthlySalaryMinor: a, allowanceMinor: b, deductionMinor: c, ...bank, bankName: bank.bankName.trim(), accountName: bank.accountName.trim() });
   };
   return <Modal title={emp.fullName} eyebrow="Payroll profile" onClose={onClose}>

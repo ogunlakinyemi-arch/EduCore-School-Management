@@ -39,6 +39,8 @@ import NotFound from '@/pages/not-found';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { BankProviderSelect } from '@/components/bank-provider-select';
+import { useBankSelectionGuard } from '@/lib/bank-selection';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
@@ -384,16 +386,18 @@ const profileSchema = z.object({
 
 const payoutInfoSchema = z.object({
   payoutMethod: z.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
-  bankName: z.string().min(2).optional(),
+  bankName: z.string().min(2).optional().or(z.literal('')),
+  bankCode: z.string().optional(),
   accountName: z.string().min(2),
   accountNumber: z.string().optional(),
 });
 
-function PartnerSettings() {
+export function PartnerSettings() {
   const profileQuery = useGetPartnerProfile();
   const payoutInfoQuery = useGetPartnerPayoutInformation();
   const updateProfile = useUpdatePartnerProfile();
   const updatePayoutInfo = useUpdatePartnerPayoutInformation();
+  const bankAllowed = useBankSelectionGuard();
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -415,6 +419,7 @@ function PartnerSettings() {
     values: payoutInfoQuery.data ? {
       payoutMethod: payoutInfoQuery.data.payoutMethod as any,
       bankName: payoutInfoQuery.data.bankName || '',
+      bankCode: (payoutInfoQuery.data as { bankCode?: string | null }).bankCode || '',
       accountName: payoutInfoQuery.data.accountName || '',
       accountNumber: '', // Never populate write-only field
     } : undefined
@@ -430,7 +435,16 @@ function PartnerSettings() {
   });
 
   const onPayoutSubmit = payoutForm.handleSubmit((data) => {
-    updatePayoutInfo.mutate({ data: data as any }, {
+    const saved = payoutInfoQuery.data as { bankName?: string | null; bankCode?: string | null } | undefined;
+    const bank = { bankName: data.bankName ?? '', bankCode: data.bankCode ?? '' };
+    const changed = bank.bankName !== (saved?.bankName ?? '') || bank.bankCode !== (saved?.bankCode ?? '');
+    const needed = data.payoutMethod === 'BANK_TRANSFER' || (changed && !!bank.bankName);
+    if (needed && !bankAllowed(bank, { bankName: saved?.bankName ?? '', bankCode: saved?.bankCode ?? '' }, changed)) {
+      payoutForm.setError('bankName', { message: 'Choose a bank with a verified transfer code from the directory.' });
+      return;
+    }
+    const { bankName, bankCode, ...rest } = data;
+    updatePayoutInfo.mutate({ data: { ...rest, ...(bankName ? { bankName } : {}), ...(bankCode ? { bankCode } : {}) } as any }, {
       onSuccess: () => {
         toast({ title: 'Payout info updated' });
         queryClient.invalidateQueries({ queryKey: ['getPartnerPayoutInformation'] });
@@ -507,9 +521,11 @@ function PartnerSettings() {
               </select>
             </Field>
             <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Bank Name" error={payoutForm.formState.errors.bankName?.message}>
-                <input {...payoutForm.register('bankName')} placeholder="e.g. Zenith Bank" />
-              </Field>
+              <div>
+                <BankProviderSelect label="Bank Name" required={false} value={{ bankName: payoutForm.watch('bankName') ?? '', bankCode: payoutForm.watch('bankCode') ?? '' }}
+                  onSelect={b => { payoutForm.setValue('bankName', b.bankName, { shouldDirty: true }); payoutForm.setValue('bankCode', b.bankCode, { shouldDirty: true }); payoutForm.clearErrors('bankName'); }} />
+                {payoutForm.formState.errors.bankName?.message && <span role="alert" className="mt-1.5 block text-xs font-medium text-[hsl(var(--destructive))]">{payoutForm.formState.errors.bankName.message}</span>}
+              </div>
               <Field label="Account Name" error={payoutForm.formState.errors.accountName?.message}>
                 <input {...payoutForm.register('accountName')} placeholder="Exact name on account" />
               </Field>

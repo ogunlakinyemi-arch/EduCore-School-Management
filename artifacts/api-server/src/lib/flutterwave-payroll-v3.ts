@@ -324,7 +324,7 @@ function record(value: unknown): JsonObject | null {
 
 /**
  * Documented Flutterwave v3 endpoints:
- * POST /accounts/resolve, POST /transfers, GET /transfers?reference=...
+ * GET /banks/NG, POST /accounts/resolve, POST /transfers, GET /transfers?reference=...
  * No other provider API versions or inferred recipient/subaccount API are used.
  */
 export class FlutterwavePayrollV3Client {
@@ -335,6 +335,20 @@ export class FlutterwavePayrollV3Client {
 
   capability(): PayrollProviderCapability {
     return configuredPayrollProviderCapability(this.env);
+  }
+
+  /** Catalogue lookup only. Uses the same credential/mode boundary as account
+   * resolution; listing a routing code never enables or attests a transfer. */
+  async listNigerianBanks() {
+    const capability=this.capability();
+    const developmentKey=developmentFlutterwaveCredential(this.env).secret;
+    if(!developmentKey&&!["TEST","LIVE"].includes(capability.mode))
+      throw new FlutterwavePayrollUnavailableError("Bank catalogue is not configured");
+    const key=developmentKey??providerKey(this.env,capability.mode as "TEST"|"LIVE");
+    const body=await v3Request("/banks/NG",key,{method:"GET",redirect:"error"},this.fetchImpl);
+    if(body.status!=="success"||!Array.isArray(body.data)||!body.data.length||body.data.length>5000)
+      throw new FlutterwavePayrollUnavailableError("Bank catalogue is unavailable");
+    return {environment:developmentKey?"TEST" as const:capability.mode as "TEST"|"LIVE",banks:body.data as unknown[]};
   }
 
   async resolveNigerianAccount(input: {

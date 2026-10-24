@@ -379,6 +379,7 @@ import type {
   GetParentFeeInvoicePaymentMethods200Item,
   GetParentParams,
   GetParentTelegramInvitationParams,
+  GetPaymentAccountProviders200,
   GetPlatformTransportOverviewParams,
   GetPromotionBatchParams,
   GetPromotionReadinessParams,
@@ -21197,6 +21198,84 @@ export function useListPendingFeeAdjustments<TData = Awaited<ReturnType<typeof l
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListPendingFeeAdjustmentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPaymentAccountProvidersUrl = () => {
+
+
+
+
+  return `/api/payment-account-providers`
+}
+
+/**
+ * Authenticated institution catalogue only. Confirmed codes come from the configured Flutterwave NG catalogue, not static routing-code guesses. Catalogue presence is not transfer approval.
+ * @summary Read the canonical Nigerian bank and digital-provider directory
+ */
+export const getPaymentAccountProviders = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetPaymentAccountProviders200> => {
+
+  return customFetch<GetPaymentAccountProviders200>(getGetPaymentAccountProvidersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPaymentAccountProvidersQueryKey = () => {
+    return [
+    `/api/payment-account-providers`
+    ] as const;
+    }
+
+
+export const getGetPaymentAccountProvidersQueryOptions = <TData = Awaited<ReturnType<typeof getPaymentAccountProviders>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentAccountProviders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentAccountProvidersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPaymentAccountProviders>>> = ({ signal }) => getPaymentAccountProviders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPaymentAccountProviders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPaymentAccountProvidersQueryResult = NonNullable<Awaited<ReturnType<typeof getPaymentAccountProviders>>>
+export type GetPaymentAccountProvidersQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the canonical Nigerian bank and digital-provider directory
+ */
+
+export function useGetPaymentAccountProviders<TData = Awaited<ReturnType<typeof getPaymentAccountProviders>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentAccountProviders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPaymentAccountProvidersQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

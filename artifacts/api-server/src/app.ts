@@ -22,6 +22,7 @@ import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
 import { studentSubscriptionFlutterwaveWebhookRouter } from "./routes/student-subscription-webhooks";
 import { studentSubscriptionLiveWebhookRouter } from "./routes/student-subscription-live-webhooks";
 import flutterwaveLiveRuntimeRouter from "./routes/flutterwave-live-runtime";
+import {paymentAccountProvidersRouter} from "./routes/payment-account-providers";
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 import { rejectSimulationWebhook } from "./middlewares/local-split-simulation";
@@ -137,6 +138,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", flutterwaveLiveRuntimeRouter);
+app.use("/api", paymentAccountProvidersRouter);
 app.use("/api", router);
 app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) return next(error);

@@ -24215,6 +24215,36 @@ export type ListPendingFeeAdjustmentsParams = {
 schoolId: SchoolIdParameter;
 };
 
+export type GetPaymentAccountProviders200Status = typeof GetPaymentAccountProviders200Status[keyof typeof GetPaymentAccountProviders200Status];
+
+
+export const GetPaymentAccountProviders200Status = {
+  AVAILABLE: 'AVAILABLE',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export type GetPaymentAccountProviders200CatalogueEnvironment = typeof GetPaymentAccountProviders200CatalogueEnvironment[keyof typeof GetPaymentAccountProviders200CatalogueEnvironment] | null;
+
+
+export const GetPaymentAccountProviders200CatalogueEnvironment = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+} as const;
+
+export type GetPaymentAccountProviders200ProvidersItem = {
+  id: string;
+  name: string;
+  code: string | null;
+  transferCodeVerified: boolean;
+};
+
+export type GetPaymentAccountProviders200 = {
+  status: GetPaymentAccountProviders200Status;
+  catalogueEnvironment: GetPaymentAccountProviders200CatalogueEnvironment;
+  message: string;
+  providers: GetPaymentAccountProviders200ProvidersItem[];
+};
+
 export type AcceptInternalEmployeeInvitationBody = {
   claimId?: string;
 };

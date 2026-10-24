@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Landmark } from 'lucide-react';
 import {
@@ -12,6 +12,7 @@ import type { SchoolSettlementSummary } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, TenantPicker, useTenant, date } from '@/components/shared';
 import { BankFields, Freshness, IdentityBoundary, Notice, ProviderBanner, SettlementHistoryTable, Tabs, entry, errMsg, note, FRESH_MS } from './payroll-common';
 import { SettlementRemovalReviewControl } from '@/components/settlement-removal-review';
+import { useBankSelectionGuard } from '@/lib/bank-selection';
 import { DevelopmentBankVerification } from '@/components/development-bank-verification';
 
 type Profile = { status: string; bankName?: string | null; accountName?: string | null; accountLast4?: string | null; updatedAt?: string | null; businessName?: string | null; bankCode?: string | null; businessRegistrationNumber?: string | null; settlementContactEmail?: string | null; settlementContactPhone?: string | null; providerSubaccountId?: string | null };
@@ -30,8 +31,15 @@ const blank = (p?: Profile | null): FormState => ({ businessName: p?.businessNam
 
 function SettlementForm({ profile, scope, saving, onSubmit, onCancel }: { profile?: Profile | null; scope: 'COMPANY' | 'SCHOOL'; saving: boolean; onSubmit: (d: FormState) => void; onCancel: () => void }) {
   const [f, setF] = useState<FormState>(() => blank(profile));
+  const bankAllowed = useBankSelectionGuard();
   const patch = (p: Partial<FormState>) => setF(s => ({ ...s, ...p }));
-  const submit = (e: FormEvent) => { e.preventDefault(); onSubmit(f); };
+  const original = useRef({ bankName: profile?.bankName ?? '', bankCode: profile?.bankCode ?? '' });
+  const [blocked, setBlocked] = useState('');
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!bankAllowed(f, original.current)) { setBlocked('Choose a bank with a verified transfer code from the directory before saving.'); return; }
+    setBlocked(''); onSubmit(f);
+  };
   return <form onSubmit={submit} className="space-y-4" data-testid="form-settlement">
     <Field label="Business name"><input required minLength={2} className={entry} value={f.businessName} onChange={e => patch({ businessName: e.target.value })} /></Field>
     <div className="grid gap-3 sm:grid-cols-2">
@@ -40,6 +48,7 @@ function SettlementForm({ profile, scope, saving, onSubmit, onCancel }: { profil
     </div>
     <Field label={scope === 'SCHOOL' ? 'Settlement contact email' : 'Settlement contact email (optional)'}><input type="email" required={scope === 'SCHOOL'} className={entry} value={f.settlementContactEmail} onChange={e => patch({ settlementContactEmail: e.target.value })} /></Field>
     <BankFields v={f} set={patch} maskedCurrent={profile?.accountLast4 ? `****${profile.accountLast4}` : null} />
+    {blocked && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{blocked}</p>}
     <p className={note}>Saving submits recipient details for provider verification. Entering a bank account does not mean funds have settled; settlement shows only after the provider confirms it.</p>
     <div className="flex gap-2"><Button type="submit" disabled={saving || f.accountNumber.length !== 10} testId="button-save-settlement">{saving ? 'Saving...' : 'Save for verification'}</Button><Button variant="quiet" onClick={onCancel}>Cancel</Button></div>
   </form>;

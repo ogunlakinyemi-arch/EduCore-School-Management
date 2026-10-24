@@ -3,7 +3,7 @@ import { CircleAlert, FlaskConical, ShieldCheck, Printer } from 'lucide-react';
 import type { SettlementProviderCapability, SettlementHistoryEntry } from '@workspace/api-client-react';
 import { EmptyState, StatusPill, cx, date, time } from '@/components/shared';
 import { Landmark } from 'lucide-react';
-import { nigerianBankOptions } from '@/lib/nigerian-bank-options';
+import { BankProviderSelect } from '@/components/bank-provider-select';
 
 export const entry = 'w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2.5 text-sm font-medium outline-none focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--primary)/.12)]';
 export const note = 'text-xs leading-5 text-[hsl(var(--muted-foreground))]';
@@ -105,18 +105,8 @@ export function Tabs({ tabs, value, onChange }: { tabs: ReadonlyArray<readonly [
 
 /** Bank input group. Account number is write-only: never prefilled, never logged. */
 export function BankFields({ v, set, maskedCurrent }: { v: { bankName: string; bankCode: string; accountName: string; accountNumber: string }; set: (p: Partial<{ bankName: string; bankCode: string; accountName: string; accountNumber: string }>) => void; maskedCurrent?: string | null }) {
-  const legacyBank = !!v.bankCode && !nigerianBankOptions.some(bank => bank.code === v.bankCode);
   return <div className="grid gap-3 sm:grid-cols-2">
-    <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Bank name</span>
-      <select required className={entry} value={v.bankCode} onChange={e => {
-        const bank = nigerianBankOptions.find(option => option.code === e.target.value);
-        if (bank) set({ bankName: bank.name, bankCode: bank.code });
-      }} data-testid="input-bank-name">
-        <option value="">Select a bank</option>
-        {legacyBank && <option value={v.bankCode}>{v.bankName} (current saved bank)</option>}
-        {nigerianBankOptions.map(bank => <option key={bank.code} value={bank.code}>{bank.name}</option>)}
-      </select>
-    </label>
+    <BankProviderSelect value={v} onSelect={b => set({ bankName: b.bankName, bankCode: b.bankCode })} />
     <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Bank code (automatic)</span><input readOnly required inputMode="numeric" pattern="[0-9]{3,6}" maxLength={6} className={`${entry} font-mono`} value={v.bankCode} data-testid="input-bank-code" /></label>
     <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">Account name</span><input required minLength={2} maxLength={150} className={entry} value={v.accountName} onChange={e => set({ accountName: e.target.value })} autoComplete="off" data-testid="input-account-name" /></label>
     <label className="block"><span className="mb-1.5 block text-xs font-bold text-[hsl(var(--muted-foreground))]">New account number (10 digits)</span>

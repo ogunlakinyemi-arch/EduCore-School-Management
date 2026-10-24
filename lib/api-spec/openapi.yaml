@@ -1739,6 +1739,47 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/PendingFeeAdjustment" } }
+  /payment-account-providers:
+    get:
+      operationId: getPaymentAccountProviders
+      tags: [settlement]
+      summary: Read the canonical Nigerian bank and digital-provider directory
+      description: Authenticated institution catalogue only. Confirmed codes come from the configured Flutterwave NG catalogue, not static routing-code guesses. Catalogue presence is not transfer approval.
+      responses:
+        "200":
+          description: Provider directory; missing routing evidence is explicitly unavailable.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, catalogueEnvironment, message, providers]
+                properties:
+                  status:
+                    type: string
+                    enum: [AVAILABLE, UNAVAILABLE]
+                  catalogueEnvironment:
+                    type: string
+                    enum: [TEST, LIVE]
+                    nullable: true
+                  message:
+                    type: string
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, code, transferCodeVerified]
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        code:
+                          type: string
+                          nullable: true
+                        transferCodeVerified:
+                          type: boolean
+        "401":
+          description: Authentication required.
   /healthz:
     get:
       security: []

@@ -10,6 +10,10 @@ const f = vi.hoisted(() => ({
   userId: 'unit-owner' as string | null, loaded: true, schoolId: null as number | null,
   dashboard: vi.fn(), evidence: vi.fn(), review: vi.fn(), submit: vi.fn(), other: vi.fn(),
   dashboardOptions: null as any, evidenceOptions: null as any,
+  catalogue: { status: 'AVAILABLE', catalogueEnvironment: 'TEST', message: '', providers: [
+    { id: 'p1', name: 'Fictional Verified Bank', code: '90001', transferCodeVerified: true },
+    { id: 'p2', name: 'Fictional Unverified MFB', code: null, transferCodeVerified: false },
+  ] } as any,
   owner: true, authLoading: false, authError: false, preview: vi.fn(),
 }));
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ userId: f.userId, isLoaded: f.loaded }) }));
@@ -27,6 +31,7 @@ vi.mock('@/components/shared', () => ({
 vi.mock('@workspace/api-client-react', async () => {
   const { useQuery, useMutation } = await import('@tanstack/react-query');
   return {
+    useGetPaymentAccountProviders: () => ({ data: f.catalogue, isLoading: false, isError: false, refetch: vi.fn() }),
     useGetAuthorizedContext: () => ({ data: { isPlatformOwner: f.owner }, isLoading: f.authLoading, isError: f.authError }),
     usePreviewFlutterwaveLiveEvidence: () => ({ mutateAsync: f.preview }),
     getGetFlutterwaveSplitDashboardQueryKey: (p: unknown) => ['flutterwave-dashboard', p],
@@ -273,6 +278,25 @@ describe('Offline signed-in TEST verification screen (mock identity/API, real Re
     expect(host.textContent).not.toContain('NGN 3,100');
     expect(node('button-transaction-evidence-40')).toBeNull();
     if (role === 'PARTNER') expect(node('button-transaction-evidence-40')).toBeNull();
+  });
+  it('registers with the verified catalogue bankCode and blocks unverified providers', async () => {
+    f.userId = 'unit-SCHOOL_ADMIN'; f.schoolId = 1; f.owner = false;
+    f.dashboard.mockResolvedValue({ ...dashboard(), isOwner: false });
+    await render();
+    const input = node<HTMLInputElement>('input-bank-provider');
+    const pick = async (name: string) => {
+      await act(async () => { const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!; set.call(input, name); input.dispatchEvent(new Event('input', { bubbles: true })); });
+      await act(async () => { host.querySelector<HTMLElement>('[role="option"]')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); });
+    };
+    await pick('unverified');
+    expect(host.querySelector('[data-testid="bank-unverified-alert"]')).not.toBeNull();
+    await fill('input-account-number', '0123456789'); await fill('input-contact-phone', '08012345678'); await fill('input-business-email', 'a@school.edu.ng');
+    await act(async () => node('check-ownership-attestation').click());
+    expect(node<HTMLButtonElement>('button-submit-recipient').disabled).toBe(true);
+    await pick('verified bank');
+    expect(node<HTMLButtonElement>('button-submit-recipient').disabled).toBe(false);
+    await click('button-submit-recipient');
+    expect(f.submit.mock.calls[0][0].data.bankCode).toBe('90001');
   });
   it('requires a note and both attestations, then submits only the exact reviewed reference', async () => {
     await render(); await click('button-review-10');
