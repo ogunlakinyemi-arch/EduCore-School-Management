@@ -13440,6 +13440,50 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type SchoolBillingContextMode = typeof SchoolBillingContextMode[keyof typeof SchoolBillingContextMode];
+
+
+export const SchoolBillingContextMode = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export type SchoolBillingStudentStatus = typeof SchoolBillingStudentStatus[keyof typeof SchoolBillingStudentStatus];
+
+
+export const SchoolBillingStudentStatus = {
+  UNPAID: 'UNPAID',
+  AWAITING_FINALIZATION: 'AWAITING_FINALIZATION',
+  READY: 'READY',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+  VERIFIED: 'VERIFIED',
+  HELD: 'HELD',
+} as const;
+
+export interface SchoolBillingStudent {
+  studentId: number;
+  studentName: string;
+  status: SchoolBillingStudentStatus;
+  checkoutAllowed: boolean;
+  /** @nullable */
+  reference: string | null;
+  /** @nullable */
+  checkoutUrl: string | null;
+}
+
+export interface SchoolBillingContext {
+  schoolId: number;
+  actorId: number;
+  mode: SchoolBillingContextMode;
+  reason: string;
+  /** @nullable */
+  termId: number | null;
+  /** @nullable */
+  termName: string | null;
+  students: SchoolBillingStudent[];
+}
+
 export interface LiveSchoolCheckoutInput {
   /** @minimum 1 */
   schoolId: number;
@@ -22870,6 +22914,13 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetSchoolBillingContextParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
 
 export type VerifyLiveSchoolSubscriptionCallbackParams = {
 /**

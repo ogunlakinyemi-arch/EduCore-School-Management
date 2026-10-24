@@ -201,6 +201,22 @@ describe("offline LIVE-only finalization design, real draft DDL and transactions
     expect((await rows("flutterwave_live_partner_accruals"))[0]).toMatchObject({ amount_minor: 10000, state: "HELD" });
     expect((await rows("flutterwave_live_collection_evidence"))[0].gross_minor).toBe(500000);
   });
+  it("binds distinct refund and collection IDs to the original payment, never the refund ID",async()=>{
+    await run();
+    const notification=(fields:Record<string,unknown>={})=>Buffer.from(JSON.stringify({
+      id:900001,TransactionId:123456,FlwRef:"FLW-fixture-123456",
+      AmountRefunded:"100",status:"completed",...fields,
+    }));
+    await expect(run(notification({TransactionId:999999}))).rejects.toThrow();
+    await expect(run(notification({TransactionId:undefined}))).rejects.toThrow();
+    await expect(run(notification({FlwRef:"another-original"}))).rejects.toThrow();
+    expect((await rows("flutterwave_live_subscription_intents"))[0].on_hold).toBe(false);
+    await run(notification());
+    await run(notification({id:900002}));
+    expect((await rows("flutterwave_live_subscription_intents"))[0].on_hold).toBe(true);
+    expect((await rows("flutterwave_live_collection_evidence"))[0].transaction_id).toBe("123456");
+    expect((await rows("flutterwave_live_partner_accruals"))[0].state).toBe("HELD");
+  });
   it("reversal before collection remains held after success and creates no new payable", async () => {
     await run(body({ status: "reversed" }));
     expect(await run()).toMatchObject({ outcome: "HELD" });

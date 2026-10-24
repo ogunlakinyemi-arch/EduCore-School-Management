@@ -34,6 +34,8 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /flutterwave/live/billing-context:
+    $ref: "./flutterwave-school-billing.yaml#/context"
   /flutterwave/live/checkout:
     $ref: "./flutterwave-live-runtime.yaml#/checkout"
   /flutterwave/live/callback:

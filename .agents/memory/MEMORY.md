@@ -77,6 +77,7 @@
 - [Settlement removal consent](settlement-profile-removal-consent.md) — building a Development cleanup feature never authorizes deleting existing bank profiles.
 - [Repository references](repository-reference-policy.md) — compare current Replit source with freshly verified GitHub main before fixes; preserve local work and do not infer push permission.
 - [Subscription business policy](subscription-business-policy.md) — school-only 1,900 checkout split, deferred 100 Partner liability, term-end Owner approval, immutable history and no live activation.
+- [School billing authority](school-billing-authority-policy.md) — server-owned mode and numeric identities; legacy TEST records and redirects never establish LIVE payment.
 - [Employee deactivation boundary](employee-deactivation-boundary.md) — deny school employment permissions without globally disabling independent family or other-tenant access.
 - [Pooled PostgreSQL sessions](pooled-postgres-session-state.md) — pin a client for session-local SQL state; expected query errors can replace pooled connections.
 - [Person titles withdrawn](person-title-policy.md) — keep plain-name forms; do not restore title controls or a migration prerequisite without a new user request.

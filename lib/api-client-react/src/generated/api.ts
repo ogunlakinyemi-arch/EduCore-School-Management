@@ -386,6 +386,7 @@ import type {
   GetReportFilterOptionsParams,
   GetSchoolAttendanceScheduleParams,
   GetSchoolAttendanceTodayParams,
+  GetSchoolBillingContextParams,
   GetSchoolCommunityDashboardParams,
   GetSchoolDashboardParams,
   GetSchoolEmployeeNfcAttendanceDailyParams,
@@ -722,6 +723,7 @@ import type {
   SchoolAdministratorInvitationReplacement,
   SchoolAdministratorResult,
   SchoolAttendanceScheduleView,
+  SchoolBillingContext,
   SchoolBranding,
   SchoolCalendarEntry,
   SchoolClass,
@@ -940,6 +942,91 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetSchoolBillingContextUrl = (params: GetSchoolBillingContextParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/flutterwave/live/billing-context?${stringifiedParams}` : `/api/flutterwave/live/billing-context`
+}
+
+/**
+ * Current School Admin only for LIVE. Existing school accountants may read TEST mode only. Owner release controls remain separate. Never falls back to TEST from a blocked LIVE selection.
+ * @summary Server-selected school billing mode and current LIVE identity/recovery
+ */
+export const getSchoolBillingContext = async (params: GetSchoolBillingContextParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolBillingContext> => {
+
+  return customFetch<SchoolBillingContext>(getGetSchoolBillingContextUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolBillingContextQueryKey = (params?: GetSchoolBillingContextParams,) => {
+    return [
+    `/api/flutterwave/live/billing-context`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolBillingContextQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolBillingContext>>, TError = ErrorType<void>>(params: GetSchoolBillingContextParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolBillingContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolBillingContextQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolBillingContext>>> = ({ signal }) => getSchoolBillingContext(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolBillingContext>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolBillingContextQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolBillingContext>>>
+export type GetSchoolBillingContextQueryError = ErrorType<void>
+
+
+/**
+ * @summary Server-selected school billing mode and current LIVE identity/recovery
+ */
+
+export function useGetSchoolBillingContext<TData = Awaited<ReturnType<typeof getSchoolBillingContext>>, TError = ErrorType<void>>(
+ params: GetSchoolBillingContextParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolBillingContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolBillingContextQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getInitializeLiveSchoolSubscriptionUrl = () => {
 

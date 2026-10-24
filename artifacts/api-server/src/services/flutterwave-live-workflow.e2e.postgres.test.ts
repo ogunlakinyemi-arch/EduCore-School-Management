@@ -35,6 +35,7 @@ import { readSchoolSubscription,assertSubscriptionAccess } from "./subscription-
 import { createLiveFamilyAccessRouter } from "../routes/flutterwave-live-family-access";
 import { initializeLiveSubscriptionCheckout,processReleasedLiveWebhook,verifyLiveCallback } from "./flutterwave-live-runtime";
 import { saveLiveAllocationReview,saveLiveSchoolConfiguration } from "./flutterwave-live-configuration";
+import { readSchoolBillingContext } from "./flutterwave-school-billing";
 
 // Fixture capability is NEVER mounted in the app, stored in env or exported.
 const capability={enabled:true},merchant="merchant_fixture_live",school="RS_FictionalSchool123",hash="fictional-workflow-live-verifier";
@@ -174,6 +175,85 @@ describe("released runtime through fictional V3 HTTP and disposable PostgreSQL",
     try {await expect(client.query(down)).rejects.toThrow("Preserve populated");await client.query("ROLLBACK");}
     finally{client.release();}
     expect(await count("flutterwave_live_release_manifests")).toBe(1);
+  });
+  it("billing selects mode only on the server and denies canonical cross-school, Owner and inactive access",async()=>{
+    const input={actorId:1,schoolId:10};
+    expect(await readSchoolBillingContext(pool,input,{})).toMatchObject({mode:"TEST",students:[],termId:null});
+    expect(await readSchoolBillingContext(pool,input,{EDUCORE_FLUTTERWAVE_MODE:"LIVE"}))
+      .toMatchObject({mode:"UNAVAILABLE",reason:"LIVE_RELEASE_UNAVAILABLE",students:[]});
+    for(const actorId of [2,3])await expect(readSchoolBillingContext(pool,{...input,actorId},{})).rejects.toMatchObject({statusCode:403});
+    await sql("UPDATE school_memberships SET status='INACTIVE' WHERE user_id=1");
+    await expect(readSchoolBillingContext(pool,input,{})).rejects.toMatchObject({statusCode:403});
+    expect(runtimeFetch).not.toHaveBeenCalled();
+  });
+  it("billing requires a unique current numeric term and real authority, ignoring retained TEST history",async()=>{
+    expect(await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv()))
+      .toMatchObject({mode:"LIVE",reason:"CURRENT_TERM_UNAVAILABLE",termId:null,students:[]});
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28 WHERE id=1");
+    const ctx=await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv());
+    expect(ctx).toMatchObject({mode:"LIVE",termId:1,termName:"First Term",actorId:1});
+    expect(ctx.students).toHaveLength(2);
+    expect(ctx.students.every(s=>s.status==="UNPAID"&&s.checkoutAllowed&&s.reference===null)).toBe(true);
+    await sql("TRUNCATE flutterwave_live_school_configuration");
+    expect((await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv())).students.every(s=>!s.checkoutAllowed)).toBe(true);
+    expect(runtimeFetch).not.toHaveBeenCalled();
+  });
+  it("billing recovers the same scoped LIVE reference/URL without provider calls or another checkout",async()=>{
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28 WHERE id=1");
+    const session=await checkout();
+    const ctx=await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv());
+    expect(ctx.students[0]).toMatchObject({...session,status:"READY",checkoutAllowed:false});
+    expect(ctx.students[1]).toMatchObject({status:"UNPAID",reference:null});
+    expect(runtimeFetch).toHaveBeenCalledTimes(1);
+    await sql("UPDATE students SET school_id=20 WHERE id=1");
+    expect((await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv())).students.map(s=>s.studentId)).toEqual([2]);
+  });
+  it("billing cannot authorize another charge after uncertain provider acceptance or a disabled release",async()=>{
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28 WHERE id=1");
+    runtimeFetch.mockRejectedValueOnce(new Error("fictional lost response"));
+    await expect(checkout()).rejects.toThrow();
+    expect((await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv())).students[0])
+      .toMatchObject({status:"RECONCILIATION_REQUIRED",checkoutAllowed:false,checkoutUrl:null});
+    await sql("UPDATE flutterwave_live_release_manifests SET enabled=false");
+    expect(await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv()))
+      .toMatchObject({mode:"UNAVAILABLE",students:[]});
+    expect(runtimeFetch).toHaveBeenCalledTimes(1);
+  });
+  it("a second administrator/key cannot reserve another checkout for the same school/student/term",async()=>{
+    await sql("INSERT INTO school_memberships VALUES(3,10,'SCHOOL_ADMIN','ACTIVE')");
+    const results=await Promise.allSettled([
+      checkout(),
+      initializeLiveSubscriptionCheckout(pool,{...checkoutInput(),actorId:3,idempotencyKey:"different-admin-key-0001"},runtimeEnv(),runtimeFetch),
+    ]);
+    expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+    expect(results.filter(r=>r.status==="rejected")).toHaveLength(1);
+    expect(await count("flutterwave_live_checkout_attempts")).toBe(1);
+    expect(runtimeFetch).toHaveBeenCalledTimes(1);
+  });
+  it("billing reports VERIFIED only after durable issuance and HELD after reversal, without trusting receipts alone",async()=>{
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28 WHERE id=1");
+    const intent=await reviewed();
+    const input={actorId:1,schoolId:10};
+    expect((await readSchoolBillingContext(pool,input,runtimeEnv())).students[0].status).toBe("READY");
+    await processReleasedLiveWebhook(pool,runtimeRaw(intent),{"verif-hash":hash},runtimeEnv(),runtimeFetch);
+    expect((await readSchoolBillingContext(pool,input,runtimeEnv())).students[0])
+      .toMatchObject({status:"VERIFIED",checkoutAllowed:false,checkoutUrl:null});
+    await processReleasedLiveWebhook(pool,runtimeRaw(intent,"reversed"),{"verif-hash":hash},runtimeEnv(),runtimeFetch);
+    expect((await readSchoolBillingContext(pool,input,runtimeEnv())).students[0])
+      .toMatchObject({status:"HELD",checkoutAllowed:false,checkoutUrl:null});
+  });
+  it("billing refuses retained ambiguous LIVE candidates rather than offering another payment URL",async()=>{
+    await sql("UPDATE academic_terms SET end_date=CURRENT_DATE+28 WHERE id=1");
+    await checkout();
+    await sql(`INSERT INTO flutterwave_live_subscription_intents
+      (merchant_scope,reference,school_id,student_id,session_id,term_id,term_end_date,school_subaccount_id,
+        partner_profile_id,partner_accrual_minor,issued_by,issuer_key,authority_review_id,authority_snapshot)
+      SELECT merchant_scope,'SCV3_live_ambiguous_fixture',school_id,student_id,session_id+1000,term_id,term_end_date,school_subaccount_id,
+        partner_profile_id,partner_accrual_minor,issued_by,issuer_key||'_duplicate',authority_review_id,authority_snapshot
+      FROM flutterwave_live_subscription_intents LIMIT 1`);
+    expect((await readSchoolBillingContext(pool,{actorId:1,schoolId:10},runtimeEnv())).students[0])
+      .toMatchObject({status:"RECONCILIATION_REQUIRED",checkoutAllowed:false,checkoutUrl:null});
+    expect(runtimeFetch).toHaveBeenCalledTimes(1);
   });
 });
 let pool:InstanceType<typeof DatabasePool>,directory:string,postgres:ChildProcess,server:ReturnType<express.Express["listen"]>,base:string;

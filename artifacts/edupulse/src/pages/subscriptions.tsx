@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { SchoolBillingDashboard } from '@/components/school-billing-dashboard';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { WalletCards, CircleAlert, CreditCard, RefreshCw } from 'lucide-react';
 import {
@@ -309,6 +310,10 @@ function SubscriptionRow({
 // Subscription status is always taken from the server list/payment endpoints. Flutterwave's
 // return query is only a verification signal and is never accepted as proof of payment.
 export function SubscriptionsPage() {
+  return <SchoolBillingDashboard legacy={<LegacySubscriptionsPage/>}/>;
+}
+
+function LegacySubscriptionsPage() {
   const { schoolId } = useTenant();
   const { isPlatformOwner } = useSchoolAdminAccess();
   const context = useGetAuthorizedContext().data;

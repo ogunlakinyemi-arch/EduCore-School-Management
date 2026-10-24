@@ -9,6 +9,35 @@ import * as zod from 'zod';
 
 
 /**
+ * Current School Admin only for LIVE. Existing school accountants may read TEST mode only. Owner release controls remain separate. Never falls back to TEST from a blocked LIVE selection.
+ * @summary Server-selected school billing mode and current LIVE identity/recovery
+ */
+
+
+
+export const GetSchoolBillingContextQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetSchoolBillingContextResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "actorId": zod.number().int(),
+  "mode": zod.enum(['TEST', 'LIVE', 'UNAVAILABLE']),
+  "reason": zod.string(),
+  "termId": zod.number().int().nullable(),
+  "termName": zod.string().nullable(),
+  "students": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "status": zod.enum(['UNPAID', 'AWAITING_FINALIZATION', 'READY', 'RECONCILIATION_REQUIRED', 'VERIFIED', 'HELD']),
+  "checkoutAllowed": zod.boolean(),
+  "reference": zod.string().nullable(),
+  "checkoutUrl": zod.string().nullable()
+}))
+})
+
+
+/**
  * School Admin only. Server fixes NGN 5000 and one reviewed school flat_subaccount NGN 1900. Default disabled; uncertain provider initialization must be reconciled, never retried as another charge.
  * @summary Initialize a separately released LIVE SCV3 checkout
  */

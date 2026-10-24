@@ -1,0 +1,43 @@
+context:
+  get:
+    operationId: getSchoolBillingContext
+    tags: [finance]
+    summary: Server-selected school billing mode and current LIVE identity/recovery
+    description: Current School Admin only for LIVE. Existing school accountants may read TEST mode only. Owner release controls remain separate. Never falls back to TEST from a blocked LIVE selection.
+    parameters:
+      - { in: query, name: schoolId, required: true, schema: { type: integer, minimum: 1 } }
+    responses:
+      "200":
+        description: Authoritative scoped context; unavailable or unknown outcomes never authorize another charge
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolBillingContext" }
+      "400": { description: Invalid school selection }
+      "401": { description: Sign-in required }
+      "403": { description: Current school finance access required; Owner excluded }
+      "503": { description: Context unavailable; never fall back to legacy payments }
+components:
+  schemas:
+    SchoolBillingContext:
+      type: object
+      required: [schoolId, actorId, mode, reason, termId, termName, students]
+      properties:
+        schoolId: { type: integer }
+        actorId: { type: integer }
+        mode: { type: string, enum: [TEST, LIVE, UNAVAILABLE] }
+        reason: { type: string }
+        termId: { type: [integer, "null"] }
+        termName: { type: [string, "null"] }
+        students:
+          type: array
+          items: { $ref: "#/components/schemas/SchoolBillingStudent" }
+    SchoolBillingStudent:
+      type: object
+      required: [studentId, studentName, status, checkoutAllowed, reference, checkoutUrl]
+      properties:
+        studentId: { type: integer }
+        studentName: { type: string }
+        status: { type: string, enum: [UNPAID, AWAITING_FINALIZATION, READY, RECONCILIATION_REQUIRED, VERIFIED, HELD] }
+        checkoutAllowed: { type: boolean }
+        reference: { type: [string, "null"] }
+        checkoutUrl: { type: [string, "null"] }

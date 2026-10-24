@@ -26,6 +26,7 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 vi.mock('@workspace/api-client-react', () => ({
+  useGetSchoolBillingContext: () => ({data:{mode:'TEST',schoolId:state.schoolId,actorId:88},isLoading:false,isError:false}),
   createStudentSubscriptionCheckout: (...args: any[]) => state.checkout(...args),
   getStudentSubscriptionPayment: (...args: any[]) => state.getPayment(...args),
   getGetStudentSubscriptionPaymentQueryKey: (subscriptionId: number, paymentId: number) => [`payment:${subscriptionId}:${paymentId}`],
@@ -39,7 +40,7 @@ vi.mock('@workspace/api-client-react', () => ({
       refetch: vi.fn(),
     };
   },
-  useGetAuthorizedContext: () => ({ data: { isPlatformOwner: state.owner, roles: state.roles } }),
+  useGetAuthorizedContext: () => ({ data: { user:{id:88},isPlatformOwner: state.owner, roles: state.roles } }),
   useListSubscriptions: () => ({ data: state.subscriptions, isLoading: false, isError: false, refetch: vi.fn() }),
   useVerifyStudentSubscriptionPayment: () => ({ mutateAsync: (args: unknown) => state.verify(args), isPending: false }),
 }));

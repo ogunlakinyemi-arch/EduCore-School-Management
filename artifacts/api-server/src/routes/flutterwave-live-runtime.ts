@@ -6,8 +6,10 @@ import { initializeLiveSubscriptionCheckout,verifyLiveCallback } from "../servic
 import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
 import { saveLiveSchoolConfiguration,saveLiveAllocationReview } from "../services/flutterwave-live-configuration";
 import { liveReleaseConfiguration,requireLiveRelease } from "../lib/flutterwave-live-release";
+import { createSchoolBillingContextRouter } from "./flutterwave-school-billing";
 
 const router=Router();
+router.use(createSchoolBillingContextRouter({pool}));
 const isOwner=(req:Parameters<typeof getUserContext>[0])=>getUserContext(req).roles
   .some(r=>r.role==="PLATFORM_OWNER"&&r.schoolId===null&&r.status==="ACTIVE");
 router.get("/flutterwave/live/release-check",requireAuthentication(),async(req,res)=>{

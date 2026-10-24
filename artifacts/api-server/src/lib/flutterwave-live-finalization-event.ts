@@ -30,7 +30,13 @@ export function parseLiveFinalizationEvent(rawBody: Buffer) {
     || type === "charge.completed" && ["failed", "refunded", "reversed"].includes(String(data.status));
   if (!successful && !adverse) return fail();
   if (standalone && (typeof data.status !== "string" || !["completed", "pending", "failed", "successful"].includes(data.status))) return fail();
-  const identifiers = [data.id, data.TransactionId].filter(value => value !== undefined);
+  const refund = standalone || type === "refund.completed";
+  // For refunds id identifies the refund, not its original collection.
+  // Never fall back to that id when the original TransactionId is absent.
+  if(refund && data.id!==undefined && (!["string","number"].includes(typeof data.id)
+    || !/^[1-9][0-9]{0,15}$/.test(String(data.id))
+    || BigInt(String(data.id))>BigInt(Number.MAX_SAFE_INTEGER))) return fail();
+  const identifiers = (refund ? [data.TransactionId] : [data.id, data.TransactionId]).filter(value => value !== undefined);
   if (!identifiers.length || identifiers.some(value =>
     !["string", "number"].includes(typeof value) || !/^[1-9][0-9]{0,15}$/.test(String(value))
       || BigInt(String(value)) > BigInt(Number.MAX_SAFE_INTEGER))
