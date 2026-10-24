@@ -114,3 +114,11 @@ Bank-resolution failures must preserve the provider HTTP status and a sanitized 
 **Why:** A 503 with no detail could not distinguish credential rejection, invalid fictional account data, rate limits, outages or network uncertainty.
 
 **How to apply:** Keep diagnostics allowlisted (fixed reason codes from pattern matching, never echoed provider text). Generic provider errors must not change verification status or write success/mismatch audits. Do not treat a fictional-account rejection as evidence the credential or integration is broken, and never suggest fictional data for LIVE.
+
+## In-app school onboarding
+
+School LIVE subaccount creation should normally happen inside EduCore after explicit Platform Owner review, not through per-school manual creation in the Flutterwave dashboard. Creating a verified LIVE subaccount is separate from approving school billing authority or releasing LIVE checkout.
+
+**Why:** The user explicitly requested automated in-app school onboarding while retaining merchant, ownership, fee-bearing and release gates, and forbade premature LIVE checkout activation.
+
+**How to apply:** Preserve a separately approved onboarding release and irreversible creation claims. Reconcile uncertain provider outcomes without resending creation; reserve dashboard/provider investigation for exceptional unresolved cases, not routine onboarding.

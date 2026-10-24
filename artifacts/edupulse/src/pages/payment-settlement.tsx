@@ -13,6 +13,7 @@ import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, Skelet
 import { BankFields, Freshness, IdentityBoundary, Notice, ProviderBanner, SettlementHistoryTable, Tabs, entry, errMsg, note, FRESH_MS } from './payroll-common';
 import { SettlementRemovalReviewControl } from '@/components/settlement-removal-review';
 import { useBankSelectionGuard } from '@/lib/bank-selection';
+import { OwnerLiveOnboarding, SchoolLiveOnboarding } from '@/components/live-school-subaccount-onboarding';
 import { DevelopmentBankVerification } from '@/components/development-bank-verification';
 
 type Profile = { status: string; bankName?: string | null; accountName?: string | null; accountLast4?: string | null; updatedAt?: string | null; businessName?: string | null; bankCode?: string | null; businessRegistrationNumber?: string | null; settlementContactEmail?: string | null; settlementContactPhone?: string | null; providerSubaccountId?: string | null };
@@ -85,6 +86,7 @@ function SchoolAdminSettlement({ schoolId }: { schoolId: number }) {
       {p.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="No settlement account yet" description="Add the school's own bank recipient. It is never shared with company payroll money." /> : <ProfileView p={p} />}
       {p.status === 'PENDING_VERIFICATION' && <SettlementRemovalReviewControl schoolId={schoolId} />}</section>}
     {tab === 'history' && <section className="panel overflow-hidden">{h.isLoading ? <SkeletonPage /> : h.isError ? <ErrorState retry={() => h.refetch()} /> : <SettlementHistoryTable rows={h.data ?? []} />}</section>}
+    {tab === 'profile' && <SchoolLiveOnboarding schoolId={schoolId} />}
     {editing && <Modal title="Settlement details" eyebrow="School account" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={p} scope="SCHOOL" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
   </div>;
 }
@@ -145,7 +147,8 @@ function OwnerSettlement() {
       <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">Company account</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-company-settlement">{company.data.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
         {company.data.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="Company account not configured" description="Add the company bank recipient used for company payroll. School money is never mixed with it." /> : <ProfileView p={company.data} />}
         {company.data.status === 'PENDING_VERIFICATION' && <SettlementRemovalReviewControl />}</section>)}
-    {tab === 'schools' && <section className="panel overflow-hidden"><div className="flex flex-wrap gap-3 border-b border-[hsl(var(--border))] p-4">
+    {tab === 'schools' && <OwnerLiveOnboarding />}
+    {tab === 'schools' && <section className="panel mt-6 overflow-hidden"><div className="flex flex-wrap gap-3 border-b border-[hsl(var(--border))] p-4">
       <input className={`${entry} max-w-xs`} placeholder="Search schools" value={search} onChange={e => setSearch(e.target.value)} aria-label="Search schools" />
       <select className={`${entry} max-w-[220px]`} value={status} onChange={e => setStatus(e.target.value as typeof status)} aria-label="Status filter">{['all', 'NOT_CONFIGURED', 'PENDING_VERIFICATION', 'VERIFIED', 'ACTION_REQUIRED'].map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.replaceAll('_', ' ')}</option>)}</select></div>
       {development && <p className={`${note} px-4 pb-3`}>Even TEST verification may contact Flutterwave. Only verify intentional test bank data or genuine school details. This does not create a collection subaccount or settle funds.</p>}

@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info: {title: LIVE school subaccount onboarding, version: 1.0.0}
+paths:
+  /flutterwave/live/school-subaccounts:
+    get:
+      operationId: getLiveSchoolSubaccounts
+      tags: [settlement]
+      summary: Read LIVE-only school subaccount onboarding and precise release blockers
+      parameters:
+        - {in: query, name: schoolId, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Owner sees all; School Admin must select their own school.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ready, blockers, items]
+                properties:
+                  ready: {type: boolean}
+                  blockers: {type: array, items: {type: string}}
+                  items: {type: array, items: {$ref: "#/components/schemas/LiveSchoolSubaccount"}}
+  /schools/{schoolId}/finance/live-subaccount-onboarding:
+    post:
+      operationId: submitLiveSchoolSubaccount
+      tags: [settlement]
+      summary: Submit the saved school profile for independent LIVE bank verification
+      parameters:
+        - {in: path, name: schoolId, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Frozen school submission; never creates a provider subaccount.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/LiveSchoolSubaccount"}
+  /platform/flutterwave/live/school-subaccounts/{onboardingId}/review:
+    post:
+      operationId: reviewLiveSchoolSubaccount
+      tags: [settlement]
+      summary: Owner approval and one-time creation, read-only recovery, or rejection
+      parameters:
+        - {in: path, name: onboardingId, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, note]
+              properties:
+                action: {type: string, enum: [APPROVE_AND_CREATE, RECOVER, REJECT]}
+                note: {type: string, minLength: 10, maxLength: 1000}
+                ownershipConfirmed: {type: boolean}
+                distinctFromPlatformAccountConfirmed: {type: boolean}
+                merchantOwnershipConfirmed: {type: boolean}
+                kycConfirmed: {type: boolean}
+                feeBearer: {type: string, enum: [MERCHANT]}
+                ownershipEvidenceSha256: {type: string}
+                merchantEvidenceSha256: {type: string}
+                feeBearerEvidenceSha256: {type: string}
+                splitPolicyEvidenceSha256: {type: string}
+      responses:
+        "200":
+          description: Durable LIVE-only result; never enables checkout or claims settlement.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/LiveSchoolSubaccount"}
+components:
+  schemas:
+    LiveSchoolSubaccount:
+      type: object
+      required: [id, schoolId, schoolName, status, bankName, accountName, maskedAccount, businessName, businessEmail, businessPhone, providerSubaccountId, errorCode, errorMessage, canApprove, canRecover, updatedAt, checkoutEnabled]
+      properties:
+        id: {type: integer}
+        schoolId: {type: integer}
+        schoolName: {type: string}
+        status: {type: string, enum: [SUBMITTED, BANK_VERIFIED, ACTION_REQUIRED, STALE, REJECTED, CREATING, CREATION_UNKNOWN, LIVE_VERIFIED]}
+        bankName: {type: string}
+        accountName: {type: string}
+        maskedAccount: {type: string}
+        businessName: {type: string}
+        businessEmail: {type: string}
+        businessPhone: {type: string}
+        providerSubaccountId: {type: string, nullable: true}
+        errorCode: {type: string, nullable: true}
+        providerHttpStatus: {type: integer, nullable: true}
+        errorMessage: {type: string, nullable: true}
+        canApprove: {type: boolean}
+        canRecover: {type: boolean}
+        updatedAt: {type: string}
+        checkoutEnabled: {type: boolean}

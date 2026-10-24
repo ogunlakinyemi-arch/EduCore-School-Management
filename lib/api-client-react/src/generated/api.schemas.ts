@@ -14635,6 +14635,41 @@ export interface PartnerStaffNfcState {
   enabled: boolean;
 }
 
+export type LiveSchoolSubaccountStatus = typeof LiveSchoolSubaccountStatus[keyof typeof LiveSchoolSubaccountStatus];
+
+
+export const LiveSchoolSubaccountStatus = {
+  SUBMITTED: 'SUBMITTED',
+  BANK_VERIFIED: 'BANK_VERIFIED',
+  ACTION_REQUIRED: 'ACTION_REQUIRED',
+  STALE: 'STALE',
+  REJECTED: 'REJECTED',
+  CREATING: 'CREATING',
+  CREATION_UNKNOWN: 'CREATION_UNKNOWN',
+  LIVE_VERIFIED: 'LIVE_VERIFIED',
+} as const;
+
+export interface LiveSchoolSubaccount {
+  id: number;
+  schoolId: number;
+  schoolName: string;
+  status: LiveSchoolSubaccountStatus;
+  bankName: string;
+  accountName: string;
+  maskedAccount: string;
+  businessName: string;
+  businessEmail: string;
+  businessPhone: string;
+  providerSubaccountId: string | null;
+  errorCode: string | null;
+  providerHttpStatus?: number | null;
+  errorMessage: string | null;
+  canApprove: boolean;
+  canRecover: boolean;
+  updatedAt: string;
+  checkoutEnabled: boolean;
+}
+
 export interface ExamRecordScope {
   schoolId: number;
   sessionId: number;
@@ -24213,6 +24248,53 @@ export type ListPendingFeeAdjustmentsParams = {
  * @minimum 1
  */
 schoolId: SchoolIdParameter;
+};
+
+export type GetLiveSchoolSubaccountsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type GetLiveSchoolSubaccounts200 = {
+  ready: boolean;
+  blockers: string[];
+  items: LiveSchoolSubaccount[];
+};
+
+export type ReviewLiveSchoolSubaccountBodyAction = typeof ReviewLiveSchoolSubaccountBodyAction[keyof typeof ReviewLiveSchoolSubaccountBodyAction];
+
+
+export const ReviewLiveSchoolSubaccountBodyAction = {
+  APPROVE_AND_CREATE: 'APPROVE_AND_CREATE',
+  RECOVER: 'RECOVER',
+  REJECT: 'REJECT',
+} as const;
+
+export type ReviewLiveSchoolSubaccountBodyFeeBearer = typeof ReviewLiveSchoolSubaccountBodyFeeBearer[keyof typeof ReviewLiveSchoolSubaccountBodyFeeBearer];
+
+
+export const ReviewLiveSchoolSubaccountBodyFeeBearer = {
+  MERCHANT: 'MERCHANT',
+} as const;
+
+export type ReviewLiveSchoolSubaccountBody = {
+  action: ReviewLiveSchoolSubaccountBodyAction;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  note: string;
+  ownershipConfirmed?: boolean;
+  distinctFromPlatformAccountConfirmed?: boolean;
+  merchantOwnershipConfirmed?: boolean;
+  kycConfirmed?: boolean;
+  feeBearer?: ReviewLiveSchoolSubaccountBodyFeeBearer;
+  ownershipEvidenceSha256?: string;
+  merchantEvidenceSha256?: string;
+  feeBearerEvidenceSha256?: string;
+  splitPolicyEvidenceSha256?: string;
 };
 
 export type GetPaymentAccountProviders200Status = typeof GetPaymentAccountProviders200Status[keyof typeof GetPaymentAccountProviders200Status];

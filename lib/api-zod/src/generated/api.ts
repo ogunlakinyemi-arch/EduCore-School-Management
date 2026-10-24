@@ -9571,6 +9571,125 @@ export const ListPendingFeeAdjustmentsResponse = zod.array(ListPendingFeeAdjustm
 
 
 /**
+ * @summary Read LIVE-only school subaccount onboarding and precise release blockers
+ */
+
+
+
+export const GetLiveSchoolSubaccountsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetLiveSchoolSubaccountsResponse = zod.object({
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "status": zod.enum(['SUBMITTED', 'BANK_VERIFIED', 'ACTION_REQUIRED', 'STALE', 'REJECTED', 'CREATING', 'CREATION_UNKNOWN', 'LIVE_VERIFIED']),
+  "bankName": zod.string(),
+  "accountName": zod.string(),
+  "maskedAccount": zod.string(),
+  "businessName": zod.string(),
+  "businessEmail": zod.string(),
+  "businessPhone": zod.string(),
+  "providerSubaccountId": zod.string().nullable(),
+  "errorCode": zod.string().nullable(),
+  "providerHttpStatus": zod.number().int().nullish(),
+  "errorMessage": zod.string().nullable(),
+  "canApprove": zod.boolean(),
+  "canRecover": zod.boolean(),
+  "updatedAt": zod.string(),
+  "checkoutEnabled": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Submit the saved school profile for independent LIVE bank verification
+ */
+
+
+
+export const SubmitLiveSchoolSubaccountParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const SubmitLiveSchoolSubaccountResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "status": zod.enum(['SUBMITTED', 'BANK_VERIFIED', 'ACTION_REQUIRED', 'STALE', 'REJECTED', 'CREATING', 'CREATION_UNKNOWN', 'LIVE_VERIFIED']),
+  "bankName": zod.string(),
+  "accountName": zod.string(),
+  "maskedAccount": zod.string(),
+  "businessName": zod.string(),
+  "businessEmail": zod.string(),
+  "businessPhone": zod.string(),
+  "providerSubaccountId": zod.string().nullable(),
+  "errorCode": zod.string().nullable(),
+  "providerHttpStatus": zod.number().int().nullish(),
+  "errorMessage": zod.string().nullable(),
+  "canApprove": zod.boolean(),
+  "canRecover": zod.boolean(),
+  "updatedAt": zod.string(),
+  "checkoutEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Owner approval and one-time creation, read-only recovery, or rejection
+ */
+
+
+
+export const ReviewLiveSchoolSubaccountParams = zod.object({
+  "onboardingId": zod.coerce.number().int().min(1)
+})
+
+export const reviewLiveSchoolSubaccountBodyNoteMin = 10;
+export const reviewLiveSchoolSubaccountBodyNoteMax = 1000;
+
+
+
+export const ReviewLiveSchoolSubaccountBody = zod.object({
+  "action": zod.enum(['APPROVE_AND_CREATE', 'RECOVER', 'REJECT']),
+  "note": zod.string().min(reviewLiveSchoolSubaccountBodyNoteMin).max(reviewLiveSchoolSubaccountBodyNoteMax),
+  "ownershipConfirmed": zod.boolean().optional(),
+  "distinctFromPlatformAccountConfirmed": zod.boolean().optional(),
+  "merchantOwnershipConfirmed": zod.boolean().optional(),
+  "kycConfirmed": zod.boolean().optional(),
+  "feeBearer": zod.enum(['MERCHANT']).optional(),
+  "ownershipEvidenceSha256": zod.string().optional(),
+  "merchantEvidenceSha256": zod.string().optional(),
+  "feeBearerEvidenceSha256": zod.string().optional(),
+  "splitPolicyEvidenceSha256": zod.string().optional()
+})
+
+export const ReviewLiveSchoolSubaccountResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "status": zod.enum(['SUBMITTED', 'BANK_VERIFIED', 'ACTION_REQUIRED', 'STALE', 'REJECTED', 'CREATING', 'CREATION_UNKNOWN', 'LIVE_VERIFIED']),
+  "bankName": zod.string(),
+  "accountName": zod.string(),
+  "maskedAccount": zod.string(),
+  "businessName": zod.string(),
+  "businessEmail": zod.string(),
+  "businessPhone": zod.string(),
+  "providerSubaccountId": zod.string().nullable(),
+  "errorCode": zod.string().nullable(),
+  "providerHttpStatus": zod.number().int().nullish(),
+  "errorMessage": zod.string().nullable(),
+  "canApprove": zod.boolean(),
+  "canRecover": zod.boolean(),
+  "updatedAt": zod.string(),
+  "checkoutEnabled": zod.boolean()
+})
+
+
+/**
  * Authenticated institution catalogue only. Confirmed codes come from the configured Flutterwave NG catalogue, not static routing-code guesses. Catalogue presence is not transfer approval.
  * @summary Read the canonical Nigerian bank and digital-provider directory
  */

@@ -1739,6 +1739,12 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/PendingFeeAdjustment" } }
+  /flutterwave/live/school-subaccounts:
+    $ref: "./flutterwave-live-onboarding.yaml#/paths/~1flutterwave~1live~1school-subaccounts"
+  /schools/{schoolId}/finance/live-subaccount-onboarding:
+    $ref: "./flutterwave-live-onboarding.yaml#/paths/~1schools~1{schoolId}~1finance~1live-subaccount-onboarding"
+  /platform/flutterwave/live/school-subaccounts/{onboardingId}/review:
+    $ref: "./flutterwave-live-onboarding.yaml#/paths/~1platform~1flutterwave~1live~1school-subaccounts~1{onboardingId}~1review"
   /payment-account-providers:
     get:
       operationId: getPaymentAccountProviders

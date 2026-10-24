@@ -363,6 +363,8 @@ import type {
   GetLessonNoteMonitoringParams,
   GetLibraryPermissions200,
   GetLibraryPermissionsParams,
+  GetLiveSchoolSubaccounts200,
+  GetLiveSchoolSubaccountsParams,
   GetMyAcademicTimetableParams,
   GetMyLiveSubscriptionAccessParams,
   GetMyPartnerNfcCardsParams,
@@ -544,6 +546,7 @@ import type {
   LiveSchoolCheckoutInput,
   LiveSchoolCheckoutSession,
   LiveSchoolConfigurationInput,
+  LiveSchoolSubaccount,
   LocalFlutterwaveSplitSimulation,
   LocalFlutterwaveSplitSimulationInput,
   LostCardInput,
@@ -714,6 +717,7 @@ import type {
   ResolveSchoolEmployeeNfcAttendanceDiscrepancyBody,
   RetryFeeProviderReconciliationEventParams,
   ReviewAdmissionApplicationParams,
+  ReviewLiveSchoolSubaccountBody,
   ReviewPromotionDecisionParams,
   ReviewTransportRequestParams,
   RoleAssignment,
@@ -21209,6 +21213,253 @@ export function useListPendingFeeAdjustments<TData = Awaited<ReturnType<typeof l
 
 
 
+
+export const getGetLiveSchoolSubaccountsUrl = (params?: GetLiveSchoolSubaccountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/flutterwave/live/school-subaccounts?${stringifiedParams}` : `/api/flutterwave/live/school-subaccounts`
+}
+
+/**
+ * @summary Read LIVE-only school subaccount onboarding and precise release blockers
+ */
+export const getLiveSchoolSubaccounts = async (params?: GetLiveSchoolSubaccountsParams, options?: Parameters<typeof customFetch>[1]): Promise<GetLiveSchoolSubaccounts200> => {
+
+  return customFetch<GetLiveSchoolSubaccounts200>(getGetLiveSchoolSubaccountsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveSchoolSubaccountsQueryKey = (params?: GetLiveSchoolSubaccountsParams,) => {
+    return [
+    `/api/flutterwave/live/school-subaccounts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLiveSchoolSubaccountsQueryOptions = <TData = Awaited<ReturnType<typeof getLiveSchoolSubaccounts>>, TError = ErrorType<unknown>>(params?: GetLiveSchoolSubaccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveSchoolSubaccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveSchoolSubaccountsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveSchoolSubaccounts>>> = ({ signal }) => getLiveSchoolSubaccounts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveSchoolSubaccounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveSchoolSubaccountsQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveSchoolSubaccounts>>>
+export type GetLiveSchoolSubaccountsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read LIVE-only school subaccount onboarding and precise release blockers
+ */
+
+export function useGetLiveSchoolSubaccounts<TData = Awaited<ReturnType<typeof getLiveSchoolSubaccounts>>, TError = ErrorType<unknown>>(
+ params?: GetLiveSchoolSubaccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveSchoolSubaccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveSchoolSubaccountsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitLiveSchoolSubaccountUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/live-subaccount-onboarding`
+}
+
+/**
+ * @summary Submit the saved school profile for independent LIVE bank verification
+ */
+export const submitLiveSchoolSubaccount = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<LiveSchoolSubaccount> => {
+
+  return customFetch<LiveSchoolSubaccount>(getSubmitLiveSchoolSubaccountUrl(schoolId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSubmitLiveSchoolSubaccountMutationKey = () => ['submitLiveSchoolSubaccount'] as const;
+
+export const getSubmitLiveSchoolSubaccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitLiveSchoolSubaccount>>, TError,SubmitLiveSchoolSubaccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitLiveSchoolSubaccount>>, TError,SubmitLiveSchoolSubaccountMutationVariables, TContext> => {
+
+const mutationKey = getSubmitLiveSchoolSubaccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitLiveSchoolSubaccount>>, SubmitLiveSchoolSubaccountMutationVariables> = (props) => {
+          const {schoolId} = props ?? {};
+
+          return  submitLiveSchoolSubaccount(schoolId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitLiveSchoolSubaccountMutationResult = NonNullable<Awaited<ReturnType<typeof submitLiveSchoolSubaccount>>>
+
+    export type SubmitLiveSchoolSubaccountMutationError = ErrorType<unknown>
+    export type SubmitLiveSchoolSubaccountMutationVariables = {schoolId: number}
+
+    /**
+ * @summary Submit the saved school profile for independent LIVE bank verification
+ */
+export const useSubmitLiveSchoolSubaccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitLiveSchoolSubaccount>>, TError,SubmitLiveSchoolSubaccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitLiveSchoolSubaccount>>,
+        TError,
+        SubmitLiveSchoolSubaccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitLiveSchoolSubaccountMutationOptions(options));
+    }
+
+export const getReviewLiveSchoolSubaccountUrl = (onboardingId: number,) => {
+
+
+
+
+  return `/api/platform/flutterwave/live/school-subaccounts/${onboardingId}/review`
+}
+
+/**
+ * @summary Owner approval and one-time creation, read-only recovery, or rejection
+ */
+export const reviewLiveSchoolSubaccount = async (onboardingId: number,
+    reviewLiveSchoolSubaccountBody: ReviewLiveSchoolSubaccountBody, options?: Parameters<typeof customFetch>[1]): Promise<LiveSchoolSubaccount> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LiveSchoolSubaccount>(getReviewLiveSchoolSubaccountUrl(onboardingId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reviewLiveSchoolSubaccountBody)
+  }
+);}
+
+
+
+
+
+export const getReviewLiveSchoolSubaccountMutationKey = () => ['reviewLiveSchoolSubaccount'] as const;
+
+export const getReviewLiveSchoolSubaccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewLiveSchoolSubaccount>>, TError,ReviewLiveSchoolSubaccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewLiveSchoolSubaccount>>, TError,ReviewLiveSchoolSubaccountMutationVariables, TContext> => {
+
+const mutationKey = getReviewLiveSchoolSubaccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewLiveSchoolSubaccount>>, ReviewLiveSchoolSubaccountMutationVariables> = (props) => {
+          const {onboardingId,data} = props ?? {};
+
+          return  reviewLiveSchoolSubaccount(onboardingId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewLiveSchoolSubaccountMutationResult = NonNullable<Awaited<ReturnType<typeof reviewLiveSchoolSubaccount>>>
+    export type ReviewLiveSchoolSubaccountMutationBody = BodyType<ReviewLiveSchoolSubaccountBody>
+    export type ReviewLiveSchoolSubaccountMutationError = ErrorType<unknown>
+    export type ReviewLiveSchoolSubaccountMutationVariables = {onboardingId: number;data: BodyType<ReviewLiveSchoolSubaccountBody>}
+
+    /**
+ * @summary Owner approval and one-time creation, read-only recovery, or rejection
+ */
+export const useReviewLiveSchoolSubaccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewLiveSchoolSubaccount>>, TError,ReviewLiveSchoolSubaccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewLiveSchoolSubaccount>>,
+        TError,
+        ReviewLiveSchoolSubaccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewLiveSchoolSubaccountMutationOptions(options));
+    }
 
 export const getGetPaymentAccountProvidersUrl = () => {
 

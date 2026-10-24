@@ -7,9 +7,11 @@ import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
 import { saveLiveSchoolConfiguration,saveLiveAllocationReview } from "../services/flutterwave-live-configuration";
 import { liveReleaseConfiguration,requireLiveRelease } from "../lib/flutterwave-live-release";
 import { createSchoolBillingContextRouter } from "./flutterwave-school-billing";
+import { createLiveSchoolOnboardingRouter } from "./flutterwave-live-school-onboarding";
 
 const router=Router();
 router.use(createSchoolBillingContextRouter({pool}));
+router.use(createLiveSchoolOnboardingRouter({pool}));
 const isOwner=(req:Parameters<typeof getUserContext>[0])=>getUserContext(req).roles
   .some(r=>r.role==="PLATFORM_OWNER"&&r.schoolId===null&&r.status==="ACTIVE");
 router.get("/flutterwave/live/release-check",requireAuthentication(),async(req,res)=>{

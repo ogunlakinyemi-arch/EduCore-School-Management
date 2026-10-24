@@ -2,6 +2,7 @@ import { FlutterwaveTestAdapter, PaymentProviderError, type AdapterHttpOptions }
 import { developmentFlutterwaveCredential } from "../lib/flutterwave-development-config";
 import { requireSplitDevelopment, ngnMinor } from "../lib/flutterwave-split-policy";
 import { businessEmailSchema, existingDiagnosticTestReference } from "../lib/flutterwave-split-review";
+import {collectionSubaccountBankMatches} from "../lib/flutterwave-subaccount-identity";
 
 export type BankDetails = { bankCode: string; accountNumber: string; accountName: string; contactPhone: string; entityName: string; businessEmail?: string };
 export type SplitReadEvidence = {
@@ -70,8 +71,7 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
     if (!Number.isSafeInteger(id) || id < 1) throw new PaymentProviderError("Invalid TEST recipient identity");
     const r = await this.api(`subaccounts/${id}`);
     const d = r.data as Record<string, unknown>;
-    if (Number(d.id) !== id || d.account_number !== bank.accountNumber || String(d.account_bank) !== bank.bankCode
-        || typeof d.subaccount_id !== "string" || !/^RS_[A-Za-z0-9]{12,80}$/.test(d.subaccount_id)) {
+    if (!collectionSubaccountBankMatches(d,id,bank)) {
       throw new PaymentProviderError("Subaccount read-back did not match the owned bank account");
     }
     if (requireEntityMatch && ((d.business_name ?? d.full_name) !== bank.entityName
@@ -79,7 +79,7 @@ export class FlutterwaveSplitProvider extends FlutterwaveTestAdapter {
         || d.business_email.trim().toLowerCase() !== bank.businessEmail?.trim().toLowerCase())) {
       throw new PaymentProviderError("Existing TEST recipient entity/contact read-back requires ownership review");
     }
-    return { providerId: id, subaccountId: d.subaccount_id, bankName: typeof d.bank_name === "string" ? d.bank_name : bank.bankCode };
+    return { providerId: id, subaccountId: d.subaccount_id as string, bankName: typeof d.bank_name === "string" ? d.bank_name : bank.bankCode };
   }
   async recoverRecipient(bank: BankDetails) {
     // Bounded read only. Never repeat a possibly accepted creation POST.
