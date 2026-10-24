@@ -117,6 +117,17 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     expect(flutterwaveLiveStatus({ ...live(), FLUTTERWAVE_LIVE_SETTLEMENT_CONFIRMED: "true",
       EDUCORE_FLUTTERWAVE_CHECKOUT_ENABLED: "true" }).checkoutEnabled).toBe(false);
   });
+  it("cannot activate from the approved allocation or a supplied callback URL without a released financial workflow",()=>{
+    const env={...live(),PUBLIC_APP_URL:"https://educore.yetenia.com",
+      FLUTTERWAVE_CALLBACK_URL:"https://educore.yetenia.com/subscriptions",
+      FLUTTERWAVE_LIVE_SCHOOL_SUBACCOUNT_ID:"RS_SCHOOL_LIVE_SUBACCOUNT_ID"};
+    expect(flutterwaveLiveStatus(env)).toMatchObject({
+      checkoutEnabled:false,providerTransportEnabled:false,
+      confirmedSplitModel:{amount:5000,schoolAmount:1900,eligiblePartnerAmount:100,
+        transactionChargeType:"flat_subaccount",feeBearer:"MERCHANT"},
+      releaseChecks:{workflow:"HARD_DISABLED",durableWebhookFinalization:"NOT_RELEASED_RECEIPT_ONLY_503"},
+    });
+  });
   it("fully configured LIVE still cannot initialize, verify, refund or resolve a webhook", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const adapter = new FlutterwaveLiveAdapter(live(), { fetch });

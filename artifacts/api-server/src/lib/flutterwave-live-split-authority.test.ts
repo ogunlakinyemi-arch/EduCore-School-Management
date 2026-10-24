@@ -31,7 +31,9 @@ describe("written support model and hash-bound LIVE account review; no network o
   it.each([
     ["dashboardFeeBearer", "CUSTOMER"], ["dashboardFeeBearer", "SUBACCOUNT"], ["dashboardFeeBearer", undefined],
     ["environment", "TEST"], ["liveSubaccountVerified", false], ["schoolOwnershipVerified", false],
-    ["schoolSubaccountId", "RS_bad"], ["schoolOwnershipEvidenceSha256", ""],
+    ["schoolSubaccountId", "RS_bad"], ["schoolSubaccountId", "RS_SCHOOL_LIVE_SUBACCOUNT_ID"],
+    ["schoolSubaccountId", ""], ["schoolSubaccountId", undefined],
+    ["schoolOwnershipEvidenceSha256", ""],
     ["dashboardFeeBearerEvidenceSha256", ""], ["transaction_split_ratio", 1],
     ["partnerSubaccountId", "RS_FictionalPartner123"], ["amount", 5001], ["schoolAmount", 1901], ["version", 0],
   ])("rejects unreviewable or caller-supplied allocation evidence: %s = %s", (field, value) => {
@@ -41,6 +43,13 @@ describe("written support model and hash-bound LIVE account review; no network o
   it("refuses missing evidence and support-only evidence", () => {
     for (const value of [undefined, {}, { supportConfirmation: confirmedLiveSplitModel.supportConfirmation }])
       expect(() => verifyLiveSplitAuthority(value, review())).toThrow();
+  });
+  it("never substitutes a placeholder or TEST recipient when the school LIVE recipient is missing",()=>{
+    for(const schoolSubaccountId of [undefined,"","RS_SCHOOL_LIVE_SUBACCOUNT_ID"]) {
+      expect(()=>confirmedLiveSplitPreview({...authority(),schoolSubaccountId} as LiveSplitAuthorityEvidence))
+        .toThrow(expect.objectContaining({code:"LIVE_SPLIT_AUTHORITY_EVIDENCE_INVALID"}));
+    }
+    expect(()=>verifyLiveSplitAuthority({...authority(),environment:"TEST"},review())).toThrow();
   });
   it.each([
     { merchantScope: "another_merchant" }, { schoolId: 20 }, { schoolSubaccountId: "RS_AnotherSchool1234" },

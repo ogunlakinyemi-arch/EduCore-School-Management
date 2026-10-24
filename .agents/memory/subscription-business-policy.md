@@ -14,6 +14,22 @@ from payment readiness and requested the shortest safe LIVE path.
 or UX work. This statement is Owner evidence about school functionality, not
 proof of LIVE charging, financial finalization or settlement.
 
+On 2026-10-24 the user explicitly requested approved LIVE NGN activation using
+existing secure configuration, conditional on actual merchant credentials,
+webhook binding, a correct callback and each school's real LIVE subaccount.
+This supersedes earlier preparation-only scope for implementation, but does not
+authorize real charges, changing real payment records or automatic publishing.
+Never invent or use `RS_SCHOOL_LIVE_SUBACCOUNT_ID`; missing prerequisites must
+leave the affected payment fail-closed.
+
+**Why:** The user explicitly said "Now activate Flutterwave Live payment" while
+requiring honest blocker reporting and preservation of TEST behavior.
+
+**How to apply:** Distinguish permission to implement from proof of operational
+readiness. Preserve dedicated TEST webhook verification before binding a shared
+verifier to LIVE, and do not bypass unreleased persistence/verification gates.
+The prior migration-draft reviews are not evidence of applied target migrations.
+
 The requested future student subscription gross is NGN 5,000 per student per
 school term. School entitlement is NGN 1,900 through the school-only checkout
 subaccount; all remaining proceeds after actual provider fees/taxes belong to
