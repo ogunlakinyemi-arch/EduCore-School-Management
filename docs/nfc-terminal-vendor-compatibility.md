@@ -27,8 +27,8 @@ The legacy `/api/device/attendance/events` and `X-Device-Credential` remain unch
 ```json
 {
   "event_id": "vendor-185-test-0001",
-  "device_id": 185,
-  "school_id": 446,
+  "device_id": "EDUCORE01",
+  "school_id": "SCH01",
   "terminal_name": "MAIN GATE",
   "uid": "REPLACE_WITH_ACTUAL_CARD_UID",
   "event_type": "CARD_SCAN",
@@ -37,10 +37,20 @@ The legacy `/api/device/attendance/events` and `X-Device-Credential` remain unch
 }
 ```
 
-The example does not establish that device 185 is assigned to school 446.
+The example does not establish that device 1 is assigned to school 1.
 Replace the UID and timestamp placeholders with valid values before use; the
 literal placeholder strings are not accepted by the endpoint.
-School/device IDs are positive integers (decimal strings also accepted), and must
+Request field names remain `device_id` and `school_id`. Use case-sensitive string
+identifiers: `EDUCORE` for devices and `SCH` for schools, followed by the existing
+positive internal numeric ID padded to at least two digits. `EDUCORE01` maps to
+device 1; `SCH01` maps to school 1. Device 185 and school 446 would use
+`EDUCORE185` and `SCH446`, not the illustrative values above. These are deterministic
+identifiers, not freely assignable aliases or authentication credentials.
+Noncanonical padding, wrong prefixes, unsafe integers and whitespace are rejected.
+Legacy numeric IDs and positive decimal strings remain accepted for compatibility.
+Both formats normalize to the same internal IDs before retry fingerprinting, so
+switching representation cannot create a second attendance event. Database primary
+keys, foreign keys and existing receipts are unchanged. Both IDs must
 match the authenticated registered device. The server never trusts `terminal_name`
 for identity or direction. Event IDs contain 1–128 letters/digits/`_.:-`; optional
 name/firmware strings are at most 128 characters. Unknown fields are rejected.

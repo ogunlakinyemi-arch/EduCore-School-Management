@@ -40,6 +40,26 @@ export function terminalTimestamp(value: unknown, now = Date.now()) {
   return date;
 }
 
+/** Public protocol identifiers map to existing primary keys, never to arbitrary aliases.
+ * Retain legacy wire IDs and normalize before fingerprinting to preserve old receipts. */
+export function terminalInternalId(value: unknown, kind: "device" | "school"): number {
+  const prefix = kind === "device" ? "EDUCORE" : "SCH";
+  let raw: unknown = value;
+  if (typeof value === "string" && value.startsWith(prefix)) {
+    const suffix = value.slice(prefix.length);
+    const id = Number(suffix);
+    if (!Number.isSafeInteger(id) || id < 1 || value !== `${prefix}${String(id).padStart(2, "0")}`) {
+      throw new AuthError(400, `${kind}_id must be a canonical ${prefix} identifier`);
+    }
+    raw = id;
+  }
+  if (!(typeof raw === "number" || (typeof raw === "string" && /^[1-9]\d*$/.test(raw))) ||
+      !Number.isSafeInteger(Number(raw)) || Number(raw) < 1) {
+    throw new AuthError(400, `${kind}_id must be a ${prefix} identifier or legacy positive integer`);
+  }
+  return Number(raw);
+}
+
 export function parseTerminalEvent(body: unknown, now = Date.now()) {
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "JSON object required");
   const value = body as Record<string, unknown>;
@@ -48,12 +68,8 @@ export function parseTerminalEvent(body: unknown, now = Date.now()) {
   if (typeof value.event_id !== "string" || !/^[A-Za-z0-9_.:-]{1,128}$/.test(value.event_id)) {
     throw new AuthError(400, "event_id must contain 1–128 letters, digits, dots, underscores, colons or hyphens");
   }
-  for (const key of ["device_id", "school_id"] as const) {
-    if (!(typeof value[key] === "number" || (typeof value[key] === "string" && /^[1-9]\d*$/.test(value[key] as string))) ||
-        !Number.isSafeInteger(Number(value[key])) || Number(value[key]) < 1) {
-      throw new AuthError(400, `${key} must be a positive integer`);
-    }
-  }
+  const deviceId = terminalInternalId(value.device_id, "device");
+  const schoolId = terminalInternalId(value.school_id, "school");
   if (typeof value.uid !== "string" || !/^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$/.test(value.uid)) {
     throw new AuthError(400, "uid must contain exactly 8, 14 or 20 hexadecimal characters");
   }
@@ -65,7 +81,7 @@ export function parseTerminalEvent(body: unknown, now = Date.now()) {
   }
   const occurredAt = terminalTimestamp(value.timestamp, now);
   const event = {
-    event_id: value.event_id, device_id: Number(value.device_id), school_id: Number(value.school_id),
+    event_id: value.event_id, device_id: deviceId, school_id: schoolId,
     terminal_name: value.terminal_name ?? null, uid: value.uid.toUpperCase(),
     event_type: "CARD_SCAN", timestamp: value.timestamp as string, firmware: value.firmware ?? null,
   };

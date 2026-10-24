@@ -829,10 +829,14 @@ export const ingestVendorTerminalEventBodyEventIdMax = 128;
 
 
 export const ingestVendorTerminalEventBodyEventIdRegExp = new RegExp('^[A-Za-z0-9_.:-]+$');
+export const ingestVendorTerminalEventBodyDeviceIdOneRegExp = new RegExp('^EDUCORE(?:0[1-9]|[1-9][0-9]+)$');
+export const ingestVendorTerminalEventBodyDeviceIdTwoMax = 9007199254740991;
 
-export const ingestVendorTerminalEventBodyDeviceIdTwoRegExp = new RegExp('^[1-9][0-9]*$');
+export const ingestVendorTerminalEventBodyDeviceIdThreeRegExp = new RegExp('^[1-9][0-9]*$');
+export const ingestVendorTerminalEventBodySchoolIdOneRegExp = new RegExp('^SCH(?:0[1-9]|[1-9][0-9]+)$');
+export const ingestVendorTerminalEventBodySchoolIdTwoMax = 9007199254740991;
 
-export const ingestVendorTerminalEventBodySchoolIdTwoRegExp = new RegExp('^[1-9][0-9]*$');
+export const ingestVendorTerminalEventBodySchoolIdThreeRegExp = new RegExp('^[1-9][0-9]*$');
 export const ingestVendorTerminalEventBodyTerminalNameMax = 128;
 
 export const ingestVendorTerminalEventBodyUidRegExp = new RegExp('^(?:[A-Fa-f0-9]{8}|[A-Fa-f0-9]{14}|[A-Fa-f0-9]{20})$');
@@ -842,8 +846,8 @@ export const ingestVendorTerminalEventBodyFirmwareMax = 128;
 
 export const IngestVendorTerminalEventBody = zod.object({
   "event_id": zod.string().min(1).max(ingestVendorTerminalEventBodyEventIdMax).regex(ingestVendorTerminalEventBodyEventIdRegExp),
-  "device_id": zod.union([zod.number().int().min(1),zod.string().regex(ingestVendorTerminalEventBodyDeviceIdTwoRegExp)]),
-  "school_id": zod.union([zod.number().int().min(1),zod.string().regex(ingestVendorTerminalEventBodySchoolIdTwoRegExp)]),
+  "device_id": zod.union([zod.string().regex(ingestVendorTerminalEventBodyDeviceIdOneRegExp),zod.number().int().min(1).max(ingestVendorTerminalEventBodyDeviceIdTwoMax),zod.string().regex(ingestVendorTerminalEventBodyDeviceIdThreeRegExp)]).describe('Public device identifier: EDUCORE plus the internal positive ID padded to at least two digits (EDUCORE01 maps to device 1). Legacy integer and decimal-string IDs remain accepted for compatibility.'),
+  "school_id": zod.union([zod.string().regex(ingestVendorTerminalEventBodySchoolIdOneRegExp),zod.number().int().min(1).max(ingestVendorTerminalEventBodySchoolIdTwoMax),zod.string().regex(ingestVendorTerminalEventBodySchoolIdThreeRegExp)]).describe('Public school identifier: SCH plus the internal positive ID padded to at least two digits (SCH01 maps to school 1). Must match the authenticated device\'s current school; legacy IDs remain accepted.'),
   "terminal_name": zod.string().max(ingestVendorTerminalEventBodyTerminalNameMax).optional(),
   "uid": zod.string().regex(ingestVendorTerminalEventBodyUidRegExp),
   "event_type": zod.enum(['CARD_SCAN']),

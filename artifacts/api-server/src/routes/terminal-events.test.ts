@@ -94,6 +94,8 @@ beforeEach(() => {
     if (sql.startsWith("UPDATE device_credentials") || sql.startsWith("UPDATE platform_devices")) return result([]);
     if (sql.includes("FROM platform_devices d JOIN device_credentials")) return result(fixture.active ? [{}] : []);
     if (sql.includes("metadata->>'terminalDirection'")) return result(fixture.direction ? [{ direction: fixture.direction }] : []);
+    // No school-specific schedule override in this fixture; exercise the real defaults.
+    if (sql.includes('SELECT metadata,"timestamp" AS "effectiveAt" FROM audit_logs')) return result([]);
     if (sql.includes("SELECT metadata FROM audit_logs")) return result(fixture.receipts
       .filter(item => item.metadata.eventKey === values[2]).map(item => ({ metadata: item.metadata })));
     if (sql.includes("INSERT INTO audit_logs")) {
@@ -136,6 +138,36 @@ beforeEach(() => {
 });
 
 describe("vendor terminal endpoint with the existing attendance handler (mocked persistence)", () => {
+  it("maps string identifiers to the authenticated numeric device and school", async () => {
+    const response = await send(payload({ device_id: "EDUCORE100", school_id: "SCH10" }));
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(fixture.events).toHaveLength(1);
+    expect(fixture.events[0]).toMatchObject({ deviceId: 100, schoolId: 10 });
+  });
+  it.each([
+    { device_id: "EDUCORE101", school_id: "SCH10" },
+    { device_id: "EDUCORE100", school_id: "SCH11" },
+    { device_id: "EDUCORE01", school_id: "SCH01" },
+  ])("rejects string identifiers outside the authenticated device/school %j", async ids => {
+    expect((await send(payload(ids))).status).toBe(403);
+    expect(fixture.events).toHaveLength(0);
+    expect(fixture.receipts).toHaveLength(0);
+  });
+  it.each([true, false])("preserves retries across legacy/string representations (legacy first: %s)", async legacyFirst => {
+    const legacy = payload();
+    const strings = { ...legacy, device_id: "EDUCORE100", school_id: "SCH10" };
+    expect((await send(legacyFirst ? legacy : strings)).body.success).toBe(true);
+    expect(await send(legacyFirst ? strings : legacy)).toMatchObject({
+      status: 200, body: { success: true, duplicate: true },
+    });
+    expect(fixture.events).toHaveLength(1);
+    expect(fixture.receipts).toHaveLength(1);
+  });
+  it("does not let string identifiers bypass invalid credentials", async () => {
+    expect((await send(payload({ device_id: "EDUCORE100", school_id: "SCH10" }), { key: "terminal.wrong" })).status).toBe(401);
+    expect(fixture.events).toHaveLength(0);
+  });
   it.each(["ENTRY", "EXIT"])("records the configured %s direction, normalized UID and original time", async direction => {
     fixture.direction = direction;
     const request = payload();
@@ -254,6 +286,25 @@ describe("vendor terminal endpoint with the existing attendance handler (mocked 
 });
 
 describe("terminal timestamp and canonical payload validation", () => {
+  it("maps the documented EDUCORE01/SCH01 identifiers without changing stored retry identity", () => {
+    const original = payload({ device_id: 1, school_id: 1 });
+    const strings = parseTerminalEvent({ ...original, device_id: "EDUCORE01", school_id: "SCH01" });
+    const legacy = parseTerminalEvent(original);
+    expect(strings.event).toMatchObject({ device_id: 1, school_id: 1 });
+    expect(strings.eventKey).toBe(legacy.eventKey);
+    expect(strings.fingerprint).toBe(legacy.fingerprint);
+  });
+  it.each([
+    { device_id: "EDUCORE1" }, { device_id: "EDUCORE001" },
+    { device_id: "EDUCORE00" }, { device_id: "educore01" },
+    { device_id: "SCH01" }, { device_id: " EDUCORE01" },
+    { device_id: "EDUCORE9007199254740992" },
+    { school_id: "EDUCORE01" }, { school_id: "SCH001" },
+    { school_id: "SCH01 " }, { school_id: "SCH-1" },
+    { device_id: true }, { school_id: {} },
+  ])("rejects malformed or unsafe public identifiers %j", ids => {
+    expect(() => parseTerminalEvent(payload(ids))).toThrow();
+  });
   const now = Date.parse("2026-10-15T12:00:00Z");
   it.each([-TERMINAL_MAX_AGE_MS, 300_000])("accepts the inclusive boundary %i", delta => {
     expect(terminalTimestamp(new Date(now + delta).toISOString(), now).getTime()).toBe(now + delta);

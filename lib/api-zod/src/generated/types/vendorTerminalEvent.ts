@@ -14,8 +14,10 @@ export interface VendorTerminalEvent {
      * @pattern ^[A-Za-z0-9_.:-]+$
      */
   event_id: string;
-  device_id: number | string;
-  school_id: number | string;
+  /** Public device identifier: EDUCORE plus the internal positive ID padded to at least two digits (EDUCORE01 maps to device 1). Legacy integer and decimal-string IDs remain accepted for compatibility. */
+  device_id: string | number;
+  /** Public school identifier: SCH plus the internal positive ID padded to at least two digits (SCH01 maps to school 1). Must match the authenticated device's current school; legacy IDs remain accepted. */
+  school_id: string | number;
   /** @maxLength 128 */
   terminal_name?: string;
   /** @pattern ^(?:[A-Fa-f0-9]{8}|[A-Fa-f0-9]{14}|[A-Fa-f0-9]{20})$ */

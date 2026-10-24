@@ -6268,13 +6268,19 @@ components:
       properties:
         event_id: { type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_.:-]+$' }
         device_id:
+          description: "Public device identifier: EDUCORE plus the internal positive ID padded to at least two digits (EDUCORE01 maps to device 1). Legacy integer and decimal-string IDs remain accepted for compatibility."
+          example: EDUCORE01
           oneOf:
-            - { type: integer, minimum: 1 }
-            - { type: string, pattern: '^[1-9][0-9]*$' }
+            - { type: string, pattern: '^EDUCORE(?:0[1-9]|[1-9][0-9]+)$' }
+            - { type: integer, minimum: 1, maximum: 9007199254740991, deprecated: true }
+            - { type: string, pattern: '^[1-9][0-9]*$', deprecated: true }
         school_id:
+          description: "Public school identifier: SCH plus the internal positive ID padded to at least two digits (SCH01 maps to school 1). Must match the authenticated device's current school; legacy IDs remain accepted."
+          example: SCH01
           oneOf:
-            - { type: integer, minimum: 1 }
-            - { type: string, pattern: '^[1-9][0-9]*$' }
+            - { type: string, pattern: '^SCH(?:0[1-9]|[1-9][0-9]+)$' }
+            - { type: integer, minimum: 1, maximum: 9007199254740991, deprecated: true }
+            - { type: string, pattern: '^[1-9][0-9]*$', deprecated: true }
         terminal_name: { type: string, maxLength: 128 }
         uid: { type: string, pattern: '^(?:[A-Fa-f0-9]{8}|[A-Fa-f0-9]{14}|[A-Fa-f0-9]{20})$' }
         event_type: { type: string, enum: [CARD_SCAN] }
