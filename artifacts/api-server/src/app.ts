@@ -15,6 +15,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { ownerUidIngestionRouter } from "./routes/owner-uid-reader";
+import { idCardVerificationRouter } from "./routes/id-card-verification";
 import feeProviderWebhookRouter from "./routes/fee-provider-webhooks";
 import communicationReceiptRouter from "./routes/communication-receipts";
 import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
@@ -91,6 +92,7 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use("/api", terminalEventsRouter);
 app.use("/api", ownerUidIngestionRouter);
+app.use("/api", idCardVerificationRouter);
 app.use(cors({ credentials: true, origin: corsOrigin }));
 app.use("/api/communication/provider-receipts", express.raw({ type: "application/json", limit: "64kb" }), communicationReceiptRouter);
 // Provider callbacks are public and require the untouched raw bytes for

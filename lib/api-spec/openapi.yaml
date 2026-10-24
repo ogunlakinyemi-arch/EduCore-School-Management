@@ -34,6 +34,16 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /platform/uid-inventory/assign:
+    $ref: "./owner-uid-reader.yaml#/capturedUidAssignment"
+  /platform/uid-inventory/cards/{cardId}/unlink:
+    $ref: "./owner-uid-reader.yaml#/capturedCardUnlink"
+  /platform/uid-inventory/replacements/{requestId}/issue:
+    $ref: "./owner-uid-reader.yaml#/capturedReplacementIssue"
+  /platform/schools/{schoolId}/card-brand:
+    $ref: "./owner-uid-reader.yaml#/officialCardBrand"
+  /v1/id-cards/verify:
+    $ref: "./owner-uid-reader.yaml#/officialCardVerification"
   /platform/uid-inventory:
     $ref: "./owner-uid-reader.yaml#/ownerUidInventory"
   /platform/devices/{deviceId}/owner-reader:

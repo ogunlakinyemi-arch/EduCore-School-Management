@@ -4,9 +4,11 @@ import { Link } from 'wouter';
 import { CreditCard, RefreshCw } from 'lucide-react';
 import {
   useGetAuthorizedContext, useListCards, getListCardsQueryKey,
-  useListCardReplacements, getListCardReplacementsQueryKey, useRequestCardReplacement, useIssueCardReplacement,
+  useListCardReplacements, getListCardReplacementsQueryKey, useRequestCardReplacement,
   useVerifyCardReplacementPayment, useInitializeFeeProviderPayment,
 } from '@workspace/api-client-react';
+import { OwnerUnlinkCard } from '@/components/uid-actions';
+import { IssueReplacementControl } from '@/components/issue-replacement-control';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, TenantPicker, useTenant, Field } from '@/components/shared';
 import {
   REPLACEMENT_FEE_MINOR, formatNairaMinor, replacementPermissions, canIssueRequest, replacementStatusLabel,
@@ -20,13 +22,11 @@ const errText = (e: unknown) => {
 
 function RequestRow({ req, actor, perms, schoolId }: { req: any; actor: any; perms: ReturnType<typeof replacementPermissions>; schoolId: number }) {
   const qc = useQueryClient();
-  const [uid, setUid] = useState('');
   const [txn, setTxn] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const checkout = useInitializeFeeProviderPayment({ request: { headers: { 'Idempotency-Key': idempotencyKeyFor(req.id) } } });
   const verify = useVerifyCardReplacementPayment();
-  const issue = useIssueCardReplacement();
   const cardsQuery = useListCards({ schoolId: req.schoolId }, { query: { enabled: canIssueRequest(req, actor), queryKey: getListCardsQueryKey({ schoolId: req.schoolId }) } });
   const prepared = preparedUnassignedCards((cardsQuery.data ?? []) as any[]);
   const refresh = () => { qc.invalidateQueries({ queryKey: getListCardReplacementsQueryKey() }); qc.invalidateQueries({ queryKey: getListCardsQueryKey() }); };
@@ -41,10 +41,6 @@ function RequestRow({ req, actor, perms, schoolId }: { req: any; actor: any; per
   };
   const doVerify = () => verify.mutate({ requestId: req.id, data: { providerTransactionId: txn.trim() } }, {
     onSuccess: result => { setMsg(result.paymentStatus === 'PAID' ? 'Payment verified.' : 'Payment is not yet confirmed as successful. Issuance remains blocked.'); setErr(''); refresh(); },
-    onError: e => { setErr(errText(e)); },
-  });
-  const doIssue = () => issue.mutate({ requestId: req.id, data: { uid } }, {
-    onSuccess: () => { setMsg('Replacement card issued.'); setErr(''); setUid(''); refresh(); },
     onError: e => { setErr(errText(e)); },
   });
   return <div className="border-b border-[hsl(var(--border)/.6)] p-5 last:border-0" data-testid={`row-replacement-${req.id}`}>
@@ -69,19 +65,16 @@ function RequestRow({ req, actor, perms, schoolId }: { req: any; actor: any; per
       </div>
     </div>}
     {req.paymentStatus === 'UNPAID' && !perms.canPay && <p className="mt-2 text-xs font-semibold" data-testid={`text-unpaid-gate-${req.id}`}>Issuance is blocked until the School Admin or authorized parent pays and the payment is verified.</p>}
-    {canIssueRequest(req, actor) && <div className="mt-3 flex flex-wrap items-end gap-2">
-      <Field label="Prepared unassigned card">
-        <select value={uid} onChange={e => setUid(e.target.value)} data-testid={`select-new-card-${req.id}`}>
-          <option value="">{cardsQuery.isLoading ? 'Loading cards...' : prepared.length ? 'Select a card UID' : 'No prepared unassigned cards'}</option>
-          {prepared.map((c: any) => <option key={c.id} value={c.uid}>{c.uid}</option>)}
-        </select>
-      </Field>
-      <Button onClick={doIssue} disabled={!uid || issue.isPending} testId={`button-issue-replacement-${req.id}`}>{issue.isPending ? 'Issuing...' : 'Issue replacement'}</Button>
-    </div>}
+    {canIssueRequest(req, actor) && <IssueReplacementControl requestId={req.id} prepared={prepared} preparedLoading={cardsQuery.isLoading} onMessage={m => { setMsg(m); setErr(''); }} onError={m => { setErr(m); setMsg(''); }} onDone={refresh} />}
     {msg && <p role="status" className="mt-2 text-sm font-semibold text-emerald-600">{msg}</p>}
     {err && <p role="alert" className="mt-2 text-sm font-semibold text-[hsl(var(--destructive))]">{err}</p>}
     <span className="hidden">{schoolId}</span>
   </div>;
+}
+
+function OwnerCardUnlink({ schoolId }: { schoolId: number }) {
+  const q = useListCards({ schoolId } as any, { query: { queryKey: getListCardsQueryKey({ schoolId } as any) } });
+  return <OwnerUnlinkCard cards={(q.data ?? []) as any[]} />;
 }
 
 export function CardReplacementsPage() {
@@ -116,6 +109,7 @@ export function CardReplacementsPage() {
         </div>
         {err && <p role="alert" className="mt-3 text-sm font-semibold text-[hsl(var(--destructive))]">{err}</p>}
       </div>}
+      {actor.owner && <OwnerCardUnlink schoolId={schoolId} />}
       <div className="panel overflow-hidden">
         {requests.length ? requests.map(r => <RequestRow key={r.id} req={r} actor={actor} perms={perms} schoolId={schoolId} />)
           : <EmptyState icon={CreditCard} title="No replacement requests" description="Requests and their persisted payment and issuance status appear here." />}

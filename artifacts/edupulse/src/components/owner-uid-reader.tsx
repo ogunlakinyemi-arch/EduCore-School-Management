@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customFetch, getListPlatformDevicesQueryKey, useUpdatePlatformDevice } from '@workspace/api-client-react';
 import { Radio } from 'lucide-react';
 import { Button, EmptyState, Field, date } from '@/components/shared';
+import { AssignUidModal } from '@/components/uid-actions';
 
 export type UidInventory = {
   readers: { deviceId: number; serialNumber: string; name: string; ownerUserId: number; lastReadAt: string | null }[];
@@ -25,6 +26,7 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
   const { data, isLoading, isError, refetch } = inventory;
   const readers = data?.readers ?? [];
   const uids = data?.inventory ?? [];
+  const [assign, setAssign] = useState<string | null>(null);
   const [unlink, setUnlink] = useState<UidInventory['readers'][number] | null>(null);
   return (
     <section className="mb-8" data-testid="section-owner-uid-readers">
@@ -54,17 +56,19 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
             {uids.length ? uids.map(u => {
               const reader = readers.find(r => r.deviceId === u.readerDeviceId);
               return (
-                <div key={`${u.uid}-${u.capturedAt}`} className="grid gap-2 border-b border-[hsl(var(--border)/.6)] px-5 py-3 last:border-0 md:grid-cols-[1.2fr_1.2fr_1fr_1fr]" data-testid={`uid-row-${u.uid}`}>
+                <div key={`${u.uid}-${u.capturedAt}`} className="grid gap-2 border-b border-[hsl(var(--border)/.6)] px-5 py-3 last:border-0 md:grid-cols-[1.2fr_1.2fr_1fr_1fr_auto]" data-testid={`uid-row-${u.uid}`}>
                   <span className="font-mono text-sm font-bold">{u.uid}</span>
                   <span className="text-xs">{reader ? `${reader.name} (${reader.serialNumber})` : `Device ${u.readerDeviceId}`}</span>
                   <span className="text-xs">{date(u.capturedAt)}</span>
-                  <span className="text-xs font-bold">{u.assigned ? `Assigned${u.studentId ? ` · student #${u.studentId}` : ''}${u.schoolId ? ` · school #${u.schoolId}` : ''}` : 'Available'}</span>
+                   <span className="text-xs font-bold">{u.assigned ? `${u.studentId && ['active','locked'].includes(u.status?.toLowerCase()??'') ? 'Assigned' : 'Reserved'}${u.status ? ` · ${u.status}` : ''}${u.studentId ? ` · student #${u.studentId}` : ''}${u.schoolId ? ` · school #${u.schoolId}` : ''}` : 'Available'}</span>
+                  {!u.assigned ? <Button variant="outline" onClick={() => setAssign(u.uid)} testId={`button-assign-uid-${u.uid}`}>Assign to Student</Button> : <span />}
                 </div>
               );
             }) : <p className="px-5 py-6 text-sm text-[hsl(var(--muted-foreground))]">Waiting for authenticated reader. Captured UIDs appear only when hardware reports them.</p>}
           </div>
         </>
       )}
+      {assign && <AssignUidModal uid={assign} onClose={() => setAssign(null)} />}
       {unlink && <ReasonConfirm
         title={`Release ${unlink.name}`}
         warning="This releases the Owner reader context and revokes its credential immediately."
@@ -94,7 +98,7 @@ export function ReasonConfirm({ title, warning, confirmLabel, path, onCancel, on
       <p className="text-sm">{warning}</p>
       <Field label="Reason (required, min 3 characters)"><textarea required minLength={3} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-reason" /></Field>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="!w-auto" checked={ok} onChange={e => setOk(e.target.checked)} data-testid="checkbox-confirm" />I confirm this action.</label>
-      {m.isError && <p role="alert" className={errText}>Request failed. Nothing was confirmed; retry.</p>}
+      {m.isError && <p role="alert" className={errText}>The request returned an error or may not have completed. Refresh the device list to check the current state before retrying.</p>}
       <div className="flex justify-end gap-3 border-t border-[hsl(var(--border))] pt-4">
         <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={m.isPending || !ok || reason.trim().length < 3}>{m.isPending ? 'Working…' : confirmLabel}</Button>

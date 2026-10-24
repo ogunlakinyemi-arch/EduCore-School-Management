@@ -4,6 +4,7 @@ export type PrintableSnapshot = {
   cardId: number;
   schoolId: number;
   cardStatus: string;
+  cardUid: string;
   studentId: number | null;
   studentStatus: string | null;
   studentName: string | null;
@@ -25,6 +26,9 @@ export type PrintableSnapshot = {
   schoolPhone: string | null;
   schoolEmail: string | null;
   schoolLogo: string | null;
+  designation?: string | null;
+  primaryColor?:string|null;
+  secondaryColor?:string|null;
 };
 
 export class PrintableUnsupportedIdentityError extends Error {
@@ -36,14 +40,16 @@ export class PrintableUnsupportedIdentityError extends Error {
  * No history table or academic data participates in this read.
  */
 export const printableCardSnapshotSql = `
-  SELECT nc.id AS "cardId", nc.school_id AS "schoolId", nc.status AS "cardStatus",
+  SELECT nc.id AS "cardId", nc.school_id AS "schoolId", nc.status AS "cardStatus", nc.uid AS "cardUid",
          nc.student_id AS "studentId", st.status AS "studentStatus",
          CASE WHEN st.id IS NULL THEN NULL
               ELSE trim(concat_ws(' ',st.first_name,st.middle_name,st.last_name)) END AS "studentName",
          st.admission_no AS "admissionNo", st.photo AS "studentPhoto",
+         (SELECT metadata->>'primaryColor' FROM audit_logs WHERE school_id=s.id AND action='Official card brand configured' AND module='Cards' ORDER BY id DESC LIMIT 1) AS "primaryColor",
+         (SELECT metadata->>'secondaryColor' FROM audit_logs WHERE school_id=s.id AND action='Official card brand configured' AND module='Cards' ORDER BY id DESC LIMIT 1) AS "secondaryColor",
          COALESCE(emp."bindingCount",0)::int AS "employeeBindingCount",
          emp."employeeId", emp."employeeType", emp."employeeStatus",
-         emp."employeeName", emp."employeeNo", emp."employeePhoto", emp."bindingStatus" AS "employeeBindingStatus",
+         emp."employeeName", emp."employeeNo", emp."employeePhoto", emp."designation", emp."bindingStatus" AS "employeeBindingStatus",
          s.name AS "schoolName", s.registration_number AS "schoolRegistrationNumber",
          s.address AS "schoolAddress", s.city AS "schoolCity", s.state AS "schoolState",
          s.phone AS "schoolPhone", s.email AS "schoolEmail", logo.object_path AS "schoolLogo"
@@ -58,6 +64,7 @@ export const printableCardSnapshotSql = `
              (array_agg(trim(concat_ws(' ',e.first_name,e.middle_name,e.last_name)) ORDER BY b.id DESC))[1] AS "employeeName",
              (array_agg(e.employee_no ORDER BY b.id DESC))[1] AS "employeeNo",
              (array_agg(e.photo ORDER BY b.id DESC))[1] AS "employeePhoto",
+             (array_agg(concat_ws(' / ',e.employee_type,e.department) ORDER BY b.id DESC))[1] AS "designation",
              (array_agg(b.status ORDER BY b.id DESC))[1] AS "bindingStatus"
         FROM employee_nfc_card_bindings b
         JOIN employees e ON e.id=b.employee_id AND e.school_id=b.school_id

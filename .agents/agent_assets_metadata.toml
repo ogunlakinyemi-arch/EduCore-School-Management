@@ -714,3 +714,45 @@ mtime_ms = 1792275238045
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f40d8fca-84a0-46fe-84c6-b0d022cbf360/9a4fd45f-9c2b-4d82-ba51-43940631e894"
 storage_version_token = "1792275238900531"
 content_type = "text/html"
+
+[[outputs]]
+id = "hpCxk28iohj6VXE8AoW_t"
+uri = "file://generated-artifacts/reference-based-id-card-preview.png"
+type = "image"
+title = "Reference-based ID card templates"
+description = "Fictional Student and Teacher front-and-back samples showing the updated official renderer. Real cards use saved school logos and authorized person photos. Sample QR codes are not operational cards."
+logical_id = "0b4a8a9f-9520-4e67-9da0-53022fc703a4"
+content_hash = "sha256:2e865cfce64bbd4bfebdc85f7046d2fe990be1eb4e34f8720ba151d2b9a701d6"
+size = 396035
+mtime_ms = 1792857898257
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0b4a8a9f-9520-4e67-9da0-53022fc703a4/616043e6-af0b-4507-82f0-01142158c12e"
+storage_version_token = "1792857912981149"
+content_type = "image/png"
+
+[[outputs]]
+id = "gSIBPORzQJEPhIsFGechm"
+uri = "file://generated-artifacts/student-nfc-reference-preview.png"
+type = "image"
+title = "Refined Student NFC ID card"
+description = "Fictional preview of the actual CR80 renderer: name, admission number and NFC UID only; separate opaque QR, blue NFC footer and cyan/green accents. Actual cards use authorized school, student and assigned-card records."
+logical_id = "985d9596-f081-464f-afdf-f945c2c2c640"
+content_hash = "sha256:aaa53d8579e8eae94d4c96e2546c970bb0dcd35e4368a77bfa5cc6dec522e074"
+size = 466965
+mtime_ms = 1792858170378
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/985d9596-f081-464f-afdf-f945c2c2c640/b8d8cdb3-3e1b-48a5-b4a2-c5f5797158d3"
+storage_version_token = "1792858181473625"
+content_type = "image/png"
+
+[[outputs]]
+id = "MA0P7Pmc8IbEpuLcEQu_m"
+uri = "file://generated-artifacts/logo-derived-student-card-preview.png"
+type = "image"
+title = "Student cards with logo-derived colors"
+description = "Two fictional school examples rendered through the official PDF renderer. Band and accents are extracted from each crest, with white NFC icons and readable text. No real student or card records were changed."
+logical_id = "d4b9027d-528d-4df8-99bb-4fdd018d1706"
+content_hash = "sha256:cc5e9b10c89a05eb3ee614c42b5f7f96d77818f142d086835241ccf0b730436c"
+size = 261064
+mtime_ms = 1792858435972
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/d4b9027d-528d-4df8-99bb-4fdd018d1706/4c22b2cd-bf41-4865-befe-15b6d3017c41"
+storage_version_token = "1792858436507575"
+content_type = "image/png"

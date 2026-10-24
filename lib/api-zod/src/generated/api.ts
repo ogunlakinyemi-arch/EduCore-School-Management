@@ -9,6 +9,117 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Owner confirms first student assignment of an authenticated captured available UID
+ */
+
+
+
+
+export const AssignCapturedUidToStudentBody = zod.object({
+  "uid": zod.string(),
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "confirm": zod.literal(true)
+})
+
+export const AssignCapturedUidToStudentResponse = zod.object({
+  "cardId": zod.number().int(),
+  "uid": zod.string(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "status": zod.enum(['locked'])
+})
+
+
+/**
+ * @summary Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+ */
+
+
+
+export const UnlinkCardForCapturedReplacementParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+export const unlinkCardForCapturedReplacementBodyReasonMin = 3;
+export const unlinkCardForCapturedReplacementBodyReasonMax = 480;
+
+
+
+export const UnlinkCardForCapturedReplacementBody = zod.object({
+  "kind": zod.enum(['LOST', 'DAMAGED']),
+  "reason": zod.string().min(unlinkCardForCapturedReplacementBodyReasonMin).max(unlinkCardForCapturedReplacementBodyReasonMax),
+  "confirm": zod.literal(true)
+})
+
+export const UnlinkCardForCapturedReplacementResponse = zod.unknown()
+
+
+
+
+
+export const IssueCapturedUidReplacementParams = zod.object({
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const IssueCapturedUidReplacementBody = zod.object({
+  "uid": zod.string(),
+  "confirm": zod.literal(true)
+})
+
+export const IssueCapturedUidReplacementResponse = zod.unknown()
+
+
+
+
+
+export const GetOfficialCardBrandParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetOfficialCardBrandResponse = zod.object({
+  "primaryColor": zod.string().nullish(),
+  "secondaryColor": zod.string().nullish()
+})
+
+
+
+
+
+export const SetOfficialCardBrandParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const setOfficialCardBrandBodyPrimaryColorRegExp = new RegExp('^#[a-fA-F0-9]{6}$');
+export const setOfficialCardBrandBodySecondaryColorRegExp = new RegExp('^#[a-fA-F0-9]{6}$');
+
+
+export const SetOfficialCardBrandBody = zod.object({
+  "primaryColor": zod.string().regex(setOfficialCardBrandBodyPrimaryColorRegExp),
+  "secondaryColor": zod.string().regex(setOfficialCardBrandBodySecondaryColorRegExp)
+})
+
+export const SetOfficialCardBrandResponse = zod.unknown()
+
+
+/**
+ * @summary Public read-only opaque QR verification, no personal data or access grant
+ */
+export const verifyOfficialCardQrBodyTokenMax = 256;
+
+
+
+export const VerifyOfficialCardQrBody = zod.object({
+  "token": zod.string().max(verifyOfficialCardQrBodyTokenMax)
+})
+
+export const VerifyOfficialCardQrResponse = zod.object({
+  "valid": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
  * @summary Read Owner UID-only reader bindings and captured UID inventory
  */
 export const GetOwnerUidInventoryResponse = zod.object({

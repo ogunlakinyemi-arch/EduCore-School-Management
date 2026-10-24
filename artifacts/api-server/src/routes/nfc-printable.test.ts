@@ -39,9 +39,11 @@ vi.mock("../lib/nfc-printable-images", () => ({
 
 import printableRouter from "./nfc-printable";
 import { buildNfcPrintablePdfSample } from "../lib/nfc-printable-pdf";
+import { printableFrontText } from "../lib/nfc-printable-test-utils";
+import { rasterOfficialCard } from "../lib/nfc-card-preview";
 import { loadPrintablePhoto } from "../lib/nfc-printable-images";
 vi.mock("../lib/nfc-card-preview", () => ({
-  rasterOfficialCard: async () => ({frontImage:"data:image/png;base64,Zm9udA==",backImage:"data:image/png;base64,YmFjaw=="}),
+  rasterOfficialCard: vi.fn(async (_pdf:Buffer) => ({frontImage:"data:image/png;base64,Zm9udA==",backImage:"data:image/png;base64,YmFjaw=="})),
 }));
 
 function unicodeMapped(pdf: string, value: string) {
@@ -60,6 +62,7 @@ const studentCard = () => ({
   cardId: 41,
   schoolId: 9,
   cardStatus: "active",
+  cardUid: "04A1B2C3D4E5F6",
   studentId: 101,
   studentStatus: "active",
   studentName: "Amina Example",
@@ -106,6 +109,8 @@ beforeEach(() => {
 });
 
 describe("GET /cards/:cardId/printable", () => {
+  beforeEach(()=>vi.stubEnv("SESSION_SECRET","test-only-id-card-key-not-a-real-secret"));
+  afterAll(()=>vi.unstubAllEnvs());
   it.each(["student", "TEACHER", "STAFF"])("embeds the matched %s saved photo in the actual printable PDF renderer", async kind => {
     const employee = kind !== "student";
     const personId = employee ? 202 : 101;
@@ -150,15 +155,35 @@ describe("GET /cards/:cardId/printable", () => {
     expect(unicodeMapped(pdf, "PERM-101")).toBe(true);
     expect(unicodeMapped(pdf, "PROPERTY OF YETENIA TECHNOLOGIES LIMITED")).toBe(true);
     expect(unicodeMapped(pdf, "Yetenia EduCore NFC Identification Card")).toBe(true);
-    expect(pdf).not.toContain("UID-RAW");
+    expect(printableFrontText(pdf)).toContain("04A1B2C3D4E5F6");
+    expect(printableFrontText(pdf)).not.toMatch(/Class|JSS1|Section A|School Reg:/);
     expect(pdf).not.toContain("private-token");
     expect(pdf).not.toContain("JSS1");
     expect(pdf).not.toContain("Section A");
     expect(pdf).not.toContain("Academic session");
     expect(pdf).not.toContain("/Info");
     expect(state.sql).toContain("nc.id=$1 AND nc.school_id=$2");
-    expect(state.sql).not.toMatch(/class_name|section|academic_terms|academic_sessions/i);
+    expect(state.sql).toContain('nc.uid AS "cardUid"');
+    expect(state.sql).not.toContain("class_name");
+    expect(state.sql).not.toMatch(/section|academic_terms|academic_sessions/i);
     expect(state.values).toEqual([41, 9]);
+  });
+
+  it("uses byte-identical official PDFs for active Student preview and download",async()=>{
+    const preview=await fetch(`${baseUrl}/cards/41/preview?schoolId=9`);
+    expect(preview.status).toBe(200);
+    const previewPdf=vi.mocked(rasterOfficialCard).mock.calls.at(-1)![0];
+    const download=await fetch(`${baseUrl}/cards/41/printable?schoolId=9`);
+    expect(download.status).toBe(200);
+    expect(Buffer.from(await download.arrayBuffer()).equals(previewPdf)).toBe(true);
+  });
+
+  it("rejects Student output when the real assigned UID is missing",async()=>{
+    state.snapshot={...studentCard(),cardUid:""};
+    for(const mode of ["preview","printable"]) {
+      const response=await fetch(`${baseUrl}/cards/41/${mode}?schoolId=9`);
+      expect(response.status).toBe(409);
+    }
   });
 
   it("prints current Teacher data and omits former assignment history from identity selection", async () => {

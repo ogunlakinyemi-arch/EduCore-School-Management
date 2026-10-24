@@ -296,6 +296,9 @@ router.post("/platform/devices/:deviceId/assign", run(async (req, res) => {
      await client.query("BEGIN");
      const old = await client.query(`SELECT id,school_id AS "schoolId",location,school_class_id AS "classId" FROM platform_devices WHERE id=$1 FOR UPDATE`, [id]);
      if (!old.rows[0]) throw new AuthError(404, "Device not found");
+     if(old.rows[0].schoolId!=null && old.rows[0].schoolId!==schoolId &&
+       (typeof req.body?.reason!=="string" || req.body.reason.trim().length<3 || req.body.reason.length>500))
+       throw new AuthError(400,"A reason of 3–500 characters is required to release or reassign a school device");
      await assertNotOwnerReader(client, id);
      if (req.body?.classId != null) {
        const klass = await client.query(`SELECT id FROM school_classes WHERE id=$1 AND school_id=$2`, [Number(req.body.classId), schoolId]);
@@ -380,6 +383,9 @@ router.patch("/platform/devices/:deviceId", run(async (req, res) => {
     await client.query("BEGIN");
       const before = await client.query(`SELECT id,school_id AS "schoolId",location,school_class_id AS "classId" FROM platform_devices WHERE id=$1 FOR UPDATE`, [deviceId]);
      if (!before.rows[0]) throw new AuthError(404, "Device not found");
+      if(before.rows[0].schoolId!=null && ((schoolId!==undefined && schoolId!==before.rows[0].schoolId) || status==="UNASSIGNED") &&
+        (typeof req.body?.reason!=="string" || req.body.reason.trim().length<3 || req.body.reason.length>500))
+        throw new AuthError(400,"A reason of 3–500 characters is required to release or reassign a school device");
       if (schoolId !== undefined && schoolId !== null) await assertNotOwnerReader(client, deviceId);
       const reassigned = (req.body?.schoolId !== undefined && before.rows[0].schoolId !== schoolId) ||
         status === "UNASSIGNED";

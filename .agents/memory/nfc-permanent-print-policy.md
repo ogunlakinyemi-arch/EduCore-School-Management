@@ -2,13 +2,28 @@
 name: Permanent NFC print policy
 description: Student card lifetime and separation of printing from NFC activation.
 ---
-Student cards are permanent identification throughout the student's time at a school. Never print class, section, session, term, current academic year, or subject assignments. Resolve current academic data from the backend when an authorized device reads the existing UID.
+Student cards last until graduation. The Student front identity details must be ONLY Name, permanent Registration/Admission Number and the assigned NFC card UID. Do not print class or other student fields. The opaque verification QR is separate and is never a substitute for the printed NFC UID. Teacher/Staff designation requirements remain unchanged.
 
 Printing and reprinting are read-only: no new identity or assignment, activation, unlocking, or lifecycle transition. Teacher cards must be printable immediately after the existing assignment workflow, even before personal activation.
 
-**Why:** The user explicitly requires the same physical student card across academic progression. The existing Teacher assignment and activation stages are separate; downloading must not grant active device access.
+**Why:** The user explicitly corrected the temporary class requirement: students keep the same card until graduation. The existing Teacher assignment and activation stages remain separate; downloading must not grant active device access.
 
-**How to apply:** Keep all academic fields out of printable data contracts. Validate current identity and lifecycle on each download; retain existing permissions and tenant scope. Treat optional QR verification as unsupported unless an existing credential-free safe mechanism is confirmed.
+**How to apply:** Derive all three Student identity fields from the current authorized records, omit class/session/term/subjects and retain employee designation. Validate identity/lifecycle and tenant scope on every preview/download. QR verification remains opaque, reveals no personal data and grants no access.
+
+Use the supplied Student NFC ID reference as the visual basis for both Student
+and Teacher/Staff variants. Student decoration colors must be extracted from each
+school's logo, NOT fixed blue/cyan/green. Darken the dominant hue for white text
+and NFC icon readability, use other logo hues or tonal accents, and fall back to
+the saved school primary/restrained default only when extraction fails. Employee variants
+retain school primary/secondary colors. Never copy the reference child's portrait,
+example identity or example QR into actual cards.
+
+**Why:** The user supplied a Student reference after requesting both Student and
+Teacher/Staff designs, then explicitly clarified: "the color decoration should
+be extracted from the school logo." Preserve the layout, not the example colors.
+
+**How to apply:** Preserve the shared school-first design family and use only
+authorized current school/person images and identity data in real renders.
 
 Official Student, Teacher and Staff card generation, download, print, issue, reprint, assignment, reassignment, activation and replacement are Platform Owner-only. School Admin access is preview-only. Teachers must not preview Student ID cards.
 

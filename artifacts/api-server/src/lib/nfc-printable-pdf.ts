@@ -3,12 +3,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import type { PrintableImage } from "./nfc-printable-images";
-import { printableCardBrand } from "./nfc-card-brand";
+import { printableCardPalette, studentCardPalette } from "./nfc-card-brand";
+import QRCode from "qrcode";
 
 const PAGE_WIDTH = 85.6 * 72 / 25.4;
 const PAGE_HEIGHT = 53.98 * 72 / 25.4;
 const INK = "0.06 0.16 0.27";
 const WHITE = "1 1 1";
+const headerInk = (color:string) => color.split(" ").reduce((s,v,i)=>s+Number(v)*[.2126,.7152,.0722][i]!,0)>.55?INK:WHITE;
 const FONT_URL = new URL("../assets/fonts/DejaVuSans.ttf", import.meta.url);
 
 type FontTable = { offset: number; length: number };
@@ -149,6 +151,12 @@ export type PrintableCardPdfData = {
   personType: "Student" | "Teacher" | "Staff";
   personName: string;
   permanentNumber: string;
+  cardUid?:string|null;
+  className?:string|null;
+  designation?:string|null;
+  primaryColor?:string|null;
+  secondaryColor?:string|null;
+  verificationToken?:string;
   schoolLogo?: PrintableImage | null;
   personPhoto?: PrintableImage | null;
 };
@@ -204,10 +212,10 @@ function text(
   return `BT /F1 ${size} Tf ${color} rg ${x.toFixed(2)} ${y.toFixed(2)} Td ${encodeText(value, font, used)} Tj ET`;
 }
 
-function fittedText(value: string, x: number, y: number, size: number, color: string, font: EmbeddedFont, used: Map<number, { cid: number; codePoint: number; glyphId: number }>) {
+function fittedText(value: string, x: number, y: number, size: number, color: string, font: EmbeddedFont, used: Map<number, { cid: number; codePoint: number; glyphId: number }>, maxWidth = PAGE_WIDTH-x-12) {
   const clean = safeText(value, Number.MAX_SAFE_INTEGER);
   const width = Array.from(clean).reduce((sum, c) => sum + font.advance(font.cmap(c.codePointAt(0)!)), 0) * size / font.unitsPerEm;
-  const fittedSize = Math.min(size, size * (PAGE_WIDTH - x - 12) / Math.max(1, width));
+  const fittedSize = Math.min(size, size * maxWidth / Math.max(1, width));
   return text(clean, x, y, fittedSize, color, font, used);
 }
 
@@ -216,38 +224,87 @@ function frontContent(
   images: ImageObject[],
   font: EmbeddedFont,
   used: Map<number, { cid: number; codePoint: number; glyphId: number }>,
-  TEAL: string,
+  schoolPrimary: string,
+  SECONDARY: string,
+  tertiary?:string,
 ) {
+  const student=data.personType==="Student";
+  const TEAL=schoolPrimary;
+  if(student && !data.cardUid?.trim()) throw new Error("Student card printing requires its assigned NFC UID");
   const label = (value: string, x: number, y: number, size: number, color = INK) =>
     text(value, x, y, size, color, font, used);
+  const bold = (value:string,x:number,y:number,size:number,width:number,color=INK) =>
+    `q ${color} RG 0.15 w ${fittedText(value,x,y,size,color,font,used,width).replace(" Tf "," Tf 2 Tr ")} Q`;
+  const tint = (amount:number) => TEAL.split(" ").map(v=>(Number(v)+(1-Number(v))*amount).toFixed(3)).join(" ");
+  const accent = SECONDARY;
+  const rounded = (x:number,y:number,w:number,h:number,r:number) => {
+    const k=r*.55228475;
+    return `${x+r} ${y} m ${x+w-r} ${y} l ${x+w-r+k} ${y} ${x+w} ${y+r-k} ${x+w} ${y+r} c
+      ${x+w} ${y+h-r} l ${x+w} ${y+h-r+k} ${x+w-r+k} ${y+h} ${x+w-r} ${y+h} c
+      ${x+r} ${y+h} l ${x+r-k} ${y+h} ${x} ${y+h-r+k} ${x} ${y+h-r} c
+      ${x} ${y+r} l ${x} ${y+r-k} ${x+r-k} ${y} ${x+r} ${y} c h`;
+  };
+  // Match the supplied school-first reference, without copying its child's photo,
+  // school identity or QR. All identity/images still come from the scoped snapshot.
   const commands = [
-    `${TEAL} rg 0 ${PAGE_HEIGHT - 27} ${PAGE_WIDTH} 27 re f`,
-    label("Yetenia EduCore", 12, PAGE_HEIGHT - 17, 9, WHITE),
-    label("NFC IDENTIFICATION", PAGE_WIDTH - 92, PAGE_HEIGHT - 17, 7, WHITE),
-    `${INK} RG 0.7 w 8.5 8.5 ${PAGE_WIDTH - 17} ${PAGE_HEIGHT - 17} re S`,
+    "q",
+    `${rounded(1,1,PAGE_WIDTH-2,PAGE_HEIGHT-2,8)} W n`,
+    `${WHITE} rg 0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT} re f`,
+    bold(data.schoolName,52,PAGE_HEIGHT-17,8.8,PAGE_WIDTH-63),
   ];
+  const address=[data.schoolAddress,data.schoolCity,data.schoolState].filter(Boolean).join(", ");
+  const contact=[data.schoolPhone,data.schoolEmail].filter(Boolean).join("  |  ");
+  if(address) commands.push(fittedText(address,52,PAGE_HEIGHT-27,6.2,INK,font,used,PAGE_WIDTH-63));
+  if(contact) commands.push(fittedText(contact,52,PAGE_HEIGHT-36,6,INK,font,used,PAGE_WIDTH-63));
   const logo = images.find((item) => item.name === "SchoolLogo");
-  if (logo) commands.push(imageCommand(logo, 12, PAGE_HEIGHT - 115, 41, 20));
+  if (logo) commands.push(imageCommand(logo,14,PAGE_HEIGHT-42,29,31));
+
+  // Student decorations come from its logo palette; employees retain school settings.
+  commands.push(`${tint(.7)} rg 0 32 m 42 0 l 0 0 l h f`);
+  commands.push(`${accent} rg ${PAGE_WIDTH-53} 29 m ${PAGE_WIDTH} 52 l ${PAGE_WIDTH} 29 l h f`);
+  if(student) commands.push(`${tertiary??tint(.58)} rg ${PAGE_WIDTH-36} 29 m ${PAGE_WIDTH} 43 l ${PAGE_WIDTH} 29 l h f`);
+  commands.push(`${TEAL} rg 0 0 ${PAGE_WIDTH} 31 re f`);
+  commands.push(`${accent} rg 0 36 m 48 0 l 39 0 l 0 29 l h f`);
+  commands.push(`${student?accent:tint(.58)} rg 0 26 m 34 0 l 28 0 l 0 20 l h f`);
+  if(data.personType!=="Student")
+    commands.push(`${SECONDARY} rg ${PAGE_WIDTH-30} 31 m ${PAGE_WIDTH} 45 l ${PAGE_WIDTH} 0 l ${PAGE_WIDTH-8} 0 l h f`);
+
   const photo = images.find((item) => item.name === "PersonPhoto");
+  commands.push(`${tint(.94)} rg ${rounded(12,39,66,72,5)} f`);
   if (photo) {
-    commands.push(`${TEAL} RG 1 w 12 ${PAGE_HEIGHT - 91} 41 49 re S`);
-    commands.push(imageCommand(photo, 13, PAGE_HEIGHT - 90, 39, 47));
+    commands.push(`q ${rounded(12,39,66,72,5)} W n`,imageCommand(photo,12,39,66,72),"Q");
   } else {
-    commands.push(`${TEAL} RG 1 w 12 ${PAGE_HEIGHT - 91} 41 49 re S`);
-    commands.push(label("PHOTO", 21, PAGE_HEIGHT - 60, 8, TEAL));
-    commands.push(label("NOT", 26, PAGE_HEIGHT - 70, 8, TEAL));
-    commands.push(label("AVAILABLE", 17, PAGE_HEIGHT - 80, 6, TEAL));
+    commands.push(label("PHOTO",30,83,7),label("NOT",36,73,7),label("AVAILABLE",23,63,6.5));
   }
-  const detailX = 61;
-  commands.push(fittedText(data.schoolName, 12, PAGE_HEIGHT - 37, 8, INK, font, used));
-  commands.push(label(data.personType.toUpperCase(), detailX, PAGE_HEIGHT - 43, 7, TEAL));
-  commands.push(fittedText(data.personName, detailX, PAGE_HEIGHT - 57, 9, INK, font, used));
-  commands.push(fittedText(`${data.personType === "Student" ? "Admission No." : "Employee No."}: ${data.permanentNumber}`, detailX, PAGE_HEIGHT - 70, 6.5, INK, font, used));
-  commands.push(label(`NFC-id-${data.cardId}`, detailX, PAGE_HEIGHT - 81, 6.5, TEAL));
-  if (data.schoolRegistrationNumber) {
-    commands.push(fittedText(`School Reg: ${data.schoolRegistrationNumber}`, detailX, PAGE_HEIGHT - 92, 5.8, INK, font, used));
+  const detailX = 88;
+  commands.push(bold(data.personName,detailX,96,9.2,103));
+  if(student) {
+    commands.push(label("Reg/Admission No.",detailX,83,5.8));
+    commands.push(fittedText(data.permanentNumber,detailX,73,7.4,INK,font,used,103));
+    commands.push(label("UID No.",detailX,59,5.8));
+    commands.push(fittedText(data.cardUid!.trim(),detailX,49,6.8,INK,font,used,103));
+  } else {
+    commands.push(label(data.personType,detailX,83,7.4));
+    if(data.designation) commands.push(fittedText(data.designation,detailX,71,7,INK,font,used,103));
+    commands.push(fittedText(`ID: ${data.permanentNumber}`,detailX,58,6.7,INK,font,used,103));
+    if(data.schoolRegistrationNumber)
+      commands.push(fittedText(`School Reg: ${data.schoolRegistrationNumber}`,detailX,41,4.8,INK,font,used,PAGE_WIDTH-detailX-12));
   }
-  commands.push(label("Permanent identity - school record remains current", 12, 13, 5.2));
+  if(data.verificationToken) {
+    const qr=QRCode.create(data.verificationToken,{errorCorrectionLevel:"M"}).modules;
+    const size=42, unit=size/(qr.size+8), x=PAGE_WIDTH-49,y=63;
+    commands.push(`${WHITE} rg ${x} ${y} ${size} ${size} re f`,"0 0 0 rg");
+    for(let row=0;row<qr.size;row++) for(let col=0;col<qr.size;col++) if(qr.get(row,col))
+      commands.push(`${(x+(col+4)*unit).toFixed(4)} ${(y+(qr.size-row+3)*unit).toFixed(4)} ${unit.toFixed(4)} ${unit.toFixed(4)} re f`);
+    commands.push(label("VERIFY ID",x+5,y-5,4.8));
+  }
+  const footerInk=student?WHITE:headerInk(TEAL);
+  commands.push(`q ${footerInk} rg 72 11 7 9 re f ${footerInk} RG 1.9 w 1 J`);
+  commands.push("83 8 m 87 12 87 20 83 24 c S");
+  commands.push("89 5 m 95 11 95 21 89 27 c S");
+  commands.push("95 2 m 103 10 103 22 95 30 c S Q");
+  commands.push(bold(`${data.personType.toUpperCase()} ID`,115,11,10.5,100,footerInk));
+  commands.push("Q",`0.85 0.9 0.93 RG 0.7 w ${rounded(1,1,PAGE_WIDTH-2,PAGE_HEIGHT-2,8)} S`);
   return commands.join("\n");
 }
 
@@ -263,11 +320,11 @@ function backContent(
   const contact = [data.schoolPhone, data.schoolEmail].filter(Boolean).join(" | ");
   const commands = [
     `${TEAL} rg 0 ${PAGE_HEIGHT - 23} ${PAGE_WIDTH} 23 re f`,
-    label("PROPERTY OF YETENIA TECHNOLOGIES LIMITED", 12, PAGE_HEIGHT - 15, 8, WHITE),
+    label("PROPERTY OF YETENIA TECHNOLOGIES LIMITED", 12, PAGE_HEIGHT - 15, 8, headerInk(TEAL)),
     `${INK} RG 0.7 w 8.5 8.5 ${PAGE_WIDTH - 17} ${PAGE_HEIGHT - 17} re S`,
     label("Yetenia EduCore NFC Identification Card", 12, PAGE_HEIGHT - 38, 8),
-    label("This card remains the property of YETENIA TECHNOLOGIES LIMITED and is", 12, PAGE_HEIGHT - 52, 6.2),
-    label("issued for authorized identification and access purposes.", 12, PAGE_HEIGHT - 62, 6.2),
+    fittedText("This card is the property of YETENIA TECHNOLOGIES LIMITED.", 12, PAGE_HEIGHT - 52, 6.2,INK,font,used),
+    label("Use only for authorized identification and access purposes.", 12, PAGE_HEIGHT - 62, 6.2),
     label("If found, please return this card to the issuing school", 12, PAGE_HEIGHT - 77, 6.2),
     label("or the appropriate authority.", 12, PAGE_HEIGHT - 87, 6.2),
     fittedText(data.schoolName, 12, PAGE_HEIGHT - 104, 6.5, TEAL, font, used),
@@ -293,7 +350,7 @@ function binaryImageObject(image: PrintableImage) {
 /** Two vector-print pages at exact landscape CR80 dimensions; no PDF metadata. */
 export async function buildNfcPrintablePdf(data: PrintableCardPdfData): Promise<Buffer> {
   const font = await loadEmbeddedFont();
-  const brand = await printableCardBrand(data.schoolLogo);
+  const brand = await printableCardPalette(data.schoolLogo,data.primaryColor,data.secondaryColor);
   const usedCharacters = new Map<number, { cid: number; codePoint: number; glyphId: number }>();
   const images: ImageObject[] = [];
   if (data.schoolLogo) images.push({ name: "SchoolLogo", image: data.schoolLogo, objectId: 0 });
@@ -303,8 +360,11 @@ export async function buildNfcPrintablePdf(data: PrintableCardPdfData): Promise<
   const frontResources = images.length
     ? ` /XObject << ${images.map((image) => `/${image.name} ${image.objectId} 0 R`).join(" ")} >>`
     : "";
-  const front = frontContent(data, images, font, usedCharacters, brand);
-  const back = backContent(data, font, usedCharacters, brand);
+  const studentBrand=data.personType==="Student"
+    ?await studentCardPalette(data.schoolLogo,data.primaryColor):null;
+  const front = frontContent(data, images, font, usedCharacters,
+    studentBrand?.primary??brand.primary,studentBrand?.secondary??brand.secondary,studentBrand?.tertiary);
+  const back = backContent(data, font, usedCharacters, brand.primary);
   const backContentId = 7 + images.length;
   const fontFileId = backContentId + 1;
   const fontDescriptorId = fontFileId + 1;
@@ -395,6 +455,7 @@ export async function buildNfcPrintablePdfSample(): Promise<Buffer> {
     personType: "Student",
     personName: "Ọlámidé Ọ̀jọ́",
     permanentNumber: "PERMANENT-907",
+    cardUid: "04A1B2C3D4E5F6",
     schoolLogo: { bytes: logoBytes, width: 600, height: 260 },
     personPhoto: { bytes: photoBytes, width: 900, height: 1200 },
   });

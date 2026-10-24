@@ -7,6 +7,7 @@ import {
 import { Link } from 'wouter';
 import { OwnerCardLink } from '@/components/owner-card-link';
 import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
+import { CardBrandSettings } from '@/components/card-brand-settings';
 import { OfficialCardPreview } from '@/components/official-card-preview';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx 
@@ -106,6 +107,7 @@ export function CardsPage() {
       />
       
       {canProvision && <OwnerCardLink />}
+      {canProvision && schoolId ? <CardBrandSettings schoolId={schoolId} /> : null}
       {cardMessage && <p role="status" className="mb-4">{cardMessage}</p>}
       {cardError && <p role="alert" className="mb-4 text-[hsl(var(--destructive))]">{cardError}</p>}
       <Link href="/card-replacements" className="mb-5 inline-block text-sm font-bold text-[hsl(var(--primary))] underline" data-testid="link-card-replacements">Card replacements</Link>

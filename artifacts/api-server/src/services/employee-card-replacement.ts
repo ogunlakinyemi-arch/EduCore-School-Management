@@ -34,4 +34,5 @@ export async function issueEmployeeReplacement(db:Sql,req:Request,r:any,uid:stri
           ($1,$9,$6,$4,'ASSIGNED_AS_REPLACEMENT','UNASSIGNED','ACTIVE',NULL,$7,$8)`,
     [r.school_id,old.binding_id,old.id,r.employee_id,old.binding_status,target.id,`Replacement request ${r.id}`,actor,binding.id]);
   await db.query(`UPDATE student_nfc_replacement_requests SET status='ISSUED',new_card_id=$1,issued_by=$2,issued_at=NOW() WHERE id=$3`,[target.id,actor,r.id]);
+  return {oldCardId:old.id,oldUid:old.uid,newCardId:target.id,newUid:target.uid};
 }

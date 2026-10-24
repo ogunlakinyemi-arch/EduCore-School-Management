@@ -22726,6 +22726,77 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type AssignCapturedUidToStudentBody = {
+  uid: string;
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  confirm: true;
+};
+
+export type AssignCapturedUidToStudent201Status = typeof AssignCapturedUidToStudent201Status[keyof typeof AssignCapturedUidToStudent201Status];
+
+
+export const AssignCapturedUidToStudent201Status = {
+  locked: 'locked',
+} as const;
+
+export type AssignCapturedUidToStudent201 = {
+  cardId: number;
+  uid: string;
+  schoolId: number;
+  studentId: number;
+  status: AssignCapturedUidToStudent201Status;
+};
+
+export type UnlinkCardForCapturedReplacementBodyKind = typeof UnlinkCardForCapturedReplacementBodyKind[keyof typeof UnlinkCardForCapturedReplacementBodyKind];
+
+
+export const UnlinkCardForCapturedReplacementBodyKind = {
+  LOST: 'LOST',
+  DAMAGED: 'DAMAGED',
+} as const;
+
+export type UnlinkCardForCapturedReplacementBody = {
+  kind: UnlinkCardForCapturedReplacementBodyKind;
+  /**
+     * @minLength 3
+     * @maxLength 480
+     */
+  reason: string;
+  confirm: true;
+};
+
+export type IssueCapturedUidReplacementBody = {
+  uid: string;
+  confirm: true;
+};
+
+export type GetOfficialCardBrand200 = {
+  /** @nullable */
+  primaryColor?: string | null;
+  /** @nullable */
+  secondaryColor?: string | null;
+};
+
+export type SetOfficialCardBrandBody = {
+  /** @pattern ^#[a-fA-F0-9]{6}$ */
+  primaryColor: string;
+  /** @pattern ^#[a-fA-F0-9]{6}$ */
+  secondaryColor: string;
+};
+
+export type VerifyOfficialCardQrBody = {
+  /** @maxLength 256 */
+  token: string;
+};
+
+export type VerifyOfficialCardQr200 = {
+  valid: boolean;
+  message: string;
+};
+
 export type BindOwnerUidReader201Purpose = typeof BindOwnerUidReader201Purpose[keyof typeof BindOwnerUidReader201Purpose];
 
 

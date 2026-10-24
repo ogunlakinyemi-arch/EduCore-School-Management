@@ -14,6 +14,7 @@ import {
 import { loadPrintablePhoto, loadPrintableSchoolLogo } from "../lib/nfc-printable-images";
 import { buildNfcPrintablePdf } from "../lib/nfc-printable-pdf";
 import { rasterOfficialCard } from "../lib/nfc-card-preview";
+import { cardVerificationToken } from "../lib/id-card-verification";
 
 const router = Router();
 
@@ -50,6 +51,8 @@ async function renderCurrentCard(cardId: number, schoolId: number, mode: "printa
   const snapshot = result.rows[0] as PrintableSnapshot | undefined;
   if (!snapshot) throw new AuthError(404, "NFC card not found in this school");
   const identity = resolvePrintableIdentity(snapshot, mode);
+  if(identity.personType==="Student" && !snapshot.cardUid?.trim())
+    throw new AuthError(409,"The assigned student card has no NFC UID for printing");
   const personId = identity.personType === "Student" ? Number(snapshot.studentId) : Number(snapshot.employeeId);
   const [schoolLogo,personPhoto] = await Promise.all([
     loadPrintableSchoolLogo(schoolId,snapshot.schoolLogo),
@@ -59,7 +62,11 @@ async function renderCurrentCard(cardId: number, schoolId: number, mode: "printa
     schoolRegistrationNumber:snapshot.schoolRegistrationNumber,schoolAddress:snapshot.schoolAddress,
     schoolCity:snapshot.schoolCity,schoolState:snapshot.schoolState,schoolPhone:snapshot.schoolPhone,
     schoolEmail:snapshot.schoolEmail,personType:identity.personType,personName:identity.personName,
-    permanentNumber:identity.permanentNumber,schoolLogo,personPhoto});
+    permanentNumber:identity.permanentNumber,schoolLogo,personPhoto,
+    cardUid:snapshot.cardUid,designation:snapshot.designation,
+    primaryColor:snapshot.primaryColor,secondaryColor:snapshot.secondaryColor,
+    verificationToken:cardVerificationToken({cardId,schoolId,studentId:snapshot.studentId,
+      employeeId:snapshot.studentId==null?snapshot.employeeId:null})});
 }
 
 router.get("/cards/:cardId/preview",requireAuthentication(),async(req,res,next)=>{

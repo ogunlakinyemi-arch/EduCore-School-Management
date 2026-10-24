@@ -81,7 +81,7 @@ export function PrintableNfcCardDownload({
       </Button>
       {error && <p role="alert" className="mt-2 text-sm text-[hsl(var(--destructive))]">{error}</p>}
       <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-        Print-ready CR80 front and back; student cards show permanent identification only.
+        Print-ready CR80 front and back; cards show permanent identification plus class or designation where available.
       </p>
     </div>
   );

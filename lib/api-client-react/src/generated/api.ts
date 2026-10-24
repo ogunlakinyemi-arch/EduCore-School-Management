@@ -95,6 +95,8 @@ import type {
   AssessSchoolAttendance200,
   AssessSchoolAttendanceBody,
   AssessSchoolAttendanceParams,
+  AssignCapturedUidToStudent201,
+  AssignCapturedUidToStudentBody,
   AssignClassSubjectParams,
   AssignEmployeeNfcCardBody,
   AssignFeeStructureParams,
@@ -367,6 +369,7 @@ import type {
   GetMyPartnerNfcStudentsParams,
   GetMyStaffNfcPartnerCommissionsParams,
   GetMyStaffNfcSubscriptionsParams,
+  GetOfficialCardBrand200,
   GetOfficialCardPreview200,
   GetOfficialCardPreviewParams,
   GetOwnAttendanceParams,
@@ -414,6 +417,7 @@ import type {
   IngestOwnerUidRead200,
   InspectPeopleImportParams,
   InvitationDiagnostics,
+  IssueCapturedUidReplacementBody,
   LessonNote,
   LessonNoteDetail,
   LessonNoteInput,
@@ -774,6 +778,7 @@ import type {
   SecurityVisitorPatch,
   SendPlatformSchoolMessage200,
   SendPlatformSchoolMessageBody,
+  SetOfficialCardBrandBody,
   SettlementHistoryEntry,
   SettlementRemovalConfirmation,
   SettlementRemovalResult,
@@ -855,6 +860,7 @@ import type {
   TransportStudentOption,
   TransportTermInvoiceGeneration,
   UnauthenticatedResponse,
+  UnlinkCardForCapturedReplacementBody,
   UnlinkTelegram200,
   UpdateAcademicAssessmentParams,
   UpdateAcademicAssignmentParams,
@@ -892,6 +898,8 @@ import type {
   VendorTerminalReceipt,
   VerifyManualBankTransferParams,
   VerifyMyStaffNfcPaymentParams,
+  VerifyOfficialCardQr200,
+  VerifyOfficialCardQrBody,
   WelfareRecord,
   WelfareRecordInput,
   WelfareRecordPatch,
@@ -924,6 +932,508 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getAssignCapturedUidToStudentUrl = () => {
+
+
+
+
+  return `/api/platform/uid-inventory/assign`
+}
+
+/**
+ * @summary Owner confirms first student assignment of an authenticated captured available UID
+ */
+export const assignCapturedUidToStudent = async (assignCapturedUidToStudentBody: AssignCapturedUidToStudentBody, options?: Parameters<typeof customFetch>[1]): Promise<AssignCapturedUidToStudent201> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AssignCapturedUidToStudent201>(getAssignCapturedUidToStudentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assignCapturedUidToStudentBody)
+  }
+);}
+
+
+
+
+
+export const getAssignCapturedUidToStudentMutationKey = () => ['assignCapturedUidToStudent'] as const;
+
+export const getAssignCapturedUidToStudentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCapturedUidToStudent>>, TError,AssignCapturedUidToStudentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignCapturedUidToStudent>>, TError,AssignCapturedUidToStudentMutationVariables, TContext> => {
+
+const mutationKey = getAssignCapturedUidToStudentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignCapturedUidToStudent>>, AssignCapturedUidToStudentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  assignCapturedUidToStudent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignCapturedUidToStudentMutationResult = NonNullable<Awaited<ReturnType<typeof assignCapturedUidToStudent>>>
+    export type AssignCapturedUidToStudentMutationBody = BodyType<AssignCapturedUidToStudentBody>
+    export type AssignCapturedUidToStudentMutationError = ErrorType<void>
+    export type AssignCapturedUidToStudentMutationVariables = {data: BodyType<AssignCapturedUidToStudentBody>}
+
+    /**
+ * @summary Owner confirms first student assignment of an authenticated captured available UID
+ */
+export const useAssignCapturedUidToStudent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCapturedUidToStudent>>, TError,AssignCapturedUidToStudentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignCapturedUidToStudent>>,
+        TError,
+        AssignCapturedUidToStudentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignCapturedUidToStudentMutationOptions(options));
+    }
+
+export const getUnlinkCardForCapturedReplacementUrl = (cardId: number,) => {
+
+
+
+
+  return `/api/platform/uid-inventory/cards/${cardId}/unlink`
+}
+
+/**
+ * @summary Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+ */
+export const unlinkCardForCapturedReplacement = async (cardId: number,
+    unlinkCardForCapturedReplacementBody: UnlinkCardForCapturedReplacementBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getUnlinkCardForCapturedReplacementUrl(cardId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(unlinkCardForCapturedReplacementBody)
+  }
+);}
+
+
+
+
+
+export const getUnlinkCardForCapturedReplacementMutationKey = () => ['unlinkCardForCapturedReplacement'] as const;
+
+export const getUnlinkCardForCapturedReplacementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>, TError,UnlinkCardForCapturedReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>, TError,UnlinkCardForCapturedReplacementMutationVariables, TContext> => {
+
+const mutationKey = getUnlinkCardForCapturedReplacementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>, UnlinkCardForCapturedReplacementMutationVariables> = (props) => {
+          const {cardId,data} = props ?? {};
+
+          return  unlinkCardForCapturedReplacement(cardId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkCardForCapturedReplacementMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>>
+    export type UnlinkCardForCapturedReplacementMutationBody = BodyType<UnlinkCardForCapturedReplacementBody>
+    export type UnlinkCardForCapturedReplacementMutationError = ErrorType<void>
+    export type UnlinkCardForCapturedReplacementMutationVariables = {cardId: number;data: BodyType<UnlinkCardForCapturedReplacementBody>}
+
+    /**
+ * @summary Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+ */
+export const useUnlinkCardForCapturedReplacement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>, TError,UnlinkCardForCapturedReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>,
+        TError,
+        UnlinkCardForCapturedReplacementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnlinkCardForCapturedReplacementMutationOptions(options));
+    }
+
+export const getIssueCapturedUidReplacementUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/platform/uid-inventory/replacements/${requestId}/issue`
+}
+
+export const issueCapturedUidReplacement = async (requestId: number,
+    issueCapturedUidReplacementBody: IssueCapturedUidReplacementBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getIssueCapturedUidReplacementUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(issueCapturedUidReplacementBody)
+  }
+);}
+
+
+
+
+
+export const getIssueCapturedUidReplacementMutationKey = () => ['issueCapturedUidReplacement'] as const;
+
+export const getIssueCapturedUidReplacementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueCapturedUidReplacement>>, TError,IssueCapturedUidReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof issueCapturedUidReplacement>>, TError,IssueCapturedUidReplacementMutationVariables, TContext> => {
+
+const mutationKey = getIssueCapturedUidReplacementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof issueCapturedUidReplacement>>, IssueCapturedUidReplacementMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  issueCapturedUidReplacement(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IssueCapturedUidReplacementMutationResult = NonNullable<Awaited<ReturnType<typeof issueCapturedUidReplacement>>>
+    export type IssueCapturedUidReplacementMutationBody = BodyType<IssueCapturedUidReplacementBody>
+    export type IssueCapturedUidReplacementMutationError = ErrorType<void>
+    export type IssueCapturedUidReplacementMutationVariables = {requestId: number;data: BodyType<IssueCapturedUidReplacementBody>}
+
+    export const useIssueCapturedUidReplacement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueCapturedUidReplacement>>, TError,IssueCapturedUidReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof issueCapturedUidReplacement>>,
+        TError,
+        IssueCapturedUidReplacementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIssueCapturedUidReplacementMutationOptions(options));
+    }
+
+export const getGetOfficialCardBrandUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/platform/schools/${schoolId}/card-brand`
+}
+
+export const getOfficialCardBrand = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<GetOfficialCardBrand200> => {
+
+  return customFetch<GetOfficialCardBrand200>(getGetOfficialCardBrandUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOfficialCardBrandQueryKey = (schoolId: number,) => {
+    return [
+    `/api/platform/schools/${schoolId}/card-brand`
+    ] as const;
+    }
+
+
+export const getGetOfficialCardBrandQueryOptions = <TData = Awaited<ReturnType<typeof getOfficialCardBrand>>, TError = ErrorType<unknown>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOfficialCardBrand>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOfficialCardBrandQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOfficialCardBrand>>> = ({ signal }) => getOfficialCardBrand(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOfficialCardBrand>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOfficialCardBrandQueryResult = NonNullable<Awaited<ReturnType<typeof getOfficialCardBrand>>>
+export type GetOfficialCardBrandQueryError = ErrorType<unknown>
+
+
+
+export function useGetOfficialCardBrand<TData = Awaited<ReturnType<typeof getOfficialCardBrand>>, TError = ErrorType<unknown>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOfficialCardBrand>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOfficialCardBrandQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetOfficialCardBrandUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/platform/schools/${schoolId}/card-brand`
+}
+
+export const setOfficialCardBrand = async (schoolId: number,
+    setOfficialCardBrandBody: SetOfficialCardBrandBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getSetOfficialCardBrandUrl(schoolId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(setOfficialCardBrandBody)
+  }
+);}
+
+
+
+
+
+export const getSetOfficialCardBrandMutationKey = () => ['setOfficialCardBrand'] as const;
+
+export const getSetOfficialCardBrandMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setOfficialCardBrand>>, TError,SetOfficialCardBrandMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setOfficialCardBrand>>, TError,SetOfficialCardBrandMutationVariables, TContext> => {
+
+const mutationKey = getSetOfficialCardBrandMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setOfficialCardBrand>>, SetOfficialCardBrandMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  setOfficialCardBrand(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetOfficialCardBrandMutationResult = NonNullable<Awaited<ReturnType<typeof setOfficialCardBrand>>>
+    export type SetOfficialCardBrandMutationBody = BodyType<SetOfficialCardBrandBody>
+    export type SetOfficialCardBrandMutationError = ErrorType<unknown>
+    export type SetOfficialCardBrandMutationVariables = {schoolId: number;data: BodyType<SetOfficialCardBrandBody>}
+
+    export const useSetOfficialCardBrand = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setOfficialCardBrand>>, TError,SetOfficialCardBrandMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setOfficialCardBrand>>,
+        TError,
+        SetOfficialCardBrandMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetOfficialCardBrandMutationOptions(options));
+    }
+
+export const getVerifyOfficialCardQrUrl = () => {
+
+
+
+
+  return `/api/v1/id-cards/verify`
+}
+
+/**
+ * @summary Public read-only opaque QR verification, no personal data or access grant
+ */
+export const verifyOfficialCardQr = async (verifyOfficialCardQrBody: VerifyOfficialCardQrBody, options?: Parameters<typeof customFetch>[1]): Promise<VerifyOfficialCardQr200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<VerifyOfficialCardQr200>(getVerifyOfficialCardQrUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(verifyOfficialCardQrBody)
+  }
+);}
+
+
+
+
+
+export const getVerifyOfficialCardQrMutationKey = () => ['verifyOfficialCardQr'] as const;
+
+export const getVerifyOfficialCardQrMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyOfficialCardQr>>, TError,VerifyOfficialCardQrMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyOfficialCardQr>>, TError,VerifyOfficialCardQrMutationVariables, TContext> => {
+
+const mutationKey = getVerifyOfficialCardQrMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyOfficialCardQr>>, VerifyOfficialCardQrMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyOfficialCardQr(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyOfficialCardQrMutationResult = NonNullable<Awaited<ReturnType<typeof verifyOfficialCardQr>>>
+    export type VerifyOfficialCardQrMutationBody = BodyType<VerifyOfficialCardQrBody>
+    export type VerifyOfficialCardQrMutationError = ErrorType<void>
+    export type VerifyOfficialCardQrMutationVariables = {data: BodyType<VerifyOfficialCardQrBody>}
+
+    /**
+ * @summary Public read-only opaque QR verification, no personal data or access grant
+ */
+export const useVerifyOfficialCardQr = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyOfficialCardQr>>, TError,VerifyOfficialCardQrMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyOfficialCardQr>>,
+        TError,
+        VerifyOfficialCardQrMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyOfficialCardQrMutationOptions(options));
+    }
 
 export const getGetOwnerUidInventoryUrl = () => {
 

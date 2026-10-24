@@ -82,6 +82,7 @@ import { OperationsPage } from '@/pages/operations';
 import { ReportingPage } from '@/pages/reporting';
 import { ActivationHistoryPage, EidActivationPage } from '@/pages/e-id-activation';
 
+import CardVerificationPage from '@/pages/card-verification';
 import PublicNfcPaymentPage from '@/pages/public-nfc-payment';
 
 import './index.css';
@@ -491,6 +492,7 @@ export default function App() {
           <TooltipProvider>
             <Switch>
               <Route path="/admissions/portal/:portalKey"><PublicAdmissionPortalPage /></Route>
+              <Route path="/card-verification"><CardVerificationPage /></Route>
               <Route path="/nfc/pay"><PublicNfcPaymentPage /></Route>
               <Route path="/setup/platform-owner"><PlatformOwnerSetup /></Route>
               <Route path="/sign-in/*?"><AuthScreen mode="sign-in" /></Route>

@@ -74,6 +74,135 @@ ownerUidEvent:
                 uid: { type: string }
                 duplicate: { type: boolean }
                 purpose: { type: string, enum: [UID_INVENTORY_ONLY] }
+capturedUidAssignment:
+  post:
+    operationId: assignCapturedUidToStudent
+    tags: [platform]
+    summary: Owner confirms first student assignment of an authenticated captured available UID
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [uid, schoolId, studentId, confirm]
+            properties:
+              uid: { type: string }
+              schoolId: { type: integer, minimum: 1 }
+              studentId: { type: integer, minimum: 1 }
+              confirm: { type: boolean, enum: [true] }
+    responses:
+      "201":
+        description: Assigned locked; activation and payment are unchanged
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cardId, uid, schoolId, studentId, status]
+              properties:
+                cardId: { type: integer }
+                uid: { type: string }
+                schoolId: { type: integer }
+                studentId: { type: integer }
+                status: { type: string, enum: [locked] }
+      "409": { description: "Uncaptured/reserved UID, prior student card or missing school reader" }
+capturedCardUnlink:
+  post:
+    operationId: unlinkCardForCapturedReplacement
+    tags: [platform]
+    summary: Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+    parameters:
+      - { name: cardId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [kind, reason, confirm]
+            properties:
+              kind: { type: string, enum: [LOST, DAMAGED] }
+              reason: { type: string, minLength: 3, maxLength: 480 }
+              confirm: { type: boolean, enum: [true] }
+    responses:
+      "200": { description: "Existing replacement request/invoice, or employee revocation with requiresSchoolAdminRequest true" }
+      "409": { description: Card cannot be replaced; revocation may already have committed before invoice failure }
+capturedReplacementIssue:
+  post:
+    operationId: issueCapturedUidReplacement
+    tags: [platform]
+    parameters:
+      - { name: requestId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [uid, confirm]
+            properties:
+              uid: { type: string }
+              confirm: { type: boolean, enum: [true] }
+    responses:
+      "200": { description: "Existing replacement DTO; verified NGN 2000 payment, old UID revocation and captured availability enforced" }
+      "409": { description: "Payment, old-card revocation, school reader or UID availability check failed" }
+officialCardBrand:
+  parameters:
+    - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+  get:
+    operationId: getOfficialCardBrand
+    tags: [platform]
+    responses:
+      "200":
+        description: Owner-only configured school colors; null uses logo-derived fallback
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                primaryColor: { type: [string, "null"] }
+                secondaryColor: { type: [string, "null"] }
+  put:
+    operationId: setOfficialCardBrand
+    tags: [platform]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [primaryColor, secondaryColor]
+            properties:
+              primaryColor: { type: string, pattern: '^#[a-fA-F0-9]{6}$' }
+              secondaryColor: { type: string, pattern: '^#[a-fA-F0-9]{6}$' }
+    responses:
+      "200": { description: Owner-saved audited school color palette }
+officialCardVerification:
+  post:
+    operationId: verifyOfficialCardQr
+    tags: [cards]
+    summary: Public read-only opaque QR verification, no personal data or access grant
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [token]
+            properties:
+              token: { type: string, maxLength: 256 }
+    responses:
+      "200":
+        description: Current identity validation only; no UID, person or school information
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [valid, message]
+              properties:
+                valid: { type: boolean }
+                message: { type: string }
+      "503": { description: "Verification unavailable, never an access grant" }
 components:
   securitySchemes:
     OwnerUidReaderKey:

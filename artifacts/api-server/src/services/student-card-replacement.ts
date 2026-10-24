@@ -1,4 +1,5 @@
 import {assertSchoolHasActiveNfcDevice} from "../lib/nfc-device-first";
+import { prepareCapturedUid } from "./uid-inventory-assignment";
 import { randomUUID } from "node:crypto";
 import {issueEmployeeReplacement} from "./employee-card-replacement";
 import type { Request } from "express";
@@ -175,7 +176,7 @@ export async function verifyReplacementPayment(req: Request, id: number, provide
   return readReplacement(req,id);
 }
 
-export async function issueReplacement(req: Request, id: number, uid: string) {
+export async function issueReplacement(req: Request, id: number, uid: string, fromInventory = false) {
   assertRoles(req,["PLATFORM_OWNER"]);
   const db = await pool.connect();
   try {
@@ -192,9 +193,17 @@ export async function issueReplacement(req: Request, id: number, uid: string) {
     await db.query("SELECT id FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE", [request.invoice_id,request.school_id]);
     const evidence = await readReplacement(req,id,db);
     if (evidence.paymentStatus !== "PAID") throw new AuthError(409,"A verified NGN 2,000 replacement payment and receipt are required");
+    if (fromInventory) {
+      await assertSchoolHasActiveNfcDevice(db,request.school_id);
+      const oldCard=await db.query("SELECT status,replaced_by_card_id FROM nfc_cards WHERE id=$1 AND school_id=$2 FOR UPDATE",[request.old_card_id,request.school_id]);
+      if(!oldCard.rows[0] || oldCard.rows[0].replaced_by_card_id!=null ||
+        !["lost","blocked","inactive","suspended"].includes(oldCard.rows[0].status))
+        throw new AuthError(409,"Explicitly unlink/deactivate the old card before selecting a replacement UID");
+      await prepareCapturedUid(db,uid,request.school_id);
+    }
     if(request.employee_id!=null) {
-      await issueEmployeeReplacement(db,req,request,uid);
-      await audit(db,req,request.school_id,id,"NFC_REPLACEMENT_ISSUED",{employeeId:request.employee_id,oldCardId:request.old_card_id,invoiceId:request.invoice_id});
+      const replaced=await issueEmployeeReplacement(db,req,request,uid);
+      await audit(db,req,request.school_id,id,"NFC_REPLACEMENT_ISSUED",{...replaced,employeeId:request.employee_id,oldCardId:request.old_card_id,reason:request.reason,invoiceId:request.invoice_id,source:fromInventory?"AUTHENTICATED_OWNER_READER":"PREPARED_CARD"});
       const result=await readReplacement(req,id,db);await db.query("COMMIT");return result;
     }
     await assertSchoolHasActiveNfcDevice(db,request.school_id);
@@ -221,9 +230,9 @@ export async function issueReplacement(req: Request, id: number, uid: string) {
       (school_id,nfc_card_id,student_id,action,previous_status,new_status,replaced_by_card_id,reason,actor_user_id)
       VALUES($1,$2,$3,'REPLACED',$4,'replaced',$5,$6,$7),
             ($1,$5,$3,'ASSIGNED_AS_REPLACEMENT','unassigned','active',NULL,$6,$7)`,
-    [request.school_id,old.id,request.student_id,old.status,target.id,`Replacement request ${id}; old card reference ${old.id}`,actorId]);
+    [request.school_id,old.id,request.student_id,old.status,target.id,`${request.reason}; Replacement request ${id}; old card reference ${old.id}`,actorId]);
     await db.query(`UPDATE student_nfc_replacement_requests SET status='ISSUED',new_card_id=$1,issued_by=$2,issued_at=NOW() WHERE id=$3`, [target.id,actorId,id]);
-    await audit(db,req,request.school_id,id,"NFC_REPLACEMENT_ISSUED",{ oldCardId: old.id,newCardId: target.id,invoiceId: request.invoice_id });
+    await audit(db,req,request.school_id,id,"NFC_REPLACEMENT_ISSUED",{ oldCardId: old.id,oldUid:old.uid,newCardId: target.id,newUid:target.uid,reason:request.reason,invoiceId: request.invoice_id,source:fromInventory?"AUTHENTICATED_OWNER_READER":"PREPARED_CARD" });
     await emitDomainParentEvent(db as any,{ schoolId: request.school_id,studentId: request.student_id,
       eventType:"SECURITY_CARD_LOST",eventId:`replacement:${id}:issued`,category:"SECURITY",
       subject:"Your child's replacement school card has been issued",body:"The old card remains permanently revoked. The replacement uses the same student identity.",

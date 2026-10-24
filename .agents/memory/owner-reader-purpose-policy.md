@@ -17,6 +17,15 @@ attendance pipeline. Device registration does not prove hardware connectivity;
 report firmware/callback configuration and genuine tap verification separately.
 Never introduce a manual/simulated UID read presented as physical evidence.
 
+Captured UID inventory must have a complete Owner-confirmed assignment path, not
+just a read-only list. Only an available reader-captured UID may be selected in
+that path. Lost/damaged replacement requires explicit old-UID revocation and the
+existing verified replacement payment; employee request/payment remains with
+the School Admin.
+
+**Why:** The user repeated that displaying captured UIDs alone is not a completed
+workflow, and explicitly required inventory selection through replacement.
+
 Attendance displays the UID associated with the event, not a later replacement.
 Where the event's card ownership cannot be proven, show unavailable rather than
 substituting the student's current card. Current card details are a separate view.

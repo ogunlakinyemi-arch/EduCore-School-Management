@@ -175,7 +175,7 @@ describe("platform device lifecycle behavior", () => {
   });
 
   it("clears the class and marks the device unconfigured when unassigning", async () => {
-    const response = await patch("/platform/devices/100", { schoolId: null });
+    const response = await patch("/platform/devices/100", { schoolId: null, reason:"Return hardware to inventory" });
     expect(response.status).toBe(200);
     const device = await response.json() as {
       schoolId: number | null;
@@ -185,6 +185,11 @@ describe("platform device lifecycle behavior", () => {
     expect(device.schoolId).toBeNull();
     expect(device.classId).toBeNull();
     expect(device.configurationStatus).not.toBe("CONFIGURED");
+  });
+  it.each(["", "  ", "x"])("rejects school-device release without a meaningful reason (%s)",async reason=>{
+    const response=await patch("/platform/devices/100",{schoolId:null,reason});
+    expect(response.status).toBe(400);
+    expect(state.device.schoolId).not.toBeNull();
   });
 
   it("preserves a historical school binding and revokes credentials on reassignment", async () => {

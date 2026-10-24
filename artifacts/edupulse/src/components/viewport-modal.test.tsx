@@ -23,9 +23,11 @@ describe('shared opt-in viewport form presentation',()=>{
     expect(document.body.hasAttribute('data-scroll-locked')).toBe(false);
     document.body.style.overflow='';
   });
-  it('leaves unrelated legacy callers inline and their scrolling unchanged',async()=>{
+  it('keeps legacy genuine dialogs above content under the current all-role overlay policy',async()=>{
     await act(async()=>root.render(<Modal title="Legacy" onClose={vi.fn()}>Unchanged</Modal>));
-    expect(host.textContent).toContain('Unchanged');expect(document.body.style.overflow).toBe('');
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('Unchanged');
+    expect(host.textContent).not.toContain('Unchanged');
+    expect(document.body.hasAttribute('data-scroll-locked')).toBe(true);
   });
   it('keeps the heading and close button outside the internally scrolling form',async()=>{
     await act(async()=>root.render(<Modal viewport title="Edit school" onClose={vi.fn()}><form><input aria-label="School name"/><button>Save</button></form></Modal>));
