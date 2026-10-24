@@ -13,7 +13,7 @@ const usage = `production-reset:cleanup --school-ids 1,2 [--dry-run]
 Default: offline dry-run, no connection. --identity-sql only prints a SELECT.
 Execution never uses workspace DATABASE_URL. No all/force/override flags exist.`;
 
-async function privateJson(file) {
+export async function privateJson(file) {
   const handle = await fs.open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const stat = await handle.stat();

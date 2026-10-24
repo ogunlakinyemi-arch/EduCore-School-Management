@@ -123,6 +123,22 @@ directory, socket directory, fixed port, database/role, absence of TCP listeners
 and empty public/system schemas **before fixture DDL**. Never provide an existing
 database, skip that guard or treat this fixture's snapshots as Production evidence.
 
+### Separate existing-account access rehearsal
+
+For the access-revocation checks, run the same clean isolated shell in another
+fresh temporary cluster, replacing **only** `executor-isolated.mjs` with
+`access-archive-isolated.mjs`. Keep every path, ownership, environment and cleanup
+guard. It creates a separate fictional `access_archive_rehearsal` database and
+tests real block/restore audit appends, rollback, competing locks, unreviewed
+audit triggers, Owner/unrelated access and protection of existing business rows.
+
+Unlike the deletion executor's rollback-only rehearsal, this separate access
+rehearsal commits a fictional BLOCK and RESTORE to prove durable reversibility.
+It never connects to Production, Clerk or a workspace database. Audit sequence
+gaps after rolled-back appends are normal PostgreSQL behavior; no sequence is
+reset. Expected output is access JSON `status: "PASS"` with all twelve named
+checks. Source identity and scope are recorded separately in REHEARSAL-RESULTS.
+
 If startup/SQL fails, stop and diagnose that isolated failure. Never substitute
 workspace/Production connection variables. If the exit cleanup cannot confirm
 shutdown, it leaves its directory rather than deleting a running cluster; inspect

@@ -53,3 +53,42 @@ a lineage-preserving operational archive outcome. An inactive label alone is not
 proven to enforce archival across app access, workers, payments or callbacks.
 Fresh Production resource, recovery/restore and maintenance evidence would also
 remain necessary before any separately authorized operation.
+
+## Separate existing-account access-revocation receipt
+
+The scoped access implementation was tested in another freshly created private
+PostgreSQL **16.10** cluster with TCP disabled, using only its owned Unix socket.
+The cluster was stopped and removed by the guarded shell afterward; the existing
+NFC hardware-test database was not used.
+
+**PASS — 12 actual PostgreSQL checks:**
+
+1. Exact membership/roster/Partner/staff/invitation capture; Owner exempt.
+2. Rolling back the control append restores access and all protected rows.
+3. A competing association-table lock refuses without a partial archive.
+4. An unreviewed audit INSERT trigger refuses without archiving.
+5. Existing test school, Partner owner/staff and former-associated accounts denied.
+6. Platform Owner and unrelated school/Partner accounts allowed.
+7. Same-email new identity, invitation and Partner-link re-entry denied.
+8. A later membership cannot reopen an archived school.
+9. Existing audit, financial, membership, device/card and provenance rows unchanged.
+10. Owner restoration is append-only and restores the prior access boundary.
+11. A mixed legitimate/test identity refuses the whole batch.
+12. A non-Owner cannot apply or restore a batch.
+
+This separate harness committed **only fictional control events** to prove
+durable block/restore behavior. It did not run the Production operator CLI.
+The earlier deletion-executor receipt and its zero-COMMIT statement still refer
+only to that earlier rollback-only harness.
+
+- Access-control module SHA-256:
+  `d7ee8534d8e6e4b70d75f8b19e6949df47ad54b3466cc2f7bdcc209297c82ade`
+- Focused offline reset/access tests: **53 passed**.
+- Focused backend authentication, re-entry and invitation regressions: **131 passed**.
+- API TypeScript check: **passed**.
+- Production connections/mutations: **0 / 0**.
+- External Clerk mutations: **0**. Shared settings/secrets and publishing: **unchanged**.
+
+The operating boundary and remaining whole-system archival limitations are in
+`ACCESS-ARCHIVE.md`. This is local implementation evidence, not permission or
+readiness evidence for a real account revocation.

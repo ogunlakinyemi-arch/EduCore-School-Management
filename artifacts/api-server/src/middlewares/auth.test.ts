@@ -2,9 +2,21 @@ import { describe, expect, it, vi } from "vitest";
 
 const dbState = vi.hoisted(() => ({
   roles: [] as Array<{ id: number; role: string; schoolId: number | null; status: string }>,
+  archives: [] as any[],
+  sessionUserId: null as string | null,
+  ledgerUnavailable: false,
 }));
 const dbMock = vi.hoisted(() => ({
   query: vi.fn(async (sql: string) => {
+    if (sql.includes("test-account-access-archive-ledger")) {
+      if (dbState.ledgerUnavailable) throw new Error("fictional ledger outage");
+      return { rows: dbState.archives.map(metadata => ({ metadata })) };
+    }
+    if (sql.includes("FROM account_applications")) return { rows: [] };
+    if (sql.includes("SELECT 1 WHERE")) return { rows: [] };
+    if (sql.includes("role='PLATFORM_OWNER'")) return {
+      rows: dbState.roles.some(r => r.role === "PLATFORM_OWNER" && r.schoolId === null && r.status === "ACTIVE") ? [{ exists: 1 }] : [],
+    };
     if (sql.includes("FROM app_users WHERE clerk_user_id")) {
       return {
         rows: [{
@@ -24,9 +36,14 @@ const dbMock = vi.hoisted(() => ({
 
 vi.mock("@workspace/db", () => ({ pool: dbMock }));
 vi.mock("@clerk/express", () => ({
-  getAuth: vi.fn(() => ({ userId: null })),
+  getAuth: vi.fn(() => ({ userId: dbState.sessionUserId })),
   clerkClient: { users: { getUser: vi.fn() } },
 }));
+
+const archive = () => ({
+  version: 1, batchId: "a".repeat(64), operation: "BLOCK",
+  schoolIds: [9], partnerIds: [3], userIds: [10], emails: ["test@example.com"],
+});
 
 import {
   AuthError,
@@ -98,6 +115,52 @@ describe("authentication and user status", () => {
     await expect(loadUserContext("user_test")).resolves.toMatchObject({
       roles: [{ role: "DEVICE_ACTIVATION_OFFICER" }],
     });
+  });
+});
+
+describe("archived test account sign-in and existing sessions", () => {
+  it("denies sign-in even though the stored account and membership remain ACTIVE", async () => {
+    dbState.roles = [{ id: 3, role: "TEACHER", schoolId: 9, status: "ACTIVE" }];
+    dbState.archives = [archive()];
+    try {
+      await expect(loadUserContext("user_test")).rejects.toMatchObject({
+        statusCode: 403, eventType: "ARCHIVED_TEST_ACCESS_BLOCKED",
+      });
+    } finally { dbState.archives = []; dbState.roles = []; }
+  });
+  it("denies a previously authenticated session/token on its next protected request", async () => {
+    dbState.archives = [archive()]; dbState.roles = [];
+    dbState.sessionUserId = "user_test";
+    const status = vi.fn().mockReturnThis(), json = vi.fn(), next = vi.fn();
+    try {
+      requireAuthentication()({} as any, { status, json } as any, next);
+      await vi.waitFor(() => expect(status).toHaveBeenCalledWith(403));
+      expect(next).not.toHaveBeenCalled();
+    } finally { dbState.archives = []; dbState.sessionUserId = null; }
+  });
+  it("preserves a live platform-scoped Owner even if an archive lists the same account", async () => {
+    dbState.roles = [{ id: 1, role: "PLATFORM_OWNER", schoolId: null, status: "ACTIVE" }];
+    dbState.archives = [archive()];
+    try {
+      await expect(loadUserContext("user_test")).resolves.toMatchObject({
+        roles: [{ role: "PLATFORM_OWNER" }],
+      });
+    } finally { dbState.archives = []; dbState.roles = []; }
+  });
+  it("continues sign-in for unrelated school accounts and immediately allows an Owner-restored batch", async () => {
+    dbState.roles = [{ id: 4, role: "TEACHER", schoolId: 77, status: "ACTIVE" }];
+    dbState.archives = [{ ...archive(), userIds: [99], emails: ["other@fictional.invalid"] }];
+    try {
+      await expect(loadUserContext("user_test")).resolves.toMatchObject({ roles: [{ schoolId: 77 }] });
+      dbState.archives = [archive(), { ...archive(), operation: "RESTORE" }];
+      await expect(loadUserContext("user_test")).resolves.toMatchObject({ roles: [{ schoolId: 77 }] });
+    } finally { dbState.archives = []; dbState.roles = []; }
+  });
+  it("fails closed if archive evidence cannot be read, rather than ignoring a possible block", async () => {
+    dbState.ledgerUnavailable = true;
+    try {
+      await expect(loadUserContext("user_test")).rejects.toMatchObject({ statusCode: 503 });
+    } finally { dbState.ledgerUnavailable = false; }
   });
 });
 

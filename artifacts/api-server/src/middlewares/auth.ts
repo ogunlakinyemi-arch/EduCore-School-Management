@@ -2,6 +2,7 @@ import { clerkClient, getAuth } from "@clerk/express";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { enforceRequestSubscription } from "../services/subscription-request-access";
 import { pool } from "@workspace/db";
+import { assertTestArchiveAccess } from "../services/test-account-archive-access";
 
 export const ROLES = [
   "PLATFORM_OWNER",
@@ -64,7 +65,10 @@ export async function provisionCurrentUser(clerkUserId: string) {
      FROM app_users WHERE clerk_user_id = $1`,
     [clerkUserId],
   );
-  if (existing.rows[0]) return existing.rows[0];
+  if (existing.rows[0]) {
+    await assertTestArchiveAccess({ userId: existing.rows[0].id, email: existing.rows[0].email });
+    return existing.rows[0];
+  }
 
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
   const email =
@@ -73,6 +77,7 @@ export async function provisionCurrentUser(clerkUserId: string) {
   if (!email) {
     throw new AuthError(403, "An email address is required to access Yetenia EduCore");
   }
+  await assertTestArchiveAccess({ email });
 
   const result = await pool.query(
     `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, phone)

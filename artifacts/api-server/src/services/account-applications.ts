@@ -1,6 +1,7 @@
 import { randomUUID, createHash } from "node:crypto";
 import type { DatabasePoolClient as PoolClient } from "@workspace/db";
 import { pool } from "@workspace/db";
+import { assertTestArchiveAccess } from "./test-account-archive-access";
 import { AuthError, type UserContext } from "../middlewares/auth";
 import { auditAccountApplication as audit } from "./account-application-audit";
 export { notifyApplicationDecision } from "./account-application-notifications";
@@ -77,11 +78,12 @@ export async function submitApplication(actor: UserContext, input: z.infer<typeo
     if (owned.rows.length) throw new AuthError(409, "This email is already associated with an existing account; contact your administrator");
     let referralId: number | null = null;
     if (input.referralToken) {
-      const link = await client.query(`SELECT l.id FROM partner_referral_links l
+      const link = await client.query(`SELECT l.id,p.id AS "partnerId" FROM partner_referral_links l
         JOIN partner_profiles p ON p.id=l.partner_profile_id
         WHERE l.token_hash=$1 AND l.status='ACTIVE' AND p.status='ACTIVE' FOR SHARE OF l,p`,
       [createHash("sha256").update(input.referralToken).digest("hex")]);
       if (!link.rows[0]) throw new AuthError(400, "Invalid or inactive school referral");
+      await assertTestArchiveAccess({ partnerId: link.rows[0].partnerId }, client);
       referralId = link.rows[0].id;
     }
     const result = await client.query(`INSERT INTO account_applications

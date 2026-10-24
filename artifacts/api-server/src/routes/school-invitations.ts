@@ -7,6 +7,7 @@ import { logger } from "../lib/logger";
 import { queueCommunicationNotification } from "../services/communication-service";
 import { commitInvitationWithRecovery } from "./partner-commit-recovery";
 import { invitationRedirect } from "./invitation-redirect";
+import { assertTestArchiveAccess } from "../services/test-account-archive-access";
 
 export const INVITABLE_SCHOOL_ROLES = [
   "SCHOOL_ADMIN",
@@ -643,7 +644,9 @@ async function resolveExistingInvitee(input: InviteeInput): Promise<InviteeInput
 }
 
 export async function createSchoolInvitation(input: InviteeInput, actor: UserContext) {
+  await assertTestArchiveAccess({ schoolId: input.schoolId, email: input.email });
   input = input.personId == null ? input : await resolveExistingInvitee(input);
+  await assertTestArchiveAccess({ schoolId: input.schoolId, email: input.email });
   if (input.personId != null) {
     const activationOfficer = await pool.query(
       `SELECT 1 FROM app_users au
@@ -821,6 +824,7 @@ export async function createSchoolWithAdministrator(input: {
   administrator: { fullName: string; email: string; phone?: string };
   partnerId?: number;
 }, actor: UserContext) {
+  await assertTestArchiveAccess({ email: input.administrator.email, partnerId: input.partnerId });
   const school = {
     code: input.school.code?.trim().toUpperCase() || generateSchoolCode(input.school.name),
     name: input.school.name.trim(),
@@ -1540,6 +1544,7 @@ export async function replaceSchoolAdminInvitation(input: {
   invitationId: string;
   email?: string;
 }, actor: UserContext) {
+  await assertTestArchiveAccess({ schoolId: input.schoolId, email: input.email });
   const guardClient = await pool.connect();
   const lockKey = `school-admin-invitation:${input.schoolId}:${input.invitationId}`;
   let lockResultReceived = false;
@@ -2419,6 +2424,7 @@ export async function reconcileSchoolInvitationReplacement(input: {
   schoolId: number;
   invitationId: string;
 }, actor: UserContext, sourceEvent: ReplacementSourceEvent) {
+  await assertTestArchiveAccess({ schoolId: input.schoolId });
   const attemptRows = await pool.query(
     `SELECT id,metadata FROM audit_logs
      WHERE school_id=$1 AND event_type='SCHOOL_INVITATION_REPLACEMENT_ATTEMPT'
@@ -2726,6 +2732,7 @@ export async function replaceSchoolUserInvitation(input: {
   invitationId: string;
   email?: string;
 }, actor: UserContext) {
+  await assertTestArchiveAccess({ schoolId: input.schoolId, email: input.email });
   const guardClient = await pool.connect();
   const lockKey = `school-user-invitation:${input.schoolId}:${input.invitationId}`;
   let lockHeld = false;
@@ -2924,6 +2931,7 @@ export function acceptedInvitationFromMetadata(metadata: unknown, email: string)
 }
 
 export async function activateAcceptedSchoolInvitation(userId: number, clerkUserId: string) {
+  await assertTestArchiveAccess({ userId });
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
   const primaryEmail = clerkUser.primaryEmailAddress;
   const email = primaryEmail?.verification?.status === "verified"
@@ -2932,6 +2940,7 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
   if (!email) return false;
   const invite = acceptedInvitationFromMetadata(clerkUser.publicMetadata, email);
   if (!invite) return false;
+  await assertTestArchiveAccess({ userId, email, schoolId: invite.schoolId });
 
   const school = await pool.query(`SELECT id FROM schools WHERE id=$1`, [invite.schoolId]);
   if (!school.rows[0]) throw new AuthError(403, "The invitation school is no longer available");
@@ -2940,6 +2949,7 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
   let changedMembership = false;
   try {
     await client.query("BEGIN");
+    await assertTestArchiveAccess({ userId, email, schoolId: invite.schoolId }, client);
     const user = await client.query(
       `SELECT id,email,status FROM app_users WHERE id=$1 AND clerk_user_id=$2 FOR UPDATE`,
       [userId, clerkUserId],

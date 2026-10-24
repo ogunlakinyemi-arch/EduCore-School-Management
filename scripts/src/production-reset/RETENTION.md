@@ -6,9 +6,11 @@ The full-deletion executor remains blocked when preserved records depend on it.
 No partial reset, detachment, status change, external archival or reassignment is
 silently performed. `automaticMutations` in the retention report is always empty.
 
-This resolves the preservation choice without inventing an archive implementation.
-The existing source schema supports some nullable references/status labels, but
-that is not proof of a safe operational archive. We did not inspect Production.
+This resolves physical retention. Separately, [ACCESS-ARCHIVE.md](ACCESS-ARCHIVE.md)
+implements reversible access revocation for explicitly scoped existing test
+accounts without changing retained business records. It is not a whole-system
+operational archive or permission to remove required ancestors. Production was
+not inspected or changed.
 
 ## Reviewed relationships
 
@@ -39,10 +41,11 @@ Only if further cleanup is desired:
    fresh operational environment. Physical tenant removal remains blocked under
    today's preserve-in-place policy. Changing the desired outcome is not an
    instruction to delete/repoint financial, audit or auth records.
-2. **Tenant access, if inactivity is desired:** identify the exact test-school
-   memberships that may be made inactive and which administrators must keep
-   access. Platform memberships, unrelated family/other-school access and external
-   identities remain unchanged. Review actual application enforcement first.
+2. **Existing-account access:** use the separately reviewed access-revocation
+   path in `ACCESS-ARCHIVE.md`, with explicit school/Partner allowlists. It keeps
+   memberships and external identities unchanged, preserves the Owner, and
+   refuses mixed legitimate-tenant identities. Local verification is not
+   authorization to run it on Production.
 3. **Devices, only if reuse is desired:** approve specific readers and a current-
    binding transition, including prior-credential revocation and delayed-event/
    callback handling using the existing reassignment safeguards. Preserve device

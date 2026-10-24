@@ -8,6 +8,7 @@ import {
 import crypto from "node:crypto";
 import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
+import { assertTestArchiveAccess } from "../services/test-account-archive-access";
 import { commitInvitationWithRecovery } from "./partner-commit-recovery";
 import { invitationRedirect } from "./invitation-redirect";
 import { canonicalPublicUrl } from "../lib/canonical-public-url";
@@ -203,6 +204,7 @@ async function self(req: Request) {
     WHERE p.user_id=$1 OR EXISTS (SELECT 1 FROM partner_profile_users pu
       WHERE pu.partner_profile_id=p.id AND pu.user_id=$1 AND pu.status='ACTIVE')
     ORDER BY p.id LIMIT 1`, [c.user.id]);
+  if (r.rows[0]) await assertTestArchiveAccess({ partnerId: r.rows[0].id });
   return profileFromRow(r.rows[0]);
 }
 function requirePartnerOwner(req: Request, partner: any) {
@@ -649,9 +651,19 @@ async function partnerLink(req: Request, p: any) {
 publicPartnersRouter.post("/partner/referrals/validate", run(async (req, res) => {
   const token = req.body?.referralToken;
   if (typeof token !== "string" || token.length < 32) throw new AuthError(400, "A valid referral token is required");
-  const r = await pool.query(`SELECT l.id,l.status,p.partner_code AS "partnerCode",p.status AS "partnerStatus"
+  const r = await pool.query(`SELECT l.id,l.status,p.id AS "partnerId",p.partner_code AS "partnerCode",p.status AS "partnerStatus"
     FROM partner_referral_links l JOIN partner_profiles p ON p.id=l.partner_profile_id WHERE l.token_hash=$1`, [hash(token)]);
   const row = r.rows[0];
+  if (row) {
+    try { await assertTestArchiveAccess({ partnerId: row.partnerId }); }
+    catch (error) {
+      if (error instanceof AuthError && error.eventType === "ARCHIVED_TEST_ACCESS_BLOCKED") {
+        res.json({ valid: false, status: "INVALID", partnerCode: null, referralLinkId: null });
+        return;
+      }
+      throw error;
+    }
+  }
   const valid = !!row && row.status === "ACTIVE" && row.partnerStatus === "ACTIVE";
   res.json({ valid, status: valid ? "VALID" : row?.status === "REVOKED" ? "REVOKED" : "INVALID",
     partnerCode: valid ? row.partnerCode : null, referralLinkId: valid ? row.id : null });
@@ -695,6 +707,7 @@ publicPartnersRouter.post("/partner/onboarding", requireAuthentication(), run(as
       JOIN partner_profiles p ON p.id=l.partner_profile_id
       WHERE l.token_hash=$1 AND l.status='ACTIVE' AND p.status='ACTIVE' FOR UPDATE`, [hash(token)]);
     if (!link.rows[0]) throw new AuthError(400, "Referral token is invalid or revoked");
+    await assertTestArchiveAccess({ partnerId: link.rows[0].partner_profile_id, email: administratorEmail }, client);
     const existing = await client.query(`SELECT id FROM schools
       WHERE lower(trim(code))=lower(trim($1))
         OR lower(trim(name))=lower(trim($2))
@@ -2049,6 +2062,9 @@ router.post(["/partner/invitations/accept", "/partner/invitations/:invitationTok
       WHERE i.token_hash=$1 AND i.status='ACTIVE' FOR UPDATE OF i`, [hash(token)]);
     const row = invitation.rows[0];
     if (!row || row.expires_at < new Date()) throw new AuthError(400, "Invitation is expired or revoked");
+    await assertTestArchiveAccess({
+      userId: context.user.id, email: row.invited_email, partnerId: row.partner_profile_id,
+    }, client);
     let clerkUser;
     try {
       clerkUser = await clerkClient.users.getUser(context.user.clerkUserId);
