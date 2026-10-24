@@ -17,10 +17,15 @@ If any retained table still contains selected-tenant rows or has FK references t
 candidate rows, the **entire operation is refused**, not partially committed.
 Neither a token nor a test-data assertion overrides this policy. In the audited
 Production state, school memberships, audit/history and device bindings are likely
-blockers. The minimal manual decision is a separately approved retention/archive
-strategy that preserves those records and their historical relationships. Keeping
-inactive tenant shells may be necessary; that alternative is NOT implemented here.
-Do not delete/repoint preserved history merely to make the gate pass.
+blockers. The resolved default is to retain those records and their required
+tenant/person/class/term ancestors; an empty-tenant outcome is not promised.
+[RETENTION.md](RETENTION.md) records exact nullable/status possibilities, hard
+blockers and the remaining operator decisions. No detachment or inactive/archive
+mutation is implied. Do not delete/repoint history merely to make the gate pass.
+
+A deterministic fictional relationship/rollback rehearsal and exact future
+isolated commands are in [REHEARSAL.md](REHEARSAL.md). The SQL printer is offline;
+the database procedure has not been run or authorized by this implementation.
 
 ## Offline by default
 

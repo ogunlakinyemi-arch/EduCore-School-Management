@@ -1,7 +1,8 @@
 import { CANDIDATE_TABLES, MANIFEST_VERSION, schoolIds } from "./manifest.mjs";
 
-// Prints a SELECT only. Never sent to a database by this tool. Identifiers come
-// from pg_catalog; the only supplied SQL literals are validated positive IDs.
+// Pure SELECT generator; this module never connects. Only the separately gated
+// executor or approved isolated procedure may execute its output. Identifiers
+// come from pg_catalog; supplied SQL literals are validated positive IDs.
 export function preflightSql(input) {
   const ids = schoolIds(input).join(",");
   const names = CANDIDATE_TABLES.map(name => `'${name}'`).join(",");
@@ -31,7 +32,12 @@ fks AS (
  SELECT k.oid,k.conname,k.convalidated,c.name AS child,p.name AS parent,
    c.candidate AS child_candidate,p.candidate AS parent_candidate,
    c.scoped AS child_scoped,c.predicate AS child_predicate,p.predicate AS parent_predicate,
-   k.confdeltype,
+    k.confdeltype,
+    (SELECT jsonb_agg(jsonb_build_object('child',ca.attname,'parent',pa.attname,
+      'nullable',NOT ca.attnotnull) ORDER BY keys.ord)
+     FROM unnest(k.conkey,k.confkey) WITH ORDINALITY keys(ck,pk,ord)
+     JOIN pg_attribute ca ON ca.attrelid=k.conrelid AND ca.attnum=keys.ck
+     JOIN pg_attribute pa ON pa.attrelid=k.confrelid AND pa.attnum=keys.pk) AS columns,
    (SELECT string_agg(format('c.%I=p.%I',ca.attname,pa.attname),' AND ' ORDER BY keys.ord)
     FROM unnest(k.conkey,k.confkey) WITH ORDINALITY keys(ck,pk,ord)
     JOIN pg_attribute ca ON ca.attrelid=k.conrelid AND ca.attnum=keys.ck
@@ -84,7 +90,8 @@ SELECT jsonb_build_object(
    JOIN pg_class p ON p.oid=k.confrelid JOIN pg_namespace pn ON pn.oid=p.relnamespace
    WHERE k.contype='f' AND (cn.nspname='public' OR pn.nspname='public') AND cn.nspname<>pn.nspname),
  'foreignKeys',COALESCE((SELECT jsonb_agg(jsonb_build_object(
-   'name',conname,'child',child,'parent',parent,'validated',convalidated,'onDelete',confdeltype,
+    'name',conname,'child',child,'parent',parent,'validated',convalidated,'onDelete',confdeltype,
+    'columns',columns,
    'orphanRows',((xpath('/table/row/orphan_rows/text()',integrity))[1]::text)::bigint,
    'retainedReferencingRows',CASE WHEN parent_candidate
      THEN ((xpath('/table/row/retained_referencing_rows/text()',retained))[1]::text)::bigint ELSE 0 END)

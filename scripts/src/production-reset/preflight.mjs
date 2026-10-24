@@ -1,6 +1,7 @@
 import {
   CANDIDATE_TABLES, EXCLUSIONS, MANIFEST_VERSION, dependencyOrder, digest,
 } from "./manifest.mjs";
+import { retentionResolution } from "./retention.mjs";
 
 const count = value => Number.isSafeInteger(value) && value >= 0;
 const fingerprint = value => typeof value === "string" && /^[a-f0-9]{32,64}$/.test(value);
@@ -44,6 +45,11 @@ export function validateEvidence(evidence, ids, now = Date.now()) {
       throw new Error("INVALID_FOREIGN_KEY_EVIDENCE");
     }
     fkNames.add(fk.name);
+    if (fk.columns !== undefined && (!Array.isArray(fk.columns) || fk.columns.length === 0
+        || fk.columns.some(column => !column || !/^[a-z][a-z0-9_]*$/.test(column.child)
+          || !/^[a-z][a-z0-9_]*$/.test(column.parent) || typeof column.nullable !== "boolean"))) {
+      throw new Error("INVALID_FOREIGN_KEY_COLUMN_EVIDENCE");
+    }
   }
   // A file is never a trusted primary/backup API response; even plausible
   // operator-entered verified:true flags cannot unlock execution.
@@ -115,6 +121,7 @@ export function createReport({ ids, evidence = null, now = Date.now() }) {
     blockers, dependencyOrderedCandidateManifest: order,
     manifestWithoutCatalogOrder: order ? undefined : CANDIDATE_TABLES,
     rowCountPreview, protectedReferences, exclusions: EXCLUSIONS,
+    retention: evidence ? retentionResolution(evidence) : null,
     postResetVerification: {
       performed: false,
       requirements: [

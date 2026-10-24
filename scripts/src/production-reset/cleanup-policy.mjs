@@ -1,5 +1,6 @@
 import { CANDIDATE_TABLES, dependencyOrder, digest } from "./manifest.mjs";
 import { validateEvidence } from "./preflight.mjs";
+import { RETENTION_POLICY_VERSION, retentionResolution } from "./retention.mjs";
 
 export class CleanupError extends Error {
   constructor(code) { super(code); this.code = code; }
@@ -89,6 +90,7 @@ export function controlledPlan(proof, evidence, ids, now = Date.now()) {
   const graph = dependencyOrder(evidence.foreignKeys);
   if (graph.unresolved.length) blockers.push("DEPENDENCY_CYCLE");
   const state = {
+    retentionPolicy: RETENTION_POLICY_VERSION,
     ids, manifest: graph.order,
     tables: evidence.tables.map(t => ({
       name: t.name, totalRows: t.totalRows, selectedRows: t.selectedRows,
@@ -108,6 +110,7 @@ export function controlledPlan(proof, evidence, ids, now = Date.now()) {
       constraint: fk.name, child: fk.child, parent: fk.parent, rows: fk.retainedReferencingRows,
     })),
     retainedTenantRows: retainedScopedRows.map(table => ({ table: table.name, rows: table.selectedRows })),
+    retention: retentionResolution(evidence),
     backupVerification: "OWNER_UI_ATTESTATION_AND_RESOURCE_BOUND_RESTORE_REPORT_NOT_API_CERTIFICATION",
     maintenanceEnforcement: "EXTERNAL_FREEZE_PLUS_DATABASE_SESSION_CHECKS_AND_EXCLUSIVE_TRANSACTION_LOCKS",
   };

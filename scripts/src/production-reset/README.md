@@ -16,6 +16,9 @@ It does not unlock this command's `--execute`. Its Owner-attestation mechanism i
 distinct from API certification and requires fresh primary, backup/restore,
 maintenance and retention evidence plus a reviewed preview and exact token.
 Implementing it does not authorize a Production connection or execution.
+Preserve-in-place retention is resolved in [RETENTION.md](RETENTION.md), with
+per-constraint blockers included in both reports. [REHEARSAL.md](REHEARSAL.md)
+provides exact future isolated commands; only offline tests are authorized now.
 
 ## Commands
 

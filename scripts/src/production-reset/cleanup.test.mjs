@@ -173,6 +173,9 @@ test("preserved tenant data and dependencies refuse the entire operation offline
   assert.equal(plan.ready, false);
   assert.ok(plan.blockers.includes("PRESERVED_RECORDS_PREVENT_FULL_TENANT_REMOVAL"));
   assert.ok(plan.blockers.includes("RETAINED_TEST_TENANT_DATA_REQUIRES_RETENTION_DECISION"));
+  assert.equal(plan.retention.hardRelationships[0].child, "school_memberships");
+  assert.equal(plan.retention.hardRelationships[0].automaticDetachAllowed, false);
+  assert.deepEqual(plan.retention.automaticMutations, []);
   const { args } = setup({}, input);
   args.clientFactory = () => assert.fail("must not connect for retained records");
   await assert.rejects(runControlledCleanup(args), /PRESERVED_DEPENDENCIES_OR_PLAN_BLOCKERS/);

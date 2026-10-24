@@ -127,6 +127,9 @@ test("missing tables, malformed counts and duplicate catalogue rows cannot certi
   assert.throws(() => report(duplicate));
   const unknownFK = fixture(); unknownFK.foreignKeys[0].child = "not_in_catalog";
   assert.throws(() => report(unknownFK));
+  const badColumns = fixture();
+  badColumns.foreignKeys[0].columns = [{ child: "school_id", parent: "id", nullable: "true" }];
+  assert.throws(() => report(badColumns), /INVALID_FOREIGN_KEY_COLUMN_EVIDENCE/);
 });
 
 test("unknown tables are retained and unsupported candidate scopes are reported", () => {
