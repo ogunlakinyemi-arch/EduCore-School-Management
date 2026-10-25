@@ -3,7 +3,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import * as PayrollContract from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import { developmentFlutterwaveCollectionStatus } from "../lib/flutterwave-development-config";
-import { requireVerifiedPaymentAccountProvider } from "../lib/nigerian-payment-providers";
+import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
 import {
   assertRemovalEnvironment,
   reviewSettlementRemoval,

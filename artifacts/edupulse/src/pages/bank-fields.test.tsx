@@ -142,23 +142,24 @@ describe('shared bank provider select', () => {
     expect(host.querySelector<HTMLInputElement>('[data-testid="input-bank-name"]')!.validity.valid).toBe(false);
     await act(async () => root.unmount());
   });
-  it('lists UNAVAILABLE directory entries as unverified and blocks them with no code', async () => {
+  it('does not present stale fallback names as institutions when the directory is UNAVAILABLE', async () => {
     cat.data = { ...available(), status: 'UNAVAILABLE', message: 'Directory offline.' };
     const { host, root } = await mount(blank);
     const input = await type(host, 'gamma');
-    expect(options(host)[0]).toContain('Fictional Gamma Digital');
-    await type(host, 'alpha'); await choose(host);
-    expect(latest.bankName).toBe('Fictional Alpha Bank');
+    expect(options(host)).toEqual([]);
+    await type(host, 'alpha');
+    expect(latest.bankName).toBe('');
     expect(latest.bankCode).toBe('');
     expect(input.getAttribute('aria-invalid')).toBe('true');
     const err = host.querySelector(`#${input.getAttribute('aria-describedby')}`);
-    expect(err?.textContent).toContain('no verified transfer code');
+    expect(err?.textContent).toContain('Choose a bank from the list');
     await act(async () => root.unmount());
   });
   it('does not treat cached available entries as verified after a failed refresh', async () => {
     cat.data = available(); cat.isError = true;
     const { host, root } = await mount(blank);
-    await type(host, 'alpha'); await choose(host);
+    await type(host, 'alpha');
+    expect(options(host)).toEqual([]);
     expect(latest.bankCode).toBe('');
     expect(host.textContent).toContain('contact an administrator');
     await act(async () => root.unmount());

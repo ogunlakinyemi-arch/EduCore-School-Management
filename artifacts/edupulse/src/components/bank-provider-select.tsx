@@ -1,6 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useGetPaymentAccountProviders } from '@workspace/api-client-react';
-import { hasTransferCode, type BankValue } from '@/lib/bank-selection';
+import { hasTransferCode, useBankDirectory, type BankValue } from '@/lib/bank-selection';
 
 const entry = 'w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2.5 text-sm font-medium outline-none focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--primary)/.12)]';
 const note = 'text-xs leading-5 text-[hsl(var(--muted-foreground))]';
@@ -15,7 +14,7 @@ type Provider = { id: string; name: string; code: string | null; transferCodeVer
 export function BankProviderSelect({ value, onSelect, label = 'Bank name', requireCode = true, required = true, testId = 'input-bank-name' }: {
   value: BankValue; onSelect: (s: BankProviderSelection) => void; label?: string; requireCode?: boolean; required?: boolean; testId?: string;
 }) {
-  const q = useGetPaymentAccountProviders();
+  const q = useBankDirectory();
   const id = useId();
   const listId = `${id}-list`;
   const errId = `${id}-err`;
@@ -26,7 +25,7 @@ export function BankProviderSelect({ value, onSelect, label = 'Bank name', requi
   const [active, setActive] = useState(0);
   const catalogue = q.data;
   const trusted = !q.isError && catalogue?.status === 'AVAILABLE';
-  const providers: Provider[] = useMemo(() => (catalogue?.providers ?? []).map(p => trusted ? p : { ...p, code: null, transferCodeVerified: false }), [catalogue, trusted]);
+  const providers: Provider[] = useMemo(() => trusted ? catalogue.providers : [], [catalogue, trusted]);
   const picked = selection ? providers.find(p => p.id === selection.id) ?? { ...selection, code: null, transferCodeVerified: false } : null;
   const matches = useMemo(() => {
     const t = text.trim().toLowerCase();

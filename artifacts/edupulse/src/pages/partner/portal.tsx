@@ -1,4 +1,5 @@
 import { UserButton } from '@clerk/react';
+import { HelpLink } from '@/components/help-link';
 import { Route, Switch, Link, Redirect, useLocation } from 'wouter';
 import { 
   useGetPartnerDashboard,
@@ -104,6 +105,7 @@ function PortalHeader() {
           <UserButton />
         </div>
       </div>
+      <div className="mx-auto max-w-6xl px-5"><HelpLink className="text-[hsl(var(--primary))]" /></div>
       {isSetup && <nav aria-label="Partner navigation" className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 border-t border-[hsl(var(--border)/.6)] px-5 py-3 text-xs font-bold text-[hsl(var(--primary))] md:hidden">
         <Link href="/partner" data-testid="link-partner-dashboard-mobile" className="hover:underline">Dashboard</Link>
         <Link href="/partner/schools" data-testid="link-partner-schools-mobile" className="hover:underline">Schools</Link>

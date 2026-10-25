@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
 import { ViewportFormDialog } from './viewport-form-dialog';
+import { HelpLink } from './help-link';
 import { useAuth, UserButton } from '@clerk/react';
 import { buildNavSections, isNavActive, navMode } from './navigation-model';
 import { FeePaymentNotifications } from './fee-payment-notifications';
@@ -249,6 +250,7 @@ export function Shell({ children }: { children: ReactNode }) {
           })()}
         </nav>
         <div className="mt-auto pt-5">
+          <HelpLink onClick={() => setOpen(false)} className="mb-3 w-full text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-accent))]" />
           <div className="rounded-2xl border border-[hsl(var(--sidebar-border))] bg-[hsl(var(--sidebar-accent)/.4)] p-4">
             <div className="mb-2 flex items-center gap-2 text-[hsl(var(--sidebar-accent-foreground))]"><ShieldCheck size={16} /><span className="text-xs font-bold">Secure operations</span></div>
             <p className="text-xs leading-5 text-[hsl(var(--sidebar-foreground)/.6)]">Your actions are bound to your active tenant permissions.</p>

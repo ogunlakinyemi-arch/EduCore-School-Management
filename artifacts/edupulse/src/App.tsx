@@ -3,6 +3,7 @@ import SchoolSecurityPage from './pages/security';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { Route, Switch, Redirect, Link } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { HelpRoutes } from '@/pages/help-routes';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useGetAuthorizedContext, getGetAuthorizedContextQueryKey } from '@workspace/api-client-react';
@@ -493,6 +494,8 @@ export default function App() {
         <AuthQueryProvider>
           <TooltipProvider>
             <Switch>
+              <Route path="/help" component={HelpRoutes} />
+              <Route path="/help/*" component={HelpRoutes} />
               <Route path="/admissions/portal/:portalKey"><PublicAdmissionPortalPage /></Route>
               <Route path="/card-verification"><CardVerificationPage /></Route>
               <Route path="/nfc/pay"><PublicNfcPaymentPage /></Route>

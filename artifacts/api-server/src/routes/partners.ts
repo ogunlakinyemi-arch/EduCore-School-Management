@@ -1,6 +1,6 @@
 import { Router, type NextFunction, type Request } from "express";
 import { partnerPayoutRequest } from "../lib/partner-payout-request";
-import { requireVerifiedPaymentAccountProvider } from "../lib/nigerian-payment-providers";
+import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
 import { updateManualPartnerPayout } from "../services/partner-payout-update";
 import {
   deferredCommissionEvidence, approveCommissionBatch, listCommissionBatches,

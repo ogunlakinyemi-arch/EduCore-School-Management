@@ -104,11 +104,11 @@ describe.each(flows)('$name save payload', f => {
     await submit(form);
     expect(s.save).not.toHaveBeenCalled();
   });
-  it('does not verify a pick when the catalogue is UNAVAILABLE, but still lists entries', async () => {
+  it('hides unavailable fallback records and prevents saving them', async () => {
     s.catalogue = catalogue('UNAVAILABLE');
     const form = await f.open(); await typeInto(combo(), 'alpha');
-    expect(document.body.querySelector('[role="option"]')!.textContent).toContain('transfer code not verified');
-    await pick('alpha'); await submit(form);
+    expect(document.body.querySelector('[role="option"]')).toBeNull();
+    await submit(form);
     expect(s.save).not.toHaveBeenCalled();
   });
 });

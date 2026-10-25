@@ -12,13 +12,21 @@ export function bankSelectionAllowed(current: BankValue, original: BankValue | n
 
 import { useGetPaymentAccountProviders } from '@workspace/api-client-react';
 
+/** New cache namespace discards the old all-unverified fallback. Both picker
+ * and save guard consume this exact contract and cache, not separate copies. */
+export function useBankDirectory() {
+  return useGetPaymentAccountProviders({
+    query:{queryKey:['payment-account-providers','provider-record-isolation-v2'],staleTime:60_000,refetchOnMount:'always'},
+    request:{cache:'no-store'},
+  });
+}
 /**
  * Save guard backed by the loaded catalogue. A new/changed provider is accepted only when it matches a
  * directory entry (and, if a code is required, a currently verified entry carrying exactly that code).
  * A failed or UNAVAILABLE catalogue never verifies anything.
  */
 export function useBankSelectionGuard() {
-  const q = useGetPaymentAccountProviders();
+  const q = useBankDirectory();
   const data = q.isError ? undefined : q.data;
   return (current: BankValue, original: BankValue | null | undefined, requireCode = true): boolean => {
     if (!current.bankName.trim()) return false;

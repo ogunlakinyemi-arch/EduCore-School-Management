@@ -7,7 +7,8 @@ vi.mock("../middlewares/auth",()=>{
     if(req.header("x-anonymous"))res.sendStatus(401);else next();
   }};
 });
-import {paymentAccountProviders,requireVerifiedPaymentAccountProvider,type PaymentAccountProviderDirectory} from "../lib/nigerian-payment-providers";
+import {paymentAccountProviders,type PaymentAccountProviderDirectory} from "../lib/nigerian-payment-providers";
+import {requireVerifiedPaymentAccountProvider} from "../lib/payment-account-provider-validation";
 import {FlutterwavePayrollV3Client} from "../lib/flutterwave-payroll-v3";
 import {createPaymentAccountProvidersRouter} from "./payment-account-providers";
 
@@ -25,14 +26,10 @@ async function start(listNigerianBanks:ReturnType<typeof vi.fn>){
   return `http://127.0.0.1:${(server!.address() as any).port}/payment-account-providers`;
 }
 describe("canonical institution directory without fabricated transfer support",()=>{
-  it("offers Moniepoint, OPay and PalmPay for discovery with no invented codes",()=>{
+  it("does not manufacture a bank list when the provider directory is unavailable",()=>{
     const directory=paymentAccountProviders(null,null);
     expect(directory.status).toBe("UNAVAILABLE");
-    for(const id of ["moniepoint","opay","palmpay"]){
-      expect(directory.providers.find(p=>p.id===`directory:${id}`))
-        .toMatchObject({code:null,transferCodeVerified:false});
-    }
-    expect(directory.providers.every(p=>p.code===null&&!p.transferCodeVerified)).toBe(true);
+    expect(directory.providers).toEqual([]);
   });
   it("keeps every commercial/MFB/digital catalogue entry and its exact stable code",()=>{
     const directory=paymentAccountProviders(banks,"TEST");
@@ -43,16 +40,20 @@ describe("canonical institution directory without fabricated transfer support",(
     expect(directory.message).toContain("does not confirm");
   });
   it("does not substitute another provider's long institution code for a compatible transfer code",()=>{
-    const entry=paymentAccountProviders([{name:"Fictional Long Code MFB",code:"900000001"}],"TEST")
+    const entry=paymentAccountProviders([...banks,{name:"Fictional Long Code MFB",code:"900000001"}],"TEST")
       .providers.find(p=>p.name==="Fictional Long Code MFB");
-    expect(entry).toEqual({id:"flutterwave:900000001",name:"Fictional Long Code MFB",code:null,transferCodeVerified:false});
+    expect(entry).toMatchObject({name:"Fictional Long Code MFB",code:null,transferCodeVerified:false});
   });
   it.each([
     [{name:"Fictional Bank",code:99}],
     [{name:"Fictional Bank",code:"bad"}],
     [{name:"Fictional Bank",code:"099"},{name:"Different Fictional Bank",code:"099"}],
-  ])("rejects missing-leading-zero guesses and ambiguous catalogue codes",(...entries)=>{
-    expect(()=>paymentAccountProviders(entries,"TEST")).toThrow();
+  ])("isolates missing-leading-zero guesses and ambiguous codes without poisoning healthy records",(...entries)=>{
+    const result=paymentAccountProviders([...banks,...entries],"TEST");
+    expect(result.status).toBe("AVAILABLE");
+    for(const code of ["900001","900002"])
+      expect(result.providers.find(p=>p.code===code)).toMatchObject({transferCodeVerified:true});
+    expect(result.providers.filter(p=>!p.transferCodeVerified).length).toBeGreaterThan(0);
   });
   it("deduplicates exact same entries without creating a second institution",()=>{
     const rows=paymentAccountProviders([banks[0],banks[0]],"TEST").providers;
@@ -68,7 +69,7 @@ describe("canonical institution directory without fabricated transfer support",(
     for(const [name,code] of [["Fictional PalmPay Business","900003"],["Fictional PalmPay Personal","900004"],
       ["Fictional KUDA MFB","900005"],["Fictional Paga Mobile","900006"]])
       expect(rows.find(p=>p.code===code)).toMatchObject({name,transferCodeVerified:true});
-    expect(rows.find(p=>p.id==="directory:palmpay")).toMatchObject({code:null,transferCodeVerified:false});
+    expect(rows.some(p=>p.id.startsWith("directory:"))).toBe(false);
   });
   it("accepts only the exact provider name/code pair and fails closed on directory loss",async()=>{
     const client={listNigerianBanks:vi.fn(async()=>({banks,environment:"TEST" as const}))};
@@ -113,20 +114,74 @@ describe("authenticated directory HTTP contract, no database/provider mutations"
     expect(await (await fetch(url)).json()).toMatchObject({status:"AVAILABLE"});
     expect(read).toHaveBeenCalledTimes(2);
   });
-  it("rejects a malformed upstream catalogue as unavailable rather than partially trusting it",async()=>{
+  it("keeps unrelated confirmed routes when one upstream record is malformed",async()=>{
     const url=await start(vi.fn(async()=>({banks:[...banks,{name:"Malformed"}],environment:"LIVE"})));
     const result=await (await fetch(url)).json() as PaymentAccountProviderDirectory;
-    expect(result.status).toBe("UNAVAILABLE");
-    expect(result.providers.every((p:any)=>p.code===null)).toBe(true);
+    expect(result.status).toBe("AVAILABLE");
+    expect(result.providers.filter(p=>p.transferCodeVerified)).toHaveLength(banks.length);
+    expect(result.providers.find(p=>p.name==="Malformed")).toMatchObject({code:null,transferCodeVerified:false});
   });
 });
 describe("existing Flutterwave transport, fictional HTTP only",()=>{
   const env={NODE_ENV:"development",EDUCORE_FLUTTERWAVE_MODE:"TEST",
     FLUTTERWAVE_SECRET_Test_Key:"FLWSECK_TEST-fictional-bank-directory"};
+  it("maps the observed 598-row provider envelope despite an unsupported code and a conflicting code group",async()=>{
+    // Same envelope/field names and failure classes as the real GET. All names,
+    // identifiers and routing strings here are fictional, never bank evidence.
+    const rows=[
+      ...Array.from({length:595},(_,i)=>({id:i+1,code:String(900000+i),name:`Fictional Institution ${i}`,provider_type:"bank"})),
+      {id:596,code:"BADCODE",name:"Fictional Unsupported Institution",provider_type:"other"},
+      {id:597,code:"999001",name:"Fictional Alias One",provider_type:"bank"},
+      {id:598,code:"999001",name:"Fictional Alias Two",provider_type:"bank"},
+    ];
+    const request=vi.fn(async()=>new Response(JSON.stringify({status:"success",message:"Banks fetched",data:rows})));
+    const client=new FlutterwavePayrollV3Client(env,request);
+    const url=await start(vi.fn(()=>client.listNigerianBanks()));
+    const response=await fetch(url);
+    const directory=await response.json() as PaymentAccountProviderDirectory;
+    expect(directory).toMatchObject({status:"AVAILABLE",catalogueEnvironment:"TEST"});
+    expect(directory.providers).toHaveLength(598);
+    expect(directory.providers.filter(p=>p.transferCodeVerified)).toHaveLength(595);
+    expect(directory.providers.filter(p=>!p.transferCodeVerified)).toHaveLength(3);
+    for(const p of directory.providers.filter(p=>p.transferCodeVerified))
+      expect(rows.some(row=>row.name===p.name&&row.code===p.code)).toBe(true);
+    const diagnostic=JSON.parse(response.headers.get("x-bank-directory-diagnostic")!);
+    expect(diagnostic).toMatchObject({httpStatus:200,providerStatus:"success",entryCount:598,verifiedEntries:595,
+      responseFields:["data","message","status"],entryFields:["code","id","name","provider_type"]});
+    expect(JSON.stringify(diagnostic)).not.toContain("Fictional");
+    expect(JSON.stringify(diagnostic)).not.toContain("999001");
+    expect(JSON.stringify(diagnostic)).not.toContain(env.FLUTTERWAVE_SECRET_Test_Key);
+    expect(response.headers.get("x-bank-directory-version")).toBe("provider-record-isolation-v2");
+    expect(response.headers.get("x-bank-directory-cache")).toBe("MISS");
+    expect((await fetch(url)).headers.get("x-bank-directory-cache")).toBe("HIT");
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+  it("exposes the running directory version even on an unauthenticated request without querying the provider",async()=>{
+    const read=vi.fn(),url=await start(read);
+    const response=await fetch(url,{headers:{"x-anonymous":"yes"}});
+    expect(response.status).toBe(401);
+    expect(response.headers.get("x-bank-directory-version")).toBe("provider-record-isolation-v2");
+    expect(read).not.toHaveBeenCalled();
+  });
+  it("reports a failed provider shape safely and recovers with a fresh provider read",async()=>{
+    const request=vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({status:"success",data:{unexpected:[]},message:"private body"})))
+      .mockResolvedValueOnce(new Response(JSON.stringify({status:"success",data:banks})));
+    const client=new FlutterwavePayrollV3Client(env,request),url=await start(vi.fn(()=>client.listNigerianBanks()));
+    const first=await fetch(url);
+    expect(await first.json()).toMatchObject({status:"UNAVAILABLE",providers:[]});
+    expect(JSON.parse(first.headers.get("x-bank-directory-diagnostic")!)).toMatchObject({
+      httpStatus:200,dataShape:"object",responseFields:["data","message","status"],
+    });
+    expect(first.headers.get("x-bank-directory-diagnostic")).not.toContain("private body");
+    const next=await fetch(url);
+    expect(await next.json()).toMatchObject({status:"AVAILABLE"});
+    expect(request).toHaveBeenCalledTimes(2);
+  });
   it("only GETs the documented bank catalogue and preserves string codes",async()=>{
     const request=vi.fn(async()=>new Response(JSON.stringify({status:"success",data:banks})));
     expect(await new FlutterwavePayrollV3Client(env,request).listNigerianBanks())
-      .toEqual({environment:"TEST",banks});
+      .toMatchObject({environment:"TEST",banks});
     expect(request).toHaveBeenCalledTimes(1);
     expect(request.mock.calls[0]).toEqual(["https://api.flutterwave.com/v3/banks/NG?include_provider_type=1",
       expect.objectContaining({method:"GET",redirect:"error",headers:expect.objectContaining({authorization:`Bearer ${env.FLUTTERWAVE_SECRET_Test_Key}`})})]);
@@ -136,7 +191,7 @@ describe("existing Flutterwave transport, fictional HTTP only",()=>{
     const request=vi.fn(async()=>new Response(JSON.stringify({status:"success",data:banks})));
     const client=new FlutterwavePayrollV3Client(liveEnv,request);
     expect(client.capability().transferCapability).toBe("NOT_CONFIGURED");
-    expect(await client.listNigerianBanks()).toEqual({environment:"LIVE",banks});
+    expect(await client.listNigerianBanks()).toMatchObject({environment:"LIVE",banks});
     expect(request.mock.calls[0]).toEqual([expect.stringContaining("include_provider_type=1"),
       expect.objectContaining({headers:expect.objectContaining({authorization:`Bearer ${liveEnv.FLUTTERWAVE_LIVE_SECRET_KEY}`})})]);
     expect(client.capability().transferCapability).toBe("NOT_CONFIGURED");
@@ -146,6 +201,7 @@ describe("existing Flutterwave transport, fictional HTTP only",()=>{
     const url=await start(vi.fn(()=>client.listNigerianBanks()));
     const result=await (await fetch(url)).json() as PaymentAccountProviderDirectory;
     expect(result.status).toBe("UNAVAILABLE");
+    expect(result.providers).toEqual([]);
     expect(result.message).toContain(status===401||status===403?"authentication":status===429?"rate-limited":"retry");
     expect(JSON.stringify(result)).not.toContain("private response");
     expect(JSON.stringify(result)).not.toContain(env.FLUTTERWAVE_SECRET_Test_Key);
@@ -153,7 +209,7 @@ describe("existing Flutterwave transport, fictional HTTP only",()=>{
   it("allows dedicated TEST directory reads in Production without activating payments",async()=>{
     const request=vi.fn(async()=>new Response(JSON.stringify({status:"success",data:banks})));
     const client=new FlutterwavePayrollV3Client({...env,NODE_ENV:"production"},request);
-    expect(await client.listNigerianBanks()).toEqual({environment:"TEST",banks});
+    expect(await client.listNigerianBanks()).toMatchObject({environment:"TEST",banks});
     expect(client.capability().transferCapability).toBe("NOT_CONFIGURED");
   });
   it.each([{}, {...env,EDUCORE_FLUTTERWAVE_MODE:"LIVE"},

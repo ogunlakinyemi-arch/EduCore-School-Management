@@ -1,5 +1,6 @@
 import { AuthError } from "../middlewares/auth";
 import { developmentFlutterwaveCredential, dedicatedFlutterwaveTestCredential } from "./flutterwave-development-config";
+import { bankDirectoryDiagnostic } from "./bank-directory-diagnostic";
 
 export type PayrollProviderMode = "TEST" | "LIVE" | "MOCK" | "NOT_CONFIGURED";
 export type PayrollTransferCapability =
@@ -261,6 +262,7 @@ async function v3Request(
   key: string,
   init: RequestInit,
   fetchImpl: typeof fetch,
+  observe?: (httpStatus:number,payload:unknown)=>void,
 ): Promise<JsonObject> {
   let response: Response;
   try {
@@ -289,12 +291,14 @@ async function v3Request(
   try {
     result = await response.json();
   } catch {
+    observe?.(httpStatus,null);
     throw new FlutterwaveProviderUncertainError({
       providerHttpStatus: httpStatus,
       category: "NON_JSON_PROVIDER_RESPONSE",
       reason: "UNCLASSIFIED",
     });
   }
+  observe?.(httpStatus,result);
   if (!result || typeof result !== "object" || Array.isArray(result)) {
     throw new FlutterwaveProviderUncertainError({
       providerHttpStatus: httpStatus,
@@ -342,17 +346,27 @@ export class FlutterwavePayrollV3Client {
   async listNigerianBanks() {
     // TEST metadata is safe in either runtime; unlike resolution/transfer this
     // GET cannot move money. Explicit LIVE mode still forbids TEST fallback.
-    const testKey=dedicatedFlutterwaveTestCredential(this.env).secret;
+    const credential=dedicatedFlutterwaveTestCredential(this.env);
+    const testKey=credential.secret;
     const liveKey=this.env.FLUTTERWAVE_LIVE_SECRET_KEY;
     const live=this.env.NODE_ENV==="production"&&this.env.EDUCORE_FLUTTERWAVE_MODE==="LIVE"
       &&typeof liveKey==="string"&&/^FLWSECK-(?!TEST-)[A-Za-z0-9_-]{8,}$/.test(liveKey);
     if(!testKey&&!live)
-      throw new FlutterwavePayrollUnavailableError("Bank catalogue is not configured");
+      throw Object.assign(new FlutterwavePayrollUnavailableError("Bank catalogue is not configured"),{
+        directoryDiagnostic:{...bankDirectoryDiagnostic(null,null),reason:`DIRECTORY_CREDENTIAL_${credential.state}`},
+      });
     const key=testKey??liveKey!;
-    const body=await v3Request("/banks/NG?include_provider_type=1",key,{method:"GET",redirect:"error"},this.fetchImpl);
-    if(body.status!=="success"||!Array.isArray(body.data)||!body.data.length||body.data.length>5000)
-      throw new FlutterwavePayrollUnavailableError("Bank catalogue is unavailable");
-    return {environment:testKey?"TEST" as const:"LIVE" as const,banks:body.data as unknown[]};
+    let diagnostic=bankDirectoryDiagnostic(null,null);
+    try {
+      const body=await v3Request("/banks/NG?include_provider_type=1",key,{method:"GET",redirect:"error"},this.fetchImpl,
+        (status,payload)=>{diagnostic=bankDirectoryDiagnostic(status,payload);});
+      if(body.status!=="success"||!Array.isArray(body.data)||!body.data.length||body.data.length>5000)
+        throw new FlutterwavePayrollUnavailableError("Bank catalogue has an unexpected response shape");
+      return {environment:testKey?"TEST" as const:"LIVE" as const,banks:body.data as unknown[],diagnostic};
+    } catch(error) {
+      if(error instanceof Error)Object.assign(error,{directoryDiagnostic:diagnostic});
+      throw error;
+    }
   }
 
   async resolveNigerianAccount(input: {

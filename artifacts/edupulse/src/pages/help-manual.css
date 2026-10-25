@@ -1,0 +1,18 @@
+.help-manual { overflow-wrap: anywhere; }
+.help-manual-section h2 { break-after: avoid; }
+.help-manual-section li { break-inside: avoid; }
+@media print {
+  @page { size: A4; margin: 17mm 15mm; }
+  html, body, #root { height: auto !important; min-height: 0 !important; background: white !important; color: #152039 !important; }
+  .help-no-print { display: none !important; }
+  .help-manual { max-width: none !important; padding: 0 !important; margin: 0 !important; font-size: 10pt; }
+  .help-manual .help-cover { padding: 8mm; border: 1px solid #cbd5e1; background: white !important; color: #152039 !important; break-inside: avoid; }
+  .help-manual .help-cover p { color: #334155 !important; }
+  .help-manual .help-cover h1 { font-size: 25pt; }
+  .help-manual .help-manual-section { margin-top: 7mm; padding-top: 5mm; }
+  .help-manual .help-manual-section h2 { font-size: 16pt; }
+  .help-manual p, .help-manual li { font-size: 10pt; line-height: 1.5; }
+  .help-manual a { color: #152039 !important; text-decoration: underline; }
+  .help-manual [class*="text-white"] { color: #152039 !important; }
+  .help-manual footer { margin-top: 8mm; }
+}
