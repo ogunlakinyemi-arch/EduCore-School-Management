@@ -439,7 +439,7 @@ export function PartnerSettings() {
     const bank = { bankName: data.bankName ?? '', bankCode: data.bankCode ?? '' };
     const changed = bank.bankName !== (saved?.bankName ?? '') || bank.bankCode !== (saved?.bankCode ?? '');
     const needed = data.payoutMethod === 'BANK_TRANSFER' || (changed && !!bank.bankName);
-    if (needed && !bankAllowed(bank, { bankName: saved?.bankName ?? '', bankCode: saved?.bankCode ?? '' }, changed)) {
+    if (needed && !bankAllowed(bank, { bankName: saved?.bankName ?? '', bankCode: saved?.bankCode ?? '' }, true)) {
       payoutForm.setError('bankName', { message: 'Choose a bank with a verified transfer code from the directory.' });
       return;
     }

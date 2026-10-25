@@ -22,8 +22,8 @@ export function useBankSelectionGuard() {
   const data = q.isError ? undefined : q.data;
   return (current: BankValue, original: BankValue | null | undefined, requireCode = true): boolean => {
     if (!current.bankName.trim()) return false;
-    if (original && original.bankName === current.bankName && original.bankCode === current.bankCode) return true;
-    const entry = data?.providers.find(p => p.name === current.bankName);
+    if (!requireCode && original && original.bankName === current.bankName && original.bankCode === current.bankCode) return true;
+    const entry = data?.providers.find(p => p.name === current.bankName && (!requireCode || p.code === current.bankCode));
     if (!entry) return false;
     if (!requireCode) return true;
     return data?.status === 'AVAILABLE' && entry.transferCodeVerified && !!entry.code && entry.code === current.bankCode && hasTransferCode(current.bankCode);

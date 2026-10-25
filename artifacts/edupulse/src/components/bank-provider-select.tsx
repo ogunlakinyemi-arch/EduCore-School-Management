@@ -20,24 +20,26 @@ export function BankProviderSelect({ value, onSelect, label = 'Bank name', requi
   const listId = `${id}-list`;
   const errId = `${id}-err`;
   const inputRef = useRef<HTMLInputElement>(null);
-  const [picked, setPicked] = useState<Provider | null>(null);
+  const [selection, setPicked] = useState<Provider | null>(null);
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const catalogue = q.data;
   const trusted = !q.isError && catalogue?.status === 'AVAILABLE';
   const providers: Provider[] = useMemo(() => (catalogue?.providers ?? []).map(p => trusted ? p : { ...p, code: null, transferCodeVerified: false }), [catalogue, trusted]);
+  const picked = selection ? providers.find(p => p.id === selection.id) ?? { ...selection, code: null, transferCodeVerified: false } : null;
   const matches = useMemo(() => {
     const t = text.trim().toLowerCase();
-    return (t ? providers.filter(p => p.name.toLowerCase().includes(t)) : providers).slice(0, 80);
+    return t ? providers.filter(p => p.name.toLowerCase().includes(t)) : providers;
   }, [providers, text]);
   const hasValue = !!value.bankName.trim();
   const savedOnly = hasValue && !picked;
   const pending = text.trim() !== '' && text !== (picked?.name ?? '');
   const unverified = !!picked && !!value.bankName && (!picked.transferCodeVerified || !picked.code || !hasTransferCode(picked.code));
+  const confirmed = trusted && providers.some(p => p.name === value.bankName && p.code === value.bankCode && p.transferCodeVerified && !!p.code && hasTransferCode(p.code));
   const invalidMsg = pending ? 'Choose a bank from the list.'
     : !hasValue ? (required ? 'Choose a bank from the list.' : '')
-    : unverified && requireCode ? `${picked!.name} has no verified transfer code and cannot be saved.` : '';
+    : requireCode && !confirmed ? `${value.bankName} has no currently confirmed transfer code and cannot be saved.` : '';
   useEffect(() => { inputRef.current?.setCustomValidity(invalidMsg); }, [invalidMsg]);
   const choose = (p: Provider) => {
     const verified = trusted && p.transferCodeVerified && !!p.code && hasTransferCode(p.code);
@@ -56,7 +58,7 @@ export function BankProviderSelect({ value, onSelect, label = 'Bank name', requi
     <div className="relative">
       <input ref={inputRef} id={`${id}-input`} role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-activedescendant={open && matches[active] ? `${id}-opt-${matches[active].id}` : undefined}
         className={entry} autoComplete="off" placeholder={savedOnly ? value.bankName : 'Search banks'} disabled={q.isLoading}
-        aria-invalid={!!invalidMsg && (pending || unverified)} aria-describedby={invalidMsg && (pending || unverified) ? errId : unavailable ? `${id}-unavail` : undefined}
+        aria-invalid={!!invalidMsg && (pending || hasValue)} aria-describedby={invalidMsg && (pending || hasValue) ? errId : unavailable ? `${id}-unavail` : undefined}
         value={text} onChange={e => {
           const t = e.target.value; setText(t); setActive(0); setOpen(true);
           if (t.trim() === '' && !picked) return;
@@ -71,8 +73,9 @@ export function BankProviderSelect({ value, onSelect, label = 'Bank name', requi
     </div>
     {q.isLoading && <span className={`mt-1 block ${note}`}>Loading bank directory...</span>}
     {pending && <span id={errId} role="alert" className={`mt-1 block ${note} text-[hsl(var(--destructive))]`} data-testid="bank-pending-alert">{invalidMsg}</span>}
-    {unavailable && <div id={`${id}-unavail`} role="alert" className={`mt-1 ${note} text-[hsl(var(--destructive))]`}>{catalogue?.message || 'The bank directory could not be loaded.'} Listed banks cannot be saved until the directory is available. <button type="button" className="font-bold underline" onClick={() => void q.refetch()} data-testid="button-refresh-banks">Refresh the directory</button> or contact an administrator.</div>}
-    {savedOnly && !pending && <span className={`mt-1 block ${note}`} data-testid="bank-saved-note">Saved bank: {value.bankName}{value.bankCode ? ` (code ${value.bankCode})` : ''}. Not checked against the current directory. Search to choose a different bank.</span>}
+    {unavailable && <div id={`${id}-unavail`} role="alert" className={`mt-1 ${note} text-[hsl(var(--destructive))]`}>{catalogue?.message || 'The bank directory could not be loaded.'} Listed banks cannot be saved until the directory is available. <button type="button" disabled={q.isFetching} className="font-bold underline" onClick={() => void q.refetch()} data-testid="button-refresh-banks">{q.isFetching ? 'Retrying directory...' : 'Refresh the directory'}</button> or contact an administrator.</div>}
+    {savedOnly && !pending && <span className={`mt-1 block ${note}`} data-testid="bank-saved-note">Saved bank: {value.bankName}{value.bankCode ? ` (code ${value.bankCode})` : ''}. {confirmed ? 'Code confirmed against the current directory.' : 'Not checked against the current directory. Search to choose a different bank.'}</span>}
+    {savedOnly && !pending && invalidMsg && <span id={errId} role="alert" className={`mt-1 block ${note} text-[hsl(var(--destructive))]`}>{invalidMsg}</span>}
     {picked && !pending && !unverified && <span className={`mt-1 block ${note}`}>Transfer code {picked.code} found in the current bank directory.</span>}
     {picked && !pending && unverified && <span id={errId} role="alert" className={`mt-1 block ${note} text-[hsl(var(--destructive))]`} data-testid="bank-unverified-alert">{picked.name} has no verified transfer code in the current directory{requireCode ? ', so it cannot be saved' : ''}. Refresh the directory or contact an administrator.</span>}
   </div>;

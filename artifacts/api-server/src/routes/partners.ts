@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request } from "express";
 import { partnerPayoutRequest } from "../lib/partner-payout-request";
+import { requireVerifiedPaymentAccountProvider } from "../lib/nigerian-payment-providers";
 import { updateManualPartnerPayout } from "../services/partner-payout-update";
 import {
   deferredCommissionEvidence, approveCommissionBatch, listCommissionBatches,
@@ -2979,7 +2980,31 @@ router.delete("/partner/staff-invitations/:invitationId", run(async (req, res) =
 router.get("/partner/commissions", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT ${commissionFields} FROM commission_ledger l WHERE l.partner_profile_id=$1 ORDER BY l.created_at DESC`,[p.id]);res.json(r.rows)}));
 router.get("/partner/payouts", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts WHERE partner_profile_id=$1 ORDER BY created_at DESC`,[p.id]);res.json(r.rows)}));
 router.get("/partner/payout-information", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT id,method,account_name_encrypted,account_last4,updated_at AS "updatedAt" FROM partner_payout_information WHERE partner_profile_id=$1 AND status='ACTIVE'`,[p.id]);const x=r.rows[0];res.json(x?{id:x.id,payoutMethod:x.method,bankName:null,accountName:"Stored securely",maskedAccountNumber:mask(x.account_last4),updatedAt:x.updatedAt}:{id:0,payoutMethod:"BANK_TRANSFER",bankName:null,accountName:null,maskedAccountNumber:null,updatedAt:new Date().toISOString()})}));
-router.patch("/partner/payout-information", run(async(req,res)=>{const p=await self(req);requirePartnerOwner(req,p);const b=req.body??{},client=await pool.connect();if(!b.accountName)throw new AuthError(400,"accountName is required");try{await client.query("BEGIN");const existing=await client.query(`SELECT bank_name_encrypted,account_number_encrypted,bank_code_encrypted,account_last4,encryption_key_version FROM partner_payout_information WHERE partner_profile_id=$1 FOR UPDATE`,[p.id]);if(!existing.rows[0]&&!b.accountNumber)throw new AuthError(400,"accountNumber is required when payout information is first created");const version=existing.rows[0]?.encryption_key_version??currentPayoutKeyVersion();const preserve=(field:string)=>existing.rows[0]?.[field]??null;const r=await client.query(`INSERT INTO partner_payout_information(partner_profile_id,method,bank_name_encrypted,account_name_encrypted,account_number_encrypted,bank_code_encrypted,account_last4,encryption_key_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(partner_profile_id) DO UPDATE SET method=EXCLUDED.method,bank_name_encrypted=EXCLUDED.bank_name_encrypted,account_name_encrypted=EXCLUDED.account_name_encrypted,account_number_encrypted=EXCLUDED.account_number_encrypted,bank_code_encrypted=EXCLUDED.bank_code_encrypted,account_last4=EXCLUDED.account_last4,encryption_key_version=EXCLUDED.encryption_key_version,updated_at=NOW() RETURNING id,method,account_last4,updated_at AS "updatedAt"`,[p.id,b.payoutMethod??"BANK_TRANSFER",b.bankName!==undefined?encrypt(b.bankName,version):preserve("bank_name_encrypted")??encrypt("",version),encrypt(b.accountName,version),b.accountNumber?encrypt(b.accountNumber,version):preserve("account_number_encrypted"),b.bankCode!==undefined?(b.bankCode?encrypt(b.bankCode,version):null):preserve("bank_code_encrypted"),b.accountNumber?String(b.accountNumber).slice(-4):existing.rows[0].account_last4,version]);await audit(req,"Updated payout information","Partner Payout Information",r.rows[0].id,{fieldsUpdated:Object.keys(b).filter((field)=>field!=="accountNumber")},client);await client.query("COMMIT");const x=r.rows[0];res.json({id:x.id,payoutMethod:x.method,bankName:null,accountName:"Stored securely",maskedAccountNumber:mask(x.account_last4),updatedAt:x.updatedAt});}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
+router.patch("/partner/payout-information", run(async(req,res)=>{
+  const p=await self(req);
+  requirePartnerOwner(req,p);
+  const b=req.body??{};
+  if(!b.accountName)throw new AuthError(400,"accountName is required");
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    const existing=await client.query(`SELECT bank_name_encrypted,account_number_encrypted,bank_code_encrypted,account_last4,encryption_key_version FROM partner_payout_information WHERE partner_profile_id=$1 FOR UPDATE`,[p.id]);
+    if(!existing.rows[0]&&!b.accountNumber)throw new AuthError(400,"accountNumber is required when payout information is first created");
+    const version=existing.rows[0]?.encryption_key_version??currentPayoutKeyVersion();
+    const preserve=(field:string)=>existing.rows[0]?.[field]??null;
+    if((b.payoutMethod??"BANK_TRANSFER")==="BANK_TRANSFER"){
+      await requireVerifiedPaymentAccountProvider({
+        bankName:b.bankName??(preserve("bank_name_encrypted")?decrypt(preserve("bank_name_encrypted"),version):undefined),
+        bankCode:b.bankCode??(preserve("bank_code_encrypted")?decrypt(preserve("bank_code_encrypted"),version):undefined),
+      });
+    }
+    const r=await client.query(`INSERT INTO partner_payout_information(partner_profile_id,method,bank_name_encrypted,account_name_encrypted,account_number_encrypted,bank_code_encrypted,account_last4,encryption_key_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(partner_profile_id) DO UPDATE SET method=EXCLUDED.method,bank_name_encrypted=EXCLUDED.bank_name_encrypted,account_name_encrypted=EXCLUDED.account_name_encrypted,account_number_encrypted=EXCLUDED.account_number_encrypted,bank_code_encrypted=EXCLUDED.bank_code_encrypted,account_last4=EXCLUDED.account_last4,encryption_key_version=EXCLUDED.encryption_key_version,updated_at=NOW() RETURNING id,method,account_last4,updated_at AS "updatedAt"`,[p.id,b.payoutMethod??"BANK_TRANSFER",b.bankName!==undefined?encrypt(b.bankName,version):preserve("bank_name_encrypted")??encrypt("",version),encrypt(b.accountName,version),b.accountNumber?encrypt(b.accountNumber,version):preserve("account_number_encrypted"),b.bankCode!==undefined?(b.bankCode?encrypt(b.bankCode,version):null):preserve("bank_code_encrypted"),b.accountNumber?String(b.accountNumber).slice(-4):existing.rows[0].account_last4,version]);
+    await audit(req,"Updated payout information","Partner Payout Information",r.rows[0].id,{fieldsUpdated:Object.keys(b).filter((field)=>field!=="accountNumber")},client);
+    await client.query("COMMIT");
+    const x=r.rows[0];
+    res.json({id:x.id,payoutMethod:x.method,bankName:null,accountName:"Stored securely",maskedAccountNumber:mask(x.account_last4),updatedAt:x.updatedAt});
+  }catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}
+}));
 
 router.use((err: unknown, _req: Request, res: any, next: NextFunction) => {
   if (err instanceof AuthError) return res.status(err.statusCode).json({ error: err.message, code: err.eventType });

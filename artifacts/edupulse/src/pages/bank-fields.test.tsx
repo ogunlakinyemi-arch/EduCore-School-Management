@@ -3,9 +3,9 @@ import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const cat = vi.hoisted(() => ({ data: undefined as any, isError: false, refetch: vi.fn() }));
+const cat = vi.hoisted(() => ({ data: undefined as any, isError: false, isLoading: false, isFetching: false, refetch: vi.fn() }));
 vi.mock('@workspace/api-client-react', () => ({
-  useGetPaymentAccountProviders: () => ({ data: cat.data, isLoading: false, isError: cat.isError, refetch: cat.refetch }),
+  useGetPaymentAccountProviders: () => ({ ...cat }),
 }));
 import { BankFields } from './payroll-common';
 import { bankSelectionAllowed } from '@/lib/bank-selection';
@@ -38,7 +38,47 @@ const options = (host: HTMLElement) => Array.from(host.querySelectorAll('[role="
 const choose = (host: HTMLElement, i = 0) => act(async () => { host.querySelectorAll('[role="option"]')[i].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); });
 
 describe('shared bank provider select', () => {
-  afterEach(() => { document.body.innerHTML = ''; cat.data = undefined; cat.isError = false; });
+  afterEach(() => { document.body.innerHTML = ''; cat.data = undefined; cat.isError = false; cat.isLoading = false; cat.isFetching = false; });
+  it('shows loading, retry-in-progress and recovery to a selectable provider code', async () => {
+    cat.isLoading = true;
+    const { host, root } = await mount(blank);
+    expect(host.textContent).toContain('Loading bank directory');
+    expect(host.querySelector<HTMLInputElement>('[role="combobox"]')!.disabled).toBe(true);
+    cat.isLoading = false; cat.isFetching = true; cat.isError = true;
+    await act(async () => root.render(<Harness init={blank} />));
+    const retry=host.querySelector<HTMLButtonElement>('[data-testid="button-refresh-banks"]')!;
+    expect(retry.disabled).toBe(true);
+    expect(retry.textContent).toContain('Retrying');
+    cat.isFetching = false; cat.isError = false; cat.data = available();
+    await act(async () => root.render(<Harness init={blank} />));
+    await type(host, 'beta'); await choose(host);
+    expect(latest.bankCode).toBe('90002');
+    expect(host.querySelector<HTMLInputElement>('[role="combobox"]')!.validity.valid).toBe(true);
+    await act(async () => root.unmount());
+  });
+  it('exposes every returned institution, including results beyond the first 80', async () => {
+    cat.data = available(Array.from({length:100},(_,i)=>({id:`extra-${i}`,name:`Fictional Institution ${i}`,code:`${910000+i}`,transferCodeVerified:true})));
+    const { host, root } = await mount(blank);
+    await act(async () => host.querySelector<HTMLInputElement>('[role="combobox"]')!.focus());
+    expect(options(host)).toHaveLength(104);
+    await type(host, 'institution 99'); await choose(host);
+    expect(latest).toMatchObject({bankName:'Fictional Institution 99',bankCode:'910099'});
+    await act(async () => root.unmount());
+  });
+  it('revokes selection verification when a refresh fails without deleting saved details', async () => {
+    cat.data = available();
+    const { host, root } = await mount(blank);
+    await type(host, 'alpha'); await choose(host);
+    cat.isError = true;
+    await act(async () => root.render(<Harness init={blank} />));
+    expect(host.textContent).not.toContain('found in the current bank directory');
+    expect(host.querySelector<HTMLInputElement>('[role="combobox"]')!.validity.valid).toBe(false);
+    expect(latest.bankName).toBe('Fictional Alpha Bank');
+    cat.isError = false;
+    await act(async () => root.render(<Harness init={blank} />));
+    expect(host.querySelector<HTMLInputElement>('[role="combobox"]')!.validity.valid).toBe(true);
+    await act(async () => root.unmount());
+  });
   it('searches the catalogue including alias entries and selects a verified bank with its code', async () => {
     cat.data = available();
     const { host, root } = await mount(blank);
@@ -99,7 +139,7 @@ describe('shared bank provider select', () => {
     expect(host.textContent).not.toContain('found in the current bank directory');
     expect(latest.bankName).toBe('Existing provider bank');
     expect(latest.bankCode).toBe('999999');
-    expect(host.querySelector<HTMLInputElement>('[data-testid="input-bank-name"]')!.validity.valid).toBe(true);
+    expect(host.querySelector<HTMLInputElement>('[data-testid="input-bank-name"]')!.validity.valid).toBe(false);
     await act(async () => root.unmount());
   });
   it('lists UNAVAILABLE directory entries as unverified and blocks them with no code', async () => {

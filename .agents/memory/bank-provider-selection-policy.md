@@ -23,3 +23,14 @@ Manual school transfer instructions currently have name-only storage; do not
 smuggle codes into the name field or apply an unapproved schema migration to
 close that limitation. The user prohibited Production, secret, allocation,
 migration and deployment changes for this UI request.
+
+Directory discovery must not require enabling payroll, checkout or LIVE
+collections. Unconfirmed legacy bank details may remain displayed, but must not
+bypass current provider-code confirmation when resaved as transfer-enabled.
+
+**Why:** The user reported the Company selector unavailable and required a
+server-side directory fix without enabling LIVE payments or inventing support.
+
+**How to apply:** Keep metadata-read authorization separate from money-moving
+capability gates; preserve saved history while requiring current exact provider
+name/code confirmation for transfer-enabled saves.

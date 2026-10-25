@@ -98,11 +98,11 @@ describe.each(flows)('$name save payload', f => {
     expect(s.save).not.toHaveBeenCalled();
     expect(combo().getAttribute('aria-invalid')).toBe('true');
   });
-  it('keeps an untouched legacy provider without claiming verification', async () => {
+  it('preserves legacy display but blocks saving it without directory confirmation', async () => {
     const form = await f.open();
     expect(document.body.textContent).toContain('Not checked against the current directory');
     await submit(form);
-    expect(f.data()).toMatchObject({ bankName: 'Legacy Bank', bankCode: '999999' });
+    expect(s.save).not.toHaveBeenCalled();
   });
   it('does not verify a pick when the catalogue is UNAVAILABLE, but still lists entries', async () => {
     s.catalogue = catalogue('UNAVAILABLE');
@@ -125,9 +125,9 @@ describe('Partner payout save payload', () => {
     await typeInto(combo(), 'Typed Bank'); await submit(form());
     expect(s.partnerSave).not.toHaveBeenCalled();
   });
-  it('preserves an untouched legacy bank and its code', async () => {
+  it('does not save an unconfirmed legacy bank as transfer-enabled', async () => {
     await render(<PartnerSettings />); await submit(form());
-    expect(s.partnerSave.mock.calls[0][0].data).toMatchObject({ bankName: 'Legacy Bank', bankCode: '999999' });
+    expect(s.partnerSave).not.toHaveBeenCalled();
   });
 });
 

@@ -1,3 +1,6 @@
+import { AuthError } from "../middlewares/auth";
+import { FlutterwavePayrollV3Client } from "./flutterwave-payroll-v3";
+
 /** One canonical directory. Offline names are discovery only, NEVER routing
  * instructions. Full coverage comes from the existing payout provider's NG
  * catalogue (commercial/other banks, MFBs and supported digital institutions).
@@ -46,13 +49,11 @@ export function paymentAccountProviders(banks:unknown[]|null,environment:"TEST"|
     if(prior)continue;
     seen.set(row.code,key);
     const compatible=/^[0-9]{3,6}$/.test(row.code);
-    const index=discoveryProviders.findIndex(([, ,aliases])=>aliases.some(alias=>key.includes(alias)));
-    // Multiple distinct provider routes for a name remain separate, never pick
-    // one silently (e.g. merchant vs personal accounts at the same institution).
-    const discovered=index>=0?providers[index]:null;
-    if(discovered&&!discovered.transferCodeVerified){
-      discovered.code=compatible?row.code:null;discovered.transferCodeVerified=compatible;
-    }else providers.push({id:`flutterwave:${row.code}`,name,code:compatible?row.code:null,transferCodeVerified:compatible});
+    // Keep the exact provider name/route. Alias matching must never rename a
+    // provider record or collapse distinct routes at the same institution.
+    const index=providers.findIndex(p=>p.id.startsWith("directory:")&&normalized(p.name)===key);
+    if(index>=0)providers.splice(index,1);
+    providers.push({id:`flutterwave:${row.code}`,name,code:compatible?row.code:null,transferCodeVerified:compatible});
   }
   const available=!!banks?.length&&!!environment;
   return {status:available?"AVAILABLE":"UNAVAILABLE",catalogueEnvironment:available?environment:null,
@@ -60,4 +61,22 @@ export function paymentAccountProviders(banks:unknown[]|null,environment:"TEST"|
       ?"Codes confirmed against the Flutterwave Nigerian catalogue. A listing does not confirm account ownership, merchant payout approval or a completed transfer. If your provider is unavailable, refresh or contact your administrator."
       :"The Flutterwave bank catalogue is unavailable. Provider names are for discovery only; new account selection cannot be saved without a confirmed routing code. Refresh or contact your administrator.",
     providers:providers.sort((a,b)=>a.name.localeCompare(b.name,"en"))};
+}
+
+/** Validate submitted structured selections before writes, independently of the
+ * browser. Catalogue membership is not account ownership or transfer approval. */
+export async function requireVerifiedPaymentAccountProvider(
+  selection:{bankName?:unknown;bankCode?:unknown},
+  client:Pick<FlutterwavePayrollV3Client,"listNigerianBanks">=new FlutterwavePayrollV3Client(),
+) {
+  let directory:PaymentAccountProviderDirectory;
+  try{
+    const catalogue=await client.listNigerianBanks();
+    directory=paymentAccountProviders(catalogue.banks,catalogue.environment);
+  }catch{
+    throw new AuthError(503,"The Flutterwave bank directory is unavailable. Retry before saving bank details.");
+  }
+  if(directory.status!=="AVAILABLE"||!directory.providers.some(p=>p.transferCodeVerified&&p.code
+    &&p.name===selection.bankName&&p.code===selection.bankCode))
+    throw new AuthError(400,"Choose a bank and its confirmed code from the current Flutterwave directory.");
 }

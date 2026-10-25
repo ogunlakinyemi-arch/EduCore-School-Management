@@ -1,5 +1,5 @@
 import { AuthError } from "../middlewares/auth";
-import { developmentFlutterwaveCredential } from "./flutterwave-development-config";
+import { developmentFlutterwaveCredential, dedicatedFlutterwaveTestCredential } from "./flutterwave-development-config";
 
 export type PayrollProviderMode = "TEST" | "LIVE" | "MOCK" | "NOT_CONFIGURED";
 export type PayrollTransferCapability =
@@ -337,18 +337,22 @@ export class FlutterwavePayrollV3Client {
     return configuredPayrollProviderCapability(this.env);
   }
 
-  /** Catalogue lookup only. Uses the same credential/mode boundary as account
-   * resolution; listing a routing code never enables or attests a transfer. */
+  /** Read-only metadata has its own credential boundary: never require or grant
+   * payroll/checkout activation just to discover institutions. */
   async listNigerianBanks() {
-    const capability=this.capability();
-    const developmentKey=developmentFlutterwaveCredential(this.env).secret;
-    if(!developmentKey&&!["TEST","LIVE"].includes(capability.mode))
+    // TEST metadata is safe in either runtime; unlike resolution/transfer this
+    // GET cannot move money. Explicit LIVE mode still forbids TEST fallback.
+    const testKey=dedicatedFlutterwaveTestCredential(this.env).secret;
+    const liveKey=this.env.FLUTTERWAVE_LIVE_SECRET_KEY;
+    const live=this.env.NODE_ENV==="production"&&this.env.EDUCORE_FLUTTERWAVE_MODE==="LIVE"
+      &&typeof liveKey==="string"&&/^FLWSECK-(?!TEST-)[A-Za-z0-9_-]{8,}$/.test(liveKey);
+    if(!testKey&&!live)
       throw new FlutterwavePayrollUnavailableError("Bank catalogue is not configured");
-    const key=developmentKey??providerKey(this.env,capability.mode as "TEST"|"LIVE");
-    const body=await v3Request("/banks/NG",key,{method:"GET",redirect:"error"},this.fetchImpl);
+    const key=testKey??liveKey!;
+    const body=await v3Request("/banks/NG?include_provider_type=1",key,{method:"GET",redirect:"error"},this.fetchImpl);
     if(body.status!=="success"||!Array.isArray(body.data)||!body.data.length||body.data.length>5000)
       throw new FlutterwavePayrollUnavailableError("Bank catalogue is unavailable");
-    return {environment:developmentKey?"TEST" as const:capability.mode as "TEST"|"LIVE",banks:body.data as unknown[]};
+    return {environment:testKey?"TEST" as const:"LIVE" as const,banks:body.data as unknown[]};
   }
 
   async resolveNigerianAccount(input: {

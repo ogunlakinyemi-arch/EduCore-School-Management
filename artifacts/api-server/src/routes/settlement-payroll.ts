@@ -3,6 +3,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import * as PayrollContract from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import { developmentFlutterwaveCollectionStatus } from "../lib/flutterwave-development-config";
+import { requireVerifiedPaymentAccountProvider } from "../lib/nigerian-payment-providers";
 import {
   assertRemovalEnvironment,
   reviewSettlementRemoval,
@@ -682,6 +683,7 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
     "Invalid company settlement bank information",
   );
   validateBankInput(input);
+  await requireVerifiedPaymentAccountProvider(input);
   const bank = encryptedBankRecord(input, {
     bankName: COMPANY_SETTLEMENT_AD("bankName"),
     bankCode: COMPANY_SETTLEMENT_AD("bankCode"),
@@ -989,6 +991,7 @@ router.put("/schools/:schoolId/finance/payment-settlement", run(async (req, res)
     "Invalid school settlement bank information",
   );
   validateBankInput(input);
+  await requireVerifiedPaymentAccountProvider(input);
   getActivePayrollEncryptionKey();
   const bank = encryptedBankRecord(input, {
     bankName: SCHOOL_SETTLEMENT_AD(schoolId, "bankName"),
@@ -1236,6 +1239,7 @@ router.put("/schools/:schoolId/finance/payroll/employees", run(async (req, res) 
     throw new AuthError(400, "Salary and allowance must be valid NGN minor-unit amounts with a nonnegative net salary");
   }
   validateBankInput(input);
+  await requireVerifiedPaymentAccountProvider(input);
   const aad = payrollBankAAD("SCHOOL", schoolId, input.employeeId);
   const bank = encryptedBankRecord(input, aad);
   const saved = await withTransaction(async (client) => {
@@ -1371,6 +1375,7 @@ router.put("/platform/finance/company-payroll/employees", run(async (req, res) =
     throw new AuthError(400, "Company employee salary must be NGN minor-unit amounts with a nonnegative net");
   }
   validateBankInput(input);
+  await requireVerifiedPaymentAccountProvider(input);
   const aad = payrollBankAAD("YEMAIT_COMPANY", null, input.employeeId);
   const bank = encryptedBankRecord(input, aad);
   const saved = await withTransaction(async (client) => {
