@@ -35,13 +35,13 @@ export function PartnerReapplication({ onCreated }: { onCreated?: () => void }) 
     });
   };
   return <section className="space-y-4" data-testid="partner-reapplication">
-    <h1 className="display-font text-2xl font-bold">Apply again as a Partner</h1>
-    <p className="text-sm">Your previous account remains archived. An eligible test Partner can use the same verified email for a new application. It will not include previous schools, roles or records, and requires Platform Owner approval.</p>
+    <h1 className="display-font text-2xl font-bold">Apply again as a Business Relationship Officer (BRO)</h1>
+    <p className="text-sm">Your previous account remains archived. An eligible test BRO can use the same verified email for a new application. It will not include previous schools, roles or records, and requires Platform Owner approval.</p>
     <p className="text-sm text-[hsl(var(--muted-foreground))]">Sign out and sign in again first. An old session cannot be used for a new account.</p>
     <button type="button" className="rounded-xl border px-4 py-2 text-sm font-bold" disabled={mutation.isPending}
       onClick={() => void signOut({ redirectUrl:`${import.meta.env.BASE_URL}sign-in?redirect=/apply` })}>Sign out to sign in again</button>
     <ApplicationForm values={values} onChange={setValues} errors={errors} formError={error}
-      partnerOnly pending={mutation.isPending} submitLabel="Submit new Partner application" onSubmit={submit} />
+      partnerOnly pending={mutation.isPending} submitLabel="Submit new BRO application" onSubmit={submit} />
     {error && <button type="button" className="text-sm underline" onClick={() => window.location.reload()}>Reload application status</button>}
   </section>;
 }

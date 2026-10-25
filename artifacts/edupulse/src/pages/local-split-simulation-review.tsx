@@ -37,7 +37,7 @@ export function LocalSplitSimulationReview({
         <dt className="font-semibold">Fictional bank/account — TEST / NOT REAL</dt>
         <dd>{fixture.fictionalBank} · {fixture.fictionalBankCode} · {fixture.fictionalAccount}</dd>
       </dl>
-      <p>No Partner: total {money(fixture.simulationTotalMinor / 100)}; school {money(fixture.simulationSchoolMinor / 100)};
+      <p>No BRO: total {money(fixture.simulationTotalMinor / 100)}; school {money(fixture.simulationSchoolMinor / 100)};
         {' '}Yetenia platform gross {money(fixture.simulationPlatformGrossMinor / 100)}.</p>
       <p>Provider fees are excluded. This review does not verify ownership, a provider allocation or bank settlement.
         The fixture remains LOCAL_ONLY_UNVERIFIED, never TEST_READY. Operational split settings remain unchanged.</p>

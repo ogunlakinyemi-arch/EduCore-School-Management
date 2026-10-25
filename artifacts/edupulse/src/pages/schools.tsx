@@ -237,7 +237,7 @@ export function SchoolsPage() {
           <span>Teachers</span>
           <span>Staff</span>
           <span>Parents</span>
-          <span>Partner / source</span>
+                  <span>BRO / source</span>
           <span>Status</span>
           <span />
         </div>
@@ -263,7 +263,7 @@ export function SchoolsPage() {
             <div className="text-sm font-bold">{school.parentCount ?? 0}</div>
             <div className="min-w-0 text-sm">
               {school.partnerReferral
-                ? <><div className="truncate font-bold">{school.partnerReferral.partnerName}</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{school.partnerReferral.source.replaceAll('_', ' ')}</div></>
+                ? <><div className="truncate font-bold">{school.partnerReferral.partnerName}</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{school.partnerReferral.source.replaceAll('_', ' ').replace(/PARTNER/gi, 'BRO')}</div></>
                 : <span className="text-[hsl(var(--muted-foreground))]">Direct / unassigned</span>}
               <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Joined {date(school.createdAt)}</div>
               {school.partnerReferral && school.registrationStatus && (
@@ -297,7 +297,7 @@ export function SchoolsPage() {
       </div>
       
       {query.data && schools.length > 0 && (
-        <p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">Referral attribution is shown only for a currently active school-partner relationship.</p>
+        <p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">Referral attribution is shown only for a currently active relationship with a BRO.</p>
       )}
 
       {modal && (
@@ -764,16 +764,16 @@ export function SchoolOverview() {
                 {school?.partnerReferral ? (
                   <div className="space-y-1 text-sm">
                     <div className="font-bold">{school.partnerReferral.partnerName}</div>
-                    <div className="text-[hsl(var(--muted-foreground))]">{school.partnerReferral.source.replaceAll('_', ' ')} · Referral #{school.partnerReferral.referralLinkId ?? '—'}</div>
+                    <div className="text-[hsl(var(--muted-foreground))]">{school.partnerReferral.source.replaceAll('_', ' ').replace(/PARTNER/gi, 'BRO')} · Referral #{school.partnerReferral.referralLinkId ?? '—'}</div>
                     <div className="text-[hsl(var(--muted-foreground))]">Registered {date(school.partnerReferral.registrationDate)} · {school.partnerReferral.status}</div>
                   </div>
-                ) : <p className="text-sm text-[hsl(var(--muted-foreground))]">Platform Owner / direct onboarding; no current partner attribution.</p>}
+                ) : <p className="text-sm text-[hsl(var(--muted-foreground))]">Platform Owner / direct onboarding; no current BRO attribution.</p>}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link href="/devices"><Button variant="outline"><Smartphone size={15} />NFC devices</Button></Link>
                 <Link href="/cards" onClick={() => setSchoolId(schoolId)}><Button variant="outline"><CreditCard size={15} />NFC cards</Button></Link>
                 <Link href="/audit" onClick={() => setSchoolId(schoolId)}><Button variant="outline"><FileClock size={15} />Audit log</Button></Link>
-                <Link href="/partners"><Button variant="outline"><LinkIcon size={15} />Partner directory</Button></Link>
+                <Link href="/partners"><Button variant="outline"><LinkIcon size={15} />BRO directory</Button></Link>
               </div>
               <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">The school context will be selected automatically when opening its directory, cards, or audit trail.</p>
             </>

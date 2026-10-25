@@ -115,6 +115,12 @@ describe('public application UI behavior',()=>{
     click('button-edit-application');
     expect((host.querySelector('[data-testid="input-email"]') as HTMLInputElement).value).toBe('ada@example.test');
   });
+  it('shows the BRO role name while retaining the PARTNER application value', () => {
+    render(<AuthScreen mode="sign-up" />);
+    const roleOption = Array.from(host.querySelectorAll('option')).find(option => option.value === 'PARTNER');
+    expect(roleOption?.textContent).toBe('Business Relationship Officer (BRO)');
+    expect(roleOption?.value).toBe('PARTNER');
+  });
   it('does not infer an email or auto-submit a legacy School draft without one',()=>{
     sessionStorage.setItem('edupulse:application-draft',JSON.stringify({savedAt:Date.now(),v:{
       applicantType:'SCHOOL_ADMIN',fullName:'Ada Obi',phone:'08031234567',schoolName:'Hill School',

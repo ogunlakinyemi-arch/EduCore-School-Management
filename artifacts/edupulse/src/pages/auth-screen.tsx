@@ -175,7 +175,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 <option value="DRIVER">Driver</option>
                 <option value="PARENT">Parent</option>
                 <option value="STUDENT">Student</option>
-                <option value="PARTNER">Partner / Partner Administrator / Staff</option>
+                <option value="PARTNER">Business Relationship Officer (BRO) / Administrator / Staff</option>
                 <option value="PLATFORM_OWNER">Platform Owner</option>
               </select>
               <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
@@ -201,7 +201,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             <>
             {isPublicApplication && (
               <div className="mb-5 w-full min-w-0 max-w-sm rounded-xl border border-[hsl(var(--border))] p-3 text-sm" data-testid="application-approval-notice">
-                <h2 className="font-bold">{values.applicantType === 'PARTNER' ? 'Partner' : 'School Admin'} application</h2>
+                <h2 className="font-bold">{values.applicantType === 'PARTNER' ? 'Business Relationship Officer (BRO)' : 'School Admin'} application</h2>
                 <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
                   Your details are saved for this browser session only. Create your account with email and password or Google; finishing authentication submits your application automatically. Platform Owner approval is required before you can access a dashboard.
                 </p>

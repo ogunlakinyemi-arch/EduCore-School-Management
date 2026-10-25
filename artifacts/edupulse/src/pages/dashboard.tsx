@@ -326,7 +326,7 @@ function PlatformSchoolDashboard({ school, onReturn }: { school: PlatformSchoolS
           <span className="text-[hsl(var(--muted-foreground))]">Subscription status: </span>
           <strong>{school.subscriptionStatus || 'Not available'}</strong>
           {school.partnerReferral?.partnerName && (
-            <p className="mt-2"><span className="text-[hsl(var(--muted-foreground))]">Referral partner: </span>{school.partnerReferral.partnerName}</p>
+            <p className="mt-2"><span className="text-[hsl(var(--muted-foreground))]">Referring BRO: </span>{school.partnerReferral.partnerName}</p>
           )}
         </div>
       </div>
@@ -342,7 +342,7 @@ function PlatformSchoolDashboard({ school, onReturn }: { school: PlatformSchoolS
             { href: '/students', label: 'Students & e-ID' },
             { href: '/cards', label: 'NFC cards' },
             { href: '/devices', label: 'NFC devices' },
-            { href: '/partners', label: 'Partners' },
+            { href: '/partners', label: 'Business Relationship Officers (BRO)' },
             { href: '/subscriptions', label: 'Subscription status' },
             { href: '/audit', label: 'Audit log' },
           ].map(link => (

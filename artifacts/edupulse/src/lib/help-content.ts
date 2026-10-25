@@ -15,7 +15,7 @@ const security: HelpSection = {
   steps: [
     'Use your own sign-in account. Never share a password, verification code, invitation token, NFC credentials or payment-provider keys.',
     'Sign out before leaving a shared computer. Check the account and school shown before entering or changing information.',
-    'For a missing role, class or school, contact your School Admin. Partners should contact their Partner organisation owner or the Yetenia representative who onboarded the organisation.',
+    'For a missing role, class or school, contact your School Admin. BROs should contact their organisation owner or the Yetenia representative who onboarded the organisation.',
     'For an unresolved platform problem, ask that contact to escalate to the Platform Owner. Include the screen name, time in WAT, what you expected, and the visible error message.',
     'If a reference is needed for a payment investigation, send it only through your established private support channel. Crop or redact screenshots: no student names, full account numbers, passwords or verification codes.',
   ],
@@ -26,13 +26,13 @@ const access: HelpSection = {
   id: 'access', title: 'Registration, invitations and sign-in',
   summary: 'An account type selection does not grant access. Your approved membership controls the portal.',
   steps: [
-    'New School Admins and Partners can start at Apply. Use the application type that describes your actual responsibility and complete the information requested on the form.',
+    'New School Admins and Business Relationship Officers (BRO) can start at Apply. Use the application type that describes your actual responsibility and complete the information requested on the form.',
     'Sign in or create the account when prompted, submit the application, and check its status on the application page. Operational access requires Platform Owner approval.',
     'If you received an invitation, open the supplied invitation link and follow the acceptance instructions using the intended account. Do not make a second application just to replace an invitation.',
     'Returning users should open Sign in and use an offered sign-in method. If asked to choose a portal, choose a role already assigned to you.',
     'If access is pending or a portal is unavailable, use the displayed status or retry access check. Ask your administrator to check the membership; selecting another account type cannot add permissions.',
   ],
-  links: [{ label: 'Apply as a School Admin or Partner', href: '/apply' }, { label: 'Sign in', href: '/sign-in' }],
+  links: [{ label: 'Apply as a School Admin or BRO', href: '/apply' }, { label: 'Sign in', href: '/sign-in' }],
 };
 
 export const helpManuals: HelpManual[] = [
@@ -112,34 +112,34 @@ export const helpManuals: HelpManual[] = [
     ],
   },
   {
-    id: 'partners', audienceLabel: 'Partners', title: 'Partner setup manual',
+    id: 'partners', audienceLabel: 'Business Relationship Officers (BRO)', title: 'Business Relationship Officer (BRO) setup manual',
     subtitle: 'Onboard your organisation, register schools and understand commission records.',
     sections: [
       access,
       {
-        id: 'partner-navigation', title: 'Your Partner dashboard and permissions', summary: 'The Partner portal is separate from a school’s operational portal.',
+        id: 'partner-navigation', title: 'Your BRO dashboard and permissions', summary: 'The BRO portal is separate from a school’s operational portal.',
         steps: [
-          'Open the Partner dashboard after your membership is approved. If the profile is not ready, contact the administrator rather than creating duplicate accounts.',
+          'Open the BRO dashboard after your membership is approved. If the profile is not ready, contact the administrator rather than creating duplicate accounts.',
           'Use Schools to see the organisation’s schools. The header also exposes reporting, inbox and preferences where available; on phones use the navigation links below the header.',
-          'Organisation owners or Partner Admins can manage the Staff and Settings areas. Commissions and Payouts are shown only to users with the required finance access.',
-          'Do not use a Partner account to perform a School Admin’s academic or school-finance work. An additional role must be assigned separately if required.',
+          'Organisation owners or BRO Admins can manage the Staff and Settings areas. Commissions and Payouts are shown only to users with the required finance access.',
+          'Do not use a BRO account to perform a School Admin’s academic or school-finance work. An additional role must be assigned separately if required.',
         ],
-        links: [{ label: 'Partner dashboard', href: '/partner' }, { label: 'Schools', href: '/partner/schools' }, { label: 'Partner Settings — owner/admin', href: '/partner/profile' }],
+        links: [{ label: 'BRO dashboard', href: '/partner' }, { label: 'Schools', href: '/partner/schools' }, { label: 'BRO Settings — owner/admin', href: '/partner/profile' }],
       },
       {
-        id: 'school-registration', title: 'Register or refer a school', summary: 'Use the Partner school-registration workflow and track its status.',
+        id: 'school-registration', title: 'Register or refer a school', summary: 'Use the BRO school-registration workflow and track its status.',
         steps: [
-          'From the Partner dashboard or Schools, open Add School. Enter the actual school and intended School Admin details requested by the form.',
+          'From the BRO dashboard or Schools, open Add School. Enter the actual school and intended School Admin details requested by the form.',
           'Review the information and submit using the action offered by the page. Track the school and invitation status in Schools.',
           'Where a referral or invitation link is offered, use that generated link. Do not edit tokens, invent a referral code or promise access before acceptance and approval checks are complete.',
           'Ask the intended School Admin to follow their own invitation. If the invitation fails or the result is uncertain, ask the organisation owner or Platform Owner to reconcile it before repeating registration.',
         ],
-        notes: ['A registered or referred school does not automatically authorise every Partner employee to access it, earn a payout or activate its cards.'],
+        notes: ['A registered or referred school does not automatically authorise every BRO employee to access it, earn a commission or activate its cards.'],
         links: [{ label: 'Add School', href: '/partner/schools/add' }, { label: 'My schools', href: '/partner/schools' }],
       },
       {
         id: 'commissions-payouts', title: 'Commissions, payout records and bank settings', summary: 'Distinguish recorded entitlement, approval and confirmed payment.',
-        appliesTo: 'Partner owners/admins and finance-authorised members; settings require owner/admin access.',
+        appliesTo: 'BRO owners/admins and finance-authorised members; settings require owner/admin access.',
         steps: [
           'Open Commissions to review the records and statuses available to your organisation. Deferred commission totals are not the same as money already paid.',
           'Open Payouts to inspect recorded payout status and references. Do not mark a payment complete from a screenshot or TEST result.',
@@ -147,17 +147,17 @@ export const helpManuals: HelpManual[] = [
           'If the directory is unavailable or a provider has no verified code, retry or escalate. Do not substitute another institution’s code to make the form save.',
           'For a commission or payout discrepancy, report the relevant record/reference privately to your organisation owner for escalation. Do not create a second school or payment to force another commission.',
         ],
-        notes: ['Eligible Partner subscription commission is an internal accrued liability with a separate review/payment process, not an automatic third recipient in the collection split. A bank-directory listing is not payout approval.'],
-        links: [{ label: 'Commissions', href: '/partner/commissions' }, { label: 'Payouts', href: '/partner/payouts' }, { label: 'Partner Settings', href: '/partner/profile' }],
+        notes: ['Eligible BRO subscription commission is an internal accrued liability with a separate review/payment process, not an automatic third recipient in the collection split. A bank-directory listing is not payout approval.'],
+        links: [{ label: 'Commissions', href: '/partner/commissions' }, { label: 'Payouts', href: '/partner/payouts' }, { label: 'BRO Settings', href: '/partner/profile' }],
       },
       {
-        id: 'partner-nfc', title: 'Staff NFC and approved activation duties', summary: 'Use NFC-related Partner screens only within the access granted to the organisation.',
+        id: 'partner-nfc', title: 'Staff NFC and approved activation duties', summary: 'Use NFC-related BRO screens only within the access granted to the organisation.',
         steps: [
           'Use Staff NFC Commissions to inspect the records available to your membership.',
-          'NFC Activation appears only when Partner NFC access is granted. Follow the available school-specific checks and Owner-approved scope.',
+          'NFC Activation appears only when BRO NFC access is granted. Follow the available school-specific checks and Owner-approved scope.',
           'If activation is not available, ask the Platform Owner to review eligibility. Do not change a device, create a financial approval or assume a commission record grants activation permission.',
         ],
-        notes: ['Reader hardware, school access and financial authority are separate. Partner activation access does not grant device management or payment authority.'],
+        notes: ['Reader hardware, school access and financial authority are separate. BRO activation access does not grant device management or payment authority.'],
         links: [{ label: 'Staff NFC Commissions', href: '/partner/staff-nfc' }, { label: 'NFC Activation — approved members only', href: '/partner/nfc-activation' }],
       },
       security,
@@ -170,7 +170,7 @@ export const helpManuals: HelpManual[] = [
       {
         id: 'employee-access', title: 'Join your school and sign in', summary: 'Teachers and staff use school-assigned access, not a public Teacher/Staff application.',
         steps: [
-          'Ask your School Admin to create or check your employee record and the intended user membership. The public application form is for School Admins and Partners.',
+          'Ask your School Admin to create or check your employee record and the intended user membership. The public application form is for School Admins and Business Relationship Officers (BRO).',
           'If invited, open your own invitation link and complete acceptance with the intended account. Then sign in through the normal sign-in page.',
           'Check the school and role shown on the dashboard. If no membership is available, ask your School Admin to check it; choosing Teacher or Staff at sign-in cannot grant the role.',
           'On a phone, open the menu to find available work. Menu visibility and editing depend on your active duties, not the job title alone.',
@@ -225,7 +225,7 @@ export const helpManuals: HelpManual[] = [
 
 export const helpFaqs: { question: string; answer: string; audiences: HelpAudience[] }[] = [
   { question: 'Why is my account pending or the selected portal unavailable?', answer: 'An application, school record or portal selection is not an active membership. Check the application status or invitation, use Retry access check if offered, and ask the responsible administrator to verify the intended account and role. Do not create duplicate applications.', audiences: ['schools', 'partners', 'teachers-staff'] },
-  { question: 'Why is a menu item or class missing?', answer: 'Confirm the school context first. Menu items depend on the active role and some duties require additional assignment. Teachers need class and subject assignments; Staff do not automatically have teaching or finance access. Contact your School Admin or Partner organisation owner.', audiences: ['schools', 'partners', 'teachers-staff'] },
+  { question: 'Why is a menu item or class missing?', answer: 'Confirm the school context first. Menu items depend on the active role and some duties require additional assignment. Teachers need class and subject assignments; Staff do not automatically have teaching or finance access. Contact your School Admin or BRO organisation owner.', audiences: ['schools', 'partners', 'teachers-staff'] },
   { question: 'The bank directory is unavailable or a transfer code is unverified. What should I do?', answer: 'Use Refresh the directory and select the exact provider record after it loads. Do not enter a free-text bank or guess a code. If it still fails, send the visible error to the administrator. Directory membership does not establish account ownership, payout permission or LIVE readiness.', audiences: ['schools', 'partners'] },
   { question: 'The importer shows invalid or duplicate records. Is anything already imported?', answer: 'Inspection and preview are review stages; confirm the intended rows only after resolving errors and checking duplicates. After confirmation, use the result summary and roster to identify imported, skipped and failed rows. Do not repeatedly import the whole file to fix one failed row.', audiences: ['schools'] },
   { question: 'Why can families not see a saved result?', answer: 'Draft, teacher-submitted, reviewed and published results are different states. Ask the School Admin to check the correct school, child relationship, session/term and publication. Published corrections require the appropriate review and republication.', audiences: ['schools', 'teachers-staff'] },

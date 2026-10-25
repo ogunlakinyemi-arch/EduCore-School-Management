@@ -99,7 +99,7 @@ export async function eligibleArchivedPartner(db: Db, email: string, clerkUserId
 export async function submitPartnerReapplication(
   clerkUserId: string, sessionId: string, input: z.infer<typeof applicationInput>,
 ) {
-  if (input.applicantType !== "PARTNER") throw new AuthError(400, "This path accepts a new Partner application only.");
+  if (input.applicantType !== "PARTNER") throw new AuthError(400, "This path accepts a new Business Relationship Officer (BRO) application only.");
   const identity = await clerkClient.users.getUser(clerkUserId);
   const primary = identity.emailAddresses.find(e => e.id === identity.primaryEmailAddressId);
   if (!primary || primary.verification?.status !== "verified" || normalized(primary.emailAddress) !== input.email) {
@@ -110,7 +110,7 @@ export async function submitPartnerReapplication(
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    if (!await reapplicationSchemaReady(client)) throw new AuthError(503, "Partner reapplication requires the reviewed account-isolation migration.");
+    if (!await reapplicationSchemaReady(client)) throw new AuthError(503, "BRO reapplication requires the reviewed account-isolation migration.");
     await client.query("SET LOCAL lock_timeout='2s'");
     await client.query("SELECT pg_advisory_xact_lock(192837465,20261025)");
     // Serialize against all existing account/application creation paths, not
@@ -129,7 +129,7 @@ export async function submitPartnerReapplication(
     }
     const source = await eligibleArchivedPartner(client,input.email,clerkUserId);
     if (createdAt <= source.blockedAt) throw new AuthError(403,
-      "Sign out and sign in again before submitting a new Partner application. Your previous account will stay archived.",
+      "Sign out and sign in again before submitting a new BRO application. Your previous account will stay archived.",
       "REAPPLICATION_FRESH_SIGN_IN_REQUIRED");
     const [firstName,...surname] = input.fullName.split(" ");
     const user = (await client.query(`INSERT INTO app_users(clerk_user_id,email,first_name,last_name,phone)

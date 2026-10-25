@@ -281,7 +281,7 @@ describe('trusted student-subscription payment workflow', () => {
     expect(host.querySelector('[data-testid="button-checkout-subscription-91"]')).toBeNull();
   });
 
-  it('shows only SCHOOL allocations to school finance and reserves platform and Partner lines for Owner view', async () => {
+  it('shows only SCHOOL allocations to school finance and reserves platform and BRO lines for Owner view', async () => {
     const paidPayment = payment({ status: 'PAID', paidAt: '2025-01-02T00:00:00.000Z' });
     const response = {
       payment: paidPayment,
@@ -321,7 +321,7 @@ describe('trusted student-subscription payment workflow', () => {
     await renderPage();
     expect(host.textContent).toContain('School allocation');
     expect(host.textContent).not.toContain('Platform allocation');
-    expect(host.textContent).not.toContain('Partner allocation');
+    expect(host.textContent).not.toContain('BRO allocation');
     expect(host.textContent).not.toContain('Provider fee');
     expect(host.textContent).toContain('Immutable receipt · STU-REC-12');
     expect(host.querySelector('[data-testid="button-print-student-subscription-receipt-12"]')).not.toBeNull();
@@ -334,7 +334,7 @@ describe('trusted student-subscription payment workflow', () => {
     ];
     await renderPage();
     expect(host.textContent).toContain('Platform allocation');
-    expect(host.textContent).toContain('Partner allocation');
+    expect(host.textContent).toContain('BRO allocation');
     expect(host.textContent).toContain('Provider fee · platform expense');
   });
 });

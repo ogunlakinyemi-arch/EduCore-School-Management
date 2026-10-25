@@ -83,7 +83,7 @@ function PortalHeader() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
             <Zap size={18} />
           </span>
-          <span className="display-font font-bold">Yetenia EduCore Partner</span>
+          <span className="display-font font-bold">Yetenia EduCore Business Relationship Officers (BRO)</span>
         </Link>
         <div className="flex items-center gap-6">
           {isSetup && (
@@ -106,7 +106,7 @@ function PortalHeader() {
         </div>
       </div>
       <div className="mx-auto max-w-6xl px-5"><HelpLink className="text-[hsl(var(--primary))]" /></div>
-      {isSetup && <nav aria-label="Partner navigation" className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 border-t border-[hsl(var(--border)/.6)] px-5 py-3 text-xs font-bold text-[hsl(var(--primary))] md:hidden">
+      {isSetup && <nav aria-label="BRO navigation" className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 border-t border-[hsl(var(--border)/.6)] px-5 py-3 text-xs font-bold text-[hsl(var(--primary))] md:hidden">
         <Link href="/partner" data-testid="link-partner-dashboard-mobile" className="hover:underline">Dashboard</Link>
         <Link href="/partner/schools" data-testid="link-partner-schools-mobile" className="hover:underline">Schools</Link>
         {isOwner && <Link href="/partner/staff" data-testid="link-partner-staff-mobile" className="hover:underline">Staff</Link>}
@@ -129,8 +129,8 @@ function Dashboard() {
   if (profile.isError || !profile.data) return (
     <div className="mx-auto max-w-3xl p-8">
       <div className="panel p-8 text-center">
-        <h1 className="display-font text-2xl font-bold">Partner account not ready</h1>
-        <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Your partner profile is pending setup. Contact your administrator.</p>
+        <h1 className="display-font text-2xl font-bold">BRO account not ready</h1>
+        <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Your BRO profile is pending setup. Contact your administrator.</p>
       </div>
     </div>
   );
@@ -144,7 +144,7 @@ function Dashboard() {
     <div className="mx-auto max-w-6xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-7 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="eyebrow">Partner Portal</div>
+          <div className="eyebrow">Business Relationship Officer (BRO) Portal</div>
           <h1 className="display-font mt-2 text-3xl font-bold md:text-4xl">Welcome, {profile.data.fullName}.</h1>
         </div>
         {canManageSchools && <AddSchoolButton />}
@@ -233,7 +233,7 @@ function Dashboard() {
         <div className="panel p-5 md:p-6 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))]">
           <div className="flex items-center gap-2 mb-4">
             <Zap size={16} className="text-[hsl(var(--accent))]" />
-            <span className="font-bold">Yetenia EduCore Partner Program</span>
+            <span className="font-bold">Yetenia EduCore Business Relationship Officer (BRO) Program</span>
           </div>
           <p className="text-sm leading-relaxed text-[hsl(var(--sidebar-foreground)/.7)] mb-6">
             You earn commission on all eligible subscription payments from your referred schools. Payouts are processed at the start of each academic term.
@@ -461,8 +461,8 @@ export function PartnerSettings() {
     ['PARTNER_OWNER', 'PARTNER_ADMIN'].includes((profileQuery.data as any)?.partnerRole);
   if (!canManagePartner) return (
     <div className="mx-auto max-w-3xl p-8"><div className="panel p-8 text-center">
-      <h1 className="display-font text-2xl font-bold">Partner administrator access required</h1>
-      <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a partner owner or administrator can change profile and payout settings.</p>
+      <h1 className="display-font text-2xl font-bold">BRO administrator access required</h1>
+          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a BRO owner or administrator can change profile and payout settings.</p>
     </div></div>
   );
 
@@ -476,7 +476,7 @@ export function PartnerSettings() {
       <div className="grid gap-8">
         <section className="panel p-6 md:p-8">
           <div className="mb-6 border-b border-[hsl(var(--border))] pb-4">
-            <h2 className="display-font text-xl font-bold">Partner Profile</h2>
+            <h2 className="display-font text-xl font-bold">BRO Profile</h2>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Update your contact and business details.</p>
           </div>
           
@@ -553,7 +553,7 @@ export default function PartnerPortal() {
     <div className="min-h-[100dvh] bg-[hsl(var(--background))]">
       <PortalHeader />
       <Switch>
-        {/* Ordinary sign-in returns to /. Only the authorized Partner portal
+        {/* Ordinary sign-in returns to /. Only the authorized BRO portal
             canonicalizes that known landing path; unknown URLs remain 404s. */}
         <Route path="/"><Redirect to="/partner" replace /><Loading /></Route>
         <Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="partner" /></main></Route>

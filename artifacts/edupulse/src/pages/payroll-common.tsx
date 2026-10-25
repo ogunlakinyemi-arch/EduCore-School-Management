@@ -66,7 +66,7 @@ export function ProviderBanner({ capability, mode }: { capability?: SettlementPr
         <div className="font-bold">Payment collections / mode {capability.collection.mode.replaceAll('_', ' ')}</div>
         <p className={note}>TEST credentials: {capability.collection.credentialsConfigured ? 'configured on server' : capability.collection.credentialState.toLowerCase()}. Webhook verification: {capability.collection.webhookConfigured ? 'configured; dashboard delivery not verified' : 'not configured; incoming events fail closed'}.</p>
         <p className={note}>Checkout configuration: {capability.collection.checkoutConfigured ? 'ready for TEST initialization' : 'not ready'}. Assisted public checkout: {capability.collection.assistedCheckoutConfigured ? 'configured' : 'not ready'}. Genuine checkout/payment acceptance: not verified.</p>
-        <p className={note}>Automatic school/partner split settlement: not implemented or verified. Internal allocations do not establish bank settlement. A business bank account is not needed for code-level or hosted TEST checkout checks.</p>
+        <p className={note}>Automatic school/BRO split settlement: not implemented or verified. Internal allocations do not establish bank settlement. A business bank account is not needed for code-level or hosted TEST checkout checks.</p>
       </div>}</div>
   </div>;
 }

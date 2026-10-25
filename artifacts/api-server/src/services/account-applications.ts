@@ -29,8 +29,8 @@ export const applicationInput = z.object({
 }).strict().superRefine((v, ctx) => {
   if (v.applicantType === "SCHOOL_ADMIN" && !v.schoolName) ctx.addIssue({ code: "custom", path: ["schoolName"], message: "School name is required" });
   if (v.applicantType !== "SCHOOL_ADMIN" && v.referralToken) ctx.addIssue({ code: "custom", path: ["referralToken"], message: "School referrals apply only to school applicants" });
-  if (v.applicantType === "PARTNER" && !v.partnerType) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "Select a Partner type" });
-  if (v.applicantType === "SCHOOL_ADMIN" && (v.partnerType || v.businessName)) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "Partner details cannot be submitted for a school application" });
+  if (v.applicantType === "PARTNER" && !v.partnerType) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "Select a BRO type" });
+  if (v.applicantType === "SCHOOL_ADMIN" && (v.partnerType || v.businessName)) ctx.addIssue({ code: "custom", path: ["partnerType"], message: "BRO details cannot be submitted for a School Admin application" });
 });
 export const applicationDecision = z.object({
   status: z.enum(["APPROVED", "REJECTED"]), reason: text(1000).optional(),

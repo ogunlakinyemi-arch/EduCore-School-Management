@@ -79,7 +79,7 @@ export default function TermCommissionsPage() {
         return;
       }
       const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-      const a = document.createElement('a'); a.href = url; a.download = `partner-payout-batch-${id}.json`; a.click();
+      const a = document.createElement('a'); a.href = url; a.download = `bro-payout-batch-${id}.json`; a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
       toast({ title: 'Export failed', description: (e as Error)?.message ?? 'Could not export.', variant: 'destructive' });
@@ -91,10 +91,10 @@ export default function TermCommissionsPage() {
 
   return (
     <div className="w-full min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-500" data-testid="page-term-commissions">
-      <PageHeading eyebrow="Ecosystem" title="Term Commissions"
-        description="Review deferred Partner commissions by session, term and Partner, then approve eligible rows." />
+      <PageHeading eyebrow="Business Relationship Officers (BRO)" title="Term Commissions"
+        description="Review deferred BRO commissions by session, term and BRO, then approve eligible rows." />
       <div className="mb-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-4 text-sm" role="status" data-testid="notice-record-only">
-        Approval is recording and export only. It creates an audit batch you can export; it never sends money to a Partner.
+        Approval is recording and export only. It creates an audit batch you can export; it never sends money to a BRO.
         Only rows that are eligible, in an ended term, and PENDING can be selected. Additional fee is shown separately and is not VAT.
         Merchant remainder and Owner net are calculated from reported costs, not proof of merchant bank settlement.
         Refunded, reversed or held entries are excluded from payable approval; recorded original amounts remain visible for audit.
@@ -113,7 +113,7 @@ export default function TermCommissionsPage() {
       )}
 
       {groups.length === 0 ? (
-        <div className="panel"><EmptyState icon={HandCoins} title="No term commissions" description="Deferred commissions appear here once Partner-attributed payments are recorded." /></div>
+        <div className="panel"><EmptyState icon={HandCoins} title="No term commissions" description="Deferred commissions appear here once BRO-attributed payments are recorded." /></div>
       ) : (
         <div className="space-y-5">
           {groups.map(g => {
@@ -141,14 +141,14 @@ export default function TermCommissionsPage() {
                   <Cell label="VAT" value={formatSum(g.vat)} />
                   <Cell label="Merchant remainder" value={formatSum(g.remainder)} />
                   <Cell label="Owner net" value={formatSum(g.ownerNet)} />
-                  <Cell label="Partner liability" value={formatMinor(g.partner)} />
+                  <Cell label="BRO liability" value={formatMinor(g.partner)} />
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[1100px] text-left text-sm">
                     <thead className="font-bold text-[hsl(var(--muted-foreground))]"><tr>
                       <th className="p-3 w-10"><span className="sr-only">Select</span></th><th className="p-3">Reference</th><th className="p-3">School / term id</th>
                       <th className="p-3">Gross</th><th className="p-3">School</th><th className="p-3">Provider fee</th><th className="p-3">Additional fee</th>
-                      <th className="p-3">VAT</th><th className="p-3">Remainder</th><th className="p-3">Owner net</th><th className="p-3">Partner liability</th><th className="p-3">Status</th>
+                      <th className="p-3">VAT</th><th className="p-3">Remainder</th><th className="p-3">Owner net</th><th className="p-3">BRO liability</th><th className="p-3">Status</th>
                     </tr></thead>
                     <tbody className="divide-y divide-[hsl(var(--border))]">
                       {g.rows.map(r => {
@@ -183,7 +183,7 @@ export default function TermCommissionsPage() {
       )}
 
       <div className="sticky bottom-4 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-lg" data-testid="bar-selection">
-        <div className="text-sm"><strong data-testid="text-selected-count">{chosenIds.length}</strong> selected · Partner liability <strong>{formatMinor(chosenTotal)}</strong></div>
+        <div className="text-sm"><strong data-testid="text-selected-count">{chosenIds.length}</strong> selected · BRO liability <strong>{formatMinor(chosenTotal)}</strong></div>
         <Button disabled={chosenIds.length === 0 || approve.isPending || locked} onClick={() => setConfirming(true)} testId="button-approve-selected">Approve for recording and export</Button>
       </div>
 

@@ -217,7 +217,7 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
     ['School fixed allocation', p.schoolAmountMinor],
     ['Merchant gross before costs', p.merchantGrossMinor],
     ['Merchant net after reported costs (before refunds)', p.merchantNetMinor],
-    [currentPolicy ? 'Partner internal accrued payable' : 'Historical Partner allocation', currentPolicy ? p.internalPartnerAccrualMinor : p.partnerAmountMinor],
+    [currentPolicy ? 'BRO internal accrued payable' : 'Historical BRO allocation', currentPolicy ? p.internalPartnerAccrualMinor : p.partnerAmountMinor],
     ['Owner economic share after costs/reversals', p.platformNetMinor],
   ];
   return (
@@ -237,7 +237,7 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
         <div><span className={note}>Tax/VAT separately identified</span><div>{naira(p.providerTaxMinor)}</div></div>
         <div><span className={note}>Provider-reported settlement amount</span><div>{naira(p.providerSettlementAmountMinor)}</div></div>
         <div><span className={note}>Confirmed customer refunds</span><div>{naira(p.confirmedRefundMinor)}</div></div>
-        <div><span className={note}>Partner accrual status</span><div>{label(p.internalPartnerAccrualStatus)}</div></div>
+        <div><span className={note}>BRO accrual status</span><div>{label(p.internalPartnerAccrualStatus)}</div></div>
       </div>
       <p className={`mt-1 ${note}`}>Merchant net is calculated before refunds and is not bank-credit proof. Taxes are not separately identified here; no VAT amount is inferred. Provider-reported settlement and school recipient reports are not proof of bank credit. Recipient recovery after refunds remains separate.</p>
       {p.webhookEvents.length > 0 && <div className="mt-3 rounded-lg border border-[hsl(var(--border))] p-3 text-xs" data-testid={`webhook-events-${p.paymentId}`}>
@@ -276,7 +276,7 @@ function PaymentCard({ p, d, canReconcile, onMsg }: { p: FlutterwaveSplitPayment
         <div className="mt-3 space-y-2">{p.adjustments.map(a => (
           <div key={a.id} className="rounded-lg bg-[hsl(var(--muted)/.25)] p-3 text-xs" data-testid={`adjustment-${a.id}`}>
             <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-bold">Refund #{a.id} · {naira(a.amountMinor)}</span><StatusPill value={a.status} /></div>
-            <div className={note}>Recipient recovery: {label(a.recoveryStatus)} (a review, not an automatic bank clawback). School {naira(a.schoolRecoveryMinor)} · Partner {naira(a.partnerRecoveryMinor)} · Platform reversal {naira(a.platformReversalMinor)}{a.providerRefundId ? ` · ${a.providerRefundId}` : ''}</div>
+            <div className={note}>Recipient recovery: {label(a.recoveryStatus)} (a review, not an automatic bank clawback). School {naira(a.schoolRecoveryMinor)} · BRO {naira(a.partnerRecoveryMinor)} · Platform reversal {naira(a.platformReversalMinor)}{a.providerRefundId ? ` · ${a.providerRefundId}` : ''}</div>
             {d.isOwner && <Button variant="outline" className="mt-2" disabled={verify.isPending} onClick={() => verify.mutate({ adjustmentId: a.id }, { onSuccess: () => { onMsg({ tone: 'ok', text: 'Refund verified read-only against the provider.' }); refresh(); }, onError: e => onMsg({ tone: 'error', text: errText(e) }) })} testId={`button-verify-refund-${a.id}`}>Verify refund (read-only)</Button>}
           </div>))}</div>
       )}
@@ -313,7 +313,7 @@ export function FlutterwaveSettlementsPage() {
   if (!isLoaded) return <div>{heading}<SkeletonPage /></div>;
   if (!userId) return <div>{heading}<EmptyState icon={Landmark} title="Sign in required" description="Sign in with an authorized Development account to view TEST split verification." /></div>;
   if (q.isLoading) return <div className="fade-up">{heading}<SkeletonPage /></div>;
-  if (q.isError && isUnavailable(q.error)) return <div className="fade-up">{heading}<EmptyState icon={FlaskConical} title="Not available in this environment" description="Split settlements exist only in the Development environment. Nothing here is active, and no school or partner receives split payouts from this deployment." /></div>;
+  if (q.isError && isUnavailable(q.error)) return <div className="fade-up">{heading}<EmptyState icon={FlaskConical} title="Not available in this environment" description="Split settlements exist only in the Development environment. Nothing here is active, and no school or BRO receives split payouts from this deployment." /></div>;
   if (q.isError || !d) return <div className="fade-up">{heading}<ErrorState retry={() => void q.refetch()} message={errText(q.error)} /></div>;
   if (!d.developmentOnly || d.mode !== 'TEST') return <div>{heading}<EmptyState icon={FlaskConical} title="Not available in this environment" description="Only Development TEST split verification is supported." /></div>;
   const nonOwnerScopes = d.isOwner ? [] : d.scopes;
@@ -331,18 +331,18 @@ export function FlutterwaveSettlementsPage() {
       {d.isOwner && <div className="panel mb-6 p-5 text-xs leading-6" data-testid="text-split-rules">
         {policy?.version === 3 ? <>Current student subscription policy v3: payer pays {naira(policy.schoolMinor + policy.platformWithPartnerMinor + policy.partnerMinor)}.
           {' '}School checkout allocation: {naira(policy.schoolMinor)}.
-          {' '}Merchant remainder before provider expenses: {naira(policy.platformWithoutPartnerMinor)}, whether or not a Partner is eligible.
-          {' '}An eligible Partner's {naira(policy.partnerMinor)} is an internal accrued payable for term-end Owner approval/export, not a checkout subaccount or immediate payout.
-          {' '}Owner economic share before provider expenses: {naira(policy.platformWithPartnerMinor)} with an eligible Partner, or {naira(policy.platformWithoutPartnerMinor)} without one.
+          {' '}Merchant remainder before provider expenses: {naira(policy.platformWithoutPartnerMinor)}, whether or not a BRO is eligible.
+          {' '}An eligible BRO's {naira(policy.partnerMinor)} is an internal accrued payable for term-end Owner approval/export, not a checkout subaccount or immediate payout.
+          {' '}Owner economic share before provider expenses: {naira(policy.platformWithPartnerMinor)} with an eligible BRO, or {naira(policy.platformWithoutPartnerMinor)} without one.
           {' '}Provider processing fees and any evidenced taxes are Merchant expenses, deducted once from the merchant remainder; the displayed shares are not verified bank credits.
         </> : policy ? <>Legacy allocation metadata v{policy.version}: payer pays {naira(policy.schoolMinor + policy.platformWithPartnerMinor + policy.partnerMinor)};
-          {' '}school receives {naira(policy.schoolMinor)}; with an eligible Partner, Platform Owner receives {naira(policy.platformWithPartnerMinor)} and Partner receives {naira(policy.partnerMinor)}.
-          {' '}Without an eligible Partner, school receives {naira(policy.schoolMinor)} and Platform Owner receives {naira(policy.platformWithoutPartnerMinor)}.
-          {' '}Provider processing fees are separate Owner expenses, not deductions from School or Partner allocations. Saved payment references below retain their original allocation policy.</>
+          {' '}school receives {naira(policy.schoolMinor)}; with an eligible BRO, Platform Owner receives {naira(policy.platformWithPartnerMinor)} and the BRO receives {naira(policy.partnerMinor)}.
+          {' '}Without an eligible BRO, school receives {naira(policy.schoolMinor)} and Platform Owner receives {naira(policy.platformWithoutPartnerMinor)}.
+          {' '}Provider processing fees are separate Owner expenses, not deductions from School or BRO allocations. Saved payment references below retain their original allocation policy.</>
           : <span role="alert">Current allocation policy is unavailable. Refresh the dashboard; historical payment amounts are not a current-policy summary.</span>}
       </div>}
       {nonOwnerScopes.length > 0 && <BankForm scopes={nonOwnerScopes} onDone={setMsg} />}
-      {d.isOwner && <Banner tone="warn">The Platform Owner reviews submissions but cannot submit school or partner bank details.</Banner>}
+      {d.isOwner && <Banner tone="warn">The Platform Owner reviews submissions but cannot submit school or BRO bank details.</Banner>}
       <h2 className="display-font mb-3 text-lg font-bold">Recipients</h2>
       <div className="panel mb-6 overflow-hidden">
         {d.recipients.length ? d.recipients.map(r => <RecipientRow key={r.id} r={r} isOwner={d.isOwner} onMsg={setMsg} />)

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { categoryLabel, channelTruth, validPickupWindow } from './comm-contract';
 
 describe('parent comm contract', () => {
-  it('labels', () => { expect(categoryLabel('SECURITY')).toBe('Arrival and exit'); expect(categoryLabel('PARTNER')).toBe('PARTNER'); });
+  it('labels', () => { expect(categoryLabel('SECURITY')).toBe('Arrival and exit'); expect(categoryLabel('PARTNER')).toBe('Business Relationship Officers (BRO)'); });
   it('channels are truthful', () => {
     expect(channelTruth({ channel: 'SMS', available: false, status: 'CONFIGURATION_REQUIRED' })).toMatch(/not set up/i);
     expect(channelTruth({ channel: 'IN_APP', available: true, status: 'AVAILABLE' })).toBe('Available');

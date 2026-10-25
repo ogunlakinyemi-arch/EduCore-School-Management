@@ -49,7 +49,7 @@ export default function AcceptInvitation() {
           <div className="flex flex-col items-center">
             <Loader2 className="animate-spin text-[hsl(var(--primary))] mb-6" size={40} />
             <h1 className="display-font text-2xl font-bold mb-2">Accepting Invitation...</h1>
-            <p className="text-[hsl(var(--muted-foreground))]">Please wait while we set up your partner profile.</p>
+          <p className="text-[hsl(var(--muted-foreground))]">Please wait while we set up your BRO profile.</p>
           </div>
         )}
 
@@ -60,17 +60,17 @@ export default function AcceptInvitation() {
             </div>
             <h1 className="display-font text-3xl font-bold mb-3">
               {activatedRole === 'SCHOOL_ADMIN' ? 'School Administrator Activated' :
-                activatedRole === 'PARTNER_STAFF' ? 'Partner Staff Account Activated' : 'Welcome to Yetenia EduCore'}
+                activatedRole === 'PARTNER_STAFF' ? 'BRO Staff Account Activated' : 'Welcome to Yetenia EduCore'}
             </h1>
             <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
               {activatedRole === 'SCHOOL_ADMIN'
                 ? 'Your school administrator account is active. You can now sign in to manage your school.'
                 : activatedRole === 'PARTNER_STAFF'
-                  ? 'Your partner staff account is active. The partner portal is ready for you.'
-                  : 'Your partner account is ready. You can now start referring schools and managing your commissions.'}
+                  ? 'Your BRO staff account is active. The BRO portal is ready for you.'
+                  : 'Your BRO account is ready. You can now start referring schools and managing your commissions.'}
             </p>
             <Button className="w-full h-12" onClick={() => setLocation(redirectTo)}>
-              {activatedRole === 'SCHOOL_ADMIN' ? 'Continue to School Dashboard' : 'Go to Partner Dashboard'}
+              {activatedRole === 'SCHOOL_ADMIN' ? 'Continue to School Dashboard' : 'Go to BRO Dashboard'}
             </Button>
           </div>
         )}

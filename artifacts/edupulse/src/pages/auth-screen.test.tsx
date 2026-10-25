@@ -55,7 +55,8 @@ describe('responsive authentication shell', () => {
     vi.stubGlobal('window', { location: { search: '?applicantType=PARTNER', origin: 'https://example.com' } });
     const html = renderToStaticMarkup(<AuthScreen mode="sign-up" />);
     expect(html).not.toContain('Sign up control');
-    expect(html).toContain('Partner Full Name');
+    expect(html).toContain('Business Relationship Officer (BRO)');
+    expect(html).toContain('Full Name');
     expect(html).toContain('Business Name (optional)');
   });
 });

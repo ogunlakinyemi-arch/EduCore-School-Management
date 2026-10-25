@@ -249,7 +249,7 @@ export function StudentNfcObligationsPanel({
       <h2 className="display-font mt-1 text-xl font-bold">Term NFC fee, shown separately</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
         NFC Card Subscription — {minorToNaira(500000)} per term. Payable separately through Flutterwave when genuine payments are configured. Schools cannot create or change it.
-        {isOwner && <> New checkout allocations: {minorToNaira(190000)} to the school and {minorToNaira(310000)} to the platform; an eligible Partner receives {minorToNaira(10000)} from the platform portion. The platform bears provider fees. Historical payments retain their original allocations. These are not verified bank settlements.</>}
+        {isOwner && <> New checkout allocations: {minorToNaira(190000)} to the school and {minorToNaira(310000)} to the platform; an eligible Business Relationship Officer (BRO) receives {minorToNaira(10000)} from the platform portion. The platform bears provider fees. Historical payments retain their original allocations. These are not verified bank settlements.</>}
         {teacherView && ' The school allocation is school revenue; it is not personal Teacher income and not an amount a Teacher pays.'}
         {' '}Terms already paid under the older school NFC charge are kept and flagged for Owner review; no second charge is made.
       </p>
@@ -271,7 +271,7 @@ export function StudentNfcObligationsPanel({
             {showAllocations && <>
               <div><dt className="text-[hsl(var(--muted-foreground))]">School allocation</dt><dd className="mt-1 font-bold tabular-nums">{minorToNaira(summary.school)}</dd></div>
               <div><dt className="text-[hsl(var(--muted-foreground))]">Platform allocation</dt><dd className="mt-1 font-bold tabular-nums">{minorToNaira(summary.platform)}</dd></div>
-              {isOwner && <div><dt className="text-[hsl(var(--muted-foreground))]">Partner actual</dt><dd className="mt-1 font-bold tabular-nums">{minorToNaira(summary.partner)}</dd></div>}
+              {isOwner && <div><dt className="text-[hsl(var(--muted-foreground))]">BRO actual</dt><dd className="mt-1 font-bold tabular-nums">{minorToNaira(summary.partner)}</dd></div>}
             </>}
           </>}
         </dl>
@@ -295,7 +295,7 @@ export function StudentNfcObligationsPanel({
             {r.status === 'LEGACY_REVIEW' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Existing school NFC charge (invoice #{r.legacyInvoiceId}) preserved for Owner review. No additional automatic NFC charge has been created.</p>}
             {r.status === 'EXEMPT' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Exempt for this term. No payment is required.</p>}
             {(r.reference || r.paidAt) && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{r.reference && <>Ref <span className="font-mono">{r.reference}</span></>}{r.paidAt && <> · {date(r.paidAt)}</>} · {r.paymentMethod}</p>}
-            {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · Partner {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}
+            {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · BRO {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}
             {!teacherView && !isOwner && <NfcPaymentLinkControls row={r} familyView={familyView} />}
             {!teacherView && !isOwner && <RowPayment row={r} onPaid={onPaid} />}
           </article>)}

@@ -44,7 +44,7 @@ export function validateApplication(v: ApplicationValues): { errors: FieldErrors
   if (!email) errors.email = 'Email is required.';
   else if (email.length > 254 || !z.string().email().safeParse(email).success) errors.email = 'Enter a valid email address.';
   if (!school) {
-    if (v.partnerType !== 'BUSINESS' && v.partnerType !== 'INDIVIDUAL') errors.partnerType = 'Choose a Partner Type.';
+    if (v.partnerType !== 'BUSINESS' && v.partnerType !== 'INDIVIDUAL') errors.partnerType = 'Choose a BRO type.';
   }
   if (Object.keys(errors).length) return { errors, data: null };
   const data: AccountApplicationInput = { applicantType: v.applicantType, fullName, phone, email };

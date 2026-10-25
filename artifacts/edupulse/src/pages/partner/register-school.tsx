@@ -73,7 +73,7 @@ export default function RegisterSchool() {
             setValidatedPartner({
               code: data.partnerCode
             });
-            toast({ title: "Referral applied", description: `Referred by partner code ${data.partnerCode}` });
+            toast({ title: "Referral applied", description: `Referred by BRO code ${data.partnerCode}` });
           } else {
             setValidationError("Invalid or expired referral code");
           }
@@ -118,7 +118,7 @@ export default function RegisterSchool() {
           </div>
           <h1 className="display-font text-3xl font-bold mb-3">Administrator Invitation Requested</h1>
           <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
-            Your school has been registered through the partner referral. Clerk accepted the secure invitation request for
+      Your school has been registered through the BRO referral. Clerk accepted the secure invitation request for
             <strong className="block mt-2 text-[hsl(var(--foreground))]">{success.administratorEmail}</strong>
             <span className="block mt-2">Inbox delivery is not verified. The School Administrator can use the invitation to activate the account and create their own password.</span>
              <span className="block mt-3">If a replacement link or email correction is needed, the Platform Owner can manage this specific pending administrator invitation under Schools → Manage invitations. Registered administrators are not sent another invitation.</span>
@@ -191,7 +191,7 @@ export default function RegisterSchool() {
                 <div>
                   <div className="font-bold text-emerald-800 dark:text-emerald-400">Referral Applied</div>
                   <div className="text-sm text-emerald-600 dark:text-emerald-500">
-                    Referred by Partner Code: {validatedPartner.code}
+                    Referred by BRO Code: {validatedPartner.code}
                   </div>
                 </div>
                 <Button 

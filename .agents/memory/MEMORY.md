@@ -96,3 +96,4 @@
 - [Notification selections](notification-selection-policy.md) — Allowed never implies send; exact event selections, Owner ceilings and current preferences govern delivery.
 - [Owner UID reader purpose](owner-reader-purpose-policy.md) — same hardware, exclusive Owner inventory versus school attendance contexts; preserve event-time UIDs.
 - [Test-account archives](test-account-archive-policy.md) — revoke existing test access and re-entry, preserve Owner/history, and refuse mixed legitimate-tenant identities.
+- [BRO terminology boundary](bro-terminology-boundary.md) — user-facing Business Relationship Officer (BRO) wording is a copy-only rename; preserve Partner identifiers and the same functionality and payments.

@@ -45,15 +45,15 @@ async function partnerApi<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   const result = await response.json();
-  if (!response.ok) throw new Error(result?.error || 'Partner request failed');
+  if (!response.ok) throw new Error(result?.error || 'BRO request failed');
   return result as T;
 }
 
 function permissionLabel(invitation: PartnerStaffInvitation) {
   const labels: Record<string, string> = {
-    STANDARD: 'Partner Staff · Standard',
-    FINANCE: 'Partner Staff · Finance',
-    ADMIN: 'Partner Administrator',
+    STANDARD: 'BRO Staff · Standard',
+    FINANCE: 'BRO Staff · Finance',
+    ADMIN: 'BRO Administrator',
   };
   return labels[invitation.permission] ??
     invitation.role.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -153,7 +153,7 @@ function PartnerStaffInvitationList({
   );
 
   return (
-    <section className="panel overflow-hidden" aria-label="Partner staff invitations">
+    <section className="panel overflow-hidden" aria-label="BRO staff invitations">
       <div className="border-b border-[hsl(var(--border))] p-5">
         <h2 className="display-font text-xl font-bold">Pending invitations</h2>
         <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
@@ -269,7 +269,7 @@ function StaffNfcToggle({ member, canGrant }: { member: PartnerStaffMember; canG
   const enabled = member.nfcActivationEnabled === true;
   return (
     <div className="mt-3 flex items-center justify-between gap-3 text-sm" data-testid={`row-staff-nfc-${member.userId}`}>
-      <span>NFC activation: <strong>{enabled ? 'Enabled' : 'Disabled'}</strong>{!canGrant && !enabled ? ' (partner access required)' : ''}</span>
+          <span>NFC activation: <strong>{enabled ? 'Enabled' : 'Disabled'}</strong>{!canGrant && !enabled ? ' (BRO access required)' : ''}</span>
       <Button variant="outline" className="h-8 px-3 text-xs" disabled={update.isPending || (!enabled && !canGrant)}
         testId={`button-staff-nfc-${member.userId}`}
         onClick={() => update.mutate({ userId: member.userId, data: { enabled: !enabled } }, {
@@ -368,12 +368,12 @@ export default function PartnerStaff() {
 
   if (profile.isLoading) return <SkeletonPage />;
   if (profile.isError || !profile.data) return (
-    <ErrorState message={(profile.error as Error)?.message ?? 'Partner profile could not be loaded.'} retry={() => void profile.refetch()} />
+    <ErrorState message={(profile.error as Error)?.message ?? 'BRO profile could not be loaded.'} retry={() => void profile.refetch()} />
   );
   if (!isOwner) {
     return <div className="mx-auto max-w-3xl p-8"><div className="panel p-8 text-center">
-      <h1 className="display-font text-2xl font-bold">Partner owner access required</h1>
-      <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a partner owner or administrator can manage staff invitations.</p>
+      <h1 className="display-font text-2xl font-bold">BRO owner access required</h1>
+          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a BRO owner or administrator can manage staff invitations.</p>
     </div></div>;
   }
   if (staff.isLoading || invitations.isLoading) return <SkeletonPage />;
@@ -382,9 +382,9 @@ export default function PartnerStaff() {
   return (
     <div className="mx-auto max-w-5xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-7">
-        <div className="eyebrow">Partner access</div>
-        <h1 className="display-font mt-2 text-3xl font-bold">Partner Staff</h1>
-        <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Invite staff through Clerk. Recipients set their own password; staff do not receive partner-owner controls.</p>
+        <div className="eyebrow">BRO access</div>
+        <h1 className="display-font mt-2 text-3xl font-bold">Business Relationship Officer Staff</h1>
+        <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Invite staff through Clerk. Recipients set their own password; staff do not receive BRO-owner controls.</p>
       </div>
       <form className="panel mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-end"
         onSubmit={(event) => {
@@ -403,7 +403,7 @@ export default function PartnerStaff() {
             <select value={permission} onChange={(event) => setPermission(event.target.value as typeof permission)} data-testid="select-partner-staff-permission">
               <option value="STANDARD">Standard staff</option>
               <option value="FINANCE">Finance reports</option>
-              <option value="ADMIN">Partner administrator</option>
+              <option value="ADMIN">BRO administrator</option>
             </select>
           </Field>
         </div>
@@ -426,7 +426,7 @@ export default function PartnerStaff() {
               <StaffAccessControl member={member} />
               <StaffNfcToggle member={member} canGrant={canGrantNfc} />
             </div>
-          )) : <EmptyState icon={Users} title="No staff yet" description="Send a secure invitation to add a partner staff member." />}
+          )) : <EmptyState icon={Users} title="No staff yet" description="Send a secure invitation to add a BRO staff member." />}
         </section>
         {invitations.data && (
           <PartnerStaffInvitationList

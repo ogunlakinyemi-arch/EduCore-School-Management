@@ -118,7 +118,7 @@ describe('partner staff invitation management', () => {
     expect(host.querySelector('[data-testid="row-partner-invitation-101"]')?.textContent).toContain('first@example.test');
     expect(host.querySelector('[data-testid="row-partner-invitation-202"]')?.textContent).toContain('Middle person');
     expect(host.querySelector('[data-testid="text-invitation-role-202"]')?.textContent).toContain(
-      permission === 'ADMIN' ? 'Partner Administrator' : `Partner Staff · ${permission === 'STANDARD' ? 'Standard' : 'Finance'}`,
+      permission === 'ADMIN' ? 'BRO Administrator' : `BRO Staff · ${permission === 'STANDARD' ? 'Standard' : 'Finance'}`,
     );
     expect(host.querySelector('[data-testid="row-partner-invitation-303"]')?.textContent).toContain('EXPIRED');
     expect(host.querySelector('[data-testid="row-partner-invitation-404"]')).toBeNull();
@@ -158,7 +158,7 @@ describe('partner staff invitation management', () => {
     const mockedFetch = vi.fn();
     vi.stubGlobal('fetch', mockedFetch);
     await renderPage();
-    expect(host.textContent).toContain('Partner owner access required');
+    expect(host.textContent).toContain('BRO owner access required');
     expect(mockedFetch).not.toHaveBeenCalled();
     expect(host.querySelector('[data-testid="button-resend-partner-invitation-202"]')).toBeNull();
   });
@@ -187,7 +187,7 @@ describe('partner staff invitation management', () => {
     await renderPage();
 
     expect(host.querySelector('[data-testid="row-partner-invitation-707"]')?.textContent)
-      .toContain('Partner Administrator');
+      .toContain('BRO Administrator');
     expect(host.querySelector('[data-testid="button-resend-partner-invitation-707"]')).toBeNull();
     expect(host.querySelector('[data-testid="button-revoke-partner-invitation-707"]')).toBeNull();
     await act(async () => {

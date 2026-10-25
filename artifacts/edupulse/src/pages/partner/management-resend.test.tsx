@@ -188,7 +188,7 @@ describe('partner invitation resend row isolation', () => {
     const rowB = [...host.querySelectorAll('tr')].find(row => row.textContent?.includes('Partner B'))!;
     expect(rowA.textContent).toContain('Resend Link');
     expect(rowA.textContent).toContain('Recipient: a@partners.test');
-    expect(rowA.textContent).toContain('Role: Partner');
+    expect(rowA.textContent).toContain('Role: BRO');
     expect(rowB.querySelector('[aria-label="Resend invitation for Partner B"]')).toBeNull();
     expect(rowB.querySelector('[aria-label="Edit invitation email for Partner B"]')).toBeNull();
     expect(rowB.querySelector('[aria-label="Cancel invitation for Partner B"]')).toBeNull();

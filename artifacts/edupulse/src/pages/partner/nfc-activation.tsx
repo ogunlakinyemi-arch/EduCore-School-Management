@@ -44,7 +44,7 @@ export default function PartnerNfcActivation() {
   }, [students.data, studentId]);
 
   const header = (
-    <div className="mb-7"><div className="eyebrow">Partner NFC</div>
+    <div className="mb-7"><div className="eyebrow">BRO NFC</div>
       <h1 className="display-font mt-2 text-3xl font-bold">NFC Card Activation</h1>
       <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Assign an available school card to an eligible student. Cards are assigned locked.</p></div>
   );
@@ -57,7 +57,7 @@ export default function PartnerNfcActivation() {
     <div className="mt-5"><Button variant="outline" onClick={() => void access.refetch()}>Retry</Button></div></div>);
   if (!allowed) return wrap(<div className="panel p-8 text-center" role="status" data-testid="nfc-access-revoked">
     <ShieldOff className="mx-auto mb-3" /><h2 className="display-font text-xl font-bold">NFC activation is not enabled</h2>
-    <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Your access was not granted or has been revoked. Contact your partner administrator.</p></div>);
+        <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Your access was not granted or has been revoked. Contact your BRO administrator.</p></div>);
 
   const ok = canAssign({ allowed, schoolsError: schools.isError, studentsError: students.isError, cardsError: cards.isError, schoolEligible: eligible, studentId, cardNumber, pending: assign.isPending });
   const submit = () => {

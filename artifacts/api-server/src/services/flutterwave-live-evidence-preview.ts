@@ -87,7 +87,7 @@ export async function previewLiveEvidence(pool:StudentSubscriptionSqlPool,input:
         {key:"CHECKOUT_VERIFICATION_WORKFLOW",status:"HARD_DISABLED",detail:"No LIVE checkout, outbound verification or enabled workflow capability is supplied by this preview."},
         {key:"DURABLE_WEBHOOK_RELEASE",status:"NOT_RELEASED",detail:"Actual ingress remains HTTP 503 / processed:false; isolated lifecycle acceptance does not authorize delivery or financial acknowledgement."},
         {key:"EXPLICIT_RELEASE_AUTHORIZATION",status:"NOT_GRANTED",detail:"Separate real-money release and controlled transaction/settlement acceptance approval remain required."},
-        {key:"HISTORICAL_ALLOCATION_POLICY",status:"PRESERVE_SCV2_SCV3",detail:"No historical rewrite. SCV3: NGN 5,000 checkout, one school flat_subaccount NGN 1,900, no split ratio, no Partner checkout recipient; eligible NGN 100 is internal accrued payable only."},
+        {key:"HISTORICAL_ALLOCATION_POLICY",status:"PRESERVE_SCV2_SCV3",detail:"No historical rewrite. SCV3: NGN 5,000 checkout, one school flat_subaccount NGN 1,900, no split ratio, no BRO checkout recipient; eligible NGN 100 is internal accrued payable only."},
       ],
       missingTables,
     };

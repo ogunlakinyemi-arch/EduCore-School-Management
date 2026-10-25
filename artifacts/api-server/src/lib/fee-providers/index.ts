@@ -437,7 +437,7 @@ abstract class FlutterwaveV3Adapter extends HttpPaymentAdapter {
         && (!input.subaccounts || input.subaccounts.length !== 1
           || Object.keys(input.subaccounts[0]).some(key =>
             !["id", "transaction_charge_type", "transaction_charge"].includes(key)))) {
-      throw new PaymentProviderError("SCV3 requires exactly one school flat_subaccount instruction and no Partner or ratio field");
+      throw new PaymentProviderError("SCV3 requires exactly one school flat_subaccount instruction and no BRO recipient or ratio field");
     }
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {
       throw new PaymentProviderError("Payment customer email or return URL is invalid");

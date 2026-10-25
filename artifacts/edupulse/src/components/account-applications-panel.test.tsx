@@ -21,6 +21,21 @@ describe('account applications panel', () => {
     expect(html).toContain('Hill School');
     expect(html).toContain('a@x.ng');
   });
+  it('labels referral applications as a Business Relationship Officer (BRO)', () => {
+    const previous = data.slice();
+    try {
+      data.splice(0, data.length, {
+        id: 2, applicantType: 'PARTNER', partnerType: 'BUSINESS', firstName: 'Bea', lastName: 'Jones',
+        email: 'bea@example.test', phone: '080', city: 'Ikeja', state: 'Lagos', status: 'PENDING',
+        createdAt: '2024-01-01', notificationStatus: 'NOT_REQUESTED',
+      } as any);
+      const html = renderToStaticMarkup(<AccountApplicationsPanel />);
+      expect(html).toContain('Business Relationship Officer (BRO)');
+      expect(html).not.toContain('Partner application');
+    } finally {
+      data.splice(0, data.length, ...previous);
+    }
+  });
   it.each(['loading','error'])('shows an explicit %s state instead of hiding review', mode => {
     flags.isLoading=mode==='loading';flags.isError=mode==='error';
     try {

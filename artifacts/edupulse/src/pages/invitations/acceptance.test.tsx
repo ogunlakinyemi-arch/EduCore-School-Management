@@ -235,7 +235,7 @@ describe('invitation acceptance context', () => {
     expect(mocks.setLocation).toHaveBeenCalledWith('/partner');
   });
 
-  it('does not claim a partner invite succeeded when the refreshed context has no active partner role', async () => {
+  it('does not claim a BRO invite succeeded when the refreshed context has no active BRO role', async () => {
     mocks.auth.isSignedIn = true;
     mocks.partnerAliasMatch = true;
     mocks.refetch.mockResolvedValueOnce({
@@ -245,11 +245,11 @@ describe('invitation acceptance context', () => {
     await renderAcceptance();
     await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(mocks.mutateAsync).toHaveBeenCalledOnce();
-    expect(host.textContent).toContain('no active partner access');
+    expect(host.textContent).toContain('no active BRO access');
     expect(host.textContent).not.toContain('Invitation accepted');
   });
 
-  it('does not use a stale Partner role when its authorization refresh fails', async () => {
+  it('does not use a stale BRO role when its authorization refresh fails', async () => {
     mocks.auth.isSignedIn = true;
     mocks.partnerAliasMatch = true;
     mocks.refetch.mockResolvedValueOnce({

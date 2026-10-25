@@ -32,14 +32,14 @@ export const parseNairaToMinor = (value: string): number | null => {
   return Number.isSafeInteger(minor) ? minor : null;
 };
 export type RuleAmounts = { priceMinor: number; schoolShareMinor: number; platformShareMinor: number; partnerCommissionMinor: number; noPartnerPlatformShareMinor: number };
-/** Both Partner branches must sum exactly to the price. Returns error messages (empty = valid). */
+/** Both BRO branches must sum exactly to the price. Returns error messages (empty = valid). */
 export function validateRuleAmounts(a: RuleAmounts): string[] {
   const errors: string[] = [];
   const all = Object.values(a);
   if (all.some(v => !Number.isSafeInteger(v) || v < 0)) errors.push('Every amount must be a valid non-negative naira value.');
   if (a.priceMinor <= 0) errors.push('Price must be greater than zero.');
-  if (a.schoolShareMinor + a.platformShareMinor + a.partnerCommissionMinor !== a.priceMinor) errors.push('With a Partner, school + platform + Partner must equal the price.');
-  if (a.schoolShareMinor + a.noPartnerPlatformShareMinor !== a.priceMinor) errors.push('Without a Partner, school + platform must equal the price.');
+  if (a.schoolShareMinor + a.platformShareMinor + a.partnerCommissionMinor !== a.priceMinor) errors.push('With a BRO, school + platform + BRO commission must equal the price.');
+  if (a.schoolShareMinor + a.noPartnerPlatformShareMinor !== a.priceMinor) errors.push('Without a BRO, school + platform must equal the price.');
   return errors;
 }
 /** Checkout redirect only to a server-provided https URL (http allowed for localhost sandbox). */
@@ -64,7 +64,7 @@ export function parseCallbackParams(search: string): CallbackParams {
 export const isVerifiedPaid = (s?: Pick<StaffNfcSubscription, 'status'> | null) => s?.status === 'PAID';
 export const canPay = (s?: Pick<StaffNfcSubscription, 'status'> | null) => !!s && ['UNPAID', 'FAILED', 'CANCELLED', 'PENDING'].includes(s.status);
 export const allocationLabel: Record<string, string> = {
-  SCHOOL: 'School', PLATFORM: 'Platform', PARTNER: 'Partner', REVERSAL: 'Reversal', PLATFORM_PROVIDER_FEE: 'Provider fee (platform expense)',
+  SCHOOL: 'School', PLATFORM: 'Platform', PARTNER: 'BRO', REVERSAL: 'Reversal', PLATFORM_PROVIDER_FEE: 'Provider fee (platform expense)',
 };
 const errMsg = (e: unknown) => {
   const x = e as { data?: { error?: string; retryable?: boolean }; message?: string } | undefined;
@@ -391,7 +391,7 @@ export function StaffNfcFinancePage() {
         <Field label="Term ID"><input className={entry} inputMode="numeric" value={termId} onChange={e => { setTermId(e.target.value.replace(/\D/g, '')); resetPage(); }} /></Field>
         <Field label="From"><input type="date" className={entry} value={from} onChange={e => { setFrom(e.target.value); resetPage(); }} /></Field>
         <Field label="To"><input type="date" className={entry} value={to} onChange={e => { setTo(e.target.value); resetPage(); }} /></Field>
-        {isPlatformOwner && <Field label="Partner ID"><input className={entry} inputMode="numeric" value={partnerId} onChange={e => { setPartnerId(e.target.value.replace(/\D/g, '')); resetPage(); }} data-testid="filter-partner" /></Field>}
+        {isPlatformOwner && <Field label="BRO ID"><input className={entry} inputMode="numeric" value={partnerId} onChange={e => { setPartnerId(e.target.value.replace(/\D/g, '')); resetPage(); }} data-testid="filter-partner" /></Field>}
         <Field label="Employee / number"><input className={entry} value={search} onChange={e => { setSearch(e.target.value); resetPage(); }} data-testid="filter-employee" /></Field>
       </section>
       {q.isLoading ? <SkeletonPage /> : q.isError ? <ErrorState retry={() => q.refetch()} message={errMsg(q.error)} /> : <>
@@ -399,7 +399,7 @@ export function StaffNfcFinancePage() {
           <Info label={ownerView ? 'Gross verified' : 'Verified collected'} value={nairaMinor(t?.grossAmountMinor)} />
           <Info label="School allocation" value={nairaMinor(t?.schoolAllocationMinor)} />
           {ownerView && <Info label="Platform revenue" value={nairaMinor(t?.platformRevenueMinor)} />}
-          {ownerView && <Info label="Partner commission" value={nairaMinor(t?.partnerCommissionMinor)} />}
+          {ownerView && <Info label="BRO commission" value={nairaMinor(t?.partnerCommissionMinor)} />}
           {ownerView && <Info label="Provider fee expense (separate)" value={nairaMinor(t?.providerFeeExpenseMinor)} />}
           <Info label="Paid / pending" value={`${t?.paidCount ?? 0} / ${t?.pendingCount ?? 0}`} />
           <Info label="Failed / refunded" value={`${t?.failedCount ?? 0} / ${t?.refundedCount ?? 0}`} />
@@ -408,7 +408,7 @@ export function StaffNfcFinancePage() {
           {!d?.items.length ? <EmptyState icon={CircleDollarSign} title="No staff subscriptions match" description="Adjust the filters, or generate term subscriptions for a school." /> : <div className="divide-y divide-[hsl(var(--border))]" data-testid="finance-rows">
             {d.items.map(s => { const p = s.latestPayment; return <div key={s.id} className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,1.4fr)_1fr_1fr_auto] md:items-center" data-testid={`row-nfc-${s.id}`}>
               <div><div className="font-bold">{s.employeeName}</div><div className={note}>{s.employeeNumber}{ownerView ? ` · ${s.schoolName ?? `School #${s.schoolId}`}` : ''} · {s.sessionName}, {s.termName}</div></div>
-              <div className="text-sm"><div className="font-bold tabular-nums">{nairaMinor(s.priceMinor)}</div><div className={note}>School {nairaMinor(s.schoolShareMinor)}{ownerView ? ` · Platform ${nairaMinor(s.platformShareMinor)} · Partner ${nairaMinor(s.partnerShareMinor)}` : ''}</div></div>
+              <div className="text-sm"><div className="font-bold tabular-nums">{nairaMinor(s.priceMinor)}</div><div className={note}>School {nairaMinor(s.schoolShareMinor)}{ownerView ? ` · Platform ${nairaMinor(s.platformShareMinor)} · BRO ${nairaMinor(s.partnerShareMinor)}` : ''}</div></div>
               <div className="text-sm"><Tone value={s.status} /><div className={`mt-1 ${note}`}>{p?.paidAt ? `Paid ${date(p.paidAt)}` : `Due ${date(s.dueDate)}`}{p ? ` · recon ${p.reconciliationStatus.replaceAll('_', ' ').toLowerCase()}` : ''}{ownerView && p?.providerMode && p.providerMode !== 'SANDBOX' ? ` · ${p.providerMode.replaceAll('_', ' ').toLowerCase()}` : ''}</div>{ownerView && p && <div className={note}>Provider fee {nairaMinor(p.providerFeeMinor)} · settlement {nairaMinor(p.settlementAmountMinor)}</div>}</div>
               <div className="flex flex-wrap gap-2">
                 {p && ['PAID', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(s.status) && <Button variant="quiet" onClick={() => setReceipt({ id: p.id, schoolId: s.schoolId })}>Receipt</Button>}
@@ -463,9 +463,9 @@ export function StaffNfcBillingRulesPage() {
           <div className="grid grid-cols-3 gap-2 text-xs font-bold"><Info label="Product" value="Teacher/Staff NFC E-ID" className="col-span-3 sm:col-span-1" /><Info label="Frequency" value="Per academic term" /><Info label="Currency" value="NGN" /></div>
           <Field label="Price (₦)"><input className={entry} inputMode="decimal" value={f.price} onChange={set('price')} data-testid="input-rule-price" /></Field>
           <Field label="School share (₦)"><input className={entry} inputMode="decimal" value={f.school} onChange={set('school')} data-testid="input-rule-school" /></Field>
-          <Field label="Platform share with Partner (₦)"><input className={entry} inputMode="decimal" value={f.platform} onChange={set('platform')} data-testid="input-rule-platform" /></Field>
-          <Field label="Partner commission (₦)"><input className={entry} inputMode="decimal" value={f.partner} onChange={set('partner')} data-testid="input-rule-partner" /></Field>
-          <Field label="Platform share without Partner (₦)"><input className={entry} inputMode="decimal" value={f.noPartner} onChange={set('noPartner')} data-testid="input-rule-nopartner" /></Field>
+          <Field label="Platform share with BRO (₦)"><input className={entry} inputMode="decimal" value={f.platform} onChange={set('platform')} data-testid="input-rule-platform" /></Field>
+          <Field label="BRO commission (₦)"><input className={entry} inputMode="decimal" value={f.partner} onChange={set('partner')} data-testid="input-rule-partner" /></Field>
+          <Field label="Platform share without BRO (₦)"><input className={entry} inputMode="decimal" value={f.noPartner} onChange={set('noPartner')} data-testid="input-rule-nopartner" /></Field>
           <Field label="Effective from"><input type="datetime-local" className={entry} value={f.effectiveAt} onChange={set('effectiveAt')} data-testid="input-rule-effective" /></Field>
           {f.price && live.length > 0 && <ul className={cx(note, 'list-disc pl-5')} data-testid="rule-live-errors">{live.map(m => <li key={m}>{m}</li>)}</ul>}
           {fail.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-[hsl(var(--destructive))]">{fail.map(m => <li key={m}>{m}</li>)}</ul>}
@@ -478,7 +478,7 @@ export function StaffNfcBillingRulesPage() {
             {q.data.map((r: StaffNfcBillingRule) => <div key={r.id} className="px-5 py-4 text-sm" data-testid={`row-rule-${r.id}`}>
               <div className="flex items-center justify-between"><div className="font-bold">Version {r.version} · {nairaMinor(r.priceMinor)}</div><Tone value={r.status} /></div>
               <div className={`mt-1 ${note}`}>Effective {date(r.effectiveAt)} · created {date(r.createdAt)}</div>
-              <div className="mt-2 text-xs font-semibold">With Partner: school {nairaMinor(r.schoolShareMinor)}, platform {nairaMinor(r.platformShareMinor)}, Partner {nairaMinor(r.partnerCommissionMinor)}<br />No Partner: school {nairaMinor(r.schoolShareMinor)}, platform {nairaMinor(r.noPartnerPlatformShareMinor)}</div>
+              <div className="mt-2 text-xs font-semibold">With BRO: school {nairaMinor(r.schoolShareMinor)}, platform {nairaMinor(r.platformShareMinor)}, BRO {nairaMinor(r.partnerCommissionMinor)}<br />No BRO: school {nairaMinor(r.schoolShareMinor)}, platform {nairaMinor(r.noPartnerPlatformShareMinor)}</div>
             </div>)}
           </div>}
         </section>
@@ -487,7 +487,7 @@ export function StaffNfcBillingRulesPage() {
   </div>;
 }
 
-/* ---------- Partner ---------- */
+/* ---------- BRO ---------- */
 export function PartnerStaffNfcCommissionsPage() {
   const access = useStaffNfcAccess();
   const [status, setStatus] = useState<GetMyStaffNfcPartnerCommissionsParams['status']>(undefined);
@@ -501,8 +501,8 @@ export function PartnerStaffNfcCommissionsPage() {
   const q = useGetMyStaffNfcPartnerCommissions(params, { query: { enabled: allowed && !access.loading, queryKey: getGetMyStaffNfcPartnerCommissionsQueryKey(params), ...FRESH } });
   const d = q.data;
   return <div className="fade-up">
-    <PageHeading eyebrow="Partner / Staff NFC" title="Staff NFC commissions" description="Eligible activity in your attributed schools and your own commission. No payroll, bank or unrelated finance data is shown." />
-    <Gate allowed={allowed} loading={access.loading} title="Partner commissions">
+    <PageHeading eyebrow="BRO / Staff NFC" title="Staff NFC commissions" description="Eligible activity in your attributed schools and your own commission. No payroll, bank or unrelated finance data is shown." />
+    <Gate allowed={allowed} loading={access.loading} title="BRO commissions">
       <section className="panel mb-6 grid gap-3 p-5 sm:grid-cols-3">
         <Field label="Commission status"><select className={entry} value={status ?? ''} onChange={e => { setStatus((e.target.value || undefined) as typeof status); setCursors([]); }} data-testid="filter-commission-status"><option value="">All</option><option value="PENDING">Pending</option><option value="PAID">Paid</option><option value="REVERSED">Reversed</option></select></Field>
         <Field label="Session ID"><input className={entry} inputMode="numeric" value={sessionId} onChange={e => { setSessionId(e.target.value.replace(/\D/g, '')); setCursors([]); }} /></Field>

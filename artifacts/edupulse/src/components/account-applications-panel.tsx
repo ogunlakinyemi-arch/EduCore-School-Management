@@ -118,10 +118,10 @@ export default function AccountApplicationsPanel() {
           <li key={a.id} data-testid={`row-application-${a.id}`} className="min-w-0 break-words rounded-xl border border-[hsl(var(--border))] p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <strong>{a.fullName || `${a.firstName} ${a.lastName}`}</strong>
-              <span className="text-xs font-bold">{a.applicantType === 'SCHOOL_ADMIN' ? 'School Admin' : 'Partner'}</span>
+              <span className="text-xs font-bold">{a.applicantType === 'SCHOOL_ADMIN' ? 'School Admin' : 'Business Relationship Officer (BRO)'}</span>
             </div>
             <div className="mt-1 text-[hsl(var(--muted-foreground))]">{a.email} · {a.phone}</div>
-            {a.partnerType && <div data-testid={`text-partner-type-${a.id}`}>Partner type: {a.partnerType === 'BUSINESS' ? 'Business' : 'Individual'}</div>}
+            {a.partnerType && <div data-testid={`text-partner-type-${a.id}`}>BRO type: {a.partnerType === 'BUSINESS' ? 'Business' : 'Individual'}</div>}
             {a.schoolName && <div>School: {a.schoolName}</div>}
             {a.businessName && <div>Business: {a.businessName}</div>}
             {a.address && <div>Address: {a.address}</div>}

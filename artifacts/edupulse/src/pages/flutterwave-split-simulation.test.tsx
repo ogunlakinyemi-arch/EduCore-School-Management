@@ -224,7 +224,7 @@ describe('TEST / NOT REAL isolated local simulation screen',()=>{
     await click('simulation-ack');await click('simulation-review');
     const panel=node('simulation-review-panel');
     expect(panel.textContent).toContain('TEST / NOT REAL');
-    expect(panel.textContent).toContain('No Partner');
+    expect(panel.textContent).toContain('No BRO');
     for(const amount of ['NGN 5,000','NGN 2,000','NGN 3,000'])expect(panel.textContent).toContain(amount);
     await act(async()=>{panel.querySelector('dd')!.click();document.body.click();});
     await settle();

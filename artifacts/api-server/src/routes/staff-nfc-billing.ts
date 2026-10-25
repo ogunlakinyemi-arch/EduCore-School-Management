@@ -524,7 +524,7 @@ router.post("/finance/staff-nfc/billing-rules", wrap(async (req, res) => {
   const rule = parse(ruleInput, req.body, "Billing rule is invalid");
   if (rule.schoolShareMinor + rule.platformShareMinor + rule.partnerCommissionMinor !== rule.priceMinor
       || rule.schoolShareMinor + rule.noPartnerPlatformShareMinor !== rule.priceMinor) {
-    throw new AuthError(400, "School, platform, and eligible Partner allocations must exactly balance each branch");
+    throw new AuthError(400, "School, platform, and eligible BRO allocations must exactly balance each branch");
   }
   const effectiveAt = new Date(rule.effectiveAt);
   if (!Number.isFinite(effectiveAt.getTime()) || effectiveAt.getTime() <= Date.now()) {

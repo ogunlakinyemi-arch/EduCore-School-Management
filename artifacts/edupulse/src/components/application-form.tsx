@@ -17,7 +17,7 @@ export function ApplicationForm({ values, onChange, errors, formError, pending, 
       <label className="block text-sm font-semibold">Applying as
         <select data-testid="select-applicant-type" className={inputCls} value={values.applicantType} disabled={partnerOnly}
           onChange={e => onChange(switchApplicantType(values, e.target.value as ApplicantType))}>
-          {!partnerOnly && <option value="SCHOOL_ADMIN">School Admin</option>}<option value="PARTNER">Partner</option>
+          {!partnerOnly && <option value="SCHOOL_ADMIN">School Admin</option>}<option value="PARTNER">Business Relationship Officer (BRO)</option>
         </select>
       </label>
       {school ? (
@@ -30,11 +30,11 @@ export function ApplicationForm({ values, onChange, errors, formError, pending, 
         </>
       ) : (
         <>
-          <label className="block text-sm font-semibold">Partner Full Name<input className={inputCls} autoComplete="name" data-testid="input-full-name" value={values.fullName} onChange={set('fullName')} />{err('fullName')}</label>
+          <label className="block text-sm font-semibold">Business Relationship Officer (BRO) Full Name<input className={inputCls} autoComplete="name" data-testid="input-full-name" value={values.fullName} onChange={set('fullName')} />{err('fullName')}</label>
           <label className="block text-sm font-semibold">Email<input className={inputCls} type="email" autoComplete="email" data-testid="input-email" value={values.email} onChange={set('email')} />{err('email')}</label>
           <label className="block text-sm font-semibold">Phone<input className={inputCls} type="tel" autoComplete="tel" data-testid="input-phone" value={values.phone} onChange={set('phone')} />{err('phone')}</label>
           <label className="block text-sm font-semibold">Business Name (optional)<input className={inputCls} data-testid="input-business-name" value={values.businessName} onChange={set('businessName')} />{err('businessName')}</label>
-          <label className="block text-sm font-semibold">Partner Type
+          <label className="block text-sm font-semibold">BRO Type
             <select className={inputCls} data-testid="select-partner-type" value={values.partnerType} onChange={set('partnerType')}>
               <option value="">Choose a type</option><option value="BUSINESS">Business</option><option value="INDIVIDUAL">Individual</option>
             </select>{err('partnerType')}

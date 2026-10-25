@@ -116,7 +116,7 @@ describe('Platform Owner dashboard separation', () => {
     expect(html).toContain('Students &amp; e-ID');
     expect(html).toContain('NFC cards');
     expect(html).toContain('NFC devices');
-    expect(html).toContain('Partners');
+    expect(html).toContain('Business Relationship Officers (BRO)');
     expect(html).toContain('Audit log');
     expect(html).not.toContain('School Command Centre');
     expect(html).not.toContain('Staff &amp; Structure');

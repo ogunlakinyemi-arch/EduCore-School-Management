@@ -64,7 +64,7 @@ export function CompanyAccountantPage() {
   const title = section === 'overview' ? 'Finance overview'
     : section === 'subscriptions' ? 'Subscription transactions'
       : section === 'reconciliation' ? 'Unverified payments'
-        : section === 'commissions' ? 'Partner commissions' : 'Partner payouts';
+        : section === 'commissions' ? 'BRO commissions' : 'BRO payouts';
   const error = section === 'overview' ? overviewQuery.error : listQuery.error;
 
   return (
@@ -72,7 +72,7 @@ export function CompanyAccountantPage() {
       <PageHeading
         eyebrow="YETENIA TECHNOLOGIES LIMITED / Restricted access"
         title="Company Finance."
-        description="Company-level subscription revenue, partner commissions and payouts only. School fees and school finance records are not available here."
+        description="Company-level subscription revenue, Business Relationship Officer (BRO) commissions and payouts only. School fees and school finance records are not available here."
         action={
           <Button
             variant="outline"
@@ -92,8 +92,8 @@ export function CompanyAccountantPage() {
           ['overview', 'Overview'],
           ['subscriptions', 'Subscription transactions'],
           ['reconciliation', 'Reconciliation'],
-          ['commissions', 'Partner commissions'],
-          ['payouts', 'Partner payouts'],
+          ['commissions', 'BRO commissions'],
+          ['payouts', 'BRO payouts'],
         ] as const).map(([key, label]) => (
           <Button
             key={key}
@@ -130,7 +130,7 @@ export function CompanyAccountantPage() {
               <SummaryTable title="Payout totals" rows={overviewQuery.data.payouts} />
             </div>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">
-              Only the existing platform subscription, partner commission, and partner payout records are shown.
+              Only the existing platform subscription, BRO commission, and BRO payout records are shown.
               School fee reconciliation and school transaction/receipt records are intentionally excluded.
             </p>
           </div>
@@ -192,8 +192,8 @@ function RecordTable({ section, rows }: { section: Section; rows: FinanceRecord[
     : section === 'reconciliation'
       ? [['id', 'Record'], ['amount', 'Amount'], ['provider', 'Provider'], ['providerReference', 'Reference'], ['status', 'Status'], ['verificationStatus', 'Verification'], ['createdAt', 'Created']]
       : section === 'commissions'
-        ? [['partnerName', 'Partner'], ['amount', 'Amount'], ['currency', 'Currency'], ['status', 'Status'], ['paymentReference', 'Payment reference'], ['createdAt', 'Created']]
-        : [['partnerName', 'Partner'], ['amount', 'Amount'], ['currency', 'Currency'], ['status', 'Status'], ['paymentReference', 'Payment reference'], ['periodStart', 'Period start'], ['periodEnd', 'Period end'], ['paidAt', 'Paid']];
+        ? [['partnerName', 'BRO'], ['amount', 'Amount'], ['currency', 'Currency'], ['status', 'Status'], ['paymentReference', 'Payment reference'], ['createdAt', 'Created']]
+        : [['partnerName', 'BRO'], ['amount', 'Amount'], ['currency', 'Currency'], ['status', 'Status'], ['paymentReference', 'Payment reference'], ['periodStart', 'Period start'], ['periodEnd', 'Period end'], ['paidAt', 'Paid']];
 
   return (
     <div className="panel overflow-x-auto">

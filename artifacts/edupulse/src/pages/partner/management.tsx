@@ -73,7 +73,7 @@ async function platformPartnerRequest<T>(path: string, init?: RequestInit): Prom
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   const result = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(result?.error || 'Partner invitation request failed');
+  if (!response.ok) throw new Error(result?.error || 'BRO invitation request failed');
   return result as T;
 }
 
@@ -202,9 +202,9 @@ function PartnersOverview() {
     <div className="w-full min-w-0 max-w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <PageHeading 
         eyebrow="Ecosystem" 
-        title="Partners & Resellers" 
-        description="Manage your network of affiliates, resellers, and consultants. Grant or revoke each Partner's NFC Card Activation in the list below."
-        action={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} />Invite partner</Button>}
+        title="Business Relationship Officers & Resellers"
+        description="Manage your network of affiliates, resellers, and consultants. Grant or revoke each BRO's NFC Card Activation in the list below."
+        action={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} />Invite BRO</Button>}
       />
       
       <div className="mb-6 flex min-w-0 gap-4">
@@ -212,7 +212,7 @@ function PartnersOverview() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16} />
           <input 
             type="text" 
-            placeholder="Search partners by name, email or business..." 
+            placeholder="Search BROs by name, email or business..."
             className="pl-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -225,7 +225,7 @@ function PartnersOverview() {
           <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
               <tr>
-                <th className="min-w-[200px] p-4">Partner</th>
+                <th className="min-w-[200px] p-4">Business Relationship Officer</th>
                 <th className="p-4">Type</th>
                 <th className="min-w-[200px] p-4">Contact</th>
                 <th className="min-w-[220px] p-4">Status</th>
@@ -263,7 +263,7 @@ function PartnersOverview() {
                       <div className="text-xs text-[hsl(var(--muted-foreground))]">Invitation: {label}</div>
                       {invitation && <>
                         <div className="text-xs text-[hsl(var(--muted-foreground))]">Recipient: {invitation.email}</div>
-                        <div className="text-xs text-[hsl(var(--muted-foreground))]">Role: Partner</div>
+                        <div className="text-xs text-[hsl(var(--muted-foreground))]">Role: BRO</div>
                         {invitation.createdAt && <div className="text-xs text-[hsl(var(--muted-foreground))]">Requested: {new Date(invitation.createdAt).toLocaleString()}</div>}
                       </>}
                       {isUnresolved && <div className="max-w-xs text-xs text-amber-700 dark:text-amber-300" role="status">
@@ -375,7 +375,7 @@ function EditPartnerInvitationModal({
   });
 
   return (
-    <Modal title="Edit invitation email" eyebrow="Partner access" onClose={onClose}>
+    <Modal title="Edit invitation email" eyebrow="BRO access" onClose={onClose}>
       <form onSubmit={form.handleSubmit(({ email }) => onSave(email))} className="space-y-5">
         <Field label="Email address" error={form.formState.errors.email?.message}>
           <input type="email" {...form.register('email')} />
@@ -419,7 +419,7 @@ function InvitePartnerModal({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <Modal title="Invite a Partner" eyebrow="Ecosystem" onClose={onClose}>
+    <Modal title="Invite a BRO" eyebrow="Business Relationship Officer" onClose={onClose}>
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Full Name" error={form.formState.errors.fullName?.message}>
@@ -437,7 +437,7 @@ function InvitePartnerModal({ onClose }: { onClose: () => void }) {
             <input {...form.register('phone')} placeholder="+234..." />
           </Field>
         </div>
-        <Field label="Partner Type" error={form.formState.errors.partnerType?.message}>
+        <Field label="BRO Type" error={form.formState.errors.partnerType?.message}>
           <select {...form.register('partnerType')}>
             <option value="BUSINESS">Business</option>
             <option value="INDIVIDUAL">Individual</option>
@@ -469,7 +469,7 @@ function PartnerDetail({ id }: { id: number }) {
   const handleStatusChange = (newStatus: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') => {
     updateStatus.mutate({ partnerId: id, data: { status: newStatus as any } }, {
       onSuccess: () => {
-        toast({ title: 'Status updated', description: `Partner status changed to ${newStatus}` });
+        toast({ title: 'Status updated', description: `BRO status changed to ${newStatus}` });
         queryClient.invalidateQueries({ queryKey: ['getPartner', id] });
       }
     });
@@ -481,7 +481,7 @@ function PartnerDetail({ id }: { id: number }) {
         <Button variant="quiet" className="h-8 w-8 p-0 rounded-full" onClick={() => setLocation('/partners')}>
           <XCircle size={18} className="rotate-45" />
         </Button>
-        <div className="text-sm font-bold text-[hsl(var(--muted-foreground))]">Back to Partners</div>
+        <div className="text-sm font-bold text-[hsl(var(--muted-foreground))]">Back to Business Relationship Officers</div>
       </div>
       
       <div className="panel p-6 md:p-8 mb-8 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
@@ -505,9 +505,9 @@ function PartnerDetail({ id }: { id: number }) {
         </div>
         <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
           {partner.status === 'ACTIVE' ? (
-            <Button variant="danger" onClick={() => handleStatusChange('SUSPENDED')}>Suspend Partner</Button>
+            <Button variant="danger" onClick={() => handleStatusChange('SUSPENDED')}>Suspend BRO</Button>
           ) : (
-            <Button variant="primary" onClick={() => handleStatusChange('ACTIVE')}>Activate Partner</Button>
+            <Button variant="primary" onClick={() => handleStatusChange('ACTIVE')}>Activate BRO</Button>
           )}
         </div>
       </div>
@@ -674,7 +674,7 @@ export function PayoutsOverview() {
     const parsedPartnerId = Number(partnerId);
     if (!Number.isSafeInteger(parsedPartnerId) || parsedPartnerId < 1 ||
         !/^\d{1,10}(\.\d{1,2})?$/.test(amount.trim()) || Number(amount) <= 0) {
-      toast({ title: 'Invalid payout', description: 'Enter a valid partner ID and positive amount.', variant: 'destructive' });
+      toast({ title: 'Invalid payout', description: 'Enter a valid BRO ID and positive amount.', variant: 'destructive' });
       return;
     }
     const draft = pending ?? {
@@ -734,12 +734,12 @@ export function PayoutsOverview() {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <PageHeading 
         eyebrow="Financials" 
-        title="Partner Payouts" 
+        title="BRO Payouts"
         description="Review and process platform-wide commission payouts."
       />
 
       <div className="panel mb-6 grid gap-4 p-5 md:grid-cols-[1fr_1fr_140px_auto] md:items-end">
-        <Field label="Partner ID">
+        <Field label="BRO ID">
           <input disabled={!!pending || createPayout.isPending} inputMode="numeric" value={partnerId} onChange={(event) => setPartnerId(event.target.value)} placeholder="e.g. 12" />
         </Field>
         <Field label="Exact payable amount">
@@ -758,7 +758,7 @@ export function PayoutsOverview() {
             <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
               <tr>
                 <th className="p-4">Date</th>
-                <th className="p-4">Partner ID</th>
+                <th className="p-4">BRO ID</th>
                 <th className="p-4">Amount</th>
                 <th className="min-w-[220px] p-4">Status</th>
                 <th className="p-4">Ref</th>
@@ -850,11 +850,11 @@ function AttributionConflicts() {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="rounded-xl border border-[hsl(var(--border))] p-4 bg-[hsl(var(--card))]">
                 <div className="eyebrow mb-2">Existing Claim</div>
-                <div className="font-bold">{conflict.existingPartnerId ? `Partner ID: ${conflict.existingPartnerId}` : 'None'}</div>
+                <div className="font-bold">{conflict.existingPartnerId ? `BRO ID: ${conflict.existingPartnerId}` : 'None'}</div>
               </div>
               <div className="rounded-xl border border-[hsl(var(--border))] p-4 bg-[hsl(var(--card))]">
                 <div className="eyebrow mb-2">Attempted Claim</div>
-                <div className="font-bold">Partner ID: {conflict.attemptedPartnerId}</div>
+                <div className="font-bold">BRO ID: {conflict.attemptedPartnerId}</div>
                 <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Source: {conflict.attemptedAttributionSource || 'Unknown'}</div>
               </div>
             </div>
@@ -898,7 +898,7 @@ export default function PartnerManagement() {
       <div data-testid="partner-navigation" className="mb-8 flex min-w-0 max-w-full flex-wrap gap-2 border-b border-[hsl(var(--border))] pb-2">
         <Link href="/partners">
           <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners' || location.match(/^\/partners\/\d+$/) ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
-            Partners
+            Business Relationship Officers
           </button>
         </Link>
         <Link href="/partners/term-commissions">

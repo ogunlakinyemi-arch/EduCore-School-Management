@@ -1,7 +1,7 @@
 import type { CommunicationCategory, CommunicationChannelAvailabilityChannelsItem } from '@workspace/api-client-react';
 
 export const ACTIVITY_CATEGORIES: CommunicationCategory[] = ['SECURITY', 'ATTENDANCE', 'FINANCE', 'ACADEMIC', 'ASSIGNMENT'];
-export const CATEGORY_LABEL: Partial<Record<CommunicationCategory, string>> = { SECURITY: 'Arrival and exit', ATTENDANCE: 'Attendance', FINANCE: 'Fees', PAYMENT: 'Payments', ACADEMIC: 'Results', ASSIGNMENT: 'Homework', ANNOUNCEMENT: 'Announcements', ACCOUNT: 'Account', SYSTEM: 'System' };
+export const CATEGORY_LABEL: Partial<Record<CommunicationCategory, string>> = { SECURITY: 'Arrival and exit', ATTENDANCE: 'Attendance', FINANCE: 'Fees', PAYMENT: 'Payments', ACADEMIC: 'Results', ASSIGNMENT: 'Homework', ANNOUNCEMENT: 'Announcements', ACCOUNT: 'Account', SYSTEM: 'System', PARTNER: 'Business Relationship Officers (BRO)' };
 
 export function categoryLabel(c: CommunicationCategory): string { return CATEGORY_LABEL[c] ?? c.replaceAll('_', ' '); }
 

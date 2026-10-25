@@ -97,7 +97,7 @@ export async function notifyApplicationDecision(actor: UserContext, id: number, 
         to: a.email,
         subject: `Yetenia EduCore application ${approved ? "approved" : "not approved"}`,
         body: approved
-          ? `Your Yetenia EduCore ${a.applicant_type === "PARTNER" ? "Partner" : "School Admin"} application has been approved. You can now log in with your registered account to access your dashboard.`
+          ? `Your Yetenia EduCore ${a.applicant_type === "PARTNER" ? "Business Relationship Officer (BRO)" : "School Admin"} application has been approved. You can now log in with your registered account to access your dashboard.`
           : `Your Yetenia EduCore application was not approved. Reason: ${a.rejection_reason}. This decision does not grant portal access.`,
         idempotencyKey: `account-application-${id}-${a.status}`,
       });

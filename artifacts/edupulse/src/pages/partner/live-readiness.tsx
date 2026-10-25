@@ -123,7 +123,7 @@ function Report({ r }: { r: LiveEvidencePreviewReport }) {
         ? <div data-testid="text-allocation">Allocation preview: {r.allocationPreview.amount} {r.allocationPreview.currency}; {r.allocationPreview.subaccounts.map(s => `subaccount ${s.id} ${s.transaction_charge_type} charge ${s.transaction_charge}`).join('; ')}.</div>
         : <div data-testid="text-allocation">No allocation preview available.</div>}
       <div data-testid="text-policy">
-        Charge {p.amount} {p.currency}; school receives {p.schoolAmount}. Fee bearer: {p.feeBearer}. Split ratio: {p.transactionSplitRatio || 'omitted'}. Eligible Partner amount {p.eligiblePartnerAmount}: {p.partnerPayment}. Partner commission is internal accrued payable only, for term-end Owner approval and export.
+        Charge {p.amount} {p.currency}; school receives {p.schoolAmount}. Fee bearer: {p.feeBearer}. Split ratio: {p.transactionSplitRatio || 'omitted'}. Eligible BRO amount {p.eligiblePartnerAmount}: {p.partnerPayment}. BRO commission is internal accrued payable only, for term-end Owner approval and export.
       </div>
       <ul data-testid="list-checks" className="space-y-1">
         {r.checks.map(c => <li key={c.key} data-testid={`check-${c.key}`}><span className="font-bold">{c.key}</span>: {c.status} - {c.detail}</li>)}

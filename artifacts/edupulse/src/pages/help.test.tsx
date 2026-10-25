@@ -78,7 +78,7 @@ describe('public Help Centre navigation and source-reviewed content', () => {
     expect(get('link-help-centre').getAttribute('href')).toBe('/school-app/help');
     expect(get('link-manual-partners').getAttribute('href')).toBe('/school-app/help/manuals/partners');
     await click(get('link-manual-partners'));
-    expect(get('help-manual').textContent).toContain('Partner setup manual');
+    expect(get('help-manual').textContent).toContain('Business Relationship Officer (BRO) setup manual');
   });
   it('has only implemented internal destinations and installs help before protected fallbacks', () => {
     const app = appSource;

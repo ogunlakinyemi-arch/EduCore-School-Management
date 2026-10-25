@@ -138,18 +138,18 @@ describe('Offline signed-in TEST verification screen (mock identity/API, real Re
     expect(host.textContent).toContain('NGN 2,900');
     const rules = node('text-split-rules').textContent!;
     expect(rules).toContain('School checkout allocation: NGN 1,900');
-    expect(rules).toContain('Merchant remainder before provider expenses: NGN 3,100, whether or not a Partner is eligible');
-    expect(rules).toContain("Partner's NGN 100 is an internal accrued payable for term-end Owner approval/export, not a checkout subaccount or immediate payout");
-    expect(rules).toContain('Owner economic share before provider expenses: NGN 3,000 with an eligible Partner, or NGN 3,100 without one');
+    expect(rules).toContain('Merchant remainder before provider expenses: NGN 3,100, whether or not a BRO is eligible');
+    expect(rules).toContain("An eligible BRO's NGN 100 is an internal accrued payable for term-end Owner approval/export, not a checkout subaccount or immediate payout");
+    expect(rules).toContain('Owner economic share before provider expenses: NGN 3,000 with an eligible BRO, or NGN 3,100 without one');
     expect(rules).toContain('Provider processing fees and any evidenced taxes are Merchant expenses, deducted once');
-    expect(rules).not.toMatch(/Partner receives|Platform Owner receives/);
+    expect(rules).not.toMatch(/BRO receives|Platform Owner receives/);
     expect(rules).not.toMatch(/NGN 2,000|NGN 2,900/);
     expect(f.dashboardOptions.queryKey).toContain('owner-policy-v3-merchant-net');
     expect(f.evidence).not.toHaveBeenCalled();
     expect(f.evidenceOptions.enabled).toBe(false);
     expect(f.evidenceOptions.queryKey.at(-1)).toBe('unit-owner');
   });
-  it('labels merchant net, reported costs, the internal Partner payable, and durable webhook state without claiming a bank credit', async () => {
+  it('labels merchant net, reported costs, the internal BRO payable, and durable webhook state without claiming a bank credit', async () => {
     f.dashboard.mockResolvedValue({
       ...dashboard(),
       payments:[{
@@ -172,7 +172,7 @@ describe('Offline signed-in TEST verification screen (mock identity/API, real Re
     expect(host.textContent).toContain('Merchant gross before costs');
     expect(host.textContent).toContain('NGN 3,100');
     expect(host.textContent).toContain('NGN 3,030');
-    expect(host.textContent).toContain('Partner internal accrued payable');
+    expect(host.textContent).toContain('BRO internal accrued payable');
     expect(host.textContent).toContain('NGN 100');
     expect(host.textContent).toContain('Provider fees total');
     expect(host.textContent).toContain('NGN 70');

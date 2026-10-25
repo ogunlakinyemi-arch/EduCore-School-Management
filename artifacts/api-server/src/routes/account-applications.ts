@@ -22,7 +22,7 @@ router.post("/account-application/partner-reapplication", run(async (req,res) =>
   const { userId,sessionId } = getAuth(req);
   if (!userId || !sessionId) throw new AuthError(401,"Sign in with your verified email before reapplying.");
   const parsed = applicationInput.safeParse(req.body);
-  if (!parsed.success || parsed.data.applicantType !== "PARTNER") throw new AuthError(400,"Complete a valid new Partner application.");
+  if (!parsed.success || parsed.data.applicantType !== "PARTNER") throw new AuthError(400,"Complete a valid Business Relationship Officer (BRO) application.");
   const id = await submitPartnerReapplication(userId,sessionId,parsed.data);
   res.status(201).json(await application(id));
 }));
@@ -43,7 +43,7 @@ router.post("/account-application", requireAuthentication(), run(async (req,res)
   if (!parsed.success) {
     const issue=parsed.error.issues[0];
     const labels:Record<string,string>={fullName:"Full name",phone:"Phone",email:"Email",schoolName:"School name",
-      partnerType:"Partner type",applicantType:"Applicant type",address:"Address",businessName:"Business name"};
+      partnerType:"BRO type",applicantType:"Application type",address:"Address",businessName:"Business name"};
     const label=labels[String(issue?.path[0])] ?? "Application";
     throw new AuthError(400,`${label}: ${issue?.message ?? "Please complete the required details"}`);
   }

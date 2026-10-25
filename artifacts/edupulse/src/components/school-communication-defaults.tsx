@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGetSchoolCommunicationDefaults, useUpdateSchoolCommunicationDefaults } from '@workspace/api-client-react';
 import type { SchoolCommunicationDefaults } from '@workspace/api-client-react';
 const categories = ['ATTENDANCE_ENTRY','ATTENDANCE_EXIT','ATTENDANCE_ABSENCE','NFC_REMINDER','EMERGENCY','ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT','ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'];
+const categoryLabel = (category: string) => category === 'PARTNER' ? 'Business Relationship Officers (BRO)' : category;
 const channels = ['IN_APP','PUSH','SMS','EMAIL','TELEGRAM'] as const;
 export function SchoolCommunicationDefaultsControl({ schoolId }: { schoolId: number }) {
   const query = useGetSchoolCommunicationDefaults(schoolId);
@@ -17,7 +18,7 @@ export function SchoolCommunicationDefaultsControl({ schoolId }: { schoolId: num
     <p className="text-sm">Checked channels are effective selections, not delivered messages. Events without a school override inherit the Owner defaults; an empty selection disables channels for that event. Owner restrictions always apply. Delivery also requires provider readiness and the recipient’s applicable preferences and consent.</p>
     {query.isLoading ? <p>Loading defaults…</p> : query.isError ? <p role="alert">Could not load defaults.</p> :
       <div className="space-y-3">{categories.map(category => <fieldset key={category} className="rounded-xl border p-3">
-        <legend className="px-1 text-sm font-bold">{category}</legend><div className="flex flex-wrap gap-4">
+        <legend className="px-1 text-sm font-bold">{categoryLabel(category)}</legend><div className="flex flex-wrap gap-4">
           {channels.map(channel => <label key={channel} className="flex min-h-11 items-center gap-2 text-sm">
             <input type="checkbox" disabled={!query.data?.canWrite || save.isPending ||
               (!selected(category).includes(channel) && (!query.data?.availability?.[channel] || !query.data?.allowed?.[category]?.includes(channel)))}

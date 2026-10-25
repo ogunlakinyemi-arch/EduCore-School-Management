@@ -35,6 +35,14 @@ import {
 
 const note = 'text-xs leading-5 text-[hsl(var(--muted-foreground))]';
 
+function allocationLabel(recipientType: string) {
+  if (recipientType === 'PLATFORM_PROVIDER_FEE') return 'Provider fee · platform expense';
+  const recipient = recipientType === 'PARTNER'
+    ? 'BRO'
+    : `${recipientType[0]}${recipientType.slice(1).toLowerCase()}`;
+  return `${recipient} allocation`;
+}
+
 function paymentMessage(status: StudentSubscriptionPayment['status']) {
   return status.replaceAll('_', ' ').toLowerCase();
 }
@@ -112,9 +120,7 @@ function SubscriptionPaymentDetails({
               <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Verified allocations</div>
               <dl className="divide-y divide-[hsl(var(--border))]">
                 {allocations.filter(allocation => isOwner || allocation.recipientType === 'SCHOOL').map((allocation, index) => {
-                  const label = allocation.recipientType === 'PLATFORM_PROVIDER_FEE'
-                    ? 'Provider fee · platform expense'
-                    : `${allocation.recipientType[0]}${allocation.recipientType.slice(1).toLowerCase()} allocation`;
+                  const label = allocationLabel(allocation.recipientType);
                   const sign = allocation.entryType === 'EXPENSE' ? '−' : '';
                   return (
                     <div key={`${allocation.recipientType}-${index}`} className="flex justify-between gap-3 py-2 text-xs">
@@ -154,9 +160,7 @@ function SubscriptionPaymentDetails({
                     <dl className="school-document-grid">
                       {receiptAllocations.map((allocation, index) => (
                         <div className="school-document-field" key={`${allocation.recipientType}-${index}`}>
-                          <dt>{allocation.recipientType === 'PLATFORM_PROVIDER_FEE'
-                            ? 'Provider fee · platform expense'
-                            : `${allocation.recipientType[0]}${allocation.recipientType.slice(1).toLowerCase()} allocation`}</dt>
+                          <dt>{allocationLabel(allocation.recipientType)}</dt>
                           <dd>{allocation.entryType === 'EXPENSE' ? '−' : ''}{money(allocation.amountMinor / 100)}</dd>
                         </div>
                       ))}

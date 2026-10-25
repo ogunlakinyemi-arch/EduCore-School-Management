@@ -79,7 +79,7 @@ export default function InvitationAcceptance() {
     if (partnerAliasMatch && !partnerToken) {
       setView({
         kind: 'error',
-        message: 'This partner invitation link is missing its invitation context. Ask the sender for a new link.',
+        message: 'This BRO invitation link is missing its invitation context. Ask the sender for a new link.',
       });
       return;
     }
@@ -117,7 +117,7 @@ export default function InvitationAcceptance() {
           if (!hasActivePartnerRole) {
             setView({
               kind: 'error',
-              message: 'The partner invitation was submitted, but the account has no active partner access. Contact the invitation sender for help.',
+              message: 'The BRO invitation was submitted, but the account has no active BRO access. Contact the invitation sender for help.',
             });
             return;
           }
@@ -309,7 +309,7 @@ export function partnerInvitationErrorMessage(error: unknown): string {
   if (detail.includes('email does not match') || apiError?.status === 403) {
     return 'The signed-in account does not match the invited email. Continue with the invited account.';
   }
-  return 'We could not accept this partner invitation. It may be invalid, expired, or already used. Ask the sender for a new invitation link.';
+  return 'We could not accept this BRO invitation. It may be invalid, expired, or already used. Ask the sender for a new invitation link.';
 }
 
 function StatusCard({

@@ -149,8 +149,8 @@ export function AddSchoolPage() {
     return (
       <div className="mx-auto max-w-3xl p-8" data-testid="add-school-forbidden">
         <div className="panel p-8 text-center">
-          <h1 className="display-font text-2xl font-bold">Partner administrator access required</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a partner owner or administrator can add schools.</p>
+          <h1 className="display-font text-2xl font-bold">BRO administrator access required</h1>
+          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a BRO owner or administrator can add schools.</p>
         </div>
       </div>
     );
