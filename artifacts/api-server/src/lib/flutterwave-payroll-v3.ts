@@ -343,7 +343,11 @@ export class FlutterwavePayrollV3Client {
 
   /** Read-only metadata has its own credential boundary: never require or grant
    * payroll/checkout activation just to discover institutions. */
-  async listNigerianBanks() {
+  async listNigerianBanks():Promise<{
+    environment:"TEST"|"LIVE";
+    banks:unknown[];
+    diagnostic?:ReturnType<typeof bankDirectoryDiagnostic>;
+  }> {
     // TEST metadata is safe in either runtime; unlike resolution/transfer this
     // GET cannot move money. Explicit LIVE mode still forbids TEST fallback.
     const credential=dedicatedFlutterwaveTestCredential(this.env);
