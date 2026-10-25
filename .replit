@@ -42,3 +42,15 @@ EDUCORE_NOTIFICATION_LIVE_FROM = "2026-10-23T20:49:25.893Z"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-2357c139-bab2-4688-9e2e-9a940e1cb1cc"
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 19494
+externalPort = 80
