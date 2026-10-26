@@ -3,6 +3,14 @@ name: Production database identity
 description: Avoid mistaking a PostgreSQL database name or a read replica for the deployed application's exact provider and primary.
 ---
 
+## Reuse existing confirmations
+
+The owner stated on 2026-10-26 that Production database binding/recovery and Flutterwave merchant prerequisites were completed earlier and supported by confirmation emails. Do not describe those confirmations as absent or ask the owner to obtain them again.
+
+**Why:** The owner corrected repeated activation reports that treated inaccessible confirmation evidence as missing approvals.
+
+**How to apply:** Locate existing project references and authorized correspondence first. If the original replies cannot be retrieved, request only their redacted approval text and referenced resource/recovery evidence. Distinguish owner-reported completion, inspected confirmation evidence and available execution permissions; none substitutes for the others.
+
 The PostgreSQL database name `neondb` does not distinguish legacy Neon from Replit-managed Helium. A production read query through the platform reaches a replica, not necessarily the deployed application's writable primary; its response cannot prove the application's production connection target when the app accepts a configurable connection string.
 
 **Why:** Provider and instance identity matter when verifying that a backup protects the database actually used by a published application. A familiar default name is not evidence of either.
