@@ -1,8 +1,8 @@
 import {Router} from "express";
 import {requireAuthentication} from "../middlewares/auth";
-import {FlutterwavePayrollV3Client,FlutterwavePayrollUnavailableError,FlutterwaveProviderResponseError,FlutterwaveProviderUncertainError} from "../lib/flutterwave-payroll-v3";
+import {FlutterwavePayrollV3Client,FlutterwaveProviderResponseError,FlutterwaveProviderUncertainError} from "../lib/flutterwave-payroll-v3";
 import {paymentAccountProviders,type PaymentAccountProviderDirectory} from "../lib/nigerian-payment-providers";
-import {bankDirectoryDiagnostic,BANK_DIRECTORY_VERSION} from "../lib/bank-directory-diagnostic";
+import {bankDirectoryDiagnostic} from "../lib/bank-directory-diagnostic";
 
 /** Public institution metadata only; no account data or database reads.
  * This endpoint cannot initialize checkout, resolve accounts or make transfers. */
@@ -12,7 +12,6 @@ export function createPaymentAccountProvidersRouter(client=new FlutterwavePayrol
   let pending:Promise<PaymentAccountProviderDirectory>|null=null;
   router.get("/payment-account-providers",(_req,res,next)=>{
     res.setHeader("Cache-Control","private, no-store");
-    res.setHeader("X-Bank-Directory-Version",BANK_DIRECTORY_VERSION);
     next();
   },requireAuthentication(),async(req,res)=>{
     const cacheHit=!!cached&&cached.until>Date.now();
@@ -32,16 +31,9 @@ export function createPaymentAccountProvidersRouter(client=new FlutterwavePayrol
           if(directoryDiagnostic)report=directoryDiagnostic;
           const diagnostic=error instanceof FlutterwaveProviderResponseError||error instanceof FlutterwaveProviderUncertainError
             ?error.diagnostic:null;
-          const reason=diagnostic?.category==="PROVIDER_AUTH_REJECTED"
-            ?"Flutterwave rejected directory authentication. Ask the administrator to review the dedicated credential and provider permissions."
-            :diagnostic?.category==="PROVIDER_RATE_LIMITED"
-            ?"Flutterwave temporarily rate-limited the directory. Wait briefly, then retry."
-            :!diagnostic&&error instanceof FlutterwavePayrollUnavailableError
-            ?"The Flutterwave directory configuration or response is unavailable. Ask the administrator to review the explicit environment and dedicated credential."
-            :"The Flutterwave directory could not be loaded. The provider may be unavailable; retry the directory.";
           report={...report,reason:report.reason??diagnostic?.category??"DIRECTORY_RESPONSE_INVALID",
             httpStatus:report.httpStatus??diagnostic?.providerHttpStatus??null};
-          value.message=`${reason} Diagnostic: ${report.reason}${report.httpStatus?`; provider HTTP ${report.httpStatus}`:""}. No new transfer-enabled bank selection can be saved without a confirmed provider code.`;
+          value={...value,message:"The bank list is temporarily unavailable. Try again shortly, or contact the Platform Owner if the issue continues."};
         }
         req.log?.[value.status==="AVAILABLE"?"info":"warn"]({bankDirectory:report},"Flutterwave bank directory result");
         // A user retry must perform a new read after failure, not replay it.
@@ -51,7 +43,6 @@ export function createPaymentAccountProvidersRouter(client=new FlutterwavePayrol
       try{await pending;}finally{pending=null;}
     }
     res.setHeader("X-Bank-Directory-Cache",cacheHit?"HIT":"MISS");
-    res.setHeader("X-Bank-Directory-Diagnostic",JSON.stringify(cached!.diagnostic));
     res.json(cached!.value);
   });
   return router;

@@ -7,6 +7,12 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   error: false,
   owner: true,
+  schoolProfile: {
+    schoolId: 7, schoolName: 'Configured school', status: 'VERIFIED', businessName: 'School business',
+    bankName: 'Test bank', accountName: 'Test recipient', accountLast4: '7890',
+    providerSubaccountId: 'INTERNAL_SUBACCOUNT_MARKER',
+    capability: { mode: 'INTERNAL_MODE_MARKER', diagnostic: 'INTERNAL_PROVIDER_DIAGNOSTIC_MARKER' },
+  },
   rows: [
     { schoolId: 7, schoolName: 'Configured school', status: 'PENDING_VERIFICATION', businessName: 'School business', bankName: 'Test bank', accountName: 'Test recipient', accountLast4: '7890', capability: { mode: 'MOCK', bankSubaccountsSupported: false } },
     { schoolId: 8, schoolName: 'Unconfigured school', status: 'NOT_CONFIGURED', capability: { mode: 'MOCK', bankSubaccountsSupported: false } },
@@ -21,8 +27,9 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
   const mutation = () => ({ isPending: false, mutateAsync: vi.fn() });
   return {
     ...actual,
-    useGetAuthorizedContext: () => query({ isPlatformOwner: state.owner, roles: [] }),
+    useGetAuthorizedContext: () => query({ isPlatformOwner: state.owner, roles: state.owner ? [] : [{ schoolId: 7, role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] }),
     verifyPlatformSchoolSettlement: state.verify,
+    useGetSchoolPaymentSettlement: () => query(state.schoolProfile),
     useGetPlatformPaymentSettlement: () => query({ status: 'NOT_CONFIGURED', capability: { mode: 'MOCK' } }),
     useListPlatformSchoolSettlements: (...args: any[]) => {
       state.list(...args);
@@ -34,6 +41,7 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
     useListPlatformSettlementHistory: () => query([]),
     useGetPlatformSchoolSettlement: (id: number) => query(state.rows.find(r => r.schoolId === id)),
     useUpdatePlatformPaymentSettlement: mutation,
+    useUpdateSchoolPaymentSettlement: mutation,
     useVerifyPlatformSchoolSettlement: mutation,
   };
 });
@@ -58,6 +66,15 @@ async function open() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   await act(async () => root!.render(<QueryClientProvider client={client}><PaymentSettlementPage /></QueryClientProvider>));
   await act(async () => button('School oversight').click());
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 15)); });
+}
+async function openSchool() {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  await act(async () => root!.render(<QueryClientProvider client={client}><PaymentSettlementPage /></QueryClientProvider>));
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 15)); });
 }
 afterEach(async () => {
@@ -147,5 +164,14 @@ describe('Owner school settlement oversight', () => {
     expect(container.querySelector('[data-testid="bank-verification-result-7"]')).toBeNull();
     expect(container.textContent).toContain('bank account verification status verified');
     expect(container.textContent).not.toContain('Even TEST verification may contact');
+  });
+  it('shows a school-facing account status without Owner-only provider diagnostics', async () => {
+    state.owner = false;
+    await openSchool();
+    expect(container.textContent).toContain('Bank account verification');
+    expect(container.textContent).not.toContain('INTERNAL_PROVIDER_DIAGNOSTIC_MARKER');
+    expect(container.textContent).not.toContain('INTERNAL_SUBACCOUNT_MARKER');
+    expect(container.textContent).not.toContain('INTERNAL_MODE_MARKER');
+    expect(container.textContent).not.toContain('SchoolLiveOnboarding');
   });
 });

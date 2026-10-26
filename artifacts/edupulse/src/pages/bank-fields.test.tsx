@@ -110,7 +110,7 @@ describe('shared bank provider select', () => {
     await type(host, 'gamma'); await choose(host);
     expect(latest.bankName).toBe('Fictional Gamma Digital');
     expect(latest.bankCode).toBe('');
-    expect(host.textContent).toContain('no verified transfer code');
+    expect(host.textContent).toContain('not available for account verification');
     expect(host.querySelector<HTMLInputElement>('[data-testid="input-bank-name"]')!.validity.customError).toBe(true);
     expect(host.querySelector<HTMLFormElement>('[data-testid="f"]')!.checkValidity()).toBe(false);
     await act(async () => root.unmount());
@@ -135,7 +135,7 @@ describe('shared bank provider select', () => {
   it('preserves a saved legacy bank without claiming verification or rewriting it', async () => {
     cat.data = available();
     const { host, root } = await mount({ bankName: 'Existing provider bank', bankCode: '999999', accountName: 'Unit', accountNumber: '' });
-    expect(host.querySelector('[data-testid="bank-saved-note"]')!.textContent).toContain('Existing provider bank (code 999999). Not checked against the current directory');
+    expect(host.querySelector('[data-testid="bank-saved-note"]')!.textContent).toContain('Saved bank: Existing provider bank. Not checked against the current bank list');
     expect(host.textContent).not.toContain('found in the current bank directory');
     expect(latest.bankName).toBe('Existing provider bank');
     expect(latest.bankCode).toBe('999999');

@@ -8343,7 +8343,7 @@ export interface SchoolSettlementSummary {
   provider: SchoolSettlementSummaryProvider;
   /** @nullable */
   providerSubaccountId?: string | null;
-  capability: SettlementProviderCapability;
+  capability?: SettlementProviderCapability;
   /** @nullable */
   lastSettlementAt?: string | null;
   lastSettlementStatus?: SchoolSettlementSummaryLastSettlementStatus;

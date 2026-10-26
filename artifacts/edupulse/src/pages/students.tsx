@@ -20,6 +20,7 @@ import {
 import { StudentPhotoField } from '@/components/student-photo-field';
 import { personPhotoSource } from '@/lib/person-photo-source';
 import { DirectoryExport } from '@/components/directory-export';
+import { GuardianLinksPanel } from '@/components/guardian-links-panel';
 
 export function StudentsPage() {
   const authorized = useGetAuthorizedContext();
@@ -31,8 +32,9 @@ export function StudentsPage() {
   const [modal, setModal] = useState<any>(null); 
   const [idCardStudent, setIdCardStudent] = useState<any>(null);
   const [photoStudent, setPhotoStudent] = useState<any>(null);
+  const [guardianStudent, setGuardianStudent] = useState<any>(null);
   const [photoMissing, setPhotoMissing] = useState(() => new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search).get('photo') === 'missing');
-  useEffect(() => { setModal(null); setIdCardStudent(null); setPhotoStudent(null); }, [schoolId]);
+  useEffect(() => { setModal(null); setIdCardStudent(null); setPhotoStudent(null); setGuardianStudent(null); }, [schoolId]);
   const qc = useQueryClient();
   const { canManageSchool } = useSchoolAdminAccess();
   const schoolQuery = useGetSchool(schoolId, { query: { enabled: !!schoolId, queryKey: getGetSchoolQueryKey(schoolId) } });
@@ -144,9 +146,10 @@ export function StudentsPage() {
                   <StatusPill value={student.status} />
                   <div className="mt-1"><StatusPill value={student.subscriptionStatus} /></div>
                 </div>
-                <div className="flex items-center justify-end gap-1">
+                <div className="flex flex-wrap items-center justify-end gap-1">
                   {canManageSchool && <Button variant="quiet" onClick={() => setPhotoStudent(student)} testId={`button-student-photo-${student.id}`}>Passport photo</Button>}
                   {canPreviewCards && <Button variant="quiet" onClick={() => setIdCardStudent(student)} testId={`button-student-id-card-${student.id}`}>View details / e-ID card</Button>}
+                  {canManageSchool && <Button variant="quiet" onClick={() => setGuardianStudent(student)} testId={`button-manage-student-guardians-${student.id}`}>Manage guardians</Button>}
                   {canManageSchool && <Button variant="quiet" onClick={() => setModal(student)} testId={`button-edit-student-${student.id}`}>
                     <Pencil size={15} />Edit
                   </Button>}
@@ -169,6 +172,9 @@ export function StudentsPage() {
           )}
           {canManageSchool && photoStudent && <Modal viewport title={`Passport photo — ${photoStudent.firstName} ${photoStudent.lastName}`} eyebrow="Student record" onClose={() => setPhotoStudent(null)}>
             <StudentPhotoField key={`${schoolId}-${photoStudent.id}`} schoolId={schoolId} studentId={photoStudent.id} passportUrl={photoStudent.passportUrl} onUpdated={() => { void qc.invalidateQueries({ queryKey: getListStudentsQueryKey() }); }} />
+          </Modal>}
+          {canManageSchool && guardianStudent && <Modal viewport title={`Guardians for ${guardianStudent.firstName} ${guardianStudent.lastName}`} eyebrow="Parent–student links" onClose={() => setGuardianStudent(null)}>
+            <GuardianLinksPanel schoolId={schoolId} studentId={guardianStudent.id} />
           </Modal>}
           {canPreviewCards && idCardStudent && (
             <Modal viewport title="Student details / e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>

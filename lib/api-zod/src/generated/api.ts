@@ -19877,7 +19877,7 @@ export const ListPlatformSchoolSettlementsResponseItem = zod.object({
   "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
-}),
+}).optional(),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
   "updatedAt": zod.coerce.date().nullable()
@@ -19934,7 +19934,7 @@ export const GetPlatformSchoolSettlementResponse = zod.object({
   "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
-}),
+}).optional(),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
   "updatedAt": zod.coerce.date().nullable()
@@ -20002,7 +20002,7 @@ export const VerifyPlatformSchoolSettlementResponse = zod.object({
   "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
-}),
+}).optional(),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
   "updatedAt": zod.coerce.date().nullable()
@@ -20091,7 +20091,7 @@ export const GetSchoolPaymentSettlementResponse = zod.object({
   "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
-}),
+}).optional(),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
   "updatedAt": zod.coerce.date().nullable()
@@ -20181,7 +20181,7 @@ export const UpdateSchoolPaymentSettlementResponse = zod.object({
   "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
   "bankAccountVerificationConfigured": zod.boolean()
 }).optional()
-}),
+}).optional(),
   "lastSettlementAt": zod.coerce.date().nullish(),
   "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
   "updatedAt": zod.coerce.date().nullable()

@@ -327,6 +327,31 @@ describe("settlement and payroll router access boundaries", () => {
     expect(await wrongScope.text()).not.toContain("Recipient 8");
   });
 
+  it("returns a school-safe settlement projection without Owner provider diagnostics", async () => {
+    const encrypted = (field: string, value: string) =>
+      encryptPayrollBankValue(value, `settlement:school:7:${field}`);
+    const bank = encrypted("bankName", "Fictional Bank");
+    const accountCode = encrypted("bankCode", "044");
+    const accountName = encrypted("accountName", "Fictional Recipient");
+    const accountNumber = encrypted("accountNumber", "0123456789");
+    db.query.mockResolvedValueOnce({ rows: [{
+      id: 107, school_id: 7, school_name: "Fictional School 7", business_name: "Fictional School 7",
+      bank_name_encrypted: bank.ciphertext, bank_code_encrypted: accountCode.ciphertext,
+      account_name_encrypted: accountName.ciphertext, account_number_encrypted: accountNumber.ciphertext,
+      account_last4: "6789", encryption_key_version: bank.keyVersion,
+      verification_status: "PENDING_VERIFICATION", provider_subaccount_id: "INTERNAL_SUBACCOUNT_MARKER",
+      updated_at: new Date("2026-10-01T00:00:00Z"),
+    }], rowCount: 1 });
+    const response = await request("/schools/7/finance/payment-settlement", { "x-test-role": "SCHOOL_ADMIN" });
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    const body = JSON.parse(text);
+    expect(body).toMatchObject({ schoolId: 7, status: "PENDING_VERIFICATION", bankName: "Fictional Bank", accountLast4: "6789" });
+    expect(body.capability).toBeUndefined();
+    expect(body.providerSubaccountId).toBeUndefined();
+    expect(text).not.toContain("INTERNAL_SUBACCOUNT_MARKER");
+  });
+
   it("returns real empty results and unconfigured detail without disguising query failures", async () => {
     const headers = { "x-test-owner": "true" };
     const empty = await request("/platform/finance/payment-settlement/schools?status=VERIFIED&search=missing&cursor=8&limit=10", headers);
@@ -691,6 +716,41 @@ describe("Owner bank-verification provider diagnostics (mocked provider, no Flut
     expectNoLeaks(logged);
   });
 
+  it("refuses to verify when any encrypted bank field changes before the status update", async () => {
+    resolve.mockResolvedValue({ resolvedAccountNumber: accountNumber, resolvedAccountName: holder });
+    db.connect.mockResolvedValue({
+      query: vi.fn(async (sql: string, values: unknown[] = []) => {
+        transactionQueries.push({ sql, values });
+        return { rows: [], rowCount: 0 };
+      }),
+      release: vi.fn(),
+    });
+    const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
+    const text = await response.text();
+    expect(response.status).toBe(409);
+    expect(text).toContain("details changed during verification");
+    expectNoLeaks(text);
+    const update = transactionQueries.find(query => query.sql.includes("UPDATE settlement_payroll_profiles"));
+    expect(update?.sql).toContain("AND bank_name_encrypted=$7");
+    expect(update?.sql).toContain("AND bank_code_encrypted=$8");
+    expect(update?.sql).toContain("AND account_name_encrypted=$9");
+    expect(update?.sql).toContain("AND account_number_encrypted=$10");
+    expect(update?.values).toHaveLength(10);
+    expect(transactionQueries.some(query => query.sql.includes("INSERT INTO audit_logs"))).toBe(false);
+  });
+
+  it("does not send another provider request for a profile already marked verified", async () => {
+    resolve.mockResolvedValue({ resolvedAccountNumber: accountNumber, resolvedAccountName: holder });
+    db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      db.queries.push({ sql, values });
+      return { rows: [profile("VERIFIED")], rowCount: 1 };
+    });
+    const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
+    expect(response.status).toBe(409);
+    expect(resolve).not.toHaveBeenCalled();
+    expect(db.connect).not.toHaveBeenCalled();
+  });
+
   it("verifies only on a genuine matching resolution and records the success audit", async () => {
     resolve.mockResolvedValue({ resolvedAccountNumber: accountNumber, resolvedAccountName: holder });
     const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
@@ -713,7 +773,16 @@ describe("Owner bank-verification provider diagnostics (mocked provider, no Flut
     expectNoLeaks(text);
     expect(text).not.toContain("Someone Else Entirely");
     expect(transactionQueries.some(q => q.sql.includes("'ACTION_REQUIRED'"))).toBe(true);
-    expect(transactionQueries.some(q => q.values.includes("SETTLEMENT_ACCOUNT_NAME_MISMATCH"))).toBe(true);
+    expect(transactionQueries.some(q => q.values.includes("SETTLEMENT_ACCOUNT_RESOLUTION_MISMATCH"))).toBe(true);
+    expect(transactionQueries.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(false);
+  });
+
+  it("does not verify when the resolved account number differs despite a matching holder name", async () => {
+    resolve.mockResolvedValue({ resolvedAccountNumber: "9999999999", resolvedAccountName: holder });
+    const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
+    expect(response.status).toBe(409);
+    expect(((await response.json()) as any).error.code).toBe("SETTLEMENT_BENEFICIARY_MISMATCH");
+    expect(transactionQueries.some(q => q.values.includes("SETTLEMENT_ACCOUNT_RESOLUTION_MISMATCH"))).toBe(true);
     expect(transactionQueries.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(false);
   });
 
@@ -723,5 +792,77 @@ describe("Owner bank-verification provider diagnostics (mocked provider, no Flut
     }));
     const response = await request("/platform/finance/payment-settlement/schools/7", owner, { method: "POST" });
     expect(((await response.json()) as any).error.code).toBe("PAYROLL_PROVIDER_UNAVAILABLE");
+  });
+});
+
+describe("school settlement account submission (provider directory mocked)", () => {
+  const input = {
+    businessName: "Fictional School 7",
+    settlementContactEmail: "finance@school.test",
+    bankName: "Fictional Commercial Bank",
+    bankCode: "099",
+    accountName: "Fictional Recipient",
+    accountNumber: "0123456789",
+    currency: "NGN",
+  };
+
+  it("saves the school recipient as pending without resolving the account or exposing Owner diagnostics", async () => {
+    const directory = vi.spyOn(FlutterwavePayrollV3Client.prototype, "listNigerianBanks")
+      .mockResolvedValue({ banks: [{ name: input.bankName, code: input.bankCode }], environment: "TEST" } as any);
+    const resolution = vi.spyOn(FlutterwavePayrollV3Client.prototype, "resolveNigerianAccount");
+    const transactionQueries: Array<{ sql: string; values: unknown[] }> = [];
+    db.connect.mockResolvedValue({
+      query: vi.fn(async (sql: string, values: unknown[] = []) => {
+        transactionQueries.push({ sql, values });
+        if (sql.includes("INSERT INTO settlement_payroll_profiles")) {
+          return { rows: [{
+            id: 107, school_id: 7, business_name: values[1],
+            bank_name_encrypted: values[5], bank_code_encrypted: values[6],
+            account_name_encrypted: values[7], account_number_encrypted: values[8],
+            account_last4: values[9], encryption_key_version: values[10],
+            verification_status: "PENDING_VERIFICATION", updated_at: new Date("2026-10-01T00:00:00Z"),
+          }], rowCount: 1 };
+        }
+        return { rows: [], rowCount: 0 };
+      }),
+      release: vi.fn(),
+    });
+    try {
+      const response = await request("/schools/7/finance/payment-settlement", { "x-test-role": "SCHOOL_ADMIN" }, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      });
+      expect(response.status).toBe(200);
+      const text = await response.text();
+      const saved = JSON.parse(text);
+      expect(saved).toMatchObject({ schoolId: 7, status: "PENDING_VERIFICATION", bankName: input.bankName, accountLast4: "6789" });
+      expect(saved.capability).toBeUndefined();
+      expect(saved.providerSubaccountId).toBeUndefined();
+      expect(text).not.toContain(input.accountNumber);
+      expect(directory).toHaveBeenCalledTimes(1);
+      expect(resolution).not.toHaveBeenCalled();
+      expect(transactionQueries.some(query => query.sql.includes("INSERT INTO audit_logs"))).toBe(true);
+    } finally {
+      directory.mockRestore();
+      resolution.mockRestore();
+    }
+  });
+
+  it("returns a safe retry instruction and writes nothing when the bank list cannot be checked", async () => {
+    const directory = vi.spyOn(FlutterwavePayrollV3Client.prototype, "listNigerianBanks")
+      .mockRejectedValue(new Error("private upstream diagnostic marker"));
+    try {
+      const response = await request("/schools/7/finance/payment-settlement", { "x-test-role": "SCHOOL_ADMIN" }, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      });
+      const text = await response.text();
+      expect(response.status).toBe(503);
+      expect(text).toContain("bank list could not be checked");
+      expect(text).not.toContain("private upstream diagnostic marker");
+      expect(db.connect).not.toHaveBeenCalled();
+    } finally {
+      directory.mockRestore();
+    }
   });
 });

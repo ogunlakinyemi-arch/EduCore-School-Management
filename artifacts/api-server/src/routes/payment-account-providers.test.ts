@@ -76,10 +76,10 @@ describe("canonical institution directory without fabricated transfer support",(
     await expect(requireVerifiedPaymentAccountProvider({bankName:banks[0].name,bankCode:"099"},client)).resolves.toBeUndefined();
     for(const selection of [{bankName:"Free text",bankCode:"099"},{bankName:banks[0].name,bankCode:"99"},
       {bankName:banks[0].name,bankCode:"900001"},{bankName:"PalmPay",bankCode:"900001"}])
-      await expect(requireVerifiedPaymentAccountProvider(selection,client)).rejects.toThrow("confirmed code");
+      await expect(requireVerifiedPaymentAccountProvider(selection,client)).rejects.toThrow("verified bank list");
     client.listNigerianBanks.mockRejectedValueOnce(Error("private failure"));
     await expect(requireVerifiedPaymentAccountProvider({bankName:banks[0].name,bankCode:"099"},client))
-      .rejects.toThrow("directory is unavailable");
+      .rejects.toThrow("bank list could not be checked");
   });
 });
 describe("authenticated directory HTTP contract, no database/provider mutations",()=>{
@@ -101,9 +101,13 @@ describe("authenticated directory HTTP contract, no database/provider mutations"
   });
   it("fails closed on provider errors without exposing upstream secrets or error bodies",async()=>{
     const read=vi.fn(async()=>{throw Error("private upstream failure must not escape");}),url=await start(read);
-    const result=await (await fetch(url)).json() as PaymentAccountProviderDirectory;
+    const response=await fetch(url);
+    const result=await response.json() as PaymentAccountProviderDirectory;
     expect(result).toMatchObject({status:"UNAVAILABLE",catalogueEnvironment:null});
     expect(JSON.stringify(result)).not.toContain("private upstream");
+    expect(result.message).toContain("bank list is temporarily unavailable");
+    expect(response.headers.get("x-bank-directory-diagnostic")).toBeNull();
+    expect(response.headers.get("x-bank-directory-version")).toBeNull();
     expect(result.providers.every((p:any)=>p.code===null&&!p.transferCodeVerified)).toBe(true);
     await fetch(url);expect(read).toHaveBeenCalledTimes(2);
   });

@@ -13,7 +13,7 @@ import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, Skelet
 import { BankFields, Freshness, IdentityBoundary, Notice, ProviderBanner, SettlementHistoryTable, Tabs, entry, errMsg, note, FRESH_MS } from './payroll-common';
 import { SettlementRemovalReviewControl } from '@/components/settlement-removal-review';
 import { useBankSelectionGuard } from '@/lib/bank-selection';
-import { OwnerLiveOnboarding, SchoolLiveOnboarding } from '@/components/live-school-subaccount-onboarding';
+import { OwnerLiveOnboarding } from '@/components/live-school-subaccount-onboarding';
 import { DevelopmentBankVerification } from '@/components/development-bank-verification';
 
 type Profile = { status: string; bankName?: string | null; accountName?: string | null; accountLast4?: string | null; updatedAt?: string | null; businessName?: string | null; bankCode?: string | null; businessRegistrationNumber?: string | null; settlementContactEmail?: string | null; settlementContactPhone?: string | null; providerSubaccountId?: string | null };
@@ -23,8 +23,19 @@ function ProfileView({ p }: { p: Profile }) {
     <Info label="Business" value={p.businessName} /><Info label="Bank" value={p.bankName} /><Info label="Account name" value={p.accountName} />
     <Info label="Account (last 4)" value={p.accountLast4 ? <span className="font-mono">{'****' + p.accountLast4}</span> : 'None on file'} />
     <Info label="Bank account verification" value={<StatusPill value={p.status === 'VERIFIED' ? 'verified' : p.status === 'ACTION_REQUIRED' ? 'failed' : p.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />} />
-    <Info label="Provider subaccount" value={p.providerSubaccountId ? 'Linked' : 'Not linked'} /><Info label="Contact" value={p.settlementContactEmail} /><Info label="Updated" value={date(p.updatedAt)} />
+    <Info label="Contact" value={p.settlementContactEmail} /><Info label="Updated" value={date(p.updatedAt)} />
   </div>;
+}
+
+function SchoolVerificationNextStep({ status }: { status: string }) {
+  const message = status === 'PENDING_VERIFICATION'
+    ? 'Next step: the Platform Owner will independently check the account holder. No settlement is implied by this pending status.'
+    : status === 'ACTION_REQUIRED'
+      ? 'Action needed: check the bank and account-holder details, update any incorrect information, then save again for a new independent check.'
+      : status === 'VERIFIED'
+        ? 'The account holder was independently matched. This does not mean a collection account is connected or that funds have settled.'
+        : 'Add the school’s own bank account to begin verification.';
+  return <p className={`${note} mt-4`} data-testid="school-settlement-next-step">{message}</p>;
 }
 
 type FormState = { businessName: string; businessRegistrationNumber: string; settlementContactEmail: string; settlementContactPhone: string; bankName: string; bankCode: string; accountName: string; accountNumber: string };
@@ -38,7 +49,7 @@ function SettlementForm({ profile, scope, saving, onSubmit, onCancel }: { profil
   const [blocked, setBlocked] = useState('');
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!bankAllowed(f, original.current)) { setBlocked('Choose a bank with a verified transfer code from the directory before saving.'); return; }
+    if (!bankAllowed(f, original.current)) { setBlocked('Choose your bank from the verified bank list before saving.'); return; }
     setBlocked(''); onSubmit(f);
   };
   return <form onSubmit={submit} className="space-y-4" data-testid="form-settlement">
@@ -50,7 +61,9 @@ function SettlementForm({ profile, scope, saving, onSubmit, onCancel }: { profil
     <Field label={scope === 'SCHOOL' ? 'Settlement contact email' : 'Settlement contact email (optional)'}><input type="email" required={scope === 'SCHOOL'} className={entry} value={f.settlementContactEmail} onChange={e => patch({ settlementContactEmail: e.target.value })} /></Field>
     <BankFields v={f} set={patch} maskedCurrent={profile?.accountLast4 ? `****${profile.accountLast4}` : null} />
     {blocked && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{blocked}</p>}
-    <p className={note}>Saving submits recipient details for provider verification. Entering a bank account does not mean funds have settled; settlement shows only after the provider confirms it.</p>
+    <p className={note}>{scope === 'SCHOOL'
+      ? 'After saving, the account remains pending until a Platform Owner independently checks the account holder. Saving does not send or settle money. Updating details starts verification again.'
+      : 'Saving submits recipient details for provider verification. Entering a bank account does not mean funds have settled; settlement shows only after the provider confirms it.'}</p>
     <div className="flex gap-2"><Button type="submit" disabled={saving || f.accountNumber.length !== 10} testId="button-save-settlement">{saving ? 'Saving...' : 'Save for verification'}</Button><Button variant="quiet" onClick={onCancel}>Cancel</Button></div>
   </form>;
 }
@@ -71,22 +84,27 @@ function SchoolAdminSettlement({ schoolId }: { schoolId: number }) {
   const save = async (d: FormState) => {
     try {
       await update.mutateAsync({ schoolId, data: { businessName: d.businessName.trim(), businessRegistrationNumber: d.businessRegistrationNumber.trim() || null, settlementContactEmail: d.settlementContactEmail.trim(), settlementContactPhone: d.settlementContactPhone.trim() || null, bankName: d.bankName.trim(), bankCode: d.bankCode, accountName: d.accountName.trim(), accountNumber: d.accountNumber, currency: 'NGN' } });
-      setEditing(false); setFail(''); setMsg('Settlement details saved. They stay unverified until the provider confirms the recipient.'); invalidateAll(qc);
-    } catch (e) { setFail(errMsg(e)); }
+      setEditing(false); setFail(''); setMsg('Settlement details saved. They stay pending until the account holder is independently checked.'); invalidateAll(qc);
+    } catch (e) {
+      const message = errMsg(e);
+      setFail(/bank list|bank selection|directory|transfer code|provider/i.test(message)
+        ? 'The bank list could not be confirmed. Refresh it, choose your bank from the list, and try again. Nothing was saved.'
+        : 'We could not save these details. Check the required fields and try again, or contact the Platform Owner if the problem continues. Nothing was saved.');
+    }
   };
   if (q.isLoading) return <SkeletonPage />;
   if (q.isError || !q.data) return <ErrorState retry={() => q.refetch()} />;
   const p = q.data;
   return <div>
-    <IdentityBoundary scope="SCHOOL" /><ProviderBanner capability={p.capability} />
+    <IdentityBoundary scope="SCHOOL" />
     {msg && <Notice kind="ok" onClose={() => setMsg('')}>{msg}</Notice>}{fail && !editing && <Notice kind="error">{fail}</Notice>}
     <div className="mb-4 flex justify-between"><Tabs tabs={[['profile', 'Settlement profile'], ['history', 'Settlement history']] as const} value={tab} onChange={setTab} />
       <Freshness updatedAt={q.dataUpdatedAt} fetching={q.isFetching} onRefresh={() => { q.refetch(); h.refetch(); }} /></div>
     {tab === 'profile' && <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">School settlement account</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-settlement">{p.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
       {p.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="No settlement account yet" description="Add the school's own bank recipient. It is never shared with company payroll money." /> : <ProfileView p={p} />}
+      <SchoolVerificationNextStep status={p.status} />
       {p.status === 'PENDING_VERIFICATION' && <SettlementRemovalReviewControl schoolId={schoolId} />}</section>}
     {tab === 'history' && <section className="panel overflow-hidden">{h.isLoading ? <SkeletonPage /> : h.isError ? <ErrorState retry={() => h.refetch()} /> : <SettlementHistoryTable rows={h.data ?? []} />}</section>}
-    {tab === 'profile' && <SchoolLiveOnboarding schoolId={schoolId} />}
     {editing && <Modal title="Settlement details" eyebrow="School account" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={p} scope="SCHOOL" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
   </div>;
 }
@@ -98,7 +116,7 @@ function SchoolDetail({ s, onClose }: { s: SchoolSettlementSummary; onClose: () 
     {q.isError && <Notice kind="error">Latest detail could not load; showing list data.</Notice>}
     {d.status === 'NOT_CONFIGURED'
       ? <EmptyState icon={Landmark} title="School account not configured" description="This school has not configured its settlement recipient. Bank account details are not available yet." />
-      : <ProfileView p={d} />}<div className="mt-4"><ProviderBanner capability={d.capability} /></div>
+      : <ProfileView p={d} />}<div className="mt-4"><ProviderBanner capability={d.capability ?? undefined} /></div>
     <p className={note}>Last settlement: {d.lastSettlementAt ? `${date(d.lastSettlementAt)} (${d.lastSettlementStatus ?? 'unknown'})` : 'none recorded'}. Owner access is oversight only; school bank details cannot be edited here.</p>
   </Modal>;
 }
@@ -155,14 +173,14 @@ function OwnerSettlement() {
       {schools.isError && development && displaySchools.length > 0 && <ErrorState retry={() => schools.refetch()} />}
       {schools.isLoading ? <SkeletonPage /> : schools.isError && (!development || !displaySchools.length) ? <ErrorState retry={() => schools.refetch()} /> : !displaySchools.length ? <EmptyState icon={Landmark} title="No schools match" description="Adjust the filter or search." /> :
         <div className="divide-y divide-[hsl(var(--border))]">{displaySchools.map(s => <div key={s.schoolId} className="flex flex-wrap items-center gap-4 p-4" data-testid={`row-school-settlement-${s.schoolId}`}>
-          <div className="min-w-0 flex-1"><div className="font-bold">{s.schoolName}</div><div className={note}>{s.bankName ?? 'No bank'} {s.accountLast4 ? `/ ****${s.accountLast4}` : ''} / {s.capability.mode.replace('_', ' ').toLowerCase()} mode</div></div>
+          <div className="min-w-0 flex-1"><div className="font-bold">{s.schoolName}</div><div className={note}>{s.bankName ?? 'No bank'} {s.accountLast4 ? `/ ****${s.accountLast4}` : ''} / {s.capability?.mode.replace('_', ' ').toLowerCase() ?? 'provider status unavailable'}</div></div>
           {!listedSchools.some(current => current.schoolId === s.schoolId) && <span className={note}>Result retained outside the current filter; badge shows last listed status.</span>}
           <StatusPill value={s.status === 'VERIFIED' ? 'verified' : s.status === 'ACTION_REQUIRED' ? 'failed' : s.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />
           <Button variant="outline" onClick={() => setDetail(s)}>Details</Button>
           {development ? <DevelopmentBankVerification school={s} retained={!listedSchools.some(current => current.schoolId === s.schoolId)} onStart={() => {
             setMsg(''); setFail('');
             setRetained(previous => ({ filter: filterKey, rows: { ...(previous.filter === filterKey ? previous.rows : {}), [s.schoolId]: s } }));
-          }} /> : <Button variant="quiet" disabled={verify.isPending || s.status === 'NOT_CONFIGURED' || !(s.capability.collection?.bankAccountVerificationConfigured || ['TEST', 'LIVE'].includes(s.capability.mode))} title="Verify the saved bank account holder only; this does not create a collection subaccount or prove settlement." onClick={() => runVerify(s)} testId={`button-verify-${s.schoolId}`}>Verify bank details</Button>}
+          }} /> : <Button variant="quiet" disabled={verify.isPending || s.status === 'NOT_CONFIGURED' || s.status === 'VERIFIED' || !s.capability || !(s.capability.collection?.bankAccountVerificationConfigured || ['TEST', 'LIVE'].includes(s.capability.mode))} title="Check the saved account holder only; this does not create a collection subaccount or prove settlement." onClick={() => runVerify(s)} testId={`button-verify-${s.schoolId}`}>Verify bank details</Button>}
         </div>)}</div>}</section>}
     {tab === 'history' && <section className="panel overflow-hidden">{hist.isLoading ? <SkeletonPage /> : hist.isError ? <ErrorState retry={() => hist.refetch()} /> : <SettlementHistoryTable rows={hist.data ?? []} showSchool />}</section>}
     {editing && <Modal title="Company settlement details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} scope="COMPANY" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}

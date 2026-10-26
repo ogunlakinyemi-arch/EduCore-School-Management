@@ -13,9 +13,9 @@ export async function requireVerifiedPaymentAccountProvider(
     const catalogue=await client.listNigerianBanks();
     directory=paymentAccountProviders(catalogue.banks,catalogue.environment);
   } catch {
-    throw new AuthError(503,"The Flutterwave bank directory is unavailable. Retry before saving bank details.");
+    throw new AuthError(503,"The bank list could not be checked. Refresh it and try again before saving.");
   }
   if(directory.status!=="AVAILABLE"||!directory.providers.some(p=>p.transferCodeVerified&&p.code
     &&p.name===selection.bankName&&p.code===selection.bankCode))
-    throw new AuthError(400,"Choose a bank and its confirmed code from the current Flutterwave directory.");
+    throw new AuthError(400,"Choose a bank from the current verified bank list.");
 }

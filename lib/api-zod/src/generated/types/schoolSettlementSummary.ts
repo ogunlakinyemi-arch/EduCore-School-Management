@@ -39,7 +39,7 @@ export interface SchoolSettlementSummary {
   provider: SchoolSettlementSummaryProvider;
   /** @nullable */
   providerSubaccountId?: string | null;
-  capability: SettlementProviderCapability;
+  capability?: SettlementProviderCapability;
   /** @nullable */
   lastSettlementAt?: Date | null;
   lastSettlementStatus?: SchoolSettlementSummaryLastSettlementStatus;

@@ -38,7 +38,7 @@ export function BankProviderSelect({ value, onSelect, label = 'Bank name', requi
   const confirmed = trusted && providers.some(p => p.name === value.bankName && p.code === value.bankCode && p.transferCodeVerified && !!p.code && hasTransferCode(p.code));
   const invalidMsg = pending ? 'Choose a bank from the list.'
     : !hasValue ? (required ? 'Choose a bank from the list.' : '')
-    : requireCode && !confirmed ? `${value.bankName} has no currently confirmed transfer code and cannot be saved.` : '';
+    : requireCode && !confirmed ? `${value.bankName} is not available for account verification and cannot be saved.` : '';
   useEffect(() => { inputRef.current?.setCustomValidity(invalidMsg); }, [invalidMsg]);
   const choose = (p: Provider) => {
     const verified = trusted && p.transferCodeVerified && !!p.code && hasTransferCode(p.code);
@@ -66,16 +66,16 @@ export function BankProviderSelect({ value, onSelect, label = 'Bank name', requi
         }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)} onKeyDown={onKey} data-testid={testId} />
       {open && <ul id={listId} role="listbox" aria-label={label} className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 text-sm shadow-lg">
         {matches.map((p, i) => <li key={p.id} id={`${id}-opt-${p.id}`} role="option" aria-selected={picked?.id === p.id} data-testid={`bank-option-${p.id}`}
-          className={`cursor-pointer px-3.5 py-2 ${i === active ? 'bg-[hsl(var(--muted)/.6)]' : ''}`} onMouseDown={e => { e.preventDefault(); choose(p); }}>{p.name}{!(trusted && p.transferCodeVerified && p.code) && <span className={`ml-2 ${note}`}>transfer code not verified</span>}</li>)}
+         className={`cursor-pointer px-3.5 py-2 ${i === active ? 'bg-[hsl(var(--muted)/.6)]' : ''}`} onMouseDown={e => { e.preventDefault(); choose(p); }}>{p.name}{!(trusted && p.transferCodeVerified && p.code) && <span className={`ml-2 ${note}`}>not available for account verification</span>}</li>)}
         {!matches.length && <li role="presentation" className={`px-3.5 py-2 ${note}`}>{providers.length ? 'No bank matches your search.' : 'The bank directory has no entries to choose from.'}</li>}
       </ul>}
     </div>
-    {q.isLoading && <span className={`mt-1 block ${note}`}>Loading bank directory...</span>}
+     {q.isLoading && <span className={`mt-1 block ${note}`}>Loading bank list...</span>}
     {pending && <span id={errId} role="alert" className={`mt-1 block ${note} text-[hsl(var(--destructive))]`} data-testid="bank-pending-alert">{invalidMsg}</span>}
-    {unavailable && <div id={`${id}-unavail`} role="alert" className={`mt-1 ${note} text-[hsl(var(--destructive))]`}>{catalogue?.message || 'The bank directory could not be loaded.'} Listed banks cannot be saved until the directory is available. <button type="button" disabled={q.isFetching} className="font-bold underline" onClick={() => void q.refetch()} data-testid="button-refresh-banks">{q.isFetching ? 'Retrying directory...' : 'Refresh the directory'}</button> or contact an administrator.</div>}
-    {savedOnly && !pending && <span className={`mt-1 block ${note}`} data-testid="bank-saved-note">Saved bank: {value.bankName}{value.bankCode ? ` (code ${value.bankCode})` : ''}. {confirmed ? 'Code confirmed against the current directory.' : 'Not checked against the current directory. Search to choose a different bank.'}</span>}
+     {unavailable && <div id={`${id}-unavail`} role="alert" className={`mt-1 ${note} text-[hsl(var(--destructive))]`}>{catalogue?.message || 'The bank list could not be loaded.'} Banks cannot be saved until the list is available. <button type="button" disabled={q.isFetching} className="font-bold underline" onClick={() => void q.refetch()} data-testid="button-refresh-banks">{q.isFetching ? 'Retrying...' : 'Refresh bank list'}</button> or contact an administrator.</div>}
+     {savedOnly && !pending && <span className={`mt-1 block ${note}`} data-testid="bank-saved-note">Saved bank: {value.bankName}. {confirmed ? 'Available in the current bank list.' : 'Not checked against the current bank list. Search and choose a bank to update it.'}</span>}
     {savedOnly && !pending && invalidMsg && <span id={errId} role="alert" className={`mt-1 block ${note} text-[hsl(var(--destructive))]`}>{invalidMsg}</span>}
-    {picked && !pending && !unverified && <span className={`mt-1 block ${note}`}>Transfer code {picked.code} found in the current bank directory.</span>}
-    {picked && !pending && unverified && <span id={errId} role="alert" className={`mt-1 block ${note} text-[hsl(var(--destructive))]`} data-testid="bank-unverified-alert">{picked.name} has no verified transfer code in the current directory{requireCode ? ', so it cannot be saved' : ''}. Refresh the directory or contact an administrator.</span>}
+     {picked && !pending && !unverified && <span className={`mt-1 block ${note}`}>Bank selected from the current list.</span>}
+     {picked && !pending && unverified && <span id={errId} role="alert" className={`mt-1 block ${note} text-[hsl(var(--destructive))]`} data-testid="bank-unverified-alert">{picked.name} is not currently available for account verification{requireCode ? ', so it cannot be saved' : ''}. Refresh the bank list or contact an administrator.</span>}
   </div>;
 }

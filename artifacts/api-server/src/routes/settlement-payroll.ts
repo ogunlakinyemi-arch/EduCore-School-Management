@@ -447,7 +447,12 @@ function settlementCapability() {
   return { ...flw.capability(), collection: developmentFlutterwaveCollectionStatus() };
 }
 
-function settlementProfileProjection(row: AnyRow | undefined, scope: "SCHOOL" | "YEMAIT_COMPANY", schoolId?: number) {
+function settlementProfileProjection(
+  row: AnyRow | undefined,
+  scope: "SCHOOL" | "YEMAIT_COMPANY",
+  schoolId?: number,
+  includeOwnerDiagnostics = true,
+) {
   const company = scope === "YEMAIT_COMPANY";
   if (!row) {
     return company
@@ -465,8 +470,8 @@ function settlementProfileProjection(row: AnyRow | undefined, scope: "SCHOOL" | 
           status: "NOT_CONFIGURED",
           provider: "FLUTTERWAVE",
           providerBusinessId: process.env.FLUTTERWAVE_BUSINESS_ID ?? null,
-          providerSubaccountId: null,
-          capability: settlementCapability(),
+          providerSubaccountId: includeOwnerDiagnostics ? null : undefined,
+          capability: includeOwnerDiagnostics ? settlementCapability() : undefined,
           updatedAt: null,
         }
       : {
@@ -517,8 +522,8 @@ function settlementProfileProjection(row: AnyRow | undefined, scope: "SCHOOL" | 
     ...(company
       ? { providerBusinessId: row.provider_business_id ?? process.env.FLUTTERWAVE_BUSINESS_ID ?? null }
       : {}),
-    providerSubaccountId: row.provider_subaccount_id ?? null,
-    capability: settlementCapability(),
+    providerSubaccountId: includeOwnerDiagnostics ? row.provider_subaccount_id ?? null : undefined,
+    capability: includeOwnerDiagnostics ? settlementCapability() : undefined,
     ...(company
       ? {}
       : {
@@ -838,26 +843,45 @@ async function verifySettlementBankAccount(input: {
         accountNumber: COMPANY_SETTLEMENT_AD("accountNumber"),
       };
   const bank = decryptBankRecord(input.row, encryptionContext);
+  if (!["PENDING_VERIFICATION", "ACTION_REQUIRED"].includes(String(input.row.verification_status))) {
+    throw new AuthError(409, "Only a pending or action-required bank account can be checked. Reload the settlement profile.");
+  }
   const resolved = await flw.resolveNigerianAccount({
     bankCode: bank.bankCode,
     accountNumber: bank.accountNumber,
   });
   const matchedName = normalizeResolvedAccountName(bank.accountName) ===
     normalizeResolvedAccountName(resolved.resolvedAccountName);
-  if (!matchedName) {
+  const matchedNumber = String(resolved.resolvedAccountNumber).replace(/\D/g, "") === bank.accountNumber;
+  if (!matchedName || !matchedNumber) {
     await withTransaction(async (client) => {
       const tableId = input.row.id as number;
       const updated = await client.query(
         `UPDATE settlement_payroll_profiles
          SET verification_status='ACTION_REQUIRED',verified_at=NULL,verified_by=NULL,
              updated_by=$1,updated_at=NOW()
-         WHERE id=$2 AND scope=$3 AND ${input.scope === "SCHOOL" ? "school_id=$4" : "school_id IS NULL"}
+          WHERE id=$2 AND scope=$3 AND ${input.scope === "SCHOOL" ? "school_id=$4" : "school_id IS NULL"}
+            AND verification_status IN ('PENDING_VERIFICATION','ACTION_REQUIRED')
+            AND account_last4=$${input.scope === "SCHOOL" ? "5" : "4"}
+            AND bank_name_encrypted=$${input.scope === "SCHOOL" ? "6" : "5"}
+            AND bank_code_encrypted=$${input.scope === "SCHOOL" ? "7" : "6"}
+            AND account_name_encrypted=$${input.scope === "SCHOOL" ? "8" : "7"}
+            AND account_number_encrypted=$${input.scope === "SCHOOL" ? "9" : "8"}
          RETURNING id`,
         input.scope === "SCHOOL"
-          ? [input.actor.id, tableId, input.scope, input.schoolId]
-          : [input.actor.id, tableId, input.scope],
+          ? [
+              input.actor.id, tableId, input.scope, input.schoolId,
+              input.row.account_last4, input.row.bank_name_encrypted,
+              input.row.bank_code_encrypted, input.row.account_name_encrypted,
+              input.row.account_number_encrypted,
+            ]
+          : [
+              input.actor.id, tableId, input.scope, input.row.account_last4,
+              input.row.bank_name_encrypted, input.row.bank_code_encrypted,
+              input.row.account_name_encrypted, input.row.account_number_encrypted,
+            ],
       );
-      if (!updated.rows[0]) throw new AuthError(404, "Settlement profile not found");
+      if (!updated.rows[0]) throw new AuthError(409, "Settlement bank details changed during verification; reload and retry explicitly");
       await audit(client, {
         actor: input.actor,
         actorRole: input.actorRole,
@@ -865,8 +889,8 @@ async function verifySettlementBankAccount(input: {
         schoolId: input.schoolId ?? null,
         recordType: "SETTLEMENT_PROFILE",
         recordId: tableId,
-        action: "SETTLEMENT_ACCOUNT_NAME_MISMATCH",
-        previousStatus: "PENDING_VERIFICATION",
+        action: "SETTLEMENT_ACCOUNT_RESOLUTION_MISMATCH",
+        previousStatus: String(input.row.verification_status),
         newStatus: "ACTION_REQUIRED",
         metadata: {
           accountLast4: input.row.account_last4,
@@ -874,13 +898,14 @@ async function verifySettlementBankAccount(input: {
           ...(input.accountResolutionIdempotencyKey
             ? { verificationKeyDigest: payrollIdempotencyDigest(input.accountResolutionIdempotencyKey) }
             : {}),
-          providerAccountNameMatched: false,
+          providerAccountNameMatched: matchedName,
+          providerAccountNumberMatched: matchedNumber,
         },
       });
     });
     throw new AuthError(
       409,
-      "The name returned by Flutterwave does not match the configured account holder; no settlement recipient was verified",
+      "The independent bank account resolution did not match the saved account details; no settlement recipient was verified",
       "SETTLEMENT_BENEFICIARY_MISMATCH",
     );
   }
@@ -893,6 +918,10 @@ async function verifySettlementBankAccount(input: {
        WHERE id=$3 AND scope=$4 AND ${input.scope === "SCHOOL" ? "school_id=$5" : "school_id IS NULL"}
          AND verification_status IN ('PENDING_VERIFICATION','ACTION_REQUIRED')
          AND account_last4=$6
+          AND bank_name_encrypted=$${input.scope === "SCHOOL" ? "7" : "6"}
+          AND bank_code_encrypted=$${input.scope === "SCHOOL" ? "8" : "7"}
+          AND account_name_encrypted=$${input.scope === "SCHOOL" ? "9" : "8"}
+          AND account_number_encrypted=$${input.scope === "SCHOOL" ? "10" : "9"}
        RETURNING *`,
       input.scope === "SCHOOL"
         ? [
@@ -902,6 +931,10 @@ async function verifySettlementBankAccount(input: {
             input.scope,
             input.schoolId,
             input.row.account_last4,
+             input.row.bank_name_encrypted,
+             input.row.bank_code_encrypted,
+             input.row.account_name_encrypted,
+             input.row.account_number_encrypted,
           ]
         : [
             input.actor.id,
@@ -909,6 +942,10 @@ async function verifySettlementBankAccount(input: {
             input.row.id,
             input.scope,
             input.row.account_last4,
+             input.row.bank_name_encrypted,
+             input.row.bank_code_encrypted,
+             input.row.account_name_encrypted,
+             input.row.account_number_encrypted,
           ],
     );
     const row = poolRows(result)[0];
@@ -1065,7 +1102,7 @@ router.put("/schools/:schoolId/finance/payment-settlement", run(async (req, res)
     });
     return row;
   });
-  const projection = settlementProfileProjection(saved, "SCHOOL", schoolId);
+  const projection = settlementProfileProjection(saved, "SCHOOL", schoolId, false);
   return respond(
     res,
     PayrollContract.UpdateSchoolPaymentSettlementResponse,

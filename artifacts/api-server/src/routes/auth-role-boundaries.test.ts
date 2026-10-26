@@ -27,7 +27,7 @@ const poolMock = vi.hoisted(() => ({
       return { rows: [{ id: 21, schoolId: 1, name: "Parent One", email: "parent@example.test", phone: "12345678" }] };
     }
     if (sql.includes("FROM parent_student_relationships psr")) {
-      return { rows: Number(values[0]) === 31 ? [{ id: 31, schoolId: 1 }] : [] };
+      return { rows: Number(values[0]) === 31 ? [{ id: 31, schoolId: 1, studentSchoolId: 1, status: "ACTIVE" }] : [] };
     }
     if (sql.includes("SELECT id, role FROM school_memberships")) {
       return { rows: Number(values[0]) === 77
@@ -211,6 +211,9 @@ describe("school role and parent relationship authorization", () => {
     expect((await call("/parent-student-relationships/31", "PATCH", { status: "INACTIVE" }, "SCHOOL_ADMIN")).status).toBe(200);
     expect((await call("/parent-student-relationships/31", "DELETE", undefined, "SCHOOL_ADMIN")).status).toBe(204);
     expect((await call("/parent-student-relationships", "POST", relationship, "SCHOOL_ADMIN_OTHER")).status).toBe(404);
+    const unlink = state.queries.find(({ sql }) => sql.includes("UPDATE parent_student_relationships") && sql.includes("RETURNING id"));
+    expect(unlink?.sql).toContain("status = 'ACTIVE'");
+    expect(state.queries.some(({ sql }) => sql.includes("JOIN parents p") && sql.includes("st.school_id = p.school_id"))).toBe(true);
   });
 
   it("limits a parent's relationship dashboard query to active linked children", async () => {

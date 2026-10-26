@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { UsersRound, Plus, Search, Pencil, ArrowRight } from 'lucide-react';
 import { ParentTelegramDirectory } from '@/components/parent-telegram-directory';
 import { DirectoryExport } from '@/components/directory-export';
+import { GuardianLinksPanel } from '@/components/guardian-links-panel';
 import { 
   useListParents, useCreateParent, useUpdateParent, getListParentsQueryKey,
   useListStudents, getListStudentsQueryKey,
@@ -97,7 +98,10 @@ export function ParentsPage() {
                     <span className="text-xs text-[hsl(var(--muted-foreground))]">enrolled</span>
                   </div>
                 </div>
-                {canManageSchool && <div className="flex gap-2">
+                {canManageSchool && <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setModal({ manageChildren: true, parent })} testId={`button-manage-parent-children-${parent.id}`}>
+                    Manage links
+                  </Button>
                   <Button variant="quiet" onClick={() => setModal({ linkChildren: true, parent })} testId={`button-link-parent-children-${parent.id}`}>
                     <ArrowRight size={15} />Link children
                   </Button>
@@ -117,10 +121,12 @@ export function ParentsPage() {
           </div>
           
           {canManageSchool && modal && (
-            <Modal viewport title={modal.linkChildren ? `Link children to ${modal.parent.name}` : modal.create ? 'Register parent' : 'Edit parent profile'} eyebrow="Community Records" onClose={() => setModal(null)}>
-              {modal.linkChildren
-                ? <ParentChildrenForm schoolId={schoolId} parent={modal.parent} onDone={done} onCancel={() => setModal(null)} />
-                : <ParentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />}
+            <Modal viewport title={modal.manageChildren ? `Manage links for ${modal.parent.name}` : modal.linkChildren ? `Link children to ${modal.parent.name}` : modal.create ? 'Register parent' : 'Edit parent profile'} eyebrow="Community Records" onClose={() => setModal(null)}>
+              {modal.manageChildren
+                ? <GuardianLinksPanel schoolId={schoolId} parentId={modal.parent.id} />
+                : modal.linkChildren
+                  ? <ParentChildrenForm schoolId={schoolId} parent={modal.parent} onDone={done} onCancel={() => setModal(null)} />
+                  : <ParentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />}
             </Modal>
           )}
         </>

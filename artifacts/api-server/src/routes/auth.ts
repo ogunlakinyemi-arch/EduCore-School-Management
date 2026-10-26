@@ -418,26 +418,33 @@ router.delete(
   asyncRoute(async (req, res) => {
     const relationshipId = Number(req.params.relationshipId);
     const existing = await pool.query(
-      `SELECT psr.id, st.school_id AS "schoolId"
+      `SELECT psr.id, st.school_id AS "schoolId", psr.status
        FROM parent_student_relationships psr
-       JOIN students st ON st.id = psr.student_id
+       JOIN parents p ON p.id = psr.parent_id
+       JOIN students st ON st.id = psr.student_id AND st.school_id = p.school_id
        WHERE psr.id = $1`,
       [relationshipId],
     );
     if (!existing.rows[0]) throw new AuthError(404, "Relationship not found");
     assertSchoolOperationalAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
-    await pool.query(
-      `UPDATE parent_student_relationships
-       SET status = 'INACTIVE', updated_at = NOW() WHERE id = $1`,
-      [relationshipId],
-    );
-    await auditSecurityEvent(
-      req,
-      existing.rows[0].schoolId,
-      "Deactivated parent-student relationship",
-      "PARENT_UNLINKED",
-      relationshipId,
-    );
+    if (String(existing.rows[0].status).toUpperCase() === "ACTIVE") {
+      const updated = await pool.query(
+        `UPDATE parent_student_relationships
+         SET status = 'INACTIVE', updated_at = NOW()
+         WHERE id = $1 AND status = 'ACTIVE'
+         RETURNING id`,
+        [relationshipId],
+      );
+      if (updated.rows[0]) {
+        await auditSecurityEvent(
+          req,
+          existing.rows[0].schoolId,
+          "Deactivated parent-student relationship",
+          "PARENT_UNLINKED",
+          relationshipId,
+        );
+      }
+    }
     res.status(204).send();
   }),
 );

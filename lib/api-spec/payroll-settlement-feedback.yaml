@@ -796,7 +796,7 @@ components:
         updatedAt: { type: ["string", "null"], format: date-time }
     SchoolSettlementSummary:
       type: object
-      required: [schoolId, schoolName, status, currency, provider, capability, updatedAt]
+      required: [schoolId, schoolName, status, currency, provider, updatedAt]
       properties:
         schoolId: { type: integer, minimum: 1 }
         schoolName: { type: string }
