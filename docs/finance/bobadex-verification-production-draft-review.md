@@ -2,6 +2,13 @@
 
 Review date: 2026-10-26.
 
+**Later safety correction:** the two rollback findings below have now been
+repaired and tested on the complete current source-derived schema. See
+[the six-migration installation runbook](flutterwave-live-six-migrations-installation.md)
+for current results, the two updated down-file hashes and the remaining
+operator primary/recovery approval gates. The earlier findings and hashes below
+are preserved as historical evidence, not current draft status.
+
 ## Decisions
 
 - The existing school-bank verification fix needs **no Production migration**.

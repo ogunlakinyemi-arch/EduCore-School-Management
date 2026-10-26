@@ -1,12 +1,21 @@
 -- Empty-only rollback. Retained business evidence requires preservation review.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '30s';
 LOCK TABLE flutterwave_live_subscription_intents,flutterwave_live_authority_reviews,
+ flutterwave_live_partner_accruals,
  flutterwave_live_subscription_activations,flutterwave_live_official_receipts,
  flutterwave_live_commission_batches,flutterwave_live_commission_items,
  flutterwave_live_workflow_audits,flutterwave_live_reconciliation_cases IN ACCESS EXCLUSIVE MODE;
 DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM flutterwave_live_subscription_intents)
  OR EXISTS(SELECT 1 FROM flutterwave_live_authority_reviews)
+ OR EXISTS(SELECT 1 FROM flutterwave_live_partner_accruals)
+ OR EXISTS(SELECT 1 FROM flutterwave_live_subscription_activations)
+ OR EXISTS(SELECT 1 FROM flutterwave_live_official_receipts)
+ OR EXISTS(SELECT 1 FROM flutterwave_live_commission_batches)
+ OR EXISTS(SELECT 1 FROM flutterwave_live_commission_items)
+ OR EXISTS(SELECT 1 FROM flutterwave_live_workflow_audits)
  OR EXISTS(SELECT 1 FROM flutterwave_live_reconciliation_cases) THEN
  RAISE EXCEPTION 'LIVE workflow evidence retained: preservation review required'; END IF;
 END $$;

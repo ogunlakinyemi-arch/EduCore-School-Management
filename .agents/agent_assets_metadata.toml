@@ -784,3 +784,17 @@ mtime_ms = 1793005391348
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/bf37b98b-d95d-44a5-9d81-3507dc5bfe40/dffb4d04-1b0f-4630-bf31-d8c045b02436"
 storage_version_token = "1793005413428259"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "VL1AF67GX-_ZnQXj8vBFB"
+uri = "file://docs/finance/flutterwave-live-six-migrations-installation.md"
+type = "text"
+title = "Six Flutterwave LIVE migrations — safety and installation runbook"
+description = "Passing isolated tests, complete six-file order, current up/down hashes, exact installation steps, and the remaining Production primary/recovery confirmation gates. No application database changes performed."
+logical_id = "0b33527d-d488-40ec-8e71-7995e53781d3"
+content_hash = "sha256:be9d130a8a14436438451e3ea6eaaeef061b1b62c1c07c948111e656668a01c7"
+size = 11972
+mtime_ms = 1793006511780
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0b33527d-d488-40ec-8e71-7995e53781d3/e05ee082-cf85-4644-89c3-e6a83e44f7e1"
+storage_version_token = "1793006570532616"
+content_type = "text/markdown"
