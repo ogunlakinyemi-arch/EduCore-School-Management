@@ -798,3 +798,17 @@ mtime_ms = 1793006511780
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0b33527d-d488-40ec-8e71-7995e53781d3/fc89fffb-be87-466c-a327-1b91b522b1d4"
 storage_version_token = "1793008543365477"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "AwyM1ZsQW9cmJ0Q0ZVkJl"
+uri = "file://docs/finance/flutterwave-live-operator-handoff.md"
+type = "text"
+title = "Android owner handoff — Flutterwave LIVE migrations"
+description = "One document to share with a trusted operator: exact existing file order, checksum verification, execution safeguards, per-stage checkpoints and a copyable Replit Support request. Not an installer; no credentials included."
+logical_id = "7f3aa51c-cad3-4da4-92f3-53681ca276e0"
+content_hash = "sha256:37bb2f510eceb92f1667bc25d0cb768974d2163beae804075821a3459d830f64"
+size = 7164
+mtime_ms = 1793010505317
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/7f3aa51c-cad3-4da4-92f3-53681ca276e0/b3d598cf-d083-472a-a374-816772d3c5d1"
+storage_version_token = "1793010545061206"
+content_type = "text/markdown"

@@ -6,7 +6,21 @@ Date: 2026-10-26. This supersedes the two rollback findings in
 ## Status
 
 **Draft-code safety fixes and source-derived rehearsal: PASS.**
-**Production target/recovery certification and installation approval: PENDING.**
+**Owner-reported Production resource binding, writable-primary diagnostic,
+backup/PITR evidence and explicit Production authorization: received.**
+**Execution: blocked by Agent access; no supported writable Production tool is
+available to this Agent. Enabling owner editing does not change Agent access.**
+
+For Android, start with the single
+[owner/operator handoff](flutterwave-live-operator-handoff.md). It includes the
+file order, checksum instructions, per-stage checkpoints and a copyable Support
+request. The six SQL files are unchanged. There is no new installer, application
+endpoint or credential-handling mechanism.
+
+The owner confirmations above are reported evidence, not a new Agent primary
+connection or restore test. The observations below retain their original review
+context. An operator must establish actual current installation state before
+executing anything; this document does not assert that no other actor has acted.
 
 No application Development or Production DDL/DML was executed. No secrets,
 payment settings, release approvals, subaccounts or publishing were changed.
@@ -145,11 +159,14 @@ claim primary/recovery confirmation or begin installation based on this report.*
    prior stage is a reason to stop and reconcile, not use IF NOT EXISTS or rerun
    everything. Review any separately generated deployment/schema proposal so it
    cannot subsequently drop manually installed LIVE tables.
-3. Use a verified primary SQL session. The Replit SQL console can run the whole
-   file in one **Run**; do not execute statement fragments across pooled sessions.
-   If session/transaction behavior is uncertain, use an approved SQL client with
-   private Settings connection details, explicit stop-on-error behavior and
-   guaranteed transaction cleanup. Agent must not execute these against its replica.
+3. Use a verified primary SQL session. Replit supports operator SQL through its
+   console and external PostgreSQL clients, but its console documentation does
+   not establish the session preservation and stop-on-error guarantees required
+   for this package. Do not rely on mobile copy/paste or fragments across pooled
+   sessions. The recommended route is a trusted operator's desktop PostgreSQL
+   client loading the exact files, using private Production Settings connection
+   details, explicit stop-on-error behavior and guaranteed transaction cleanup.
+   Agent must not execute these against its replica.
 4. Before each whole-file execution, in that same operation/session establish:
 
    ```sql
