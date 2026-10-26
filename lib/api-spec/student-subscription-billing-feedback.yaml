@@ -148,7 +148,7 @@ components:
     StudentSubscriptionVerificationInput:
       type: object
       additionalProperties: false
-      required: [paymentReference, providerTransactionId]
+      required: [paymentReference]
       properties:
         paymentReference:
           type: string
@@ -156,6 +156,7 @@ components:
           maxLength: 100
           pattern: "^[A-Za-z0-9_-]+$"
         providerTransactionId:
+          description: Optional redirect transaction ID. When absent, the server resolves the persisted reference with Flutterwave before independently verifying the transaction.
           type: string
           minLength: 1
           maxLength: 16

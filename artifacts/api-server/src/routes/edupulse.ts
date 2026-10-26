@@ -974,7 +974,7 @@ router.post("/classes", async (req, res) => {
 
 const studentSubscriptionVerificationInput = z.object({
   paymentReference: z.string().min(8).max(100).regex(/^[A-Za-z0-9_-]+$/),
-  providerTransactionId: z.string().min(1).max(16).regex(/^[0-9]+$/),
+  providerTransactionId: z.string().min(1).max(16).regex(/^[0-9]+$/).optional(),
 }).strict();
 
 function subscriptionPaymentId(raw: string | undefined, name: string): number {
@@ -1389,12 +1389,16 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
     }
     let verified;
     try {
-      verified = await adapter.verifyPayment({
+      const expected = {
         reference: input.paymentReference,
-        providerTransactionId: input.providerTransactionId,
         amountMinor: Number(payment.grossAmountMinor),
         currency: String(payment.currency),
-      });
+      };
+      // A lost redirect is not permission to start another checkout. Resolve the
+      // persisted reference through the existing TEST adapter, then verify its ID.
+      verified = input.providerTransactionId
+        ? await adapter.verifyPayment({ ...expected, providerTransactionId: input.providerTransactionId })
+        : await adapter.verifyCheckoutStatus(expected);
     } catch {
       await pool.query(
         `UPDATE student_subscription_payments AS p

@@ -13,6 +13,9 @@ const fake = vi.hoisted(() => ({
   beginCount: 0,
   firstBegin: null as (() => void) | null,
   insertDelayMs: 0,
+  failReceiptOnce: false,
+  loseFinalizationCommitOnce: false,
+  activationCount: 0,
   poolQuery: vi.fn(),
   connect: vi.fn(),
 }));
@@ -106,6 +109,9 @@ beforeEach(() => {
   fake.transactionTail = Promise.resolve();
   fake.beginCount = 0;
   fake.insertDelayMs = 0;
+  fake.failReceiptOnce = false;
+  fake.loseFinalizationCommitOnce = false;
+  fake.activationCount = 0;
   fake.firstBegin = null;
 
   fake.poolQuery.mockReset().mockImplementation(async (sql: string, values: unknown[] = []) => {
@@ -132,8 +138,8 @@ beforeEach(() => {
         : { rows: [] };
     }
     if (sql.includes("UPDATE student_subscription_payments")
-        && sql.includes("SIGNED_WEBHOOK_PROVIDER_VERIFICATION_UNCERTAIN")) {
-      if (fake.payment.reference === values[0] && fake.payment.status !== "PAID") {
+        && sql.includes("PROVIDER_VERIFICATION_UNCERTAIN")) {
+      if ((fake.payment.reference === values[0] || fake.payment.paymentId === values[0]) && fake.payment.status !== "PAID") {
         fake.payment.status = "RECONCILIATION_REQUIRED";
       }
       return { rows: [] };
@@ -203,6 +209,12 @@ beforeEach(() => {
 
   fake.connect.mockImplementation(async () => {
     let releaseTransaction: (() => void) | undefined;
+    // SQL protocol double only: model transaction rollback and an acknowledged-
+    // lost COMMIT. These tests do not exercise PostgreSQL or a real provider.
+    let snapshot: {
+      payment: typeof fake.payment; allocations: typeof fake.allocations;
+      receipt: Record<string, any> | null; events: typeof fake.webhookEvents; activationCount: number;
+    } | undefined;
     return {
       query: async (sql: string, values: unknown[] = []) => {
         fake.calls.push(sql);
@@ -212,11 +224,27 @@ beforeEach(() => {
           fake.beginCount += 1;
           fake.firstBegin?.();
           await previous;
+          snapshot = structuredClone({
+            payment: fake.payment, allocations: fake.allocations, receipt: fake.receipt,
+            events: fake.webhookEvents, activationCount: fake.activationCount,
+          });
           return { rows: [] };
         }
         if (sql === "COMMIT" || sql === "ROLLBACK") {
+          if (sql === "ROLLBACK" && snapshot) {
+            fake.payment = snapshot.payment;
+            fake.allocations = snapshot.allocations;
+            fake.receipt = snapshot.receipt;
+            fake.webhookEvents = snapshot.events;
+            fake.activationCount = snapshot.activationCount;
+          }
+          snapshot = undefined;
           releaseTransaction?.();
           releaseTransaction = undefined;
+          if (sql === "COMMIT" && fake.loseFinalizationCommitOnce && fake.payment.status === "PAID") {
+            fake.loseFinalizationCommitOnce = false;
+            throw new Error("Mocked lost financial COMMIT acknowledgement");
+          }
           return { rows: [] };
         }
         if (sql.includes("SELECT school_id FROM student_subscription_payments")
@@ -280,7 +308,10 @@ beforeEach(() => {
           return { rows: fake.termConflict ? [fake.termConflict] : [] };
         }
         if (sql.includes("FROM school_partner_attributions a")) return { rows: [] };
-        if (sql.includes("UPDATE subscriptions")) return { rows: [{ id: fake.payment.subscriptionId }] };
+        if (sql.includes("UPDATE subscriptions")) {
+          fake.activationCount += 1;
+          return { rows: [{ id: fake.payment.subscriptionId }] };
+        }
         if (sql.includes("INSERT INTO student_subscription_allocations")) {
           if (fake.insertDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, fake.insertDelayMs));
           fake.allocations.push(values);
@@ -289,7 +320,18 @@ beforeEach(() => {
         if (sql.includes("INSERT INTO commission_ledger")) return { rows: [] };
         if (sql.includes("UPDATE nfc_cards")) return { rows: [] };
         if (sql.includes("UPDATE student_subscription_payments")) {
+          if (sql.includes("LOCAL_FINALIZATION_UNCERTAIN")) {
+            if (["PENDING", "RECONCILIATION_REQUIRED"].includes(fake.payment.status)) {
+              fake.payment.status = "RECONCILIATION_REQUIRED";
+              fake.payment.failureCode = "LOCAL_FINALIZATION_UNCERTAIN";
+            }
+            return { rows: [] };
+          }
           if (sql.includes("SET receipt_snapshot=")) {
+            if (fake.failReceiptOnce) {
+              fake.failReceiptOnce = false;
+              throw new Error("Mocked local receipt persistence failure");
+            }
             fake.receipt = JSON.parse(String(values[0]));
             return { rows: [] };
           }
@@ -568,6 +610,72 @@ describe("public student subscription Flutterwave webhook", () => {
     });
     expect(fake.receipt).toEqual(fullReceipt);
   });
+
+  it("recovers a missing redirect ID by reference and independently verifies the resolved transaction (mocked provider)", async () => {
+    const providerFetch = vi.fn(async (url: string) => providerResponse({
+      status: "success",
+      data: String(url).includes("transactions?")
+        ? [{ id: 812345, tx_ref: reference }]
+        : { id: 812345, status: "successful", tx_ref: reference, amount: 5000, currency: "NGN" },
+    }));
+    vi.stubGlobal("fetch", providerFetch);
+    const response = await httpFetch(`${baseUrl}/api/subscriptions/12/verify`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ paymentReference: reference }),
+    });
+    expect(response.status).toBe(200);
+    expect(fake.payment.status).toBe("PAID");
+    expect(fake.activationCount).toBe(1);
+    expect(fake.allocations).toHaveLength(2);
+    expect(providerFetch.mock.calls.map(([url]) => String(url))).toEqual([
+      `https://api.flutterwave.com/v3/transactions?tx_ref=${reference}`,
+      "https://api.flutterwave.com/v3/transactions/812345/verify",
+    ]);
+    await signedWebhook();
+    expect(fake.activationCount).toBe(1);
+    expect(fake.allocations).toHaveLength(2);
+  });
+
+  it("keeps an unresolved reference reserved without activation or another provider checkout (mocked provider)", async () => {
+    const providerFetch = vi.fn(async () => providerResponse({ status: "success", data: [] }));
+    vi.stubGlobal("fetch", providerFetch);
+    const response = await httpFetch(`${baseUrl}/api/subscriptions/12/verify`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ paymentReference: reference }),
+    });
+    expect(response.status).toBe(202);
+    expect(fake.payment.status).toBe("RECONCILIATION_REQUIRED");
+    expect(fake.activationCount).toBe(0);
+    expect(fake.allocations).toHaveLength(0);
+    expect(providerFetch.mock.calls).toHaveLength(1);
+  });
+
+  it.each(["rollback", "lost-commit"] as const)(
+    "recovers provider success after %s without duplicate activation or allocations (mocked provider and database)",
+    async failure => {
+      fake.failReceiptOnce = failure === "rollback";
+      fake.loseFinalizationCommitOnce = failure === "lost-commit";
+      const providerFetch = vi.fn(async () => providerResponse({ status: "success", data: {
+        id: 812345, status: "successful", tx_ref: reference, amount: 5000, currency: "NGN",
+      } }));
+      vi.stubGlobal("fetch", providerFetch);
+      const failed = await signedWebhook();
+      expect(failed.status).toBe(500);
+      expect(fake.payment.status).toBe(failure === "rollback" ? "RECONCILIATION_REQUIRED" : "PAID");
+      expect(fake.allocations).toHaveLength(failure === "rollback" ? 0 : 2);
+      expect(fake.activationCount).toBe(failure === "rollback" ? 0 : 1);
+      expect([...fake.webhookEvents.values()][0]?.status).toBe("RECEIVED");
+
+      expect((await signedWebhook()).status).toBe(200);
+      expect((await signedWebhook()).status).toBe(200);
+      expect(fake.payment.status).toBe("PAID");
+      expect(fake.activationCount).toBe(1);
+      expect(fake.allocations).toHaveLength(2);
+      expect([...fake.webhookEvents.values()][0]?.status).toBe("VERIFIED");
+      // Only verification GETs were made; retry never initializes another charge.
+      expect(providerFetch.mock.calls).toHaveLength(2);
+    },
+  );
 
   it("is idempotent when callback settlement races the signed webhook", async () => {
     fake.insertDelayMs = 15;

@@ -240,13 +240,13 @@ describe('trusted student-subscription payment workflow', () => {
     expect(state.checkout).toHaveBeenCalledWith(91, expect.objectContaining({ headers: expect.objectContaining({ 'Idempotency-Key': expect.any(String) }) }));
   });
 
-  it('retries verification against the same persisted payment and never creates a new checkout automatically', async () => {
+  it.each(['9876', null])('retries the persisted payment without another checkout, redirect ID=%s (mocked API)', async transactionId => {
     const persistedPayment = payment();
     saveStudentCheckoutAttempts(7, [{
       requestedSubscriptionId: 91,
       idempotencyKey: 'student-sub-7-91-known-key',
       payment: persistedPayment as any,
-      providerTransactionId: '9876',
+      providerTransactionId: transactionId,
     }], window.sessionStorage);
     state.paymentResponse = { payment: persistedPayment, subscription: {}, allocations: [], activated: false };
     state.verify.mockRejectedValue(new Error('Provider verification is still pending'));
@@ -260,11 +260,11 @@ describe('trusted student-subscription payment workflow', () => {
     expect(state.verify).toHaveBeenCalledTimes(2);
     expect(state.verify).toHaveBeenNthCalledWith(1, {
       subscriptionId: 91,
-      data: { paymentReference: 'PERSISTED_REF_123', providerTransactionId: '9876' },
+      data: { paymentReference: 'PERSISTED_REF_123', ...(transactionId ? { providerTransactionId: transactionId } : {}) },
     });
     expect(state.verify).toHaveBeenNthCalledWith(2, {
       subscriptionId: 91,
-      data: { paymentReference: 'PERSISTED_REF_123', providerTransactionId: '9876' },
+      data: { paymentReference: 'PERSISTED_REF_123', ...(transactionId ? { providerTransactionId: transactionId } : {}) },
     });
     expect(state.checkout).not.toHaveBeenCalled();
     expect(host.querySelector('[data-testid="button-checkout-subscription-91"]')).toBeNull();

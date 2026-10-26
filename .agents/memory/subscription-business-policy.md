@@ -63,6 +63,17 @@ Production migration, publishing, live keys or live transactions.
 
 ## LIVE preparation authorization
 
+The current TEST payment repair must remain integrated in EduCore: reuse its
+database, authentication, subscription, finance and Flutterwave components.
+Do not introduce or require a separate payment service for this repair.
+
+**Why:** The user explicitly chose repairing the existing in-app integration
+instead of the previously discussed external-payment-service architecture.
+
+**How to apply:** Keep TEST recovery tied to the existing persisted payment and
+versioned allocation policy. Architectural extraction requires a new explicit
+request; neither this repair nor mocked provider tests authorize LIVE activation.
+
 Use additive, reviewable migration drafts and disposable PostgreSQL only.
 Development implementation permission does not authorize applying even those
 drafts to the Development application database; Production requires its own

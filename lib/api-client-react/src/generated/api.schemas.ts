@@ -10183,11 +10183,12 @@ export interface StudentSubscriptionVerificationInput {
      */
   paymentReference: string;
   /**
+     * Optional redirect transaction ID. When absent, the server resolves the persisted reference with Flutterwave before independently verifying the transaction.
      * @minLength 1
      * @maxLength 16
      * @pattern ^[0-9]+$
      */
-  providerTransactionId: string;
+  providerTransactionId?: string;
 }
 
 export type StudentSubscriptionPaymentResponseSubscription = { [key: string]: unknown };

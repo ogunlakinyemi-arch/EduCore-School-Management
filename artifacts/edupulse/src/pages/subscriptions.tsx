@@ -99,7 +99,7 @@ function SubscriptionPaymentDetails({
           {refreshError && <p className="mt-2 text-xs text-[hsl(var(--destructive))]">Could not refresh payment status. No client-cached status is being treated as authoritative.</p>}
           {refreshError && <Button variant="outline" className="mt-3" onClick={onRefreshPayment} testId={`button-refresh-payment-${payment.paymentId}`}>Refresh payment status</Button>}
           {isPaymentStatusPolling(payment) && <p className={`mt-2 ${note}`}>Payment remains {paymentMessage(payment.status)}. This record is being refreshed; no new checkout is started automatically.</p>}
-          {attempt?.providerTransactionId && !isServerConfirmedPaid(payment) && (
+          {attempt && !isServerConfirmedPaid(payment) && (
             <Button
               variant="outline"
               className="mt-3"
@@ -374,10 +374,10 @@ function LegacySubscriptionsPage() {
   };
   const attemptsFor = (subscriptionId: number) => attempts.filter(attempt => attempt.requestedSubscriptionId === subscriptionId);
 
-  const verifyPersistedPayment = async (attempt: StudentCheckoutAttempt, transactionId: string) => {
+  const verifyPersistedPayment = async (attempt: StudentCheckoutAttempt, transactionId?: string) => {
     if (!schoolId || !canCheckout || !attempt.payment || verifyingAttemptKeys.current.has(attempt.idempotencyKey)) return;
     verifyingAttemptKeys.current.add(attempt.idempotencyKey);
-    const withTransaction = { ...attempt, providerTransactionId: transactionId };
+    const withTransaction = { ...attempt, providerTransactionId: transactionId ?? attempt.providerTransactionId };
     updateAttempt(withTransaction);
     try {
       const persisted = await getStudentSubscriptionPayment(attempt.payment.subscriptionId, attempt.payment.paymentId);
@@ -393,7 +393,7 @@ function LegacySubscriptionsPage() {
           subscriptionId: persisted.payment.subscriptionId,
           data: {
             paymentReference: persisted.payment.reference,
-            providerTransactionId: transactionId,
+            ...(withTransaction.providerTransactionId ? { providerTransactionId: withTransaction.providerTransactionId } : {}),
           },
         });
         if (!checkoutEvidenceMatchesServer(withTransaction, verified.payment, schoolId)) {
@@ -638,7 +638,7 @@ function LegacySubscriptionsPage() {
               verifying={verify.isPending}
               onCheckout={startCheckout}
               onRetryVerification={attempt => {
-                if (attempt.providerTransactionId) void verifyPersistedPayment(attempt, attempt.providerTransactionId);
+                void verifyPersistedPayment(attempt, attempt.providerTransactionId ?? undefined);
               }}
               onPaymentRefreshed={(attempt, payment) => updateAttempt({ ...attempt, payment })}
             />

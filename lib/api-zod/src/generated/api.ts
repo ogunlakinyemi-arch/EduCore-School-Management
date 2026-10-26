@@ -15107,7 +15107,7 @@ export const verifyStudentSubscriptionPaymentBodyProviderTransactionIdRegExp = n
 
 export const VerifyStudentSubscriptionPaymentBody = zod.object({
   "paymentReference": zod.string().min(verifyStudentSubscriptionPaymentBodyPaymentReferenceMin).max(verifyStudentSubscriptionPaymentBodyPaymentReferenceMax).regex(verifyStudentSubscriptionPaymentBodyPaymentReferenceRegExp),
-  "providerTransactionId": zod.string().min(1).max(verifyStudentSubscriptionPaymentBodyProviderTransactionIdMax).regex(verifyStudentSubscriptionPaymentBodyProviderTransactionIdRegExp)
+  "providerTransactionId": zod.string().min(1).max(verifyStudentSubscriptionPaymentBodyProviderTransactionIdMax).regex(verifyStudentSubscriptionPaymentBodyProviderTransactionIdRegExp).optional().describe('Optional redirect transaction ID. When absent, the server resolves the persisted reference with Flutterwave before independently verifying the transaction.')
 })
 
 export const verifyStudentSubscriptionPaymentResponsePaymentProviderFeeMinorMin = 0;

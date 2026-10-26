@@ -210,6 +210,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
   canonicalLogoVersionUrl?: (schoolId: number, logoId: number) => string,
 ): Promise<StudentSubscriptionFinalizeResult> {
   const client = await database.connect();
+  let processingError: unknown;
   try {
     await client.query("BEGIN");
     const locked = await client.query(
@@ -678,11 +679,35 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     await client.query("COMMIT");
     return { status: "PAID", activated: true, reconciliationRequired: false, allocations };
   } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
+    processingError = error;
+    // COMMIT acknowledgement can be lost even when the transaction committed.
+    // Preserve that error; ROLLBACK is not proof that the payment was undone.
+    await client.query("ROLLBACK").catch(() => undefined);
   } finally {
     client.release();
   }
+  // Use a fresh connection only after releasing the transaction's client (also
+  // works with a one-connection pool). This is recovery metadata, not settlement.
+  // Never downgrade a committed PAID row or release its checkout reservation.
+  try {
+    const recovery = await database.connect();
+    try {
+      await recovery.query(
+        `UPDATE student_subscription_payments
+            SET status='RECONCILIATION_REQUIRED',reconciliation_status='RECONCILIATION_REQUIRED',
+                failure_code='LOCAL_FINALIZATION_UNCERTAIN',updated_at=NOW()
+          WHERE id=$1 AND provider='FLUTTERWAVE' AND provider_mode='SANDBOX'
+            AND status IN ('PENDING','RECONCILIATION_REQUIRED')`,
+        [paymentId],
+      );
+    } finally {
+      recovery.release();
+    }
+  } catch {
+    // If recovery storage is also unavailable, propagate failure. The existing
+    // reservation remains; callers must retry verification, never initialization.
+  }
+  throw processingError;
 }
 
 async function markStudentPaymentForReconciliation(
