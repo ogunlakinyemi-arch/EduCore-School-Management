@@ -61,6 +61,16 @@ async function http(path:string,actor=2,body?:object){
 async function submit(){const r=await http("/schools/10/finance/live-subaccount-onboarding",2,{});expect(r.status).toBe(200);return r.body;}
 const review=(id:number,body=approval())=>http(`/platform/flutterwave/live/school-subaccounts/${id}/review`,1,body);
 const posts=()=>calls.filter(c=>c.path==="subaccounts"&&c.method==="POST");
+const onboardingDraft=(direction:"up"|"down")=>readFileSync(
+  resolve(`../../lib/db/dev-reconciliation/flutterwave-live-school-onboarding.${direction}.sql`),"utf8");
+async function rollbackOnboardingFixture(){
+  // Pin the connection: a failed multi-statement transaction must be rolled back
+  // on the same client, never on an arbitrary pooled connection.
+  const client=await db.connect();
+  try{await client.query(onboardingDraft("down"));}
+  catch(error){await client.query("ROLLBACK");throw error;}
+  finally{client.release();}
+}
 async function seedProfile(scope:string,schoolId:number|null,accountNumber:string,id:number){
   const aad=(f:string)=>scope==="SCHOOL"?`settlement:school:${schoolId}:${f}`:`settlement:yemait-company:${f}`;
   const encrypt=(v:string,f:string)=>encryptPayrollBankValue(v,aad(f)).ciphertext;
@@ -70,6 +80,29 @@ async function seedProfile(scope:string,schoolId:number|null,accountNumber:strin
   [id,scope,schoolId,bank.businessName,bank.businessEmail,bank.businessPhone,encrypt(bank.bankName,"bankName"),
     encrypt(bank.bankCode,"bankCode"),encrypt(bank.accountName,"accountName"),encrypt(accountNumber,"accountNumber"),accountNumber.slice(-4)]);
 }
+it("rolls back and reapplies an unused onboarding schema without changing school profiles",async()=>{
+  const before=(await db.query("SELECT id,scope,school_id FROM settlement_payroll_profiles ORDER BY id")).rows;
+  // Only this disposable cluster's synthetic release fixture is removed.
+  await db.query("DELETE FROM flutterwave_live_school_onboarding_releases");
+  await rollbackOnboardingFixture();
+  expect((await db.query("SELECT to_regclass('flutterwave_live_school_onboarding') AS relation")).rows[0].relation).toBeNull();
+  await db.query(onboardingDraft("up"));
+  expect((await db.query("SELECT id,scope,school_id FROM settlement_payroll_profiles ORDER BY id")).rows).toEqual(before);
+  expect(posts()).toHaveLength(0);
+});
+it("refuses rollback when a release review exists and leaves the database usable",async()=>{
+  await expect(rollbackOnboardingFixture()).rejects.toThrow("LIVE onboarding evidence retained");
+  expect((await db.query("SELECT count(*)::int AS count FROM flutterwave_live_school_onboarding_releases")).rows[0].count).toBe(1);
+  expect((await db.query("SELECT to_regclass('flutterwave_live_school_onboarding') AS relation")).rows[0].relation).not.toBeNull();
+});
+it("refuses rollback for bank verification history even without a release review",async()=>{
+  const saved=await submit();
+  await db.query("DELETE FROM flutterwave_live_school_onboarding_releases");
+  await expect(rollbackOnboardingFixture()).rejects.toThrow("LIVE onboarding evidence retained");
+  expect((await db.query("SELECT status FROM flutterwave_live_school_onboarding WHERE id=$1",[saved.id])).rows[0].status).toBe("BANK_VERIFIED");
+  expect((await db.query("SELECT count(*)::int AS count FROM flutterwave_live_school_onboarding_audits")).rows[0].count).toBeGreaterThan(0);
+  expect(posts()).toHaveLength(0);
+});
 beforeAll(async()=>{
   execFileSync("initdb",["-D",data,"-U","fixture_owner","-A","trust","--no-locale","--encoding=UTF8"],{env:cleanEnv,stdio:"ignore"});
   execFileSync("pg_ctl",["-D",data,"-l",join(root,"server.log"),"-o",`-c listen_addresses='' -c unix_socket_directories='${root}' -p 55433`,"-w","start"],{env:cleanEnv,stdio:"ignore"});
