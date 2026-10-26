@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { StudentSubscriptionSqlPool, StudentSubscriptionSqlClient } from "../lib/student-subscription-billing";
 import { parseLiveFinalizationEvent } from "../lib/flutterwave-live-finalization-event";
+import { assertLiveIntentAllocation, invalidateHeldLiveCommissionBatches } from "./flutterwave-live-application-guards";
 import {
   blockedLiveCollectionVerifier, LiveFinalizationBlocked,
   type LiveCollectionEvidence, type LiveCollectionVerifier,
@@ -86,6 +87,7 @@ export async function finalizeLiveSubscriptionDesign(
       blocked("LIVE_INTENT_UNMATCHED");
     }
     const intent = intents[0];
+    assertLiveIntentAllocation(intent);
     // A matched signed adverse notification must protect an ALREADY independently
     // verified collection even if fresh GETs fail or now report a reversal.
     // Reuse immutable original evidence for a HOLD ONLY, never a new collection.
@@ -129,6 +131,9 @@ export async function finalizeLiveSubscriptionDesign(
         `UPDATE flutterwave_live_partner_accruals SET state='HELD' WHERE intent_id=$1 AND environment='LIVE'`,
         [intent.id],
       );
+      // Explicit application equivalent for this write path; retain the database
+      // trigger until all-writer equivalence and Publish compatibility are proven.
+      await invalidateHeldLiveCommissionBatches(client, intent);
       await lifecycle?.hold(client,intent,receiptId);
     } else if (!intent.on_hold) {
       const existing = (await client.query(

@@ -43,3 +43,17 @@ replaying. Sequential FK/constraint checks did not expose the incompatibility.
 **How to apply:** Prefer referencing an existing namespace key over introducing
 a competing redundant unique key. Prove the actual concurrent write contract in
 disposable PostgreSQL, and drain all concurrent test attempts before fixture reset.
+
+Application-level replacements for financial triggers must preserve protection
+against every writer, not just reproduce a successful API path. Keep the
+original protections and release requirements until equivalence is established.
+
+**Why:** The approved Publish-compatible redesign permits safe Development work,
+not weaker immutable history, resettable provider claims, missing onboarding
+audits or premature LIVE enablement. Ordinary row CHECKs cannot compare OLD/NEW
+or protect append-only evidence across arbitrary writers.
+
+**How to apply:** Separate per-path application behavior from an enforceable
+all-writer boundary. Require isolated transaction/concurrency evidence and a
+supported schema/privilege path before removing database protections. Mocked
+finalizer tests establish application ordering only, not Publish compatibility.
