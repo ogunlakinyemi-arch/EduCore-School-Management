@@ -267,3 +267,117 @@ history, irreversible financial state and permanent claim retention still depend
 on the existing triggers. A proven all-writer design and supported full relational
 schema-to-Publish path remain necessary before release. No release gate, allocation,
 verification, reconciliation or original migration/review/checksum file is changed.
+
+## Next narrow step: constraint-only boundary evidence
+
+**Decision: no additional operational safeguard promoted. Equivalence failed.**
+The only implementation in this step is a guarded test-only candidate and four
+focused PostgreSQL tests. Application code, schema declarations and release gates
+are unchanged. The candidate is not a migration, supported installation procedure
+or replacement for the reviewed SQL.
+
+### Writer boundary and supported relational enforcement
+
+The current writer map above was checked against the remaining static write sites;
+no new general audit or previous general test suite was run. Relevant writers:
+
+| Protection | Existing function/trigger boundary | Relevant application writers | Constraint + transaction assessment |
+| --- | --- | --- | --- |
+| Frozen financial identity and evidence | `guard_flutterwave_live_intent`; `retain_flutterwave_live_history` and its collection/event/result, authority, receipt, reconciliation, membership, workflow/operator audit, configuration/allocation triggers | Intents: `flutterwave-live-intents.ts`; verified evidence/events/results: finalization; activation/receipts/reconciliation: lifecycle; reviews/configuration/allocation: configuration; batches/items/audits: commissions; operator audit: operator | CHECK/NOT NULL enforce allowed current values; FKs enforce current identity bindings; generated columns enforce arithmetic. None freezes an earlier valid value. Application locks/transactions coordinate participating writers only. **Historical immutability blocked.** |
+| Irreversible holds and states | Intent/accrual guards; `guard_live_workflow_state`; `hold_live_workflow`; checkout guard | Finalization updates intent identity/state/hold/accrual; lifecycle holds activation; application guards invalidate batches; commissions approve/export after locked recheck; runtime completes checkout | Allowed-state CHECKs do not encode OLD → NEW. Existing locks, conditional updates and batch invalidation remain necessary, but an ordinary UPDATE outside that path can reverse a valid state. **All-writer irreversibility blocked.** |
+| Permanent authenticated delivery, semantic-event and checkout claims | Inbox namespace key; immutable event/result guards; `guard_live_checkout_attempt` | Inbox upserts only counters/time; finalization inserts/rechecks semantic event and receipt result; runtime permanently reserves checkout and conditionally completes it. Callback does not mint an authenticated receipt; operator review does not reissue the claim | Unique keys prevent reuse while retained; FKs prevent deleting a referenced parent. Deleting mutable dependency leaves first frees claims. No expiry/reset/reinsert path is authorized. **Permanent retention blocked.** |
+| Onboarding permanent claim and audit history (prior implementation retained) | Onboarding history/audit/immutable-audit functions | Eleven submit/review/create/recover mutations all use `mutateLiveOnboarding`; audit INSERT/validation is inside that boundary | Prior tests prove per-path transitions and atomic auditing. That module does not restrict another raw-SQL writer or make audit rows globally immutable. **All-writer replacement still blocked.** |
+
+Here, “all relevant writers” means ordinary DML writers, including another code
+path using the SQL pool, not an administrator deliberately disabling protections
+with DDL. Both original triggers and the candidate were tested under identical
+fixture privileges using ordinary INSERT/UPDATE/DELETE only. No claim is made
+about uninspected Production grants. The source exposes a general SQL pool, not
+an established per-table append-only write-role boundary.
+
+### Focused evidence, including foreign keys missing from the earlier LIKE clones
+
+The existing six-migration disposable harness supplies canonical parents and an
+independently identity-checked Unix-socket PostgreSQL target. A **separate test
+schema** is constructed from the six unchanged SQL texts, omitting only their
+nine functions and twenty triggers in memory. The original objects remain intact.
+The fixture refuses a non-disposable target, a changed stage count or an unexpected
+function/trigger count. It has no connection string, CLI, build hook or app caller.
+
+Unlike the earlier LIKE-only onboarding clones, this candidate keeps the full
+foreign keys. Tests compare constraint definitions/validation, index definitions,
+column types/nullability/defaults and generated expressions against the original
+21-table model, normalizing schema qualification only. They verify zero candidate
+functions/triggers and all twenty original triggers still enabled.
+
+| Focused case | Observed result |
+| --- | --- |
+| Retain relational shape and test scalar/identity enforcement | Exact relational-shape match. Invalid school/BRO allocations and negative fees rejected with CHECK violations; retained duplicate event/checkout claims rejected with UNIQUE violations; referenced event deletion rejected with FK violation. |
+| Rewrite otherwise-valid history | Changing an actual recorded fee, official receipt snapshot or workflow audit action succeeds in the candidate; original triggers reject all three. Generated net recalculates, demonstrating arithmetic consistency does **not** prove original-fee authenticity. |
+| Reverse irreversible state | Intent unhold, accrual release, activation reactivation, batch reapproval and UNKNOWN → RESERVED checkout reset all succeed in the candidate; original guards reject each. |
+| Delete dependency leaves and reuse claims | Candidate permits deleting receipt result then semantic event and reinserting the same semantic claim under another event ID; checkout deletion/re-reservation also succeeds. Originals reject the leaf/claim deletions. Existing uniqueness/FKs do not establish permanence. |
+
+These are successful **counterexample tests**, not a successful trigger-free
+payment implementation. No actual provider operation or payment was performed.
+They do not disprove every conceivable future relational redesign; they disprove
+the current model's equivalence when procedural protections are omitted.
+
+### What is fully covered, and what is not
+
+**Covered in this step:** exact candidate relational-shape preservation; the
+specified scalar allocation/fee checks; retained-row event/checkout uniqueness;
+referential protection of the referenced event; reproducible counterexamples
+against the same privileged DML writer. Existing server-side verification,
+transactional finalization, idempotency and reconciliation are preserved, not
+newly recertified by this test.
+
+**No remaining global protection is newly fully covered without triggers.**
+Adding a CHECK that allows only a final state would reject legitimate initial
+states, not reproduce transitions. Adding another unique/FK index cannot freeze
+non-key history or keep an unreferenced claim from being deleted. An append-only
+event ledger still needs enforceable insert-only access and safe projections;
+merely adding a ledger/hash chain permits rewriting/deleting its unprotected tail.
+Locks/CAS predicates do not constrain writers that do not participate in them.
+
+The next necessary design input is a supported, enforceable table/column write
+boundary: e.g. an approved append-only role model plus guarded mutable-state
+transactions, or another demonstrated protected ledger/root design. It must cover
+every writer and be reconciled with Publish ownership/permissions. No such
+capability is established here. Creating roles/grants, changing credentials or
+installing a bypass migration is outside this authorization. Without that input,
+another application wrapper or scalar CHECK would not close the proven gap.
+
+**Publish verdict: NOT genuinely Publish-compatible.** Relational primitives are
+the intended supported schema direction, but this candidate is deliberately not
+adopted: it fails required protection semantics. The exact future Publish diff
+and permission lifecycle remain unverified. Do not drop functions/triggers or
+relax release checks based on these tests.
+
+### Files and executed verification for this step
+
+Changed files only:
+
+1. `artifacts/api-server/src/test/flutterwave-live-constraint-candidate.ts` (new,
+   test-only fixture).
+2. `artifacts/api-server/src/services/flutterwave-live-six-migrations.postgres.test.ts`
+   (four new focused cases; existing cases unchanged).
+3. `docs/finance/flutterwave-live-application-redesign.md` (this finding).
+
+Executed:
+
+- `pnpm --filter @workspace/api-server exec vitest run src/services/flutterwave-live-six-migrations.postgres.test.ts -t 'constraint-only evidence:' --reporter=dot`
+  — **four passed, thirteen pre-existing tests skipped**. The existing isolated
+  fixture setup/preservation checks ran; the old general tests did not.
+- `pnpm --filter @workspace/api-server run typecheck` — **passed**.
+- `git diff --check` — **passed**.
+
+No Production/shared database, actual provider, reset of application data,
+settings/secrets, workflow restart, publish or LIVE activation is involved.
+The NGN 500000 = 190000 + 310000 allocation and eligible 10000-kobo BRO deduction
+remain unchanged; no code or configuration affecting payment behavior changed.
+
+Final preservation verification:
+`sha256sum -c docs/finance/flutterwave-live-production-review/originals.sha256`
+returned **fourteen matches**. Protected-path `git diff --exit-code` confirmed
+no changes to the six original forwards, six rollbacks, runbook, original manifest
+or Production review package.

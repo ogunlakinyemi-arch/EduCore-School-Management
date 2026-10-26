@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabasePool, type DatabasePoolClient } from "@workspace/db/driver";
 import { beforeAll, beforeEach, afterAll, afterEach, expect, it } from "vitest";
+import { candidateSchema, createConstraintCandidate, relationalShape, seedConstraintEvidence } from "../test/flutterwave-live-constraint-candidate";
 
 // No application pool, URL, credentials or provider configuration is imported.
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
@@ -142,6 +143,93 @@ afterAll(async () => {
   await admin?.end();
   if (started) execFileSync("pg_ctl", ["-D", path.join(directory, "data"), "-m", "immediate", "-w", "stop"], { env: clean, stdio: "ignore" });
   if (directory) await rm(directory, { recursive: true, force: true });
+});
+
+async function constraintCandidate() {
+  await createConstraintCandidate(client, order.map(name => ups.get(name)!), directory, database);
+}
+
+it("constraint-only evidence: retains the full relational shape and enforces scalar and identity constraints", async () => {
+  await constraintCandidate();
+  expect(await relationalShape(client, candidateSchema)).toEqual(await relationalShape(client, "public"));
+  expect((await client.query(`SELECT count(*)::int AS n FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+    WHERE c.relnamespace=$1::regnamespace AND NOT t.tgisinternal`, [candidateSchema])).rows[0].n).toBe(0);
+  expect((await client.query("SELECT count(*)::int AS n FROM pg_proc WHERE pronamespace=$1::regnamespace",
+    [candidateSchema])).rows[0].n).toBe(0);
+  expect((await client.query(`SELECT count(*)::int AS n FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+    WHERE c.relnamespace='public'::regnamespace AND c.relname LIKE 'flutterwave_live_%'
+      AND NOT t.tgisinternal AND t.tgenabled='O'`)).rows[0].n).toBe(20);
+  await seedConstraintEvidence(client, candidateSchema);
+  for (const sql of [
+    "UPDATE flutterwave_live_subscription_intents SET school_minor=190001 WHERE id=1",
+    "UPDATE flutterwave_live_subscription_intents SET partner_accrual_minor=0 WHERE id=1",
+    "UPDATE flutterwave_live_collection_evidence SET provider_fee_minor=-1 WHERE intent_id=1",
+  ]) await expect(client.query(sql)).rejects.toMatchObject({ code: "23514" });
+  await expect(client.query(`INSERT INTO flutterwave_live_finalization_events
+    (id,intent_id,semantic_key,kind,transaction_id,source_payload_sha256)
+    VALUES(2,1,'${"b".repeat(64)}','COLLECTION','123','${"a".repeat(64)}')`))
+    .rejects.toMatchObject({ code: "23505" });
+  await expect(client.query("INSERT INTO flutterwave_live_checkout_attempts(intent_id,state) VALUES(1,'RESERVED')"))
+    .rejects.toMatchObject({ code: "23505" });
+  await expect(client.query("DELETE FROM flutterwave_live_finalization_events WHERE id=1"))
+    .rejects.toMatchObject({ code: "23503" });
+});
+
+it("constraint-only evidence: valid financial and audit rewrites bypass relational constraints but original guards refuse", async () => {
+  await constraintCandidate();
+  await seedConstraintEvidence(client, "public");
+  const rewrites = [
+    "UPDATE flutterwave_live_collection_evidence SET provider_fee_minor=501 WHERE intent_id=1",
+    "UPDATE flutterwave_live_official_receipts SET snapshot='{\"rewritten\":true}' WHERE intent_id=1",
+    "UPDATE flutterwave_live_workflow_audits SET action='EXPORT_ONLY' WHERE batch_id=1",
+  ];
+  for (const sql of rewrites) await expect(client.query(sql)).rejects.toMatchObject({ code: "P0001" });
+  await seedConstraintEvidence(client, candidateSchema);
+  for (const sql of rewrites) expect((await client.query(sql)).rowCount).toBe(1);
+  expect((await client.query(`SELECT provider_fee_minor,calculated_owner_net_minor
+    FROM flutterwave_live_collection_evidence WHERE intent_id=1`)).rows[0])
+    .toEqual({ provider_fee_minor: 501, calculated_owner_net_minor: 299449 });
+});
+
+it("constraint-only evidence: valid hold and checkout state reversals pass without procedural history guards", async () => {
+  await constraintCandidate();
+  const hold = `UPDATE flutterwave_live_subscription_intents SET on_hold=true,state='REVIEW_REQUIRED' WHERE id=1;
+    UPDATE flutterwave_live_partner_accruals SET state='HELD' WHERE intent_id=1;
+    UPDATE flutterwave_live_subscription_activations SET status='HELD' WHERE intent_id=1;
+    UPDATE flutterwave_live_commission_batches SET status='REVIEW_REQUIRED' WHERE id=1`;
+  const reversals = [
+    "UPDATE flutterwave_live_subscription_intents SET on_hold=false,state='COLLECTION_VERIFIED' WHERE id=1",
+    "UPDATE flutterwave_live_partner_accruals SET state='ACCRUED' WHERE intent_id=1",
+    "UPDATE flutterwave_live_subscription_activations SET status='ACTIVE' WHERE intent_id=1",
+    "UPDATE flutterwave_live_commission_batches SET status='APPROVED' WHERE id=1",
+    "UPDATE flutterwave_live_checkout_attempts SET state='RESERVED' WHERE intent_id=1",
+  ];
+  await seedConstraintEvidence(client, "public"); await client.query(hold);
+  for (const sql of reversals) await expect(client.query(sql)).rejects.toMatchObject({ code: "P0001" });
+  await seedConstraintEvidence(client, candidateSchema); await client.query(hold);
+  for (const sql of reversals) expect((await client.query(sql)).rowCount).toBe(1);
+});
+
+it("constraint-only evidence: deleting dependency leaves permits provider claim reuse despite all unique and foreign keys", async () => {
+  await constraintCandidate();
+  await seedConstraintEvidence(client, "public");
+  await expect(client.query("DELETE FROM flutterwave_live_receipt_results WHERE receipt_id=1"))
+    .rejects.toMatchObject({ code: "P0001" });
+  await expect(client.query("DELETE FROM flutterwave_live_checkout_attempts WHERE intent_id=1"))
+    .rejects.toMatchObject({ code: "P0001" });
+  await seedConstraintEvidence(client, candidateSchema);
+  // These are attacks against NEW synthetic candidate tables, never application
+  // cleanup or permission to erase/reuse a real provider event.
+  await client.query("DELETE FROM flutterwave_live_receipt_results WHERE receipt_id=1");
+  await client.query("DELETE FROM flutterwave_live_finalization_events WHERE id=1");
+  await client.query(`INSERT INTO flutterwave_live_finalization_events
+    (id,intent_id,semantic_key,kind,transaction_id,source_payload_sha256)
+    VALUES(2,1,'${"b".repeat(64)}','COLLECTION','123','${"a".repeat(64)}');
+    INSERT INTO flutterwave_live_receipt_results(receipt_id,event_id) VALUES(1,2);
+    DELETE FROM flutterwave_live_checkout_attempts WHERE intent_id=1;
+    INSERT INTO flutterwave_live_checkout_attempts(intent_id,state) VALUES(1,'RESERVED')`);
+  expect((await client.query("SELECT event_id FROM flutterwave_live_receipt_results WHERE receipt_id=1")).rows[0].event_id).toBe("2");
+  expect((await client.query("SELECT state FROM flutterwave_live_checkout_attempts WHERE intent_id=1")).rows[0].state).toBe("RESERVED");
 });
 
 it("applies all six drafts to the complete current source schema without enabling releases or changing canonical records", async () => {
