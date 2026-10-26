@@ -42,7 +42,7 @@ describe('shared bank provider select', () => {
   it('shows loading, retry-in-progress and recovery to a selectable provider code', async () => {
     cat.isLoading = true;
     const { host, root } = await mount(blank);
-    expect(host.textContent).toContain('Loading bank directory');
+    expect(host.textContent).toContain('Loading bank list');
     expect(host.querySelector<HTMLInputElement>('[role="combobox"]')!.disabled).toBe(true);
     cat.isLoading = false; cat.isFetching = true; cat.isError = true;
     await act(async () => root.render(<Harness init={blank} />));
@@ -110,7 +110,7 @@ describe('shared bank provider select', () => {
     await type(host, 'gamma'); await choose(host);
     expect(latest.bankName).toBe('Fictional Gamma Digital');
     expect(latest.bankCode).toBe('');
-    expect(host.textContent).toContain('not available for account verification');
+    expect(host.textContent).toContain('not currently available for account verification');
     expect(host.querySelector<HTMLInputElement>('[data-testid="input-bank-name"]')!.validity.customError).toBe(true);
     expect(host.querySelector<HTMLFormElement>('[data-testid="f"]')!.checkValidity()).toBe(false);
     await act(async () => root.unmount());

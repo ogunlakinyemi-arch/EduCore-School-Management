@@ -100,7 +100,7 @@ describe.each(flows)('$name save payload', f => {
   });
   it('preserves legacy display but blocks saving it without directory confirmation', async () => {
     const form = await f.open();
-    expect(document.body.textContent).toContain('Not checked against the current directory');
+    expect(document.body.textContent).toContain('Not checked against the current bank list');
     await submit(form);
     expect(s.save).not.toHaveBeenCalled();
   });

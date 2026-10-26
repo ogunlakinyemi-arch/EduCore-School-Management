@@ -91,7 +91,7 @@ export function DevelopmentBankVerification({ school, onStart, retained = false 
   const id = `bank-verification-result-${school.schoolId}`;
   return <>
     <span ref={element => { control.current = element?.querySelector('button') ?? null; }}>
-      <Button variant="quiet" disabled={pending || retained || school.status === 'NOT_CONFIGURED' || school.status === 'VERIFIED' || !school.capability || !(school.capability.collection?.bankAccountVerificationConfigured || ['TEST', 'LIVE'].includes(school.capability.mode))}
+      <Button variant="quiet" disabled={pending || retained || school.status === 'NOT_CONFIGURED' || !school.capability || !(school.capability.collection?.bankAccountVerificationConfigured || ['TEST', 'LIVE'].includes(school.capability.mode))}
         aria-busy={pending} aria-describedby={pending || result ? id : undefined}
         onClick={() => void run()} testId={`button-verify-${school.schoolId}`}>
         {pending ? 'Verifying bank details…' : 'Verify bank details'}

@@ -1,4 +1,5 @@
 - [Tenant-key publish ordering](tenant-key-publish-ordering.md) — publish parent tenant uniqueness before dependent composite foreign keys when existing tables are involved.
+- [School settlement visibility](school-settlement-visibility.md) — school account instructions and status only; internal provider diagnostics belong to Owner administration.
 - [Publish CHECK differences](publish-existing-check-diffs.md) — same-name CHECK expression changes can be omitted; verify the fresh preview includes the desired replacement.
 - [Publish preview ordering](publish-preview-ordering.md) — identical SQL can arrive reordered; compare duplicate-aware contents and dependency order before reusing rehearsal evidence.
 - [SQL payload limits](sql-callback-payload-limits.md) — large SQL requests can fail before execution; separate callback calls do not share a transaction.

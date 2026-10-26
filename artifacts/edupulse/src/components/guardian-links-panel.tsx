@@ -70,7 +70,7 @@ export function GuardianLinksPanel({
 
   return <div className="space-y-4">
     <p className="text-sm text-[hsl(var(--muted-foreground))]">
-      Unlinking deactivates only this parent–student relationship. Student and parent records, account access, and history are retained.
+      Unlinking removes this guardian’s access through this relationship. Student and parent records, their accounts, and history are retained.
     </p>
     {notice && <p role="status" className="text-sm text-[hsl(var(--primary))]">{notice}</p>}
     {error && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{error}</p>}

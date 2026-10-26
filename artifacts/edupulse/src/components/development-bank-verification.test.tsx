@@ -175,8 +175,8 @@ describe('Development row-local bank verification (mock API, real React Query)',
     expect(f.verify).not.toHaveBeenCalled(); expect(f.list).toHaveBeenCalledTimes(1);
   });
   it('preserves the unconfigured provider guard', async () => {
-    rows[0].capability.mode = 'NOT_CONFIGURED';
-    rows[0].capability.collection!.bankAccountVerificationConfigured = false;
+    rows[0].capability!.mode = 'NOT_CONFIGURED';
+    rows[0].capability!.collection!.bankAccountVerificationConfigured = false;
     await open();
     expect(control().disabled).toBe(true);
     await click();

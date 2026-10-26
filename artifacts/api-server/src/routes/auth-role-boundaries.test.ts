@@ -211,7 +211,7 @@ describe("school role and parent relationship authorization", () => {
     expect((await call("/parent-student-relationships/31", "PATCH", { status: "INACTIVE" }, "SCHOOL_ADMIN")).status).toBe(200);
     expect((await call("/parent-student-relationships/31", "DELETE", undefined, "SCHOOL_ADMIN")).status).toBe(204);
     expect((await call("/parent-student-relationships", "POST", relationship, "SCHOOL_ADMIN_OTHER")).status).toBe(404);
-    const unlink = state.queries.find(({ sql }) => sql.includes("UPDATE parent_student_relationships") && sql.includes("RETURNING id"));
+    const unlink = state.queries.find(({ sql }) => sql.includes("UPDATE parent_student_relationships") && sql.includes("SET status = 'INACTIVE'"));
     expect(unlink?.sql).toContain("status = 'ACTIVE'");
     expect(state.queries.some(({ sql }) => sql.includes("JOIN parents p") && sql.includes("st.school_id = p.school_id"))).toBe(true);
   });

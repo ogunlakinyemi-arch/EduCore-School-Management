@@ -488,7 +488,7 @@ function settlementProfileProjection(
           status: "NOT_CONFIGURED",
           provider: "FLUTTERWAVE",
           providerSubaccountId: null,
-          capability: settlementCapability(),
+          capability: includeOwnerDiagnostics ? settlementCapability() : undefined,
           lastSettlementAt: null,
           lastSettlementStatus: "NOT_SETTLED",
           updatedAt: null,
@@ -768,7 +768,7 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
   );
 }));
 
-async function schoolSettlementProjection(schoolId: number) {
+async function schoolSettlementProjection(schoolId: number, includeOwnerDiagnostics = true) {
   const result = await pool.query(
     `SELECT s.id AS oversight_school_id,s.name AS school_name,p.*
      FROM schools s
@@ -779,7 +779,7 @@ async function schoolSettlementProjection(schoolId: number) {
   );
   const row = poolRows(result)[0];
   if (!row) throw new AuthError(404, "School not found");
-  const settled = settlementProfileProjection(row.id ? row : undefined, "SCHOOL", schoolId) as AnyRow;
+  const settled = settlementProfileProjection(row.id ? row : undefined, "SCHOOL", schoolId, includeOwnerDiagnostics) as AnyRow;
   return { schoolName: row.school_name, ...settled };
 }
 
@@ -1012,7 +1012,7 @@ router.post("/platform/finance/payment-settlement/schools/:schoolId", run(async 
 
 router.get("/schools/:schoolId/finance/payment-settlement", run(async (req, res) => {
   const { schoolId } = requireSchoolRole(req, req.params.schoolId, SCHOOL_ADMIN_ROLE);
-  const response = await schoolSettlementProjection(schoolId);
+  const response = await schoolSettlementProjection(schoolId, false);
   return respond(res, PayrollContract.GetSchoolPaymentSettlementResponse, response);
 }));
 

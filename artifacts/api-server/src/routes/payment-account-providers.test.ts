@@ -149,22 +149,17 @@ describe("existing Flutterwave transport, fictional HTTP only",()=>{
     expect(directory.providers.filter(p=>!p.transferCodeVerified)).toHaveLength(3);
     for(const p of directory.providers.filter(p=>p.transferCodeVerified))
       expect(rows.some(row=>row.name===p.name&&row.code===p.code)).toBe(true);
-    const diagnostic=JSON.parse(response.headers.get("x-bank-directory-diagnostic")!);
-    expect(diagnostic).toMatchObject({httpStatus:200,providerStatus:"success",entryCount:598,verifiedEntries:595,
-      responseFields:["data","message","status"],entryFields:["code","id","name","provider_type"]});
-    expect(JSON.stringify(diagnostic)).not.toContain("Fictional");
-    expect(JSON.stringify(diagnostic)).not.toContain("999001");
-    expect(JSON.stringify(diagnostic)).not.toContain(env.FLUTTERWAVE_SECRET_Test_Key);
-    expect(response.headers.get("x-bank-directory-version")).toBe("provider-record-isolation-v2");
+    expect(response.headers.get("x-bank-directory-diagnostic")).toBeNull();
+    expect(response.headers.get("x-bank-directory-version")).toBeNull();
     expect(response.headers.get("x-bank-directory-cache")).toBe("MISS");
     expect((await fetch(url)).headers.get("x-bank-directory-cache")).toBe("HIT");
     expect(request).toHaveBeenCalledTimes(1);
   });
-  it("exposes the running directory version even on an unauthenticated request without querying the provider",async()=>{
+  it("does not expose internal directory versions to unauthenticated requests",async()=>{
     const read=vi.fn(),url=await start(read);
     const response=await fetch(url,{headers:{"x-anonymous":"yes"}});
     expect(response.status).toBe(401);
-    expect(response.headers.get("x-bank-directory-version")).toBe("provider-record-isolation-v2");
+    expect(response.headers.get("x-bank-directory-version")).toBeNull();
     expect(read).not.toHaveBeenCalled();
   });
   it("reports a failed provider shape safely and recovers with a fresh provider read",async()=>{
@@ -174,10 +169,7 @@ describe("existing Flutterwave transport, fictional HTTP only",()=>{
     const client=new FlutterwavePayrollV3Client(env,request),url=await start(vi.fn(()=>client.listNigerianBanks()));
     const first=await fetch(url);
     expect(await first.json()).toMatchObject({status:"UNAVAILABLE",providers:[]});
-    expect(JSON.parse(first.headers.get("x-bank-directory-diagnostic")!)).toMatchObject({
-      httpStatus:200,dataShape:"object",responseFields:["data","message","status"],
-    });
-    expect(first.headers.get("x-bank-directory-diagnostic")).not.toContain("private body");
+    expect(first.headers.get("x-bank-directory-diagnostic")).toBeNull();
     const next=await fetch(url);
     expect(await next.json()).toMatchObject({status:"AVAILABLE"});
     expect(request).toHaveBeenCalledTimes(2);
@@ -200,13 +192,13 @@ describe("existing Flutterwave transport, fictional HTTP only",()=>{
       expect.objectContaining({headers:expect.objectContaining({authorization:`Bearer ${liveEnv.FLUTTERWAVE_LIVE_SECRET_KEY}`})})]);
     expect(client.capability().transferCapability).toBe("NOT_CONFIGURED");
   });
-  it.each([401,403,429,500])("returns safe actionable diagnostics for provider HTTP %s",async status=>{
+  it.each([401,403,429,500])("keeps provider HTTP %s diagnostics out of the shared directory response",async status=>{
     const client=new FlutterwavePayrollV3Client(env,vi.fn(async()=>new Response(JSON.stringify({status:"error",message:"private response"}),{status})));
     const url=await start(vi.fn(()=>client.listNigerianBanks()));
     const result=await (await fetch(url)).json() as PaymentAccountProviderDirectory;
     expect(result.status).toBe("UNAVAILABLE");
     expect(result.providers).toEqual([]);
-    expect(result.message).toContain(status===401||status===403?"authentication":status===429?"rate-limited":"retry");
+    expect(result.message).toContain("bank list is temporarily unavailable");
     expect(JSON.stringify(result)).not.toContain("private response");
     expect(JSON.stringify(result)).not.toContain(env.FLUTTERWAVE_SECRET_Test_Key);
   });

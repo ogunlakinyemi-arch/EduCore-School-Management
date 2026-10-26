@@ -48,6 +48,7 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
 vi.mock('@/components/shared', async importOriginal => ({
   ...await importOriginal<typeof import('@/components/shared')>(),
   useTenant: () => ({ schoolId: 7 }),
+  TenantPicker: () => null,
 }));
 import { PaymentSettlementPage } from './payment-settlement';
 

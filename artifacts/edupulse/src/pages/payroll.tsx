@@ -146,7 +146,7 @@ function PeriodWorkspace({ scope, schoolId, periodId, api, onBack, setMsg, setFa
   return <div className="print-area">
     <PrintStyles />
     <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3"><Button variant="quiet" onClick={onBack}>Back to periods</Button><Freshness updatedAt={api.detail.dataUpdatedAt} fetching={api.detail.isFetching} onRefresh={() => api.detail.refetch()} /></div>
-    <ProviderBanner mode={period.providerMode} />
+    {scope === 'COMPANY' && <ProviderBanner mode={period.providerMode} />}
     <div className="mb-5 grid gap-4 sm:grid-cols-4"><Metric label="Period" value={monthLabel(period.periodMonth)} icon={Banknote} /><Metric label="Net payroll" value={ngn(period.netSalaryMinor)} icon={Banknote} accent /><Metric label="Verified paid" value={`${period.paidCount} / ${period.employeeCount}`} icon={Users} detail={`${period.pendingCount} pending, ${period.failedCount} failed`} /><Info label="Status" value={<StatusPill value={period.status.replaceAll('_', ' ')} />} /></div>
     <div className="no-print mb-4 flex flex-wrap gap-2">
       {draft && <Button variant="outline" disabled={api.busy || !allOk} onClick={saveItems} testId="button-save-items">Save lines</Button>}
