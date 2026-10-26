@@ -149,6 +149,15 @@ function explicitMode(env: NodeJS.ProcessEnv): string {
   return (env.PAYROLL_TRANSFER_MODE ?? "").trim().toLowerCase();
 }
 
+/** Account resolution does not grant payroll, checkout or subaccount authority. */
+export function bankAccountResolutionConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.NODE_ENV === "production") {
+    return /^FLWSECK-(?!TEST-)[A-Za-z0-9_-]{8,}$/.test(env.FLUTTERWAVE_LIVE_SECRET_KEY ?? "");
+  }
+  return !!developmentFlutterwaveCredential(env).secret ||
+    ["TEST", "LIVE"].includes(configuredPayrollProviderCapability(env).mode);
+}
+
 export function configuredPayrollProviderCapability(
   env: NodeJS.ProcessEnv = process.env,
 ): PayrollProviderCapability {
@@ -378,7 +387,9 @@ export class FlutterwavePayrollV3Client {
     accountNumber: string;
   }): Promise<BankResolution> {
     const capability = this.capability();
-    const developmentKey = developmentFlutterwaveCredential(this.env).secret;
+    const developmentKey = this.env.NODE_ENV === "production"
+      ? bankAccountResolutionConfigured(this.env) ? this.env.FLUTTERWAVE_LIVE_SECRET_KEY : undefined
+      : developmentFlutterwaveCredential(this.env).secret;
     if (!developmentKey && !["TEST", "LIVE"].includes(capability.mode)) {
       throw new FlutterwavePayrollUnavailableError(
         "Bank verification requires explicitly configured Flutterwave test credentials or an approved live service",

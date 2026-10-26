@@ -15,6 +15,11 @@ export interface SchoolSettlementSummary {
   /** @minimum 1 */
   schoolId: number;
   schoolName: string;
+  /**
+     * Owner-only opaque saved-profile version for deliberate review
+     * @pattern ^[a-f0-9]{64}$
+     */
+  reviewSnapshot?: string;
   /** @nullable */
   businessName?: string | null;
   /** @nullable */

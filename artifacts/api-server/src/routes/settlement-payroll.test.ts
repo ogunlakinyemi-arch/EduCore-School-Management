@@ -731,11 +731,12 @@ describe("Owner bank-verification provider diagnostics (mocked provider, no Flut
     expect(text).toContain("details changed during verification");
     expectNoLeaks(text);
     const update = transactionQueries.find(query => query.sql.includes("UPDATE settlement_payroll_profiles"));
-    expect(update?.sql).toContain("AND bank_name_encrypted=$7");
-    expect(update?.sql).toContain("AND bank_code_encrypted=$8");
-    expect(update?.sql).toContain("AND account_name_encrypted=$9");
-    expect(update?.sql).toContain("AND account_number_encrypted=$10");
-    expect(update?.values).toHaveLength(10);
+    expect(update?.sql).toContain("AND bank_name_encrypted=$6");
+    expect(update?.sql).toContain("AND bank_code_encrypted=$7");
+    expect(update?.sql).toContain("AND account_name_encrypted=$8");
+    expect(update?.sql).toContain("AND account_number_encrypted=$9");
+    expect(update?.sql).not.toContain("provider_business_id=");
+    expect(update?.values).toHaveLength(9);
     expect(transactionQueries.some(query => query.sql.includes("INSERT INTO audit_logs"))).toBe(false);
   });
 

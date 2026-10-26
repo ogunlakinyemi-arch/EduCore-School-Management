@@ -19839,12 +19839,14 @@ export const ListPlatformSchoolSettlementsQueryParams = zod.object({
 })
 
 
+export const listPlatformSchoolSettlementsResponseReviewSnapshotRegExp = new RegExp('^[a-f0-9]{64}$');
 export const listPlatformSchoolSettlementsResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
 
 
 export const ListPlatformSchoolSettlementsResponseItem = zod.object({
   "schoolId": zod.number().int().min(1),
   "schoolName": zod.string(),
+  "reviewSnapshot": zod.string().regex(listPlatformSchoolSettlementsResponseReviewSnapshotRegExp).optional().describe('Owner-only opaque saved-profile version for deliberate review'),
   "businessName": zod.string().nullish(),
   "businessRegistrationNumber": zod.string().nullish(),
   "settlementContactEmail": zod.string().nullish(),
@@ -19896,12 +19898,14 @@ export const GetPlatformSchoolSettlementParams = zod.object({
 })
 
 
+export const getPlatformSchoolSettlementResponseReviewSnapshotRegExp = new RegExp('^[a-f0-9]{64}$');
 export const getPlatformSchoolSettlementResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
 
 
 export const GetPlatformSchoolSettlementResponse = zod.object({
   "schoolId": zod.number().int().min(1),
   "schoolName": zod.string(),
+  "reviewSnapshot": zod.string().regex(getPlatformSchoolSettlementResponseReviewSnapshotRegExp).optional().describe('Owner-only opaque saved-profile version for deliberate review'),
   "businessName": zod.string().nullish(),
   "businessRegistrationNumber": zod.string().nullish(),
   "settlementContactEmail": zod.string().nullish(),
@@ -19942,8 +19946,8 @@ export const GetPlatformSchoolSettlementResponse = zod.object({
 
 
 /**
- * Owner-only platform action. Requires explicit test-mode credentials in Development or explicitly configured live mode outside Development. Fails closed if mode/credentials/API response are ambiguous. A successful account-name resolution or subaccount creation is not proof of a fund transfer or settlement.
- * @summary Verify and onboard an expressly approved school bank beneficiary through the documented Flutterwave v3 API
+ * Owner-only account lookup. Production uses the dedicated LIVE credential without enabling payroll, checkout or subaccounts. Both account number and holder must match. No transfer or settlement is performed.
+ * @summary Independently resolve a saved school bank account without creating a subaccount
  */
 
 
@@ -19964,12 +19968,14 @@ export const VerifyPlatformSchoolSettlementHeader = zod.object({
 })
 
 
+export const verifyPlatformSchoolSettlementResponseReviewSnapshotRegExp = new RegExp('^[a-f0-9]{64}$');
 export const verifyPlatformSchoolSettlementResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
 
 
 export const VerifyPlatformSchoolSettlementResponse = zod.object({
   "schoolId": zod.number().int().min(1),
   "schoolName": zod.string(),
+  "reviewSnapshot": zod.string().regex(verifyPlatformSchoolSettlementResponseReviewSnapshotRegExp).optional().describe('Owner-only opaque saved-profile version for deliberate review'),
   "businessName": zod.string().nullish(),
   "businessRegistrationNumber": zod.string().nullish(),
   "settlementContactEmail": zod.string().nullish(),
@@ -19978,6 +19984,90 @@ export const VerifyPlatformSchoolSettlementResponse = zod.object({
   "bankCode": zod.string().nullish(),
   "accountName": zod.string().nullish(),
   "accountLast4": zod.string().regex(verifyPlatformSchoolSettlementResponseAccountLast4RegExp).nullish(),
+  "currency": zod.enum(['NGN']),
+  "status": zod.enum(['NOT_CONFIGURED', 'PENDING_VERIFICATION', 'VERIFIED', 'ACTION_REQUIRED']),
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "providerSubaccountId": zod.string().nullish(),
+  "capability": zod.object({
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "mode": zod.enum(['TEST', 'LIVE', 'MOCK', 'NOT_CONFIGURED']),
+  "credentialsConfigured": zod.boolean(),
+  "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
+  "bankSubaccountsSupported": zod.boolean(),
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
+}).optional(),
+  "lastSettlementAt": zod.coerce.date().nullish(),
+  "lastSettlementStatus": zod.enum(['NOT_SETTLED', 'PENDING', 'SUCCESS', 'FAILED', 'RECONCILIATION_REQUIRED']).optional(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Record an Owner's evidence-based school bank review
+ */
+
+
+
+export const ReviewPlatformSchoolSettlementParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const reviewPlatformSchoolSettlementHeaderIdempotencyKeyMin = 8;
+export const reviewPlatformSchoolSettlementHeaderIdempotencyKeyMax = 120;
+
+
+export const reviewPlatformSchoolSettlementHeaderIdempotencyKeyRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const ReviewPlatformSchoolSettlementHeader = zod.object({
+  "Idempotency-Key": zod.string().min(reviewPlatformSchoolSettlementHeaderIdempotencyKeyMin).max(reviewPlatformSchoolSettlementHeaderIdempotencyKeyMax).regex(reviewPlatformSchoolSettlementHeaderIdempotencyKeyRegExp)
+})
+
+export const reviewPlatformSchoolSettlementBodyExpectedSnapshotRegExp = new RegExp('^[a-f0-9]{64}$');
+export const reviewPlatformSchoolSettlementBodyEvidenceSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const reviewPlatformSchoolSettlementBodyNoteMin = 20;
+export const reviewPlatformSchoolSettlementBodyNoteMax = 1000;
+
+
+
+export const ReviewPlatformSchoolSettlementBody = zod.object({
+  "decision": zod.enum(['VERIFY', 'REJECT']),
+  "expectedSnapshot": zod.string().regex(reviewPlatformSchoolSettlementBodyExpectedSnapshotRegExp),
+  "evidenceSha256": zod.string().regex(reviewPlatformSchoolSettlementBodyEvidenceSha256RegExp).optional(),
+  "independentAccountMatchConfirmed": zod.boolean().optional(),
+  "note": zod.string().min(reviewPlatformSchoolSettlementBodyNoteMin).max(reviewPlatformSchoolSettlementBodyNoteMax)
+})
+
+
+export const reviewPlatformSchoolSettlementResponseReviewSnapshotRegExp = new RegExp('^[a-f0-9]{64}$');
+export const reviewPlatformSchoolSettlementResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
+
+
+export const ReviewPlatformSchoolSettlementResponse = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "schoolName": zod.string(),
+  "reviewSnapshot": zod.string().regex(reviewPlatformSchoolSettlementResponseReviewSnapshotRegExp).optional().describe('Owner-only opaque saved-profile version for deliberate review'),
+  "businessName": zod.string().nullish(),
+  "businessRegistrationNumber": zod.string().nullish(),
+  "settlementContactEmail": zod.string().nullish(),
+  "settlementContactPhone": zod.string().nullish(),
+  "bankName": zod.string().nullish(),
+  "bankCode": zod.string().nullish(),
+  "accountName": zod.string().nullish(),
+  "accountLast4": zod.string().regex(reviewPlatformSchoolSettlementResponseAccountLast4RegExp).nullish(),
   "currency": zod.enum(['NGN']),
   "status": zod.enum(['NOT_CONFIGURED', 'PENDING_VERIFICATION', 'VERIFIED', 'ACTION_REQUIRED']),
   "provider": zod.enum(['FLUTTERWAVE']),
@@ -20053,12 +20143,14 @@ export const GetSchoolPaymentSettlementParams = zod.object({
 })
 
 
+export const getSchoolPaymentSettlementResponseReviewSnapshotRegExp = new RegExp('^[a-f0-9]{64}$');
 export const getSchoolPaymentSettlementResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
 
 
 export const GetSchoolPaymentSettlementResponse = zod.object({
   "schoolId": zod.number().int().min(1),
   "schoolName": zod.string(),
+  "reviewSnapshot": zod.string().regex(getSchoolPaymentSettlementResponseReviewSnapshotRegExp).optional().describe('Owner-only opaque saved-profile version for deliberate review'),
   "businessName": zod.string().nullish(),
   "businessRegistrationNumber": zod.string().nullish(),
   "settlementContactEmail": zod.string().nullish(),
@@ -20143,12 +20235,14 @@ export const UpdateSchoolPaymentSettlementBody = zod.object({
 })
 
 
+export const updateSchoolPaymentSettlementResponseReviewSnapshotRegExp = new RegExp('^[a-f0-9]{64}$');
 export const updateSchoolPaymentSettlementResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
 
 
 export const UpdateSchoolPaymentSettlementResponse = zod.object({
   "schoolId": zod.number().int().min(1),
   "schoolName": zod.string(),
+  "reviewSnapshot": zod.string().regex(updateSchoolPaymentSettlementResponseReviewSnapshotRegExp).optional().describe('Owner-only opaque saved-profile version for deliberate review'),
   "businessName": zod.string().nullish(),
   "businessRegistrationNumber": zod.string().nullish(),
   "settlementContactEmail": zod.string().nullish(),

@@ -123,8 +123,8 @@ paths:
     post:
       operationId: verifyPlatformSchoolSettlement
       tags: [finance]
-      summary: Verify and onboard an expressly approved school bank beneficiary through the documented Flutterwave v3 API
-      description: Owner-only platform action. Requires explicit test-mode credentials in Development or explicitly configured live mode outside Development. Fails closed if mode/credentials/API response are ambiguous. A successful account-name resolution or subaccount creation is not proof of a fund transfer or settlement.
+      summary: Independently resolve a saved school bank account without creating a subaccount
+      description: Owner-only account lookup. Production uses the dedicated LIVE credential without enabling payroll, checkout or subaccounts. Both account number and holder must match. No transfer or settlement is performed.
       parameters:
         - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
         - name: Idempotency-Key
@@ -133,7 +133,7 @@ paths:
           schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" }
       responses:
         "200":
-          description: Server-verified account and persisted Flutterwave beneficiary/subaccount identifiers; transfer status remains independent
+          description: Independently matched saved bank account and audited verification; no subaccount, transfer or settlement is created
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolSettlementSummary" }
@@ -145,6 +145,29 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PayrollError" }
+  /platform/finance/payment-settlement/schools/{schoolId}/review:
+    post:
+      operationId: reviewPlatformSchoolSettlement
+      tags: [finance]
+      summary: Record an Owner's evidence-based school bank review
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolSettlementReviewInput" }
+      responses:
+        "200":
+          description: Audited decision or identical idempotent replay
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolSettlementSummary" }
+        "400": { description: Independent evidence or review details missing }
+        "403": { description: Platform Owner required }
+        "404": { description: School profile not found }
+        "409": { description: Saved details changed or review key reused }
   /schools/{schoolId}/finance/payment-settlement:
     delete:
       operationId: removeSchoolPendingSettlement
@@ -794,12 +817,22 @@ components:
         providerSubaccountId: { type: ["string", "null"] }
         capability: { $ref: "#/components/schemas/SettlementProviderCapability" }
         updatedAt: { type: ["string", "null"], format: date-time }
+    SchoolSettlementReviewInput:
+      type: object
+      required: [decision, expectedSnapshot, note]
+      properties:
+        decision: { type: string, enum: [VERIFY, REJECT] }
+        expectedSnapshot: { type: string, pattern: "^[a-f0-9]{64}$" }
+        evidenceSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        independentAccountMatchConfirmed: { type: boolean }
+        note: { type: string, minLength: 20, maxLength: 1000 }
     SchoolSettlementSummary:
       type: object
       required: [schoolId, schoolName, status, currency, provider, updatedAt]
       properties:
         schoolId: { type: integer, minimum: 1 }
         schoolName: { type: string }
+        reviewSnapshot: { type: string, pattern: "^[a-f0-9]{64}$", description: Owner-only opaque saved-profile version for deliberate review }
         businessName: { type: ["string", "null"] }
         businessRegistrationNumber: { type: ["string", "null"] }
         settlementContactEmail: { type: ["string", "null"] }

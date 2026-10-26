@@ -155,13 +155,16 @@ describe('Owner school settlement oversight', () => {
       expect((row.querySelector('[data-testid="button-verify-7"]') as HTMLButtonElement).disabled).toBe(true);
     } finally { state.rows = originalRows; }
   });
-  it('keeps the production verification presentation unchanged', async () => {
+  it('allows Production account lookup independently of disabled payroll capability', async () => {
     vi.stubEnv('DEV', false);
-    state.rows[0].capability.mode = 'TEST';
+    state.rows[0].capability.mode = 'NOT_CONFIGURED';
+    Object.assign(state.rows[0].capability, { collection: { bankAccountVerificationConfigured: true } });
     state.verify.mockResolvedValue({ schoolId: 7, status: 'VERIFIED' });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     await open();
     await act(async () => (container.querySelector('[data-testid="button-verify-7"]') as HTMLButtonElement).click());
+    expect(state.verify).toHaveBeenCalledWith(7, { headers: { 'Idempotency-Key': expect.any(String) } });
+    delete (state.rows[0].capability as any).collection;
     expect(container.querySelector('[data-testid="bank-verification-result-7"]')).toBeNull();
     expect(container.textContent).toContain('bank account verification status verified');
     expect(container.textContent).not.toContain('Even TEST verification may contact');

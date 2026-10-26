@@ -770,3 +770,17 @@ mtime_ms = 1792866490610
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/6f8294af-9854-4da0-a10e-dfda49bcacc8/7d516fd6-a97c-42b0-9c56-c1b4d22489c3"
 storage_version_token = "1792866513032637"
 content_type = "image/png"
+
+[[outputs]]
+id = "a0LjGxqcq0ND0XFSMcMWh"
+uri = "file://docs/finance/bobadex-verification-production-draft-review.md"
+type = "text"
+title = "Final bank verification and migration review"
+description = "Updated with the latest recorded Owner verification, six migration identities and dependencies, rollback blockers, and Replit primary/recovery confirmation steps."
+logical_id = "bf37b98b-d95d-44a5-9d81-3507dc5bfe40"
+content_hash = "sha256:87019d6d2de34f9d0036336c5b92de7764edc0c5f3fabdc2bd9aa4054495c4b7"
+size = 12609
+mtime_ms = 1793005391348
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/bf37b98b-d95d-44a5-9d81-3507dc5bfe40/dffb4d04-1b0f-4630-bf31-d8c045b02436"
+storage_version_token = "1793005413428259"
+content_type = "text/markdown"

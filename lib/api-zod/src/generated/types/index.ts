@@ -1997,6 +1997,8 @@ export * from './schoolMembershipInputRole';
 export * from './schoolSettlementInput';
 export * from './schoolSettlementInput4b96100';
 export * from './schoolSettlementInputCurrency';
+export * from './schoolSettlementReviewInput';
+export * from './schoolSettlementReviewInputDecision';
 export * from './schoolSettlementSummary';
 export * from './schoolSettlementSummary4b96100';
 export * from './schoolSettlementSummaryCurrency';

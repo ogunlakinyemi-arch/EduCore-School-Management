@@ -5881,6 +5881,8 @@ paths:
     $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1schools"
   /platform/finance/payment-settlement/schools/{schoolId}:
     $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1schools~1{schoolId}"
+  /platform/finance/payment-settlement/schools/{schoolId}/review:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1schools~1{schoolId}~1review"
   /schools/{schoolId}/finance/payment-settlement:
     $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payment-settlement"
   /schools/{schoolId}/finance/payment-settlement/history:

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  bankAccountResolutionConfigured,
   configuredPayrollProviderCapability,
   describeProviderDiagnostic,
   FlutterwaveProviderResponseError,
@@ -9,6 +10,30 @@ import {
   FlutterwavePayrollUnavailableError,
   FlutterwavePayrollV3Client,
 } from "./flutterwave-payroll-v3";
+
+it("allows a dedicated Production LIVE account lookup without enabling payroll or checkout", async () => {
+  const env = { NODE_ENV: "production", FLUTTERWAVE_LIVE_SECRET_KEY: "FLWSECK-fictional-resolution-only" };
+  const fetcher = vi.fn(async (_input: unknown, _init?: RequestInit) => new Response(JSON.stringify({ status: "success",
+    data: { account_number: "0000000002", account_name: "Fixture Account Holder" } })));
+  const client = new FlutterwavePayrollV3Client(env, fetcher);
+  expect(client.capability().mode).toBe("NOT_CONFIGURED");
+  expect(bankAccountResolutionConfigured(env)).toBe(true);
+  await expect(client.resolveNigerianAccount({ bankCode: "099", accountNumber: "0000000002" }))
+    .resolves.toEqual({ resolvedAccountNumber: "0000000002", resolvedAccountName: "Fixture Account Holder" });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0]?.[0]).toBe("https://api.flutterwave.com/v3/accounts/resolve");
+  expect(client.capability().mode).toBe("NOT_CONFIGURED");
+});
+it.each([
+  { NODE_ENV: "production", FLUTTERWAVE_LIVE_SECRET_KEY: "FLWSECK_TEST-fictional-only" },
+  { NODE_ENV: "production", FLUTTERWAVE_SECRET_KEY: "FLWSECK-fictional-generic-only" },
+  { NODE_ENV: "development", FLUTTERWAVE_LIVE_SECRET_KEY: "FLWSECK-fictional-live-only" },
+])("never substitutes a TEST, generic or Development LIVE key for Production account resolution", async env => {
+  const fetcher = vi.fn();
+  expect(bankAccountResolutionConfigured(env)).toBe(false);
+  await expect(new FlutterwavePayrollV3Client(env, fetcher).resolveNigerianAccount({ bankCode: "099", accountNumber: "0000000002" })).rejects.toThrow();
+  expect(fetcher).not.toHaveBeenCalled();
+});
 
 const testEnv = (): NodeJS.ProcessEnv => ({
   NODE_ENV: "test",

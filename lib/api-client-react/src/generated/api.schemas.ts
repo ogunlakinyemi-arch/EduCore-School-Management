@@ -8319,6 +8319,11 @@ export interface SchoolSettlementSummary {
   /** @minimum 1 */
   schoolId: number;
   schoolName: string;
+  /**
+     * Owner-only opaque saved-profile version for deliberate review
+     * @pattern ^[a-f0-9]{64}$
+     */
+  reviewSnapshot?: string;
   /** @nullable */
   businessName?: string | null;
   /** @nullable */
@@ -15460,6 +15465,28 @@ export interface SettlementRemovalResult {
   /** @nullable */
   schoolId: number | null;
   status: SettlementRemovalResultStatus;
+}
+
+export type SchoolSettlementReviewInputDecision = typeof SchoolSettlementReviewInputDecision[keyof typeof SchoolSettlementReviewInputDecision];
+
+
+export const SchoolSettlementReviewInputDecision = {
+  VERIFY: 'VERIFY',
+  REJECT: 'REJECT',
+} as const;
+
+export interface SchoolSettlementReviewInput {
+  decision: SchoolSettlementReviewInputDecision;
+  /** @pattern ^[a-f0-9]{64}$ */
+  expectedSnapshot: string;
+  /** @pattern ^[a-f0-9]{64}$ */
+  evidenceSha256?: string;
+  independentAccountMatchConfirmed?: boolean;
+  /**
+     * @minLength 20
+     * @maxLength 1000
+     */
+  note: string;
 }
 
 export type ExistingProfileInvitationRequestRole = typeof ExistingProfileInvitationRequestRole[keyof typeof ExistingProfileInvitationRequestRole];

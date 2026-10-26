@@ -1,8 +1,9 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
 import * as PayrollContract from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import { developmentFlutterwaveCollectionStatus } from "../lib/flutterwave-development-config";
+import { bankAccountResolutionConfigured } from "../lib/flutterwave-payroll-v3";
 import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
 import {
   assertRemovalEnvironment,
@@ -444,7 +445,20 @@ async function audit(client: PoolClient, input: AuditInput) {
 }
 
 function settlementCapability() {
-  return { ...flw.capability(), collection: developmentFlutterwaveCollectionStatus() };
+  return { ...flw.capability(), collection: {
+    ...developmentFlutterwaveCollectionStatus(),
+    bankAccountVerificationConfigured: bankAccountResolutionConfigured(),
+  } };
+}
+
+function bankReviewSnapshot(row: AnyRow): string {
+  return createHash("sha256").update(JSON.stringify([
+    row.id, row.school_id, row.verification_status, row.updated_at,
+    row.bank_name_encrypted, row.bank_code_encrypted, row.account_name_encrypted,
+    row.account_number_encrypted, row.business_name, row.encryption_key_version,
+    row.business_registration_number, row.settlement_contact_email, row.settlement_contact_phone,
+    row.account_last4, row.currency, row.provider,
+  ])).digest("hex");
 }
 
 function settlementProfileProjection(
@@ -496,6 +510,7 @@ function settlementProfileProjection(
   }
   return {
     ...(company ? { scope } : { schoolId }),
+    ...(!company && includeOwnerDiagnostics ? { reviewSnapshot: bankReviewSnapshot(row) } : {}),
     businessName: row.business_name,
     businessRegistrationNumber: row.business_registration_number ?? null,
     settlementContactEmail: row.settlement_contact_email ?? null,
@@ -913,20 +928,19 @@ async function verifySettlementBankAccount(input: {
   return withTransaction(async (client) => {
     const result = await client.query(
       `UPDATE settlement_payroll_profiles
-       SET verification_status='VERIFIED',verified_at=NOW(),verified_by=$1,
-           provider_business_id=$2,updated_by=$1,updated_at=NOW()
-       WHERE id=$3 AND scope=$4 AND ${input.scope === "SCHOOL" ? "school_id=$5" : "school_id IS NULL"}
+        SET verification_status='VERIFIED',verified_at=NOW(),verified_by=$1,
+            updated_by=$1,updated_at=NOW()
+        WHERE id=$2 AND scope=$3 AND ${input.scope === "SCHOOL" ? "school_id=$4" : "school_id IS NULL"}
          AND verification_status IN ('PENDING_VERIFICATION','ACTION_REQUIRED')
-         AND account_last4=$6
-          AND bank_name_encrypted=$${input.scope === "SCHOOL" ? "7" : "6"}
-          AND bank_code_encrypted=$${input.scope === "SCHOOL" ? "8" : "7"}
-          AND account_name_encrypted=$${input.scope === "SCHOOL" ? "9" : "8"}
-          AND account_number_encrypted=$${input.scope === "SCHOOL" ? "10" : "9"}
+          AND account_last4=$${input.scope === "SCHOOL" ? "5" : "4"}
+           AND bank_name_encrypted=$${input.scope === "SCHOOL" ? "6" : "5"}
+           AND bank_code_encrypted=$${input.scope === "SCHOOL" ? "7" : "6"}
+           AND account_name_encrypted=$${input.scope === "SCHOOL" ? "8" : "7"}
+           AND account_number_encrypted=$${input.scope === "SCHOOL" ? "9" : "8"}
        RETURNING *`,
       input.scope === "SCHOOL"
         ? [
             input.actor.id,
-            process.env.FLUTTERWAVE_BUSINESS_ID ?? null,
             input.row.id,
             input.scope,
             input.schoolId,
@@ -938,7 +952,6 @@ async function verifySettlementBankAccount(input: {
           ]
         : [
             input.actor.id,
-            process.env.FLUTTERWAVE_BUSINESS_ID ?? null,
             input.row.id,
             input.scope,
             input.row.account_last4,
@@ -1008,6 +1021,56 @@ router.post("/platform/finance/payment-settlement/schools/:schoolId", run(async 
       updatedAt: row.updated_at,
     })),
   );
+}));
+
+router.post("/platform/finance/payment-settlement/schools/:schoolId/review", run(async (req, res) => {
+  const context = requirePlatformOwner(req);
+  const schoolId = assertResourceId(req.params.schoolId, "School");
+  const input = body(PayrollContract.ReviewPlatformSchoolSettlementBody, req.body, "Invalid bank review");
+  const header = body(PayrollContract.VerifyPlatformSchoolSettlementHeader,
+    { "Idempotency-Key": req.header("Idempotency-Key") }, "An explicit review key is required");
+  if (!input.note.trim() || input.note.trim().length < 20)
+    throw new AuthError(400, "Describe the evidence reviewed or the reason for rejection (at least 20 characters)");
+  if (input.decision === "VERIFY" && (!input.evidenceSha256 || input.independentAccountMatchConfirmed !== true))
+    throw new AuthError(400, "Verification requires independent account and school-authority evidence, its SHA-256 digest, and an explicit match confirmation");
+  const keyDigest = payrollIdempotencyDigest(header["Idempotency-Key"]);
+  const requestDigest = createHash("sha256").update(JSON.stringify(input)).digest("hex");
+  await withTransaction(async (client) => {
+    const current = poolRows(await client.query(
+      "SELECT * FROM settlement_payroll_profiles WHERE scope='SCHOOL' AND school_id=$1 FOR UPDATE", [schoolId]))[0];
+    if (!current) throw new AuthError(404, "School settlement bank details are not configured");
+    const prior = poolRows(await client.query(
+      `SELECT metadata FROM settlement_payroll_audit_events WHERE scope='SCHOOL' AND school_id=$1
+       AND record_type='SETTLEMENT_PROFILE' AND record_id=$2 AND metadata->>'reviewKeyDigest'=$3
+       ORDER BY id DESC LIMIT 1`, [schoolId, current.id, keyDigest]))[0];
+    if (prior) {
+      if ((prior.metadata as AnyRow).requestDigest !== requestDigest)
+        throw new AuthError(409, "This review key was already used for a different decision");
+      return;
+    }
+    if (bankReviewSnapshot(current) !== input.expectedSnapshot)
+      throw new AuthError(409, "The saved bank profile changed. Reload and review the current details before deciding.");
+    if (!["PENDING_VERIFICATION", "ACTION_REQUIRED"].includes(String(current.verification_status)))
+      throw new AuthError(409, "Only pending or action-required accounts can receive this review");
+    const status = input.decision === "VERIFY" ? "VERIFIED" : "ACTION_REQUIRED";
+    await client.query(
+      `UPDATE settlement_payroll_profiles SET verification_status=$1,
+       verified_at=CASE WHEN $1='VERIFIED' THEN now() ELSE NULL END,
+       verified_by=CASE WHEN $1='VERIFIED' THEN $2::integer ELSE NULL END,
+       updated_by=$2,updated_at=now() WHERE id=$3 AND school_id=$4 AND scope='SCHOOL'`,
+      [status, context.user.id, current.id, schoolId]);
+    await audit(client, {
+      actor: context.user, actorRole: "PLATFORM_OWNER", scope: "SCHOOL", schoolId,
+      recordType: "SETTLEMENT_PROFILE", recordId: current.id as number,
+      action: input.decision === "VERIFY" ? "OWNER_SETTLEMENT_BANK_VERIFIED" : "OWNER_SETTLEMENT_BANK_REJECTED",
+      previousStatus: String(current.verification_status), newStatus: status,
+      metadata: { reviewKeyDigest: keyDigest, requestDigest, evidenceSha256: input.evidenceSha256 ?? null,
+        note: input.note.trim(), independentAccountMatchConfirmed: input.independentAccountMatchConfirmed === true,
+        evidenceSource: "OWNER_REVIEWED_INDEPENDENT_DOCUMENT", providerRequestMade: false,
+        subaccountCreated: false, settlementPerformed: false, reviewedSnapshot: input.expectedSnapshot },
+    });
+  });
+  return respond(res, PayrollContract.ReviewPlatformSchoolSettlementResponse, await schoolSettlementProjection(schoolId));
 }));
 
 router.get("/schools/:schoolId/finance/payment-settlement", run(async (req, res) => {

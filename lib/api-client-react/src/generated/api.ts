@@ -753,6 +753,7 @@ import type {
   SchoolLogoUploadResponse,
   SchoolMembershipInput,
   SchoolSettlementInput,
+  SchoolSettlementReviewInput,
   SchoolSettlementSummary,
   SchoolStatusUpdate,
   SchoolSubscriptionSummary,
@@ -45826,8 +45827,8 @@ export const getVerifyPlatformSchoolSettlementUrl = (schoolId: number,) => {
 }
 
 /**
- * Owner-only platform action. Requires explicit test-mode credentials in Development or explicitly configured live mode outside Development. Fails closed if mode/credentials/API response are ambiguous. A successful account-name resolution or subaccount creation is not proof of a fund transfer or settlement.
- * @summary Verify and onboard an expressly approved school bank beneficiary through the documented Flutterwave v3 API
+ * Owner-only account lookup. Production uses the dedicated LIVE credential without enabling payroll, checkout or subaccounts. Both account number and holder must match. No transfer or settlement is performed.
+ * @summary Independently resolve a saved school bank account without creating a subaccount
  */
 export const verifyPlatformSchoolSettlement = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSettlementSummary> => {
 
@@ -45879,7 +45880,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type VerifyPlatformSchoolSettlementMutationVariables = {schoolId: number}
 
     /**
- * @summary Verify and onboard an expressly approved school bank beneficiary through the documented Flutterwave v3 API
+ * @summary Independently resolve a saved school bank account without creating a subaccount
  */
 export const useVerifyPlatformSchoolSettlement = <TError = ErrorType<void | PayrollError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPlatformSchoolSettlement>>, TError,VerifyPlatformSchoolSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -45890,6 +45891,95 @@ export const useVerifyPlatformSchoolSettlement = <TError = ErrorType<void | Payr
         TContext
       > => {
       return useMutation(getVerifyPlatformSchoolSettlementMutationOptions(options));
+    }
+
+export const getReviewPlatformSchoolSettlementUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement/schools/${schoolId}/review`
+}
+
+/**
+ * @summary Record an Owner's evidence-based school bank review
+ */
+export const reviewPlatformSchoolSettlement = async (schoolId: number,
+    schoolSettlementReviewInput: SchoolSettlementReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSettlementSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolSettlementSummary>(getReviewPlatformSchoolSettlementUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolSettlementReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewPlatformSchoolSettlementMutationKey = () => ['reviewPlatformSchoolSettlement'] as const;
+
+export const getReviewPlatformSchoolSettlementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewPlatformSchoolSettlement>>, TError,ReviewPlatformSchoolSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewPlatformSchoolSettlement>>, TError,ReviewPlatformSchoolSettlementMutationVariables, TContext> => {
+
+const mutationKey = getReviewPlatformSchoolSettlementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewPlatformSchoolSettlement>>, ReviewPlatformSchoolSettlementMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  reviewPlatformSchoolSettlement(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewPlatformSchoolSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof reviewPlatformSchoolSettlement>>>
+    export type ReviewPlatformSchoolSettlementMutationBody = BodyType<SchoolSettlementReviewInput>
+    export type ReviewPlatformSchoolSettlementMutationError = ErrorType<void>
+    export type ReviewPlatformSchoolSettlementMutationVariables = {schoolId: number;data: BodyType<SchoolSettlementReviewInput>}
+
+    /**
+ * @summary Record an Owner's evidence-based school bank review
+ */
+export const useReviewPlatformSchoolSettlement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewPlatformSchoolSettlement>>, TError,ReviewPlatformSchoolSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewPlatformSchoolSettlement>>,
+        TError,
+        ReviewPlatformSchoolSettlementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewPlatformSchoolSettlementMutationOptions(options));
     }
 
 export const getRemoveSchoolPendingSettlementUrl = (schoolId: number,) => {
