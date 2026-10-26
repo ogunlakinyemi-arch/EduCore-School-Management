@@ -16,6 +16,7 @@ import {createLiveSchoolOnboardingRouter} from "./flutterwave-live-school-onboar
 import {reviewLiveSchoolOnboarding,liveOnboardingReview} from "../services/flutterwave-live-school-onboarding";
 import {encryptPayrollBankValue} from "../lib/payroll-bank-encryption";
 import {LIVE_ONBOARDING_RELEASE,onboardingConfiguration} from "../lib/flutterwave-live-onboarding-gate";
+import {mutateLiveOnboarding} from "../services/flutterwave-live-onboarding-mutations";
 
 // Every identity, document digest, account and credential below is fictional.
 // Never read DATABASE_URL/PG* or import the application's database connection.
@@ -61,6 +62,155 @@ async function http(path:string,actor=2,body?:object){
 async function submit(){const r=await http("/schools/10/finance/live-subaccount-onboarding",2,{});expect(r.status).toBe(200);return r.body;}
 const review=(id:number,body=approval())=>http(`/platform/flutterwave/live/school-subaccounts/${id}/review`,1,body);
 const posts=()=>calls.filter(c=>c.path==="subaccounts"&&c.method==="POST");
+let guardCase=0;
+async function applicationGuardCase(run:(client:pg.PoolClient,schema:string)=>Promise<void>){
+  const schema=`application_guard_case_${++guardCase}`,client=await db.connect();
+  try{
+    // New synthetic tables ONLY. No original trigger is disabled or removed.
+    // LIKE carries relational constraints/indexes but never copies triggers.
+    await client.query(`CREATE SCHEMA ${schema};
+      CREATE TABLE ${schema}.flutterwave_live_school_onboarding
+        (LIKE public.flutterwave_live_school_onboarding INCLUDING ALL);
+      CREATE TABLE ${schema}.flutterwave_live_school_onboarding_audits
+        (LIKE public.flutterwave_live_school_onboarding_audits INCLUDING ALL);
+      SET search_path=${schema},public`);
+    await run(client,schema);
+  }finally{
+    await client.query("ROLLBACK");
+    await client.query("RESET search_path");
+    client.release();
+    await db.query(`DROP SCHEMA ${schema} CASCADE`);
+  }
+}
+const guardScope="fixture_merchant";
+async function guardInsert(client:pg.PoolClient){
+  return (await mutateLiveOnboarding(client,{transaction:"own",merchantScope:guardScope,
+    sql:`INSERT INTO flutterwave_live_school_onboarding
+      (merchant_scope,school_id,profile_id,snapshot_sha256,snapshot_ciphertext,encryption_key_version,
+       bank_fingerprint,account_last4,submitted_by,last_actor_id)
+      VALUES($1,10,10,$2,'synthetic_ciphertext','fixture-v1','synthetic_bank','0002',2,2) RETURNING *`,
+    values:[guardScope,"a".repeat(64)]}))!;
+}
+const guardUpdate=(client:pg.PoolClient,id:number,set:string,transaction:"own"|"caller"="own")=>
+  mutateLiveOnboarding(client,{transaction,merchantScope:guardScope,id,
+    sql:`UPDATE flutterwave_live_school_onboarding SET ${set} WHERE id=$1 RETURNING *`,values:[id]});
+
+it("application safeguard: routed writes keep exactly one audit per change with original triggers",async()=>{
+  const item=await submit();
+  expect((await review(item.id)).body.status).toBe("LIVE_VERIFIED");
+  const audits=(await db.query(`SELECT previous_status,status,actor_id,provider_id
+    FROM flutterwave_live_school_onboarding_audits WHERE onboarding_id=$1 ORDER BY id`,[item.id])).rows;
+  expect(audits.map(r=>[r.previous_status,r.status,r.actor_id])).toEqual([
+    [null,"SUBMITTED",2],["SUBMITTED","BANK_VERIFIED",2],["BANK_VERIFIED","CREATING",1],
+    ["CREATING","CREATING",1],["CREATING","LIVE_VERIFIED",1],
+  ]);
+  expect(audits.at(-1).provider_id).toBe("701");
+  expect(posts()).toHaveLength(1);
+  expect((await db.query(`SELECT count(*)::int AS n FROM pg_trigger WHERE
+    tgname IN('live_school_onboarding_history','live_school_onboarding_audit','live_school_onboarding_audit_history')
+    AND tgenabled='O'`)).rows[0].n).toBe(3);
+});
+
+it("application safeguard: app-only tables receive atomic complete audits and preserve claims",async()=>{
+  await applicationGuardCase(async client=>{
+    const row=await guardInsert(client);
+    await guardUpdate(client,row.id,"status='BANK_VERIFIED'");
+    await guardUpdate(client,row.id,`status='CREATING',creation_claimed_at=now(),
+      approved_by=1,approval_evidence='{"fixture":true}',last_actor_id=1`);
+    await guardUpdate(client,row.id,"status='CREATION_UNKNOWN',error_code='FIXTURE_UNCERTAIN'");
+    await expect(guardUpdate(client,row.id,"status='BANK_VERIFIED'"))
+      .rejects.toMatchObject({code:"LIVE_ONBOARDING_TRANSITION_INVALID"});
+    await expect(guardUpdate(client,row.id,"creation_claimed_at=creation_claimed_at+interval '1 minute'"))
+      .rejects.toMatchObject({code:"LIVE_ONBOARDING_CLAIM_IMMUTABLE"});
+    await expect(guardUpdate(client,row.id,"snapshot_ciphertext='replacement'"))
+      .rejects.toMatchObject({code:"LIVE_ONBOARDING_SNAPSHOT_IMMUTABLE"});
+    await guardUpdate(client,row.id,`provider_id=701,provider_subaccount_id='RS_fixture12345678',status='LIVE_VERIFIED'`);
+    await expect(guardUpdate(client,row.id,"provider_id=702"))
+      .rejects.toMatchObject({code:"LIVE_ONBOARDING_PROVIDER_IDENTITY_IMMUTABLE"});
+    const audits=(await client.query(`SELECT * FROM flutterwave_live_school_onboarding_audits
+      WHERE onboarding_id=$1 ORDER BY id`,[row.id])).rows;
+    expect(audits.map(r=>[r.previous_status,r.status])).toEqual([
+      [null,"SUBMITTED"],["SUBMITTED","BANK_VERIFIED"],["BANK_VERIFIED","CREATING"],
+      ["CREATING","CREATION_UNKNOWN"],["CREATION_UNKNOWN","LIVE_VERIFIED"],
+    ]);
+    expect(audits.at(-1)).toMatchObject({actor_id:1,provider_id:"701",
+      provider_subaccount_id:"RS_fixture12345678",error_code:"FIXTURE_UNCERTAIN"});
+    expect((await client.query("SELECT status,provider_id FROM flutterwave_live_school_onboarding WHERE id=$1",[row.id])).rows[0])
+      .toMatchObject({status:"LIVE_VERIFIED",provider_id:"701"});
+  });
+  expect(posts()).toHaveLength(0);
+});
+
+it("application safeguard: audit insertion failure rolls back the mutation",async()=>{
+  await applicationGuardCase(async client=>{
+    const row=await guardInsert(client);
+    // Test-only constraint on a NEW clone, not any reviewed table or trigger.
+    await client.query(`ALTER TABLE flutterwave_live_school_onboarding_audits
+      ADD CONSTRAINT synthetic_actor_check CHECK(actor_id<>9)`);
+    await expect(guardUpdate(client,row.id,"status='BANK_VERIFIED',last_actor_id=9"))
+      .rejects.toThrow("synthetic_actor_check");
+    expect((await client.query("SELECT status,last_actor_id FROM flutterwave_live_school_onboarding WHERE id=$1",[row.id])).rows[0])
+      .toMatchObject({status:"SUBMITTED",last_actor_id:2});
+    expect((await client.query("SELECT count(*)::int AS n FROM flutterwave_live_school_onboarding_audits WHERE onboarding_id=$1",[row.id])).rows[0].n).toBe(1);
+  });
+});
+
+it("application safeguard: caller owns commit and can roll back row and audit together",async()=>{
+  await applicationGuardCase(async(client,schema)=>{
+    const row=await guardInsert(client);
+    await client.query("BEGIN");
+    await guardUpdate(client,row.id,"status='BANK_VERIFIED'","caller");
+    expect((await db.query(`SELECT status FROM ${schema}.flutterwave_live_school_onboarding WHERE id=$1`,[row.id])).rows[0].status)
+      .toBe("SUBMITTED");
+    expect((await db.query(`SELECT count(*)::int AS n FROM ${schema}.flutterwave_live_school_onboarding_audits WHERE onboarding_id=$1`,[row.id])).rows[0].n)
+      .toBe(1);
+    await client.query("ROLLBACK");
+    expect((await client.query("SELECT status FROM flutterwave_live_school_onboarding WHERE id=$1",[row.id])).rows[0].status)
+      .toBe("SUBMITTED");
+  });
+});
+
+it("application safeguard: concurrent permanent creation claims yield one winner and one claim audit",async()=>{
+  await applicationGuardCase(async(client,schema)=>{
+    const row=await guardInsert(client);
+    await guardUpdate(client,row.id,"status='BANK_VERIFIED'");
+    const other=await db.connect();
+    try{
+      await other.query(`SET search_path=${schema},public`);
+      const attempt=(c:pg.PoolClient)=>mutateLiveOnboarding(c,{transaction:"own",merchantScope:guardScope,id:row.id,
+        sql:`UPDATE flutterwave_live_school_onboarding SET status='CREATING',creation_claimed_at=now(),
+          approved_by=1,approval_evidence='{"fixture":true}',last_actor_id=1
+          WHERE id=$1 AND creation_claimed_at IS NULL AND status='BANK_VERIFIED' RETURNING *`,values:[row.id]});
+      const results=await Promise.all([attempt(client),attempt(other)]);
+      expect(results.filter(Boolean)).toHaveLength(1);
+      expect((await client.query(`SELECT count(*)::int AS n FROM flutterwave_live_school_onboarding_audits
+        WHERE onboarding_id=$1 AND status='CREATING'`,[row.id])).rows[0].n).toBe(1);
+    }finally{await other.query("RESET search_path");other.release();}
+  });
+});
+
+it("application safeguard: uncertain COMMIT retains the permanent claim without a second creation",async()=>{
+  await applicationGuardCase(async client=>{
+    const row=await guardInsert(client);
+    await guardUpdate(client,row.id,"status='BANK_VERIFIED'");
+    const uncertain={query:async(sql:string,values?:unknown[])=>{
+      const result=await client.query(sql,values);
+      if(sql==="COMMIT")throw Error("synthetic lost COMMIT acknowledgement");
+      return result;
+    }};
+    await expect(mutateLiveOnboarding(uncertain,{transaction:"own",merchantScope:guardScope,id:row.id,
+      sql:`UPDATE flutterwave_live_school_onboarding SET status='CREATING',creation_claimed_at=now(),
+        approved_by=1,approval_evidence='{"fixture":true}',last_actor_id=1 WHERE id=$1 RETURNING *`,values:[row.id]}))
+      .rejects.toThrow("synthetic lost COMMIT acknowledgement");
+    expect((await client.query("SELECT status,creation_claimed_at FROM flutterwave_live_school_onboarding WHERE id=$1",[row.id])).rows[0])
+      .toMatchObject({status:"CREATING",creation_claimed_at:expect.any(Date)});
+    await expect(guardUpdate(client,row.id,"status='BANK_VERIFIED'"))
+      .rejects.toMatchObject({code:"LIVE_ONBOARDING_TRANSITION_INVALID"});
+    expect((await client.query(`SELECT count(*)::int AS n FROM flutterwave_live_school_onboarding_audits
+      WHERE onboarding_id=$1 AND status='CREATING'`,[row.id])).rows[0].n).toBe(1);
+  });
+  expect(posts()).toHaveLength(0);
+});
 const onboardingDraft=(direction:"up"|"down")=>readFileSync(
   resolve(`../../lib/db/dev-reconciliation/flutterwave-live-school-onboarding.${direction}.sql`),"utf8");
 async function rollbackOnboardingFixture(){

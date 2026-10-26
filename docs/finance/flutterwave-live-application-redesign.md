@@ -20,8 +20,8 @@ The six files contain nine functions and twenty triggers, not six functions.
 | Readiness: reused `retain_flutterwave_live_history` | `live_operator_history` | Preserve operator decisions/retry evidence. **Blocked** on append-only enforcement. |
 | Runtime: reused `retain_flutterwave_live_history` | `live_school_config_history`, `live_allocation_review_history` | Preserve school authority and transaction-bound allocation review. **Blocked** on append-only enforcement. |
 | Runtime: `guard_live_checkout_attempt` | `live_checkout_attempt_history` | One permanent claim; RESERVED may become READY/UNKNOWN only, identity and creation time frozen; no delete/reset/retry. Existing insert-on-conflict and conditional updates already cover normal application flow; bypass-writer protection **blocked**. |
-| Onboarding: `live_school_onboarding_history_fn` | `live_school_onboarding_history` | Freeze encrypted identity/snapshot, claim/approval and provider identity; enforce terminal/uncertain transitions; no delete. **Blocked** pending an atomic all-writer transition boundary. |
-| Onboarding: `live_school_onboarding_audit_fn` | `live_school_onboarding_audit` | Audit every insert/update in the same transaction, including unsuccessful/ambiguous provider progression. **Blocked**: current application writes rely on automatic auditing; do not remove it. |
+| Onboarding: `live_school_onboarding_history_fn` | `live_school_onboarding_history` | Freeze encrypted identity/snapshot, claim/approval and provider identity; enforce terminal/uncertain transitions; no delete. Application mutation boundary now mirrors these checks; **all-writer replacement remains blocked**. |
+| Onboarding: `live_school_onboarding_audit_fn` | `live_school_onboarding_audit` | Audit every insert/update in the same transaction, including unsuccessful/ambiguous provider progression. Application boundary now appends or validates exactly one audit; trigger retained. **All-writer replacement remains blocked**. |
 | Onboarding: `live_school_onboarding_no_audit_mutation` | `live_school_onboarding_audit_history` | Audit rows cannot be changed/deleted. **Blocked** on append-only enforcement. |
 
 ## Implemented application behavior
@@ -88,7 +88,7 @@ Do not treat these tests as trigger-removal acceptance.
 No shared/Production SQL, provider request, schema push, publish, settings change,
 workflow restart or previously completed PostgreSQL audit is part of this slice.
 
-### Executed results
+### Executed results (initial slice; not rerun for the continuation below)
 
 - `pnpm --filter @workspace/api-server exec vitest run src/services/flutterwave-live-application-guards.test.ts --reporter=dot`
   — **32 passed, one file**, using the existing credential-scrubbing/network-blocking
@@ -112,3 +112,158 @@ to avoid invoking existing shared-database startup/background behavior.
 4. `docs/finance/flutterwave-live-application-redesign.md` — this map/report.
 5. `.agents/memory/financial-verification-depth.md` — durable safety rule for
    future trigger-removal work; not an application/configuration change.
+
+## Continuation: unresolved-protection write-path trace
+
+This continuation adds onboarding protections only; it does not redo the initial
+allocation/hold implementation or its completed test suite.
+
+### Immutable payment/audit history — replacement BLOCKED
+
+`retain_flutterwave_live_history`, `guard_flutterwave_live_intent`,
+`guard_flutterwave_live_accrual`, `guard_live_workflow_state` and
+`live_school_onboarding_no_audit_mutation` remain required. Static application
+write paths, excluding tests:
+
+- `flutterwave-live-intents.ts`: insert frozen issued intent, replay existing
+  issuer key without rewriting the snapshot.
+- `flutterwave-live-finalization-design.ts`: bind verified transaction/provider
+  identity; insert collection evidence, semantic event, receipt result and optional
+  BRO accrual; update intent state/hold and accrual hold.
+- `flutterwave-live-lifecycle.ts`: insert activation/official receipt; hold
+  activation; insert authenticated reconciliation cases (including failure path).
+- `flutterwave-live-application-guards.ts`: update held export-batch status only.
+- `flutterwave-live-commissions.ts`: insert approved export-only batch, membership
+  and approval audit; append export audit. No transfer/Paid operation.
+- `flutterwave-live-configuration.ts`: insert immutable authority review, school
+  configuration and allocation review; check conflicting replay rather than update.
+- `flutterwave-live-operator.ts`: append operator review; no history rewrite.
+- `flutterwave-live-onboarding-mutations.ts`: append/validate onboarding audit;
+  never update/delete an audit.
+
+There is no ordinary application DELETE of LIVE financial history. This does not
+prove that arbitrary database writers cannot mutate/delete it. No supported
+append-only role boundary has been established, and ordinary CHECK/FK constraints
+cannot provide OLD/NEW or delete protection. No trigger was removed or weakened.
+
+### Irreversible payment state transitions — replacement BLOCKED
+
+`guard_flutterwave_live_intent`, `guard_flutterwave_live_accrual`,
+`guard_live_workflow_state`, `guard_live_checkout_attempt` and
+`live_school_onboarding_history_fn` govern these transitions.
+
+The finalizer owns intent locks and transaction-bound hold/collection writes;
+lifecycle owns activation hold; the initial application guard invalidates batches.
+Commission approval/export rechecks locked original intents/accruals before
+approving or exporting. Runtime checkout updates only RESERVED to READY/UNKNOWN.
+Those paths are unchanged. No application operation releases a financial hold.
+Global irreversibility still requires the database guards.
+
+Onboarding now has independently tested application OLD/NEW checks for the frozen
+snapshot, permanent claim/approval, established provider identity, uncertain states
+and terminal states. This is per-path protection, not permission to remove its
+history trigger.
+
+### Permanent provider-event claims — replacement BLOCKED
+
+Do not confuse three different identities:
+
+1. `flutterwave-live-webhook-inbox.ts` inserts authenticated delivery fingerprints;
+   conflict updates only delivery count/time, not payment status.
+2. Finalization inserts semantic events with unique intent/kind and semantic keys,
+   binds verified provider identity, and binds each receipt result to the existing
+   event. Conflicts are checked, not overwritten. Callback only delegates to the
+   gated existing verification/finalization flow; it cannot invent a signature.
+3. `flutterwave-live-runtime.ts` permanently reserves one checkout attempt per
+   intent, with conditional READY/UNKNOWN updates and no expired-claim retry.
+   School onboarding permanently records creation claim/approval before provider
+   creation; recovery verifies the existing provider object rather than POST again.
+
+Existing UNIQUE/FK constraints handle concurrent collisions while rows are retained.
+They cannot make those claims permanent if another writer deletes their history.
+The event/result immutability and checkout-history triggers are therefore still
+necessary. No event expiry, delete/reinsert, reset or retry mechanism was added.
+
+### Automatic onboarding audits — IMPLEMENTED for all traced application mutations
+
+All eleven INSERT/UPDATE sites in `flutterwave-live-school-onboarding.ts` now call
+`mutateLiveOnboarding`:
+
+- Submit transaction: stale prior snapshot, insert fresh frozen request.
+- Bank resolution: verification success or bounded error/holder-mismatch record.
+- Review: Owner rejection; read-only preflight error; durable creation claim.
+- Creation/recovery: captured provider ID, verified completion/profile-change
+  outcome, recovery failure and uncertain-creation outcome.
+
+For existing rows the boundary locks the original row before recording the current
+audit ID. It applies one conditional mutation with `RETURNING *`, validates OLD/NEW,
+then uses the already-generated trigger audit or appends the corresponding audit.
+A subsequent command verifies **exactly one** new audit with matching previous/new
+status, actor, approval, school/merchant, provider identity and error metadata.
+Audit insert/validation failure rejects the operation and rolls back its row change.
+An UPDATE matching no row appends no fictitious audit.
+
+Standalone mutations own BEGIN/COMMIT/ROLLBACK. Mutations inside submit/creation
+claim use the caller's pinned transaction and never commit it. No provider call is
+inside the boundary and no provider creation is attempted before the permanent
+claim's existing COMMIT acknowledgement. An uncertain COMMIT is not retry permission.
+The narrow trusted-SQL shape guard refuses DELETE, unrelated targets, multiple
+statements and missing RETURNING; it is not an SQL sandbox or a substitute for
+controlling every writer.
+
+The original audit trigger is deliberately kept. Adding a second audit without
+checking it would duplicate history; using a same-statement CTE snapshot to detect
+its insert would be unreliable. Separate commands in one transaction avoid both.
+Audits from bypass writers remain protected/created by the existing triggers:
+global trigger-free auditing/immutability is **still BLOCKED**.
+
+### Focused continuation verification
+
+The existing disposable PostgreSQL onboarding harness is reused. New app-only
+cases create NEW tables with `LIKE ... INCLUDING ALL` in temporary schemas; this
+copies column constraints/indexes, **not triggers or foreign keys**. No original
+trigger is disabled, removed or altered. These cases prove the new application
+transition/audit mechanism, not the full canonical relational model or arbitrary
+writer protection.
+
+Tests cover original-trigger coexistence without duplicate audits, app-only
+auditing, snapshot/claim/provider identity refusal, audit-failure rollback,
+caller-controlled atomicity, concurrent claim uniqueness and lost COMMIT
+acknowledgement retaining the permanent claim. Policy tests also run without
+database triggers. The routed test uses synthetic injected provider transport.
+No shared database, actual provider request or previously completed general suite
+is used.
+
+Executed final checks:
+
+- `pnpm --filter @workspace/api-server exec vitest run src/services/flutterwave-live-onboarding-mutations.test.ts --reporter=dot`
+  — **28 passed** (initial 24-case pass was expanded with four SQL-shape refusals).
+- `pnpm --filter @workspace/api-server exec vitest run src/routes/flutterwave-live-school-onboarding.test.ts -t 'application safeguard:' --reporter=dot`
+  — **six passed, 29 pre-existing cases skipped**. Only the six new focused cases
+  ran; the existing cluster/identity-check/cleanup harness was reused.
+- `pnpm --filter @workspace/api-server run typecheck` — **passed** after fixing
+  the new nullable mutation-result type check.
+- `git diff --check` — **passed**.
+- `sha256sum -c docs/finance/flutterwave-live-production-review/originals.sha256`
+  — **all fourteen matched**.
+- Protected-path `git diff --exit-code` — **no changes** to original SQL,
+  rollback SQL, manifests, runbook or the Production review package.
+
+The initial development slice's completed 32-test suite and general PostgreSQL
+audits were not rerun. No workflow was restarted, to avoid shared-database startup
+or background behavior. Only synthetic disposable fixtures received SQL.
+
+### Exact changed files in this continuation
+
+1. `artifacts/api-server/src/services/flutterwave-live-school-onboarding.ts`
+2. `artifacts/api-server/src/services/flutterwave-live-onboarding-mutations.ts` (new)
+3. `artifacts/api-server/src/services/flutterwave-live-onboarding-mutations.test.ts` (new)
+4. `artifacts/api-server/src/routes/flutterwave-live-school-onboarding.test.ts`
+5. `docs/finance/flutterwave-live-application-redesign.md`
+
+**Overall verdict remains NOT genuinely Publish-compatible.** New per-path
+onboarding checks/audits need no new database objects, but immutable financial/audit
+history, irreversible financial state and permanent claim retention still depend
+on the existing triggers. A proven all-writer design and supported full relational
+schema-to-Publish path remain necessary before release. No release gate, allocation,
+verification, reconciliation or original migration/review/checksum file is changed.

@@ -4,6 +4,7 @@ import type {StudentSubscriptionSqlPool} from "../lib/student-subscription-billi
 import {encryptPayrollBankValue,decryptPayrollBankValue,getActivePayrollEncryptionKey} from "../lib/payroll-bank-encryption";
 import {onboardingGate} from "../lib/flutterwave-live-onboarding-gate";
 import {FlutterwaveLiveOnboardingProvider,LiveOnboardingBlocked,type LiveSchoolBank,type LiveSubaccountIdentity} from "../lib/flutterwave-live-onboarding-provider";
+import {mutateLiveOnboarding} from "./flutterwave-live-onboarding-mutations";
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 type Row=Record<string,any>;
 const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
@@ -116,8 +117,10 @@ export async function submitLiveSchoolOnboarding(pool:StudentSubscriptionSqlPool
     const prior=(await db.query(`SELECT * FROM flutterwave_live_school_onboarding
       WHERE merchant_scope=$1 AND school_id=$2 AND status NOT IN('STALE','REJECTED') FOR UPDATE`,[gate.merchantScope,schoolId])).rows[0];
     if(prior?.creation_claimed_at){await db.query("COMMIT");return view(prior,true,p);}
-    if(prior&&prior.snapshot_sha256!==hash)await db.query(`UPDATE flutterwave_live_school_onboarding
-      SET status='STALE',error_code='SCHOOL_PROFILE_CHANGED',last_actor_id=$2,updated_at=now() WHERE id=$1`,[prior.id,actorId]);
+    if(prior&&prior.snapshot_sha256!==hash)await mutateLiveOnboarding(db,{
+      transaction:"caller",merchantScope:gate.merchantScope,id:prior.id,
+      sql:`UPDATE flutterwave_live_school_onboarding
+      SET status='STALE',error_code='SCHOOL_PROFILE_CHANGED',last_actor_id=$2,updated_at=now() WHERE id=$1 RETURNING *`,values:[prior.id,actorId]});
     if(prior?.snapshot_sha256===hash){
       row=prior;
       if(prior.status==="BANK_VERIFIED"&&Date.now()-new Date(prior.bank_verified_at).getTime()<86400_000){
@@ -126,21 +129,24 @@ export async function submitLiveSchoolOnboarding(pool:StudentSubscriptionSqlPool
     }else{
       const encrypted=encryptPayrollBankValue(JSON.stringify(bank),requestAd(gate.merchantScope,schoolId));
       const fingerprint=createHmac("sha256",getActivePayrollEncryptionKey().key).update(`${gate.merchantScope}:${bank.bankCode}:${bank.accountNumber}`).digest("hex");
-      row=(await db.query(`INSERT INTO flutterwave_live_school_onboarding
+      row=(await mutateLiveOnboarding(db,{transaction:"caller",merchantScope:gate.merchantScope,sql:`INSERT INTO flutterwave_live_school_onboarding
         (merchant_scope,school_id,profile_id,snapshot_sha256,snapshot_ciphertext,encryption_key_version,bank_fingerprint,account_last4,submitted_by,last_actor_id)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$9) RETURNING *`,
-      [gate.merchantScope,schoolId,p.id,hash,encrypted.ciphertext,encrypted.keyVersion,fingerprint,bank.accountNumber.slice(-4),actorId])).rows[0];
+      values:[gate.merchantScope,schoolId,p.id,hash,encrypted.ciphertext,encrypted.keyVersion,fingerprint,bank.accountNumber.slice(-4),actorId]}))!;
     }
     await db.query("COMMIT");
     try{
       await new FlutterwaveLiveOnboardingProvider(env,fetcher).resolve(bank);
-      row=(await db.query(`UPDATE flutterwave_live_school_onboarding SET status='BANK_VERIFIED',bank_verified_at=now(),
-        error_code=NULL,provider_http_status=NULL,last_actor_id=$2,updated_at=now() WHERE id=$1 AND status IN('SUBMITTED','ACTION_REQUIRED','BANK_VERIFIED') RETURNING *`,[row.id,actorId])).rows[0]??await getRow(db,row.id,row.merchant_scope);
+      row=await mutateLiveOnboarding(db,{transaction:"own",merchantScope:row.merchant_scope,id:row.id,
+        sql:`UPDATE flutterwave_live_school_onboarding SET status='BANK_VERIFIED',bank_verified_at=now(),
+        error_code=NULL,provider_http_status=NULL,last_actor_id=$2,updated_at=now() WHERE id=$1 AND status IN('SUBMITTED','ACTION_REQUIRED','BANK_VERIFIED') RETURNING *`,
+        values:[row.id,actorId]})??await getRow(db,row.id,row.merchant_scope);
     }catch(e){
-      row=(await db.query(`UPDATE flutterwave_live_school_onboarding SET
+      row=await mutateLiveOnboarding(db,{transaction:"own",merchantScope:row.merchant_scope,id:row.id,
+        sql:`UPDATE flutterwave_live_school_onboarding SET
         status=CASE WHEN $2='LIVE_BANK_ACCOUNT_HOLDER_MISMATCH' THEN 'ACTION_REQUIRED' ELSE status END,error_code=$2,
         last_actor_id=$3,provider_http_status=$4,updated_at=now() WHERE id=$1 AND status IN('SUBMITTED','ACTION_REQUIRED','BANK_VERIFIED') RETURNING *`,
-      [row.id,errorCode(e),actorId,providerStatus(e)])).rows[0]??await getRow(db,row.id,row.merchant_scope);
+        values:[row.id,errorCode(e),actorId,providerStatus(e)]})??await getRow(db,row.id,row.merchant_scope);
     }
     return view(row,true,await source(db,schoolId));
   }catch(e){await db.query("ROLLBACK").catch(()=>undefined);throw e;}finally{db.release();}
@@ -157,9 +163,10 @@ async function finish(db:Db,row:Row,identity:LiveSubaccountIdentity,actorId:numb
   await assertNotBoundElsewhere(db,row,identity);
   const current=await source(db,row.school_id);
   const changed=sourceHash(current)!==row.snapshot_sha256;
-  const updated=(await db.query(`UPDATE flutterwave_live_school_onboarding SET provider_id=$2,provider_subaccount_id=$3,
+  const updated=await mutateLiveOnboarding(db,{transaction:"own",merchantScope:row.merchant_scope,id:row.id,
+    sql:`UPDATE flutterwave_live_school_onboarding SET provider_id=$2,provider_subaccount_id=$3,
     status=$4,error_code=$5,last_actor_id=$6,provider_http_status=NULL,updated_at=now() WHERE id=$1 AND status IN('CREATING','CREATION_UNKNOWN') RETURNING *`,
-  [row.id,identity.providerId,identity.subaccountId,changed?"CREATION_UNKNOWN":"LIVE_VERIFIED",changed?"SCHOOL_PROFILE_CHANGED_AFTER_CREATION":null,actorId])).rows[0]??await getRow(db,row.id,row.merchant_scope);
+    values:[row.id,identity.providerId,identity.subaccountId,changed?"CREATION_UNKNOWN":"LIVE_VERIFIED",changed?"SCHOOL_PROFILE_CHANGED_AFTER_CREATION":null,actorId]})??await getRow(db,row.id,row.merchant_scope);
   return view(updated,true,current);
 }
 export async function reviewLiveSchoolOnboarding(pool:StudentSubscriptionSqlPool,actorId:number,id:number,
@@ -170,10 +177,11 @@ export async function reviewLiveSchoolOnboarding(pool:StudentSubscriptionSqlPool
     const gate=await requiredGate(pool,env),provider=new FlutterwaveLiveOnboardingProvider(env,fetcher);
     let row=await getRow(db,id,gate.merchantScope),bank=snapshot(row);
     if(input.action==="REJECT"){
-      const r=(await db.query(`UPDATE flutterwave_live_school_onboarding SET status='REJECTED',
+      const r=await mutateLiveOnboarding(db,{transaction:"own",merchantScope:gate.merchantScope,id,
+        sql:`UPDATE flutterwave_live_school_onboarding SET status='REJECTED',
         error_code='OWNER_REJECTED',last_actor_id=$2,updated_at=now()
-        WHERE id=$1 AND creation_claimed_at IS NULL AND status IN('SUBMITTED','BANK_VERIFIED','ACTION_REQUIRED') RETURNING *`,[id,actorId])).rows[0];
-      if(!r)fail("CREATION_ALREADY_CLAIMED_RECONCILE_ONLY");return view(r,true);
+        WHERE id=$1 AND creation_claimed_at IS NULL AND status IN('SUBMITTED','BANK_VERIFIED','ACTION_REQUIRED') RETURNING *`,values:[id,actorId]});
+      if(!r)throw new LiveOnboardingBlocked("CREATION_ALREADY_CLAIMED_RECONCILE_ONLY");return view(r,true);
     }
     if(input.action==="RECOVER"){
       if(!row.creation_claimed_at||!["CREATING","CREATION_UNKNOWN"].includes(row.status))fail("LIVE_RECOVERY_NOT_REQUIRED");
@@ -183,8 +191,10 @@ export async function reviewLiveSchoolOnboarding(pool:StudentSubscriptionSqlPool
         if(providerId===null)throw new LiveOnboardingBlocked("LIVE_RECOVERY_NO_MATCH_NO_NEW_CREATION");
         return await finish(db,row,await provider.verify(providerId,bank),actorId);
       }catch(e){
-        const r=(await db.query(`UPDATE flutterwave_live_school_onboarding SET status='CREATION_UNKNOWN',
-          error_code=$2,last_actor_id=$3,provider_http_status=$4,updated_at=now() WHERE id=$1 AND status IN('CREATING','CREATION_UNKNOWN') RETURNING *`,[id,errorCode(e),actorId,providerStatus(e)])).rows[0]??await getRow(db,id,gate.merchantScope);
+        const r=await mutateLiveOnboarding(db,{transaction:"own",merchantScope:gate.merchantScope,id,
+          sql:`UPDATE flutterwave_live_school_onboarding SET status='CREATION_UNKNOWN',
+          error_code=$2,last_actor_id=$3,provider_http_status=$4,updated_at=now() WHERE id=$1 AND status IN('CREATING','CREATION_UNKNOWN') RETURNING *`,
+          values:[id,errorCode(e),actorId,providerStatus(e)]})??await getRow(db,id,gate.merchantScope);
         return view(r,true);
       }
     }
@@ -205,8 +215,9 @@ export async function reviewLiveSchoolOnboarding(pool:StudentSubscriptionSqlPool
       if(existing!==null)await assertNotBoundElsewhere(db,row,await provider.verify(existing,bank));
     }
     catch(e){
-      await db.query(`UPDATE flutterwave_live_school_onboarding SET error_code=$2,last_actor_id=$3,provider_http_status=$4,updated_at=now()
-        WHERE id=$1 AND status='BANK_VERIFIED' AND creation_claimed_at IS NULL`,[id,errorCode(e),actorId,providerStatus(e)]);
+      await mutateLiveOnboarding(db,{transaction:"own",merchantScope:gate.merchantScope,id,
+        sql:`UPDATE flutterwave_live_school_onboarding SET error_code=$2,last_actor_id=$3,provider_http_status=$4,updated_at=now()
+        WHERE id=$1 AND status='BANK_VERIFIED' AND creation_claimed_at IS NULL RETURNING *`,values:[id,errorCode(e),actorId,providerStatus(e)]});
       throw e;
     }
     await db.query("BEGIN");await db.query("SET LOCAL lock_timeout='2s'");await db.query("SET LOCAL statement_timeout='3s'");
@@ -217,18 +228,22 @@ export async function reviewLiveSchoolOnboarding(pool:StudentSubscriptionSqlPool
     if(sourceHash(current)!==row.snapshot_sha256||row.status!=="BANK_VERIFIED")fail("SCHOOL_PROFILE_CHANGED");
     await distinctCompany(db,bank);
     await requiredGate(pool,env);
-    row=(await db.query(`UPDATE flutterwave_live_school_onboarding SET status='CREATING',creation_claimed_at=now(),
+    row=(await mutateLiveOnboarding(db,{transaction:"caller",merchantScope:gate.merchantScope,id,
+      sql:`UPDATE flutterwave_live_school_onboarding SET status='CREATING',creation_claimed_at=now(),
       approved_by=$2,approval_evidence=$3::jsonb,error_code=NULL,provider_http_status=NULL,last_actor_id=$2,updated_at=now() WHERE id=$1 RETURNING *`,
-    [id,actorId,JSON.stringify(input)])).rows[0];
+      values:[id,actorId,JSON.stringify(input)]}))!;
     await db.query("COMMIT"); // If this acknowledgement is lost, NEVER send POST.
     try{
       const providerId=existing??await provider.create(bank);
-      row=(await db.query(`UPDATE flutterwave_live_school_onboarding SET provider_id=$2,last_actor_id=$3,updated_at=now()
-        WHERE id=$1 AND status='CREATING' RETURNING *`,[id,providerId,actorId])).rows[0]??await getRow(db,id,gate.merchantScope);
+      row=await mutateLiveOnboarding(db,{transaction:"own",merchantScope:gate.merchantScope,id,
+        sql:`UPDATE flutterwave_live_school_onboarding SET provider_id=$2,last_actor_id=$3,updated_at=now()
+        WHERE id=$1 AND status='CREATING' RETURNING *`,values:[id,providerId,actorId]})??await getRow(db,id,gate.merchantScope);
       return await finish(db,row,await provider.verify(providerId,bank),actorId);
     }catch(e){
-      row=(await db.query(`UPDATE flutterwave_live_school_onboarding SET status='CREATION_UNKNOWN',error_code=$2,
-        last_actor_id=$3,provider_http_status=$4,updated_at=now() WHERE id=$1 AND status IN('CREATING','CREATION_UNKNOWN') RETURNING *`,[id,errorCode(e),actorId,providerStatus(e)])).rows[0]??await getRow(db,id,gate.merchantScope);
+      row=await mutateLiveOnboarding(db,{transaction:"own",merchantScope:gate.merchantScope,id,
+        sql:`UPDATE flutterwave_live_school_onboarding SET status='CREATION_UNKNOWN',error_code=$2,
+        last_actor_id=$3,provider_http_status=$4,updated_at=now() WHERE id=$1 AND status IN('CREATING','CREATION_UNKNOWN') RETURNING *`,
+        values:[id,errorCode(e),actorId,providerStatus(e)]})??await getRow(db,id,gate.merchantScope);
       return view(row,true);
     }
   }catch(e){await db.query("ROLLBACK").catch(()=>undefined);throw e;}finally{db.release();}
