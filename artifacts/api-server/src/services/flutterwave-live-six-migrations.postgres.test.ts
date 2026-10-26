@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { DatabasePool, type DatabasePoolClient } from "@workspace/db/driver";
 import { beforeAll, beforeEach, afterAll, afterEach, expect, it } from "vitest";
 import { candidateSchema, createConstraintCandidate, relationalShape, seedConstraintEvidence } from "../test/flutterwave-live-constraint-candidate";
+import { permissionBoundary } from "../test/flutterwave-live-permission-boundary";
 
 // No application pool, URL, credentials or provider configuration is imported.
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
@@ -148,6 +149,86 @@ afterAll(async () => {
 async function constraintCandidate() {
   await createConstraintCandidate(client, order.map(name => ups.get(name)!), directory, database);
 }
+
+it("permission boundary: separate runtime login denies arbitrary history mutation and owner escalation", async () => {
+  await constraintCandidate(); await seedConstraintEvidence(client, candidateSchema);
+  const boundary = await permissionBoundary(client, directory, database);
+  try {
+    expect((await boundary.runtime.query(`SELECT current_user AS who,
+      pg_has_role(current_user,$1,'MEMBER') AS owner_member`, [boundary.owner])).rows[0])
+      .toEqual({ who: boundary.runtimeRole, owner_member: false });
+    const denied = [
+      `UPDATE ${candidateSchema}.flutterwave_live_collection_evidence SET provider_fee_minor=501 WHERE intent_id=1`,
+      `UPDATE ${candidateSchema}.flutterwave_live_workflow_audits SET action='EXPORT_ONLY'`,
+      `DELETE FROM ${candidateSchema}.flutterwave_live_receipt_results WHERE receipt_id=1`,
+      `DELETE FROM ${candidateSchema}.flutterwave_live_finalization_events WHERE id=1`,
+      `DELETE FROM ${candidateSchema}.flutterwave_live_checkout_attempts WHERE intent_id=1`,
+      `TRUNCATE ${candidateSchema}.flutterwave_live_workflow_audits`,
+      `ALTER TABLE ${candidateSchema}.flutterwave_live_finalization_events ADD COLUMN escaped text`,
+      `SET ROLE ${boundary.owner}`,
+      `SET SESSION AUTHORIZATION ${boundary.owner}`,
+      `GRANT ${boundary.owner} TO ${boundary.runtimeRole}`,
+    ];
+    for (const sql of denied) await expect(boundary.runtime.query(sql)).rejects.toMatchObject({ code: "42501" });
+    // Append remains possible; this matches immutable-history guards, not provider
+    // verification. Only fictional rows, no payment or provider operation.
+    expect((await boundary.runtime.query(`INSERT INTO ${candidateSchema}.flutterwave_live_finalization_events
+      (id,intent_id,semantic_key,kind,transaction_id,source_payload_sha256)
+      VALUES(2,1,'${"d".repeat(64)}','ADVERSE_HOLD','123','${"a".repeat(64)}')`)).rowCount).toBe(1);
+    expect((await boundary.runtime.query(`INSERT INTO ${candidateSchema}.flutterwave_live_workflow_audits
+      (actor_id,action,batch_id) VALUES(7,'EXPORT_ONLY',1)`)).rowCount).toBe(1);
+    expect((await client.query(`SELECT provider_fee_minor FROM ${candidateSchema}.flutterwave_live_collection_evidence
+      WHERE intent_id=1`)).rows[0].provider_fee_minor).toBe(500);
+  } finally { await boundary.runtime.end(); await boundary.migration.end(); }
+});
+
+it("permission boundary: owner-specific defaults fail closed after controlled table recreation but need explicit regrants", async () => {
+  await constraintCandidate();
+  const boundary = await permissionBoundary(client, directory, database);
+  try {
+    await expect(boundary.migration.query(`CREATE TABLE ${candidateSchema}.permission_lifecycle_probe(id integer PRIMARY KEY)`))
+      .rejects.toMatchObject({ code: "42501" });
+    await boundary.migration.query(`SET ROLE ${boundary.owner};
+      CREATE TABLE ${candidateSchema}.permission_lifecycle_probe(id integer PRIMARY KEY);
+      GRANT INSERT ON ${candidateSchema}.permission_lifecycle_probe TO ${boundary.runtimeRole}`);
+    expect((await boundary.runtime.query(`INSERT INTO ${candidateSchema}.permission_lifecycle_probe VALUES(1)`)).rowCount).toBe(1);
+    expect((await boundary.runtime.query(`SELECT id FROM ${candidateSchema}.permission_lifecycle_probe`)).rows).toEqual([{ id: 1 }]);
+    // Fictional probe only: simulates schema-owner replacement, NOT Replit Publish.
+    await boundary.migration.query(`DROP TABLE ${candidateSchema}.permission_lifecycle_probe;
+      CREATE TABLE ${candidateSchema}.permission_lifecycle_probe(id integer PRIMARY KEY)`);
+    expect((await boundary.runtime.query(`SELECT * FROM ${candidateSchema}.permission_lifecycle_probe`)).rows).toEqual([]);
+    await expect(boundary.runtime.query(`INSERT INTO ${candidateSchema}.permission_lifecycle_probe VALUES(2)`))
+      .rejects.toMatchObject({ code: "42501" });
+    await boundary.migration.query(`GRANT INSERT ON ${candidateSchema}.permission_lifecycle_probe TO ${boundary.runtimeRole}`);
+    expect((await boundary.runtime.query(`INSERT INTO ${candidateSchema}.permission_lifecycle_probe VALUES(2)`)).rowCount).toBe(1);
+    await boundary.migration.query("RESET ROLE");
+  } finally { await boundary.runtime.end(); await boundary.migration.end(); }
+});
+
+it("permission boundary: column update grants do not enforce transition direction or permanent checkout state", async () => {
+  await constraintCandidate(); await seedConstraintEvidence(client, candidateSchema);
+  const boundary = await permissionBoundary(client, directory, database);
+  try {
+    await client.query(`UPDATE ${candidateSchema}.flutterwave_live_subscription_intents
+        SET on_hold=true,state='REVIEW_REQUIRED' WHERE id=1;
+      UPDATE ${candidateSchema}.flutterwave_live_partner_accruals SET state='HELD' WHERE intent_id=1;
+      UPDATE ${candidateSchema}.flutterwave_live_subscription_activations SET status='HELD' WHERE intent_id=1;
+      UPDATE ${candidateSchema}.flutterwave_live_commission_batches SET status='REVIEW_REQUIRED' WHERE id=1`);
+    for (const sql of [
+      `UPDATE ${candidateSchema}.flutterwave_live_subscription_intents SET on_hold=false,state='COLLECTION_VERIFIED' WHERE id=1`,
+      `UPDATE ${candidateSchema}.flutterwave_live_partner_accruals SET state='ACCRUED' WHERE intent_id=1`,
+      `UPDATE ${candidateSchema}.flutterwave_live_subscription_activations SET status='ACTIVE' WHERE intent_id=1`,
+      `UPDATE ${candidateSchema}.flutterwave_live_commission_batches SET status='APPROVED' WHERE id=1`,
+      `UPDATE ${candidateSchema}.flutterwave_live_checkout_attempts SET state='RESERVED' WHERE intent_id=1`,
+    ]) expect((await boundary.runtime.query(sql)).rowCount).toBe(1);
+    await expect(boundary.runtime.query(`UPDATE ${candidateSchema}.flutterwave_live_subscription_intents
+      SET school_minor=190001 WHERE id=1`)).rejects.toMatchObject({ code: "42501" });
+    // Removing the mutable-column grant blocks the legitimate hold as well.
+    await client.query(`REVOKE UPDATE(state) ON ${candidateSchema}.flutterwave_live_partner_accruals FROM ${boundary.runtimeRole}`);
+    await expect(boundary.runtime.query(`UPDATE ${candidateSchema}.flutterwave_live_partner_accruals
+      SET state='HELD' WHERE intent_id=1`)).rejects.toMatchObject({ code: "42501" });
+  } finally { await boundary.runtime.end(); await boundary.migration.end(); }
+});
 
 it("constraint-only evidence: retains the full relational shape and enforces scalar and identity constraints", async () => {
   await constraintCandidate();

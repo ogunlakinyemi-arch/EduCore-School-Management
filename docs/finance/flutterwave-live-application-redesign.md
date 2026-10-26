@@ -381,3 +381,12 @@ Final preservation verification:
 returned **fourteen matches**. Protected-path `git diff --exit-code` confirmed
 no changes to the six original forwards, six rollbacks, runbook, original manifest
 or Production review package.
+
+## Permission-boundary follow-up
+
+See [runtime-role and Publish lifecycle decision](flutterwave-live-permission-boundary-review.md)
+for the narrow role/ACL prototype, current connection/migration configuration,
+official Replit evidence and unresolved lifecycle contract. Three new isolated
+tests prove a restricted-login append-only subset, but also prove that mutable
+column grants do not prevent state reversals. Normal Publish maintenance of the
+role/ACL split remains unestablished. **Release verdict remains NO-GO.**
