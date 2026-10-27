@@ -14654,7 +14654,7 @@ export type AssistedNfcOptionsAmountMinor = typeof AssistedNfcOptionsAmountMinor
 
 
 export const AssistedNfcOptionsAmountMinor = {
-  NUMBER_500000: 500000,
+  NUMBER_320000: 320000,
 } as const;
 
 export type AssistedNfcOptionsStudentsItemParentsItem = {
@@ -15924,6 +15924,13 @@ export type OwnerSubscriptionRulesOverviewAuditItem = { [key: string]: unknown }
 
 export type OwnerSubscriptionRulesOverviewAssistanceItem = { [key: string]: unknown };
 
+export type OwnerSubscriptionRulesOverviewBroCommissionEntriesItem = { [key: string]: unknown };
+
+export type OwnerSubscriptionRulesOverviewBroCommission = {
+  available: boolean;
+  entries: OwnerSubscriptionRulesOverviewBroCommissionEntriesItem[];
+};
+
 export interface OwnerSubscriptionRulesOverview {
   intendedStudentFeeMinor: number;
   intendedStaffFeeMinor: number;
@@ -15934,6 +15941,7 @@ export interface OwnerSubscriptionRulesOverview {
   proposals: OwnerSubscriptionRule[];
   audit: OwnerSubscriptionRulesOverviewAuditItem[];
   assistance: OwnerSubscriptionRulesOverviewAssistanceItem[];
+  broCommission?: OwnerSubscriptionRulesOverviewBroCommission;
 }
 
 export interface NfcFeeCollectionSchoolOption {
@@ -27375,14 +27383,51 @@ studentId: number;
 termId: number;
 };
 
+export type GetDirectStudentLiveReadiness200AmountMinor = typeof GetDirectStudentLiveReadiness200AmountMinor[keyof typeof GetDirectStudentLiveReadiness200AmountMinor];
+
+
+export const GetDirectStudentLiveReadiness200AmountMinor = {
+  NUMBER_320000: 320000,
+} as const;
+
+export type GetDirectStudentLiveReadiness200SchoolShareMinor = typeof GetDirectStudentLiveReadiness200SchoolShareMinor[keyof typeof GetDirectStudentLiveReadiness200SchoolShareMinor];
+
+
+export const GetDirectStudentLiveReadiness200SchoolShareMinor = {
+  NUMBER_0: 0,
+} as const;
+
+export type GetDirectStudentLiveReadiness200BroShareMinor = typeof GetDirectStudentLiveReadiness200BroShareMinor[keyof typeof GetDirectStudentLiveReadiness200BroShareMinor];
+
+
+export const GetDirectStudentLiveReadiness200BroShareMinor = {
+  NUMBER_0: 0,
+} as const;
+
+export type GetDirectStudentLiveReadiness200Currency = typeof GetDirectStudentLiveReadiness200Currency[keyof typeof GetDirectStudentLiveReadiness200Currency];
+
+
+export const GetDirectStudentLiveReadiness200Currency = {
+  NGN: 'NGN',
+} as const;
+
+export type GetDirectStudentLiveReadiness200Mode = typeof GetDirectStudentLiveReadiness200Mode[keyof typeof GetDirectStudentLiveReadiness200Mode];
+
+
+export const GetDirectStudentLiveReadiness200Mode = {
+  LIVE: 'LIVE',
+  TEST_ONLY: 'TEST_ONLY',
+  BLOCKED: 'BLOCKED',
+} as const;
+
 export type GetDirectStudentLiveReadiness200 = {
   ready: boolean;
   blockers: string[];
-  amountMinor: number;
-  schoolShareMinor: number;
-  broShareMinor: number;
-  currency: string;
-  mode: string;
+  amountMinor: GetDirectStudentLiveReadiness200AmountMinor;
+  schoolShareMinor: GetDirectStudentLiveReadiness200SchoolShareMinor;
+  broShareMinor: GetDirectStudentLiveReadiness200BroShareMinor;
+  currency: GetDirectStudentLiveReadiness200Currency;
+  mode: GetDirectStudentLiveReadiness200Mode;
   providerValidated: boolean;
 };
 
@@ -27410,5 +27455,20 @@ ruleId: number;
 
 export type ListDirectLiveReleaseReviews200 = {
   reviews: DirectReleaseReview[];
+};
+
+export type AccrueOwnerBroCommissionBody = {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  termId: number;
+};
+
+export type AccrueOwnerBroCommission200 = {
+  id: number;
+  amountMinor: number;
+  existing: boolean;
 };
 

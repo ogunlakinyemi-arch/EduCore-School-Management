@@ -4,6 +4,26 @@ import { describe,expect,it } from 'vitest';
 import { nairaToMinor, SubscriptionPaymentRulesPage } from './subscription-payment-rules';
 
 describe('Owner subscription rule controls',()=>{
+  it('shows the prospective 150 liability separately and keeps historical 100 rules visible without enabling accrual on missing storage',()=>{
+    const html=renderToStaticMarkup(<SubscriptionPaymentRulesPage snapshot={{staffRules:[],audit:[],
+      broRules:[{id:1,name:'Historical BRO rule',status:'ACTIVE',term:'First Term',partnerAmount:100,
+        schoolAmount:1900,effectiveDate:'2026-01-01T00:00:00Z'}],
+      broCommission:{available:false,entries:[]}}} onRefresh={()=>undefined}/>);
+    expect(html).toContain('₦150 per eligible student per academic term');
+    expect(html).toContain('Existing ₦100 earnings remain unchanged');
+    expect(html).toContain('Historical BRO rule');
+    expect(html).toContain('not a deduction or split');
+    expect(html).toContain('recovery safety clearance');
+    expect(html).toMatch(/disabled[^>]*>Record eligible BRO liability/);
+  });
+  it('shows the actual frozen earning amount rather than recalculating historical entries at the new rate',()=>{
+    const html=renderToStaticMarkup(<SubscriptionPaymentRulesPage snapshot={{staffRules:[],audit:[],broRules:[],
+      broCommission:{available:true,entries:[{id:8,schoolId:1,studentId:31,termId:4,partnerId:2,
+        amountMinor:15000,status:'PENDING_OWNER_APPROVAL'}]}}} onRefresh={()=>undefined}/>);
+    expect(html).toContain('#8');expect(html).toContain('₦150');
+    expect(html).toContain('PENDING OWNER APPROVAL');
+    expect(html).toContain('No automatic payout');
+  });
   it('converts naira exactly and rejects formulas, negative or fractional-kobo amounts',()=>{
     expect(nairaToMinor('3,200')).toBe(320000);
     expect(nairaToMinor('2000.01')).toBe(200001);

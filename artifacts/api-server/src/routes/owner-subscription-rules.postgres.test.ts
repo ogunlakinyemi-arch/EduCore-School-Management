@@ -571,6 +571,26 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_events WHERE kind='PROVIDER_PAYMENT_VERIFIED'")).rows[0].n).toBe(1);
     }finally{spy.mockRestore();vi.unstubAllEnvs();}
   });
+  it("keeps the School Admin platform action TEST-only and blocked without a direct release, rejecting amount and school tampering",async()=>{
+    const prior=process.env.NODE_ENV;process.env.NODE_ENV="development";
+    try{
+      const url="/schools/1/platform-subscriptions";
+      const headers={"x-role":"SCHOOL_ADMIN"};
+      const readiness=await request(`${url}/live-readiness?studentId=31&termId=4`,"GET",undefined,headers);
+      expect(readiness.status).toBe(200);
+      expect(readiness.headers.get("content-type")).toContain("application/json");
+      expect(await readiness.json()).toMatchObject({ready:false,amountMinor:320000,currency:"NGN",
+        schoolShareMinor:0,broShareMinor:0,mode:"TEST_ONLY",providerValidated:false});
+      expect((await request(`${url}/checkout`,"POST",{studentId:31,termId:4,amountMinor:500000},headers)).status).toBe(400);
+      expect((await request("/schools/2/platform-subscriptions/checkout","POST",{studentId:31,termId:4},headers)).status).toBe(403);
+      const blocked=await request(`${url}/checkout`,"POST",{studentId:31,termId:4},
+        {...headers,"Idempotency-Key":"fictional-no-charge-001"});
+      expect(blocked.status).toBe(409);
+      expect(await blocked.json()).toMatchObject({error:"LIVE_DIRECT_CONFIGURATION_AND_RELEASE_REVIEW_REQUIRED"});
+      expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_obligations")).rows[0].n).toBe(0);
+      expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_attempts")).rows[0].n).toBe(0);
+    }finally{process.env.NODE_ENV=prior;}
+  });
   it("uses only a reviewed direct 3200 scope, stores verified attempts once and reuses a reference without another provider POST",async()=>{
     const approvedDigest="f".repeat(64);
     const env={

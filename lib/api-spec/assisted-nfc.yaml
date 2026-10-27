@@ -10,7 +10,7 @@ paths:
           schema: { type: integer, minimum: 1 }
       responses:
         "200":
-          description: School-scoped authoritative students, guardians and payable periods.
+          description: Authorized School Admin student and academic-term choices for the fixed Student platform fee. No payment is initiated.
           content:
             application/json:
               schema:
@@ -48,7 +48,7 @@ components:
       type: object
       required: [students, terms, amountMinor]
       properties:
-        amountMinor: { type: integer, enum: [500000] }
+        amountMinor: { type: integer, enum: [320000] }
         students:
           type: array
           items:

@@ -18,11 +18,11 @@ paths:
                 properties:
                   ready: {type: boolean}
                   blockers: {type: array, items: {type: string}}
-                  amountMinor: {type: integer}
-                  schoolShareMinor: {type: integer}
-                  broShareMinor: {type: integer}
-                  currency: {type: string}
-                  mode: {type: string}
+                  amountMinor: {type: integer, enum: [320000]}
+                  schoolShareMinor: {type: integer, enum: [0]}
+                  broShareMinor: {type: integer, enum: [0]}
+                  currency: {type: string, enum: [NGN]}
+                  mode: {type: string, enum: [LIVE, TEST_ONLY, BLOCKED]}
                   providerValidated: {type: boolean}
         '403': {description: School Admin or global Owner required}
   /schools/{schoolId}/platform-subscriptions/checkout:

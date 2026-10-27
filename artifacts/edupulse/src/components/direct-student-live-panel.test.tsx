@@ -24,7 +24,7 @@ describe('unreleased direct payments',()=>{
   it('shows the exact non-split rule and prevents a School Admin checkout by default',()=>{
     const html=renderSchool();
     expect(html).toContain('₦3,200');expect(html).toContain('100% to Yetenia');
-    expect(html).toContain('parent-facing NFC fee is separate');
+    expect(html).toContain('parent-to-school NFC card/subscription fee workflow is unchanged');
     expect(html).toMatch(/disabled[^>]*>Start direct platform checkout/);
     expect(html).not.toContain('checkout.flutterwave.com');
   });

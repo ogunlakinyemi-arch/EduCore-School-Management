@@ -1,3 +1,4 @@
+- [Prospective BRO commission](bro-commission-policy.md) — ₦150 needs future-dated Owner approval; retain old ₦100 earnings and keep commissions outside the ₦3,200 collection.
 - [Tenant-key publish ordering](tenant-key-publish-ordering.md) — publish parent tenant uniqueness before dependent composite foreign keys when existing tables are involved.
 - [School settlement visibility](school-settlement-visibility.md) — school account instructions and status only; internal provider diagnostics belong to Owner administration.
 - [Rollback retention](migration-rollback-retention.md) — check every retainable evidence root under protective locks; empty-schema rollback success is insufficient.

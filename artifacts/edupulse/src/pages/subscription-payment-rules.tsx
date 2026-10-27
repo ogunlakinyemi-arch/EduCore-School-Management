@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import { Ban, Eye, FileClock, FilePlus2, Handshake, Landmark, Layers3, Lock, Pencil, PlugZap, RefreshCw, ShieldCheck, WalletCards, XCircle } from 'lucide-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, cx, date } from '@/components/shared';
 import { DirectAssistanceCheckout } from '@/components/direct-assistance-checkout';
+import {BroCommissionAccruals,type BroCommissionSnapshot} from '@/components/bro-commission-accruals';
 
 /* ---------- Types ---------- */
 export type StaffRuleSnapshot = { id: number; version: number; priceMinor: number; schoolShareMinor: number; partnerCommissionMinor: number; effectiveAt: string; status: string };
@@ -13,6 +14,7 @@ export type FlutterwaveCapabilitySnapshot = { configured: boolean; mode?: string
 export type RuleProposalSnapshot = { id: number; product: string; status: string; amountMinor: number; currency: string; billingPeriod: string; schoolShareMinor: number; effectiveAt: string; endsAt: string | null; reason: string; version: number; nativeRuleId: number | null };
 export type AssistanceSnapshot = { id: number; schoolId: number; studentId: number; termId: number; amountMinor: number; status: string; requestNote: string; bankName?: string | null; bankStatementReference?: string | null; bankCreditDate?: string | null; verifiedAmountMinor?: number | null };
 export type SubscriptionPaymentRulesSnapshot = {
+  broCommission?:BroCommissionSnapshot;
   staffRules: StaffRuleSnapshot[];
   broRules: BroRuleSnapshot[];
   audit: AuditSnapshot[];
@@ -31,6 +33,7 @@ export type AssistanceRequestInput = { schoolId: number; studentId: number; term
 export type BankVerificationInput = { bankName: string; bankStatementReference: string; creditDate: string; verifiedAmountMinor: number; independentlyChecked: true };
 
 export type SubscriptionPaymentRulesProps = {
+  onAccrueBro?:(scope:{schoolId:number;studentId:number;termId:number})=>Promise<{id:number;amountMinor:number;existing:boolean}>;
   snapshot: SubscriptionPaymentRulesSnapshot;
   onRefresh: () => void | Promise<unknown>;
   onCreateDraft?: (input: RuleDraftInput) => Promise<unknown>;
@@ -54,7 +57,7 @@ const TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZon
 const PRODUCTS: { value: RuleProduct; label: string; defaultNaira: string }[] = [
   { value: 'STUDENT_PLATFORM', label: 'Student NFC & EduCore platform', defaultNaira: '3200' },
   { value: 'TEACHER_STAFF_PLATFORM', label: 'Teacher/Staff NFC E-ID', defaultNaira: '2000' },
-  { value: 'BRO_COMMISSION', label: 'BRO commission', defaultNaira: '100' },
+  { value: 'BRO_COMMISSION', label: 'BRO commission', defaultNaira: '150' },
 ];
 const productLabel = (p: string) => PRODUCTS.find(x => x.value === p)?.label ?? p;
 
@@ -221,7 +224,8 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
       </Section>
 
       <Section id="bro" n="03" icon={Handshake} kicker="Separate configuration" title="BRO commission">
-        <p className={cx(note, 'mb-3')}>Configured on the existing partner route. Listed amounts are configuration, not payouts; nothing here implies a commission is owed or paid. BRO drafts may be blocked at preview.</p>
+        <p className={cx(note, 'mb-3')}>Legacy BRO configuration below is retained as historical evidence, not the new rate or a payout. Prepare the prospective ₦150 BRO proposal below, review its effective date and explicitly approve its preview.</p>
+        <BroCommissionAccruals snapshot={snapshot.broCommission} onAccrue={props.onAccrueBro} onRefresh={onRefresh}/>
         {broRules.length === 0 ? <p className="text-sm font-semibold" data-testid="text-bro-empty">No BRO rule is recorded.</p> :
           <div className="divide-y divide-[hsl(var(--border))] rounded-xl border border-[hsl(var(--border))]" data-testid="list-bro-rules">
             {broRules.map(r => <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm" data-testid={`row-bro-rule-${r.id}`}>

@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { pool } from "@workspace/db";
 import { getUserContext, requireAuthentication } from "../middlewares/auth";
+import {accrueBroCommission,broCommissionSnapshot,broStorageReady,BroCommissionBlocked,BRO_TERM_RATE_MINOR} from "../services/bro-commission-policy";
 
 const router=Router();
 router.use(requireAuthentication());
@@ -72,6 +73,7 @@ const wrap=(fn:(req:Request,res:Response)=>Promise<void>)=>async(req:Request,res
   res.setHeader("Cache-Control","no-store");
   try{owner(req);await fn(req,res);}
   catch(error){
+    if(error instanceof BroCommissionBlocked){res.status(409).json({error:error.message});return;}
     if(error instanceof RuleError){res.status(error.status).json({error:error.message});return;}
     const code=typeof error==="object" && error!==null && "code" in error?String(error.code):"";
     if(code==="23505" || code==="23P01"){res.status(409).json({error:"Conflicting rule or receipt reference. No change was applied."});return;}
@@ -97,9 +99,12 @@ async function currentStaff(c:Sql){
 }
 async function preview(c:Sql,r:any){
   const value=view(r),now=Date.now();
-  const native=await currentStaff(c);
+  const native=r.product==="TEACHER_STAFF_PLATFORM"?await currentStaff(c):null;
   let blocker:string|null=null;
-  if(r.product!=="TEACHER_STAFF_PLATFORM")
+  if(r.product==="BRO_COMMISSION"){
+    if(Number(r.amount_minor)!==BRO_TERM_RATE_MINOR)blocker="Prospective BRO policy requires ₦150 per eligible student per academic term.";
+    else if(!await broStorageReady(c))blocker="BRO storage review and recovery safety clearance are required before installation and activation.";
+  }else if(r.product!=="TEACHER_STAFF_PLATFORM")
     blocker=r.product==="STUDENT_PLATFORM"
       ?"Student ₦3,200 adoption and verified checkout are not approved; a draft cannot be activated."
       :"BRO entitlement activation awaits its separate verified, idempotent ledger policy.";
@@ -120,7 +125,7 @@ async function preview(c:Sql,r:any){
       nativeEndsAt:native?.endsAt??null,blocker})};
 }
 router.get("/platform/subscription-payment-rules",wrap(async(req,res)=>{
-  const [staff,bro,drafts,auditRows,assistance]=await Promise.all([
+  const [staff,bro,drafts,auditRows,assistance,broCommission]=await Promise.all([
     pool.query(`SELECT id,version,price_minor AS "priceMinor",school_share_minor AS "schoolShareMinor",
       partner_commission_minor AS "partnerCommissionMinor",effective_at AS "effectiveAt",
       to_jsonb(r)->>'ends_at' AS "endsAt",status FROM staff_nfc_billing_rules r ORDER BY version DESC LIMIT 100`),
@@ -136,6 +141,7 @@ router.get("/platform/subscription-payment-rules",wrap(async(req,res)=>{
       bank_credit_date::text AS "bankCreditDate",verified_amount_minor AS "verifiedAmountMinor",
       verified_at AS "verifiedAt",created_at AS "createdAt"
       FROM subscription_payment_assistance_requests ORDER BY created_at DESC LIMIT 100`),
+    broCommissionSnapshot(pool),
   ]);
   res.json({intendedStudentFeeMinor:320000,intendedStaffFeeMinor:200000,
     studentCheckoutAvailable:false,providerInitiationAvailable:false,
@@ -144,7 +150,7 @@ router.get("/platform/subscription-payment-rules",wrap(async(req,res)=>{
     broRules:bro.rows,proposals:drafts.rows.map(r=>({...view(r),status:r.status==="RETIRED"?"RETIRED":
       r.status==="DRAFT"?"DRAFT":r.ends_at && new Date(r.ends_at)<=new Date()?"RETIRED":
       new Date(r.effective_at)>new Date()?"SCHEDULED":"ACTIVE"})),audit:auditRows.rows,
-    assistance:assistance.rows});
+    assistance:assistance.rows,broCommission});
 }));
 router.post("/platform/subscription-payment-rules",wrap(async(req,res)=>{
   const v=parse(input,req.body),{start,end}=validate(v),actor=owner(req).user.id;
@@ -195,6 +201,14 @@ router.post("/platform/subscription-payment-rules/:id/activate",wrap(async(req,r
     const p=await preview(c,before);
     if(!p.activationAvailable || before.version!==confirm.version || p.previewDigest!==confirm.previewDigest)
       throw new RuleError(409,p.blocker??"Preview changed. Review the latest rule before activation.");
+    if(before.product==="BRO_COMMISSION"){
+      const updated=(await c.query(`UPDATE subscription_rule_proposals SET status='SCHEDULED',
+        activated_at=now(),updated_at=now(),updated_by=$2,version=version+1 WHERE id=$1 RETURNING *`,
+        [ruleId,owner(req).user.id])).rows[0];
+      await audit(c,req,"ACTIVATED",view(before),{...view(updated),funding:"SEPARATE_PLATFORM_EXPENSE",
+        collectionAmountMinor:320000,collectionBroShareMinor:0},ruleId,before.reason);
+      return view(updated);
+    }
     if(before.product!=="TEACHER_STAFF_PLATFORM" || Number(before.amount_minor)!==200000 ||
        Number(before.school_share_minor)!==0)throw new RuleError(409,"Platform-only staff policy is required.");
     const native=await currentStaff(c);
@@ -236,7 +250,8 @@ router.post("/platform/subscription-payment-rules/:id/retire",wrap(async(req,res
     // Do not reactivate an older version. An Owner must approve a replacement
     // before staff subscriptions can be generated again.
     const cutoff=new Date(Math.max(Date.now(),new Date(previous.effective_at).getTime())).toISOString();
-    await c.query("UPDATE staff_nfc_billing_rules SET ends_at=$2 WHERE id=$1",[previous.native_rule_id,cutoff]);
+    if(previous.product==="TEACHER_STAFF_PLATFORM")
+      await c.query("UPDATE staff_nfc_billing_rules SET ends_at=$2 WHERE id=$1",[previous.native_rule_id,cutoff]);
     const updated=(await c.query(`UPDATE subscription_rule_proposals SET status='RETIRED',
       ends_at=GREATEST(now(),effective_at + interval '1 microsecond'),
       retired_at=now(),updated_at=now(),updated_by=$2,version=version+1 WHERE id=$1 RETURNING *`,
@@ -245,6 +260,12 @@ router.post("/platform/subscription-payment-rules/:id/retire",wrap(async(req,res
     return view(updated);
   });
   res.json(result);
+}));
+router.post("/platform/bro-commissions/accruals",wrap(async(req,res)=>{
+  const scope=parse(z.object({schoolId:z.number().int().positive(),studentId:z.number().int().positive(),
+    termId:z.number().int().positive()}).strict(),req.body);
+  const actor=owner(req).user;
+  res.json(await accrueBroCommission(pool,scope,{id:actor.id,email:actor.email,clerkUserId:actor.clerkUserId!}));
 }));
 router.post("/platform/subscription-payment-assistance",wrap(async(req,res)=>{
   const v=parse(assistanceInput,req.body);

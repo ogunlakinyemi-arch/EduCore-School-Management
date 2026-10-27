@@ -10,5 +10,5 @@ export type AssistedNfcOptionsAmountMinor = typeof AssistedNfcOptionsAmountMinor
 
 
 export const AssistedNfcOptionsAmountMinor = {
-  NUMBER_500000: 500000,
+  NUMBER_320000: 320000,
 } as const;

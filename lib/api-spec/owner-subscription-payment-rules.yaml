@@ -3,6 +3,37 @@ info:
   title: Owner Subscription Payment Rules
   version: 0.1.0
 paths:
+  /platform/bro-commissions/accruals:
+    post:
+      operationId: accrueOwnerBroCommission
+      tags: [finance]
+      summary: Record one independently funded BRO liability, never a payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [schoolId, studentId, termId]
+              properties:
+                schoolId: { type: integer, minimum: 1 }
+                studentId: { type: integer, minimum: 1 }
+                termId: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: New or unchanged frozen commission; no payout or collection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, amountMinor, existing]
+                properties:
+                  id: { type: integer }
+                  amountMinor: { type: integer }
+                  existing: { type: boolean }
+        "403": { description: Active global Platform Owner required }
+        "409": { description: "Missing storage, approval, eligibility or conflicting historical evidence" }
   /platform/subscription-payment-rules:
     get:
       operationId: getOwnerSubscriptionPaymentRules
@@ -266,3 +297,9 @@ components:
         proposals: { type: array, items: { $ref: "#/components/schemas/OwnerSubscriptionRule" } }
         audit: { type: array, items: { type: object, additionalProperties: true } }
         assistance: { type: array, items: { type: object, additionalProperties: true } }
+        broCommission:
+          type: object
+          required: [available, entries]
+          properties:
+            available: { type: boolean }
+            entries: { type: array, items: { type: object, additionalProperties: true } }

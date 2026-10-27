@@ -6215,6 +6215,8 @@ paths:
     $ref: "./direct-student-live-release.yaml#/paths/~1platform~1direct-student-live~1reviews~1{id}~1decisions"
   /platform/subscription-payment-rules/{ruleId}:
     $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}"
+  /platform/bro-commissions/accruals:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1bro-commissions~1accruals"
   /platform/subscription-payment-rules/{ruleId}/preview:
     $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}~1preview"
   /platform/subscription-payment-rules/{ruleId}/activate:

@@ -19,7 +19,6 @@ const termsSql = `SELECT t.id,t.academic_session_id AS "sessionId",t.name,
 
 router.get("/student-nfc/assisted-options", async (req, res, next) => {
   try {
-    requireNfcLinkDevelopment();
     const { schoolId } = schoolQuery.parse(req.query);
     assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const [students, terms] = await Promise.all([
@@ -37,7 +36,7 @@ router.get("/student-nfc/assisted-options", async (req, res, next) => {
       ),
       pool.query(`${termsSql} ORDER BY t.start_date,t.id`, [schoolId]),
     ]);
-    res.set("Cache-Control", "no-store").json({ students: students.rows, terms: terms.rows, amountMinor: 500000 });
+    res.set("Cache-Control", "no-store").json({ students: students.rows, terms: terms.rows, amountMinor: 320000 });
   } catch (error) {
     if (error instanceof z.ZodError) { res.status(400).json({ error: "Invalid assisted NFC request parameters" }); return; }
     handleAuthError(error, req, res, next);

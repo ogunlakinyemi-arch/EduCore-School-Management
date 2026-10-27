@@ -8,6 +8,7 @@
 import type { OwnerSubscriptionRule } from './ownerSubscriptionRule';
 import type { OwnerSubscriptionRulesOverviewAssistanceItem } from './ownerSubscriptionRulesOverviewAssistanceItem';
 import type { OwnerSubscriptionRulesOverviewAuditItem } from './ownerSubscriptionRulesOverviewAuditItem';
+import type { OwnerSubscriptionRulesOverviewBroCommission } from './ownerSubscriptionRulesOverviewBroCommission';
 import type { OwnerSubscriptionRulesOverviewBroRulesItem } from './ownerSubscriptionRulesOverviewBroRulesItem';
 import type { OwnerSubscriptionRulesOverviewStaffRulesItem } from './ownerSubscriptionRulesOverviewStaffRulesItem';
 
@@ -21,4 +22,5 @@ export interface OwnerSubscriptionRulesOverview {
   proposals: OwnerSubscriptionRule[];
   audit: OwnerSubscriptionRulesOverviewAuditItem[];
   assistance: OwnerSubscriptionRulesOverviewAssistanceItem[];
+  broCommission?: OwnerSubscriptionRulesOverviewBroCommission;
 }

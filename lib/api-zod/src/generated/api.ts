@@ -1934,7 +1934,7 @@ export const GetStudentNfcAssistedOptionsQueryParams = zod.object({
 })
 
 export const GetStudentNfcAssistedOptionsResponse = zod.object({
-  "amountMinor": zod.literal(500000),
+  "amountMinor": zod.literal(320000),
   "students": zod.array(zod.object({
   "id": zod.number().int(),
   "firstName": zod.string(),
@@ -29133,7 +29133,11 @@ export const GetOwnerSubscriptionPaymentRulesResponse = zod.object({
   "nativeRuleId": zod.number().int().nullish()
 })),
   "audit": zod.array(zod.record(zod.string(), zod.unknown())),
-  "assistance": zod.array(zod.record(zod.string(), zod.unknown()))
+  "assistance": zod.array(zod.record(zod.string(), zod.unknown())),
+  "broCommission": zod.object({
+  "available": zod.boolean(),
+  "entries": zod.array(zod.record(zod.string(), zod.unknown()))
+}).optional()
 })
 
 
@@ -29273,11 +29277,11 @@ export const GetDirectStudentLiveReadinessQueryParams = zod.object({
 export const GetDirectStudentLiveReadinessResponse = zod.object({
   "ready": zod.boolean(),
   "blockers": zod.array(zod.string()),
-  "amountMinor": zod.number().int(),
-  "schoolShareMinor": zod.number().int(),
-  "broShareMinor": zod.number().int(),
-  "currency": zod.string(),
-  "mode": zod.string(),
+  "amountMinor": zod.literal(320000),
+  "schoolShareMinor": zod.literal(0),
+  "broShareMinor": zod.literal(0),
+  "currency": zod.enum(['NGN']),
+  "mode": zod.enum(['LIVE', 'TEST_ONLY', 'BLOCKED']),
   "providerValidated": zod.boolean()
 })
 
@@ -29594,6 +29598,27 @@ export const EditOwnerSubscriptionRuleDraftResponse = zod.object({
   "reason": zod.string(),
   "version": zod.number().int(),
   "nativeRuleId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Record one independently funded BRO liability, never a payment
+ */
+
+
+
+
+
+export const AccrueOwnerBroCommissionBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1)
+})
+
+export const AccrueOwnerBroCommissionResponse = zod.object({
+  "id": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "existing": zod.boolean()
 })
 
 

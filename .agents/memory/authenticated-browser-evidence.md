@@ -27,6 +27,12 @@ For approved passwordless Development fixtures, valid Clerk sign-in tickets can 
 
 **How to apply:** Verify Development tenant, fixture ownership metadata, and verified email before issuing tickets. Keep ticket values only in private temporary files, never source, reports, logs, or memory. Use normal Clerk sign-in/setActive, and limit this mechanism to approved fixture identities unless the user explicitly authorizes a temporary sign-in to a specific existing Development account. For that exception, confirm the actual active school membership, verified email and approved role; do not add memberships, change roles or substitute identity claims.
 
+Private temporary files created by server-side commands may not be visible in the testing browser's filesystem. Do not expose sign-in tickets through logs or a public bridge to work around that separation.
+
+**Why:** An approved existing-account ticket could be created normally but could not be read by the independent browser. A genuine short-lived Clerk session and authenticated HTTP requests within the same server-side process established API evidence without transferring credentials.
+
+**How to apply:** Require explicit authorization for the existing account, independently verify Development identity and persisted role, use only supported official Clerk session APIs, retain tokens inside that process, and revoke the temporary session afterward. Report this as authenticated API verification, never as browser UI verification.
+
 An authenticated form's existence or a visibility assertion does not prove that its controls are reachable in the actual scrolled mobile portal.
 
 **Why:** Repeated timetable acceptance reports covered data eligibility but missed a remaining dialog-positioning risk. A genuine Finance reproduction then found a creation form in the DOM with its required selectors above the viewport. Automated selection and API success alone could miss this user-visible failure.

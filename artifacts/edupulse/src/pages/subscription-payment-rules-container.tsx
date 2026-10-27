@@ -5,6 +5,7 @@ import {
   previewOwnerSubscriptionRuleActivation, activateOwnerSubscriptionRule,
   retireOwnerSubscriptionRule, requestOwnerSubscriptionPaymentAssistance,
   recordOwnerSubscriptionBankVerification,
+  accrueOwnerBroCommission,
 } from '@workspace/api-client-react';
 import {
   SubscriptionPaymentRulesPage,
@@ -26,6 +27,7 @@ export function SubscriptionPaymentRulesContainer() {
     error:query.isError?'Rule management could not load. No changes were made.':null,
   };
   return <SubscriptionPaymentRulesPage
+    onAccrueBro={scope=>accrueOwnerBroCommission(scope)}
     snapshot={snapshot}
     onRefresh={()=>query.refetch()}
     onCreateDraft={input=>createOwnerSubscriptionRuleDraft(input)}

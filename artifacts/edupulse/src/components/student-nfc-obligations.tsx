@@ -102,6 +102,7 @@ export function StudentNfcObligationsPanel({
   const qc = useQueryClient();
   const context = useGetAuthorizedContext().data;
   const isOwner = context?.isPlatformOwner === true;
+  const platformAdminView = !isOwner && (context?.roles ?? []).some(r=>r.status==='ACTIVE'&&r.role==='SCHOOL_ADMIN'&&r.schoolId===schoolId);
   const familyView = !isOwner && (familyPortal || ((context?.roles ?? []).some(r => r.status === 'ACTIVE' && ['PARENT', 'STUDENT'].includes(r.role))
     && !(context?.roles ?? []).some(r => r.status === 'ACTIVE' && ['SCHOOL_ADMIN', 'ACCOUNTANT'].includes(r.role))));
   const query = useStudentNfcObligations({studentId,schoolId});
@@ -245,13 +246,16 @@ export function StudentNfcObligationsPanel({
 
   return <section className="panel mt-6 overflow-hidden" data-testid="panel-student-nfc">
     <div className="border-b border-[hsl(var(--border))] p-5 md:p-6">
-      <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />Automatic NFC subscription</div>
-      <h2 className="display-font mt-1 text-xl font-bold">Term NFC fee, shown separately</h2>
+      <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />{platformAdminView?'Student platform fee and retained history':'Automatic NFC subscription'}</div>
+      <h2 className="display-font mt-1 text-xl font-bold">{platformAdminView?"Pay Yetenia's fixed ₦3,200 platform fee":'Term NFC fee, shown separately'}</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
+        {platformAdminView?<>School Admins can select one student and academic term for a direct, non-split Flutterwave payment to Yetenia EduCore. The platform fee is fixed at ₦3,200 and is not school-configurable. Checkout stays blocked until the direct LIVE release gates are satisfied.
+        {' '}The separate parent-to-school NFC card/subscription fee workflow is unchanged and does not satisfy this platform obligation.
+        {' '}The records below retain their original historical amounts and allocations. They are not a new price list or permission to charge again.</>:<>
         NFC Card Subscription — {minorToNaira(500000)} per term. Payable separately through Flutterwave when genuine payments are configured. Schools cannot create or change it.
         {isOwner && <> New checkout allocations: {minorToNaira(190000)} to the school and {minorToNaira(310000)} to the platform; an eligible Business Relationship Officer (BRO) receives {minorToNaira(10000)} from the platform portion. The platform bears provider fees. Historical payments retain their original allocations. These are not verified bank settlements.</>}
         {teacherView && ' The school allocation is school revenue; it is not personal Teacher income and not an amount a Teacher pays.'}
-        {' '}Terms already paid under the older school NFC charge are kept and flagged for Owner review; no second charge is made.
+        {' '}Terms already paid under the older school NFC charge are kept and flagged for Owner review; no second charge is made.</>}
       </p>
       {!familyView && !teacherView && <div className="mt-3"><AssistedNfcPayment schoolId={schoolId} onCreated={invalidateAll} /></div>}
     </div>
@@ -287,7 +291,7 @@ export function StudentNfcObligationsPanel({
                 <div className="font-bold tabular-nums">{minorToNaira(r.ordinaryFeesMinor)} + {minorToNaira(r.amountMinor)} = {minorToNaira(r.totalMinor)}</div>
                 {r.ordinaryFeesAssigned === false && <div className="mt-0.5 text-[hsl(var(--muted-foreground))]" data-testid={`nfc-scheduled-${r.studentId}-${r.termId}`}>Ordinary fees scheduled, not yet invoiced</div>}</div>}
               <div className="flex items-center gap-2"><span title={nfcFeeStatusLabel(r)}><StatusPill value={nfcFeeStatusLabel(r)} /></span>
-                {!familyView && r.canPay && !isOwner && ['UNPAID', 'FAILED'].includes(r.status) && r.subscriptionId && (
+                {!platformAdminView && !familyView && r.canPay && !isOwner && ['UNPAID', 'FAILED'].includes(r.status) && r.subscriptionId && (
                   <Button onClick={() => void pay(r)} disabled={checkout.isPending} testId={`button-pay-nfc-${r.studentId}-${r.termId}`}>
                     <CreditCard size={14} />{r.status === 'FAILED' ? 'Start new checkout' : 'Pay NFC fee'}</Button>)}
               </div>
@@ -296,7 +300,7 @@ export function StudentNfcObligationsPanel({
             {r.status === 'EXEMPT' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Exempt for this term. No payment is required.</p>}
             {(r.reference || r.paidAt) && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{r.reference && <>Ref <span className="font-mono">{r.reference}</span></>}{r.paidAt && <> · {date(r.paidAt)}</>} · {r.paymentMethod}</p>}
             {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · BRO {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}
-            {!teacherView && !isOwner && <NfcPaymentLinkControls row={r} familyView={familyView} />}
+            {!platformAdminView && !teacherView && !isOwner && <NfcPaymentLinkControls row={r} familyView={familyView} />}
             {!teacherView && !isOwner && <RowPayment row={r} onPaid={onPaid} />}
           </article>)}
         </div>

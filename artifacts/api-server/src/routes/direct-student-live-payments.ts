@@ -24,7 +24,8 @@ router.get("/schools/:schoolId/platform-subscriptions/live-readiness",requireAut
   try{
     const r=await directStudentReadiness(pool,{schoolId:sid.data,...s.data});
     res.json({ready:r.ready,blockers:r.blockers,amountMinor:320000,schoolShareMinor:0,broShareMinor:0,
-      currency:"NGN",mode:"LIVE",providerValidated:false});
+      currency:"NGN",mode:r.ready?"LIVE":process.env.NODE_ENV==="development"&&!process.env.REPLIT_DEPLOYMENT?"TEST_ONLY":"BLOCKED",
+      providerValidated:false});
   }catch(e){safeError(res,e);}
 });
 router.post("/schools/:schoolId/platform-subscriptions/checkout",requireAuthentication(),async(req,res)=>{

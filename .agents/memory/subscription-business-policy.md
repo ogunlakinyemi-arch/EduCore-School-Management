@@ -5,6 +5,9 @@ description: User-approved future student allocation, history protection and Own
 
 ## Latest requested school-collected student workflow
 
+For BRO rates, the later [prospective BRO policy](bro-commission-policy.md)
+supersedes earlier ₦100 prospective language here, but never historical earnings.
+
 The user now requires a fixed NGN 3,200 student platform subscription per term,
 separate from the school's configurable parent-facing “NFC Card & EduCore
 Subscription Fee.” Parents pay the school in full, without NFC instalments.

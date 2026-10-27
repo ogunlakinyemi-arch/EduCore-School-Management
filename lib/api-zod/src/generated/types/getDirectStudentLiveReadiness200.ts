@@ -5,14 +5,19 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { GetDirectStudentLiveReadiness200AmountMinor } from './getDirectStudentLiveReadiness200AmountMinor';
+import type { GetDirectStudentLiveReadiness200BroShareMinor } from './getDirectStudentLiveReadiness200BroShareMinor';
+import type { GetDirectStudentLiveReadiness200Currency } from './getDirectStudentLiveReadiness200Currency';
+import type { GetDirectStudentLiveReadiness200Mode } from './getDirectStudentLiveReadiness200Mode';
+import type { GetDirectStudentLiveReadiness200SchoolShareMinor } from './getDirectStudentLiveReadiness200SchoolShareMinor';
 
 export type GetDirectStudentLiveReadiness200 = {
   ready: boolean;
   blockers: string[];
-  amountMinor: number;
-  schoolShareMinor: number;
-  broShareMinor: number;
-  currency: string;
-  mode: string;
+  amountMinor: GetDirectStudentLiveReadiness200AmountMinor;
+  schoolShareMinor: GetDirectStudentLiveReadiness200SchoolShareMinor;
+  broShareMinor: GetDirectStudentLiveReadiness200BroShareMinor;
+  currency: GetDirectStudentLiveReadiness200Currency;
+  mode: GetDirectStudentLiveReadiness200Mode;
   providerValidated: boolean;
 };
