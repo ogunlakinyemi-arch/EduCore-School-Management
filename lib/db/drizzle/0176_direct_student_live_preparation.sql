@@ -6,7 +6,7 @@ CREATE TABLE student_direct_live_reviews (
   rule_id bigint NOT NULL REFERENCES subscription_rule_proposals(id),
   report_digest text NOT NULL CHECK(report_digest ~ '^[a-f0-9]{64}$'),
   merchant_scope text NOT NULL CHECK(length(trim(merchant_scope)) BETWEEN 3 AND 120),
-  no_split_confirmed boolean NOT NULL CHECK(no_split_confirmed),
+  no_split_confirmed boolean NOT NULL CHECK(no_split_confirmed IS TRUE),
   approved_by integer NOT NULL REFERENCES app_users(id),
   approved_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL CHECK(expires_at>approved_at),

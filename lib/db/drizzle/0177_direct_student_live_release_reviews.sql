@@ -11,7 +11,7 @@ CREATE TABLE student_direct_live_release_requests (
   merchant_evidence_reference text NOT NULL CHECK(length(trim(merchant_evidence_reference)) BETWEEN 8 AND 300),
   merchant_evidence_hash text NOT NULL CHECK(merchant_evidence_hash ~ '^[a-f0-9]{64}$'),
   policy text NOT NULL CHECK(policy='NEW_ONLY_PRESERVE_LEGACY'),
-  no_split_confirmed boolean NOT NULL CHECK(no_split_confirmed),
+  no_split_confirmed boolean NOT NULL CHECK(no_split_confirmed IS TRUE),
   expires_at timestamptz NOT NULL,
   created_by integer NOT NULL REFERENCES app_users(id),
   reason text NOT NULL CHECK(length(trim(reason)) BETWEEN 3 AND 500),

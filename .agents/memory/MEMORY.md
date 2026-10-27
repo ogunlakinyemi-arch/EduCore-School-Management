@@ -3,6 +3,7 @@
 - [School settlement visibility](school-settlement-visibility.md) — school account instructions and status only; internal provider diagnostics belong to Owner administration.
 - [Rollback retention](migration-rollback-retention.md) — check every retainable evidence root under protective locks; empty-schema rollback success is insufficient.
 - [Publish CHECK differences](publish-existing-check-diffs.md) — same-name CHECK expression changes can be omitted; verify the fresh preview includes the desired replacement.
+- [Publish boolean CHECKs](publish-boolean-checks.md) — bare boolean guards can generate duplicated CHECK wrappers; preserve null semantics and verify the fresh generated SQL.
 - [Publish preview ordering](publish-preview-ordering.md) — identical SQL can arrive reordered; compare duplicate-aware contents and dependency order before reusing rehearsal evidence.
 - [SQL payload limits](sql-callback-payload-limits.md) — large SQL requests can fail before execution; separate callback calls do not share a transaction.
 - [Device reassignment history](device-reassignment-history.md) — historical device credentials and assignments must retain their original school even after a device moves.

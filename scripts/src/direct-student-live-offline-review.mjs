@@ -15,6 +15,11 @@ const paths=[
 ];
 const hashes=Object.fromEntries(paths.map(path=>[path,createHash("sha256").update(read(path)).digest("hex")]));
 const ddl=read(paths[1]),service=read(paths[3]),payment=read(paths[4]),config=read(paths[5]);
+// Bare boolean CHECKs can be double-wrapped by Publish introspection. Keep the
+// explicit predicate; NOT NULL + IS TRUE preserves mandatory no-split consent.
+for(const path of paths.slice(0,2)){
+  assert.match(read(path),/no_split_confirmed boolean NOT NULL CHECK\(no_split_confirmed IS TRUE\)/);
+}
 assert.equal((ddl.match(/CREATE TABLE /g)??[]).length,3);
 assert.equal((ddl.match(/CREATE TRIGGER /g)??[]).length,3);
 assert.doesNotMatch(ddl,/(?:^|\n)\s*(?:UPDATE\s+\w+\s+SET|DELETE\s+FROM|TRUNCATE|DROP TABLE|ALTER TABLE)\b/im);

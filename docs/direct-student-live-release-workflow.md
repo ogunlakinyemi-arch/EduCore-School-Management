@@ -100,6 +100,21 @@ target installation; neither is applied to an application database by this work.
   actual merchant routing or real bank credit.
 - `node scripts/src/direct-student-live-offline-review.mjs` checks the source/DDL
   boundaries and prints SHA-256 commitments without DB or provider access.
+- `node --test scripts/src/direct-release-migrations-native-check.test.mjs`
+  checks the reported duplicated-CHECK cases, case/whitespace variants and
+  authoritative portable consent definitions.
+- `env -i PATH="$PATH" HOME=/tmp NODE_ENV=test node scripts/src/direct-release-migrations-native-check.mjs /tmp/direct-release-fresh-diff-manifest.json`
+  replays unchanged source drafts 0175–0178 in order in one private local
+  database and the exact regenerated Publish statements in a second.
+  Capture a fresh read-only `explainSchemaDiff()` result into the manifest as
+  `{statements: statementsToExecute, migrationHashes: {<source path>: <sha256>}}`,
+  hashing all four current draft files listed by the runner. The runner rejects
+  stale source hashes, duplicated CHECK wrappers, unsupported SQL and inherited
+  credentials. It verifies mandatory true consent, NULL/false rejection and
+  unchanged fictional legacy paid rows. 0178 retains its own transaction.
+  These required-baseline fixtures are not full Production clones; successful
+  syntax replay does not certify target binding, procedural-guard installation,
+  runtime permissions or financial release approval.
 - OpenAPI codegen, focused UI/backend tests, package typechecks and builds are
   separate checks, not operational release approval.
 
