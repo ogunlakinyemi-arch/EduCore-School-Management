@@ -16,7 +16,8 @@ describe('Owner subscription rule controls',()=>{
     expect(html).toContain('Student NFC &amp; EduCore');
     expect(html).toContain('₦3,200');
     expect(html).toContain('Teacher');
-    expect(html).toContain('Provider payment initiation');
+    expect(html).toContain('Direct LIVE checkout stays');
+    expect(html).toContain('unavailable until separately approved');
     expect(html).not.toContain('Initiate Flutterwave payment</button>');
   });
   it('renders audit before/after from only safe financial fields',()=>{

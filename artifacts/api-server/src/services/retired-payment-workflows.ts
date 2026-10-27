@@ -10,7 +10,9 @@ export function retiredPaymentWorkflow(path: string, method: string): boolean {
       /^\/platform\/flutterwave\/live\/school-subaccounts(?:\/|$)/.test(p)) return true;
   if(/^\/schools\/\d+\/finance\/live-subaccount-onboarding(?:\/|$)/.test(p))return true;
   if (!["POST","PUT","PATCH","DELETE"].includes(method.toUpperCase())) return false;
-  return /^\/schools\/\d+\/finance\/(?:live-subaccount-onboarding|payment-settlement)(?:\/|$)/.test(p) ||
+  // School bank profile PUT remains an ordinary authorized account update for
+  // independent school payments/payouts; DELETE is retired, not permitted here.
+  return (method.toUpperCase()==="DELETE" && /^\/schools\/\d+\/finance\/payment-settlement(?:\/|$)/.test(p)) ||
     /^\/student-nfc\/assisted-requests(?:\/|$)/.test(p) ||
     /^\/platform\/finance\/payment-settlement\/schools\/\d+(?:\/|$)/.test(p) ||
     /^\/flutterwave\/live\/(?:checkout|school-configuration|allocation-review)$/.test(p) ||

@@ -18,6 +18,7 @@ import {
   TenantPicker, useTenant, money, date, useSchoolAdminAccess,
 } from '@/components/shared';
 import { Link } from 'wouter';
+import { DirectStudentLivePanel } from '@/components/direct-student-live-panel';
 import { StudentNfcObligationsPanel, StudentNfcFamilyPage } from '@/components/student-nfc-obligations';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
 import {
@@ -655,5 +656,6 @@ export function SubscriptionsRoute() {
   const staff = context?.isPlatformOwner === true || context?.roles?.some(
     role => (role.role === 'SCHOOL_ADMIN' || role.role === 'ACCOUNTANT') && role.status === 'ACTIVE') === true;
   if (!staff) return <StudentNfcFamilyPage />;
-  return <><SubscriptionsPage /><div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div></>;
+  const schoolAdmin=context?.isPlatformOwner!==true&&!!schoolId&&context?.roles?.some(r=>r.role==='SCHOOL_ADMIN'&&r.schoolId===schoolId&&r.status==='ACTIVE')===true;
+  return <><SubscriptionsPage />{schoolAdmin&&<DirectStudentLivePanel schoolId={schoolId!} />}<div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div></>;
 }

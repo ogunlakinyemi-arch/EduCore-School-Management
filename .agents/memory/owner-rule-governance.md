@@ -24,3 +24,10 @@ Assistance may advance beyond a request only after the Owner has independently
 verified a matching bank credit; do not initiate a provider transaction until
 the appropriate verified checkout engine exists. No credential exposure,
 Production SQL or live provider activity follows from UI configuration.
+
+For direct non-split Student LIVE preparation, keep the new-release approval
+separate from legacy LIVE split authority. New-obligation approval is not
+permission to convert or rebill any legacy paid/unpaid student; require
+student/school/term-specific reconciliation evidence and separately reviewed
+transition where a legacy obligation exists. A synthetic provider test does
+not confirm actual merchant-side non-split settlement.

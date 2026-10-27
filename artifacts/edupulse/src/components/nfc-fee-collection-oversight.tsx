@@ -153,7 +153,7 @@ export function NfcFeeCollectionOversight() {
     </div>
     <div className="p-4 pb-0"><OversightWarning /></div>
     <form onSubmit={submit} className="flex flex-wrap gap-2 px-4 pb-4">
-      <input className={`${entry} max-w-xs`} maxLength={100} placeholder="Search school, student, admission no, reference" aria-label="Search" value={draft.search} onChange={e => setDraft(d => ({ ...d, search: e.target.value }))} data-testid="input-oversight-search" />
+      <input className={`${entry} max-w-xs`} maxLength={100} placeholder="Search school, student, admission no" aria-label="Search" value={draft.search} onChange={e => setDraft(d => ({ ...d, search: e.target.value }))} data-testid="input-oversight-search" />
       <input className={`${entry} max-w-[120px]`} inputMode="numeric" placeholder="School ID" aria-label="School ID" value={draft.schoolId} onChange={e => setDraft(d => ({ ...d, schoolId: e.target.value }))} data-testid="input-oversight-school" />
       <input className={`${entry} max-w-[120px]`} inputMode="numeric" placeholder="Term ID" aria-label="Term ID" value={draft.termId} onChange={e => setDraft(d => ({ ...d, termId: e.target.value }))} data-testid="input-oversight-term" />
       <select className={`${entry} max-w-[220px]`} value={status} onChange={e => { setStatus(e.target.value as typeof status); setPage(0); }} aria-label="Status filter" data-testid="select-oversight-status">

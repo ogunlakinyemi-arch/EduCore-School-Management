@@ -18,6 +18,7 @@ describe("archived financial workflow boundary",()=>{
     ["/api/staff-nfc/checkout","POST"],["/api/parent/fees/invoices/7/providers/FLUTTERWAVE/initialize","POST"],
     ["/api/schools/7/finance/payment-settlement/history","GET"],
     ["/api/public/nfc-payment-links/verify","POST"],
+    ["/api/schools/7/finance/payment-settlement","PUT"],
   ])("preserves separately authorized historical/essential flow %s", (path,method)=>expect(retiredPaymentWorkflow(path,method)).toBe(false));
   let server:ReturnType<ReturnType<typeof express>["listen"]>,base="";
   let downstream=0;

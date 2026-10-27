@@ -142,12 +142,20 @@ export async function verifyDirectStudentPayment(pool:StudentSubscriptionSqlPool
     await c.query("BEGIN");
     const a=(await c.query("SELECT * FROM student_direct_live_attempts WHERE reference=$1 FOR UPDATE",[input.reference])).rows[0];
     if(!a)block("UNKNOWN_REFERENCE");
+    if(a.provider_transaction_id && a.provider_transaction_id!==facts.transactionId)block("VERIFIED_TRANSACTION_CONFLICT");
     if(["PAID","FAILED"].includes(a.state)){
       if(a.provider_transaction_id!==facts.transactionId || (a.state==="PAID")!==(facts.status==="successful"))
         block("VERIFIED_TRANSACTION_CONFLICT");
       await c.query("COMMIT");return view(a);
     }
-    if(facts.status==="pending"){await c.query("COMMIT");return view(a);}
+    if(facts.status==="pending"){
+      if(a.state==="PENDING"){await c.query("COMMIT");return view(a);}
+      const pending=(await c.query(`UPDATE student_direct_live_attempts SET state='PENDING',provider_transaction_id=$2
+        WHERE id=$1 AND state IN ('READY','UNKNOWN','RESERVED') RETURNING *`,[a.id,facts.transactionId])).rows[0];
+      if(!pending)block("VERIFIED_TRANSACTION_CONFLICT");
+      await event(c,a.id,"PROVIDER_PENDING_OBSERVED",input.actorId,{transactionId:facts.transactionId});
+      await c.query("COMMIT");return view(pending);
+    }
     const saved=(await c.query(`UPDATE student_direct_live_attempts SET state=$2,provider_transaction_id=$3,
       provider_reference=$4,provider_fee_minor=$5,additional_fee_minor=$6,verified_at=now()
       WHERE id=$1 RETURNING *`,[a.id,facts.status==="successful"?"PAID":"FAILED",facts.transactionId,

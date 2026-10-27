@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { Ban, Eye, FileClock, FilePlus2, Handshake, Landmark, Layers3, Lock, Pencil, PlugZap, RefreshCw, ShieldCheck, WalletCards, XCircle } from 'lucide-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, cx, date } from '@/components/shared';
+import { DirectAssistanceCheckout } from '@/components/direct-assistance-checkout';
 
 /* ---------- Types ---------- */
 export type StaffRuleSnapshot = { id: number; version: number; priceMinor: number; schoolShareMinor: number; partnerCommissionMinor: number; effectiveAt: string; status: string };
@@ -276,7 +277,7 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
     <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.3fr]">
       <Section id="assistance" n="07" icon={Landmark} kicker="Request ≠ proof" title="Payment assistance request">
         <div className="mb-4 rounded-xl border border-[hsl(var(--destructive)/.4)] bg-[hsl(var(--destructive)/.06)] p-3 text-xs font-semibold leading-5" data-testid="text-assistance-limitation">
-          Limitation: a request or upload is <strong>never proof of payment</strong>. Only independent bank verification can mark eligibility. Provider payment initiation is <strong>unavailable</strong> — there is no initiation action on this page.
+          Limitation: a request or upload is <strong>never proof of payment</strong>. Independent bank verification is required for assistance. Direct LIVE checkout stays <strong>unavailable until separately approved</strong> release, effective rule and term reconciliation checks pass; a bank credit alone never authorizes Flutterwave.
         </div>
         {onRequestAssistance ? <AssistanceForm onSubmit={async input => { await onRequestAssistance(input); await done('Assistance request recorded. It is unverified until a bank credit is independently checked.'); }} /> : <Unwired what="Assistance requests" />}
       </Section>
@@ -292,6 +293,7 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
                 <div className={cx(note, 'mt-1')}>Requested {ngnMinor(a.amountMinor)} · {a.requestNote || 'No note'}</div>
                 {verified ? <div className="mt-1 text-xs font-semibold" data-testid={`text-verified-${a.id}`}>Bank verified: {a.bankName ?? '—'} · ref {a.bankStatementReference} · credited {a.bankCreditDate ? date(a.bankCreditDate) : '—'} · {ngnMinor(a.verifiedAmountMinor ?? 0)}</div>
                   : <div className={cx(note, 'mt-1 font-semibold')}>Not bank-verified. Not proof of payment.</div>}
+                {verified && <DirectAssistanceCheckout caseFile={a} />}
                 {!verified && onVerifyBank && <div className="mt-3"><Button variant="outline" onClick={() => setDialog({ kind: 'verify', a })} testId={`button-verify-${a.id}`}><Landmark className="h-3.5 w-3.5" /> Record bank verification</Button></div>}
               </div>;
             })}

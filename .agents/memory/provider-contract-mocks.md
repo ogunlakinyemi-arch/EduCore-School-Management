@@ -1,3 +1,16 @@
+When testing multiple provider attempts, pair each transaction ID with its own
+durable attempt reference. A mock that guesses the first or most recent
+reference can reject a correct second attempt or falsely allow an unrelated
+one. Model pending, terminal success and a true no-charge failure distinctly;
+never infer a retryable failure from a lost checkout response.
+
+**Why:** During isolated direct-payment verification, a generic fake verifier
+served the first attempt's reference for a later attempt and gave a misleading
+amount/reference mismatch.
+
+**How to apply:** Map transaction IDs to frozen references in provider fakes,
+including controlled retry cases, and assert no second provider POST after an
+uncertain initialization response.
 ---
 name: Provider contract mocks
 description: Model external invitation-provider constraints rather than relying on unconditional mocked success.
