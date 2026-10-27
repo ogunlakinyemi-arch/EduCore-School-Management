@@ -3,6 +3,29 @@ name: Subscription allocation and disclosure policy
 description: User-approved future student allocation, history protection and Owner-only full-split disclosure.
 ---
 
+## Latest requested school-collected student workflow
+
+The user now requires a fixed NGN 3,200 student platform subscription per term,
+separate from the school's configurable parent-facing “NFC Card & EduCore
+Subscription Fee.” Parents pay the school in full, without NFC instalments.
+Only after confirmed full parent payment may the school initiate its separate
+platform payment. No student checkout split or school subaccount is used for
+this requested workflow. These requirements supersede the earlier prospective
+NGN 5,000 split/manual-settlement policy below, not historical transactions.
+
+**Why:** The user explicitly requested school-first collection and a separate
+fixed platform obligation while preserving existing records and working flows.
+
+**How to apply:** Preserve historical references, amounts and versioned policies.
+Do not infer permission to reprice an already initiated checkout. Reuse existing
+fee receipts, private evidence, reversals and role controls. School assistance
+requires independent Owner verification of actual bank receipt before checkout;
+keep that verification after a failed provider attempt. Only verified Flutterwave
+success for the student/term plus existing security checks grants card eligibility.
+BRO entitlement remains separately idempotent and subject to existing eligibility;
+staff/teacher payments remain separate. Implementation authorizes neither
+Production data/secrets changes, live transactions nor publishing.
+
 Scope clarification: the Owner confirms the published school application works;
 the reported real-school onboarding obstacle is Flutterwave LIVE payment
 activation, not a general school-product failure.
