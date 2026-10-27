@@ -21,6 +21,12 @@ For preservation/backup entry points, retain the Production-environment veto eve
 
 **How to apply:** Establish a genuinely verified non-deployment execution context and independently attest the Development target before a real backup. Keep synthetic test configuration separate from live commands, and report unresolved label ambiguity as a blocker rather than overriding the guard.
 
+Replit-native Development checkpoint recovery is a separate valid recovery path from the project's logical-backup utility. The user supplied an Agent History dialog explicitly stating that rollback restores the Development database to the checkpoint time; accept that as evidence of database-inclusive recovery availability.
+
+**Why:** Requiring Production-style backup history or a passing local backup-utility guard after this evidence would reject the actual Development recovery facility. The utility's refusal does not invalidate an independently established Replit-native recovery point.
+
+**How to apply:** Confirm the selected checkpoint's timestamp, suitability and project/Development binding separately. Never execute rollback merely to inspect recovery: it reverts both files and the Development database. Do not substitute a plain Git commit for database-inclusive checkpoint evidence or ask the user to re-establish the already confirmed facility.
+
 Fixtures must also satisfy the actual lifecycle and retained historical tenant scope, not merely the visible current status and school.
 
 **Why:** Raw fixture inserts appeared unassigned in the UI but were not in the prepared lifecycle state. A device passed current authorization yet could not record an event because its historical school binding was absent. These were fixture errors, not permission defects.
