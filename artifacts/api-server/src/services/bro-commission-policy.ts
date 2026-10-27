@@ -1,4 +1,5 @@
 /** Independent BRO expense. Never changes a collection, split, legacy ledger or payout. */
+import {lagosDate,readStudentRollout} from "./student-platform-rollout";
 export const BRO_TERM_RATE_MINOR = 15_000;
 export type BroSql = {query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
 type Pool = BroSql & {connect:()=>Promise<BroSql & {release:()=>void}>};
@@ -33,7 +34,7 @@ export function broEntitlementAmount(p:BroPolicy,e:BroEligibility):number|null{
   const end=p.endsAt===null?Infinity:Date.parse(p.endsAt);
   if(![start,paid,effective].every(Number.isFinite)||Number.isNaN(end)
     ||!p.approved||!['ACTIVE','SCHEDULED'].includes(p.status)||p.amountMinor!==BRO_TERM_RATE_MINOR
-    ||start<effective||start>=end||paid<effective
+    ||start<effective||start>=end||paid<effective||paid<start||lagosDate(new Date(start))<"2027-01-01"
     ||!e.verified||!e.studentEligible||!e.attributionEligible||e.legacyExists)return null;
   return BRO_TERM_RATE_MINOR;
 }
@@ -72,7 +73,7 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
             OR l.academic_session_id IS NULL)))) AS legacy_exists
       FROM student_direct_live_obligations o
       JOIN student_direct_live_attempts a ON a.obligation_id=o.id AND a.state='PAID'
-        AND a.verified_at IS NOT NULL AND a.provider_transaction_id IS NOT NULL
+        AND a.verified_at IS NOT NULL AND a.provider_transaction_id ~ '^[1-9][0-9]*$'
         AND a.provider_reference IS NOT NULL AND EXISTS(SELECT 1 FROM student_direct_live_events ev
           WHERE ev.attempt_id=a.id AND ev.kind='PROVIDER_PAYMENT_VERIFIED'
           AND ev.details->>'transactionId'=a.provider_transaction_id)
@@ -88,6 +89,9 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
       [scope.schoolId,scope.studentId,scope.termId])).rows;
     if(evidence.length!==1)throw new BroCommissionBlocked("A unique eligible student, verified payment and historical BRO attribution are required.");
     const e=evidence[0];
+    const rollout=await readStudentRollout(c,scope.schoolId,scope.termId,lagosDate(new Date(e.paid_at)));
+    if(!rollout.periodEligible || lagosDate(new Date(e.paid_at))<rollout.collectionStartDate!)
+      throw new BroCommissionBlocked("Term is ineligible for the approved January 2027 collection rollout.");
     const raw=(await c.query(`SELECT p.*,
       EXISTS(SELECT 1 FROM audit_logs a WHERE a.record_id=p.id AND a.role='PLATFORM_OWNER'
         AND a.event_type='SUBSCRIPTION_RULE_ACTIVATED'
@@ -112,7 +116,9 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
       [scope.schoolId,scope.studentId,scope.termId,e.partner_profile_id,e.attribution_id,raw.id,
         e.obligation_id,e.attempt_id,amount,e.paid_at,JSON.stringify({policyId:Number(raw.id),version:raw.version,
           amountMinor:amount,effectiveAt:raw.effective_at,endsAt:raw.ends_at,termStart:e.term_start,
-          funding:"SEPARATE_PLATFORM_EXPENSE",studentCollectionMinor:320000,collectionBroShareMinor:0}),actor.id])).rows[0];
+          funding:"SEPARATE_PLATFORM_EXPENSE",studentCollectionMinor:320000,collectionBroShareMinor:0,
+          rolloutPolicyApprovedOn:rollout.policy.approvedOn,launchTermId:rollout.launchTermId,
+          collectionStartDate:rollout.collectionStartDate}),actor.id])).rows[0];
     if(!row)throw new BroCommissionBlocked("Concurrent earning requires readback; no amount was changed.");
     await c.query(`INSERT INTO audit_logs("user",role,actor_user_id,clerk_user_id,action,module,record_id,event_type,metadata)
       VALUES($1,'PLATFORM_OWNER',$2,$3,'BRO_COMMISSION_EARNED','Subscription & Payment Rules',$4,

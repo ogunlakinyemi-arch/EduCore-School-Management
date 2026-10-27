@@ -1,13 +1,10 @@
 import type { CommunicationQueryClient } from "./communication-service";
-import { hostedLiveSelected,readHostedSubscriptionCoverage } from "./hosted-subscription-coverage";
-import { releasedLiveApplicationContext,readLiveSchoolSubscriptionStudents } from "./flutterwave-live-application";
 import { assertManualSchoolUnlocked } from "./school-subscription-lock";
-import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
-import { flutterwavePaymentMode } from "../lib/flutterwave-payment-mode";
+import { initialStudentFreePeriod,lagosDate,readStudentRollout } from "./student-platform-rollout";
 
 export type StudentPlatformAccess={
   schoolId:number;studentId:number;termId:number|null;
-  status:"VERIFIED"|"PAYMENT_REQUIRED"|"UNAVAILABLE";restricted:boolean;
+  status:"VERIFIED"|"PAYMENT_REQUIRED"|"UNAVAILABLE"|"NOT_REQUIRED";restricted:boolean;
 };
 /** These are student operations, not payments, identity, help, welfare or transport. */
 export function isStudentCoreOperation(path:string,method="GET"){
@@ -22,6 +19,14 @@ export function isStudentCoreOperation(path:string,method="GET"){
 /** Read-only. No price conversion, waiver, receipt upload or school cash can establish payment. */
 export async function readStudentTermPlatformAccess(db:CommunicationQueryClient,schoolId:number,studentId:number):Promise<StudentPlatformAccess>{
   const base={schoolId,studentId,termId:null,status:"UNAVAILABLE" as const,restricted:true};
+  const rollout=initialStudentFreePeriod()?null:await readStudentRollout(db,schoolId);
+  const free=initialStudentFreePeriod() || !rollout?.chargeable;
+  if(free){
+    const eligible=await db.query(`SELECT st.id FROM students st JOIN schools sc ON sc.id=st.school_id
+      WHERE st.id=$2 AND st.school_id=$1 AND lower(st.status)='active' AND lower(sc.status)='active'`,
+      [schoolId,studentId]);
+    return eligible.rows.length===1?{schoolId,studentId,termId:null,status:"NOT_REQUIRED",restricted:false}:base;
+  }
   const terms=await db.query<{id:number;name:string}>(`SELECT t.id,t.name FROM academic_terms t
     JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
     JOIN schools sc ON sc.id=t.school_id AND lower(sc.status)='active'
@@ -30,41 +35,23 @@ export async function readStudentTermPlatformAccess(db:CommunicationQueryClient,
       AND ses.is_current=true AND upper(ses.status)='ACTIVE'
       AND (NOW() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date`,[schoolId,studentId]);
   if(terms.rows.length!==1)return base;
-  const term=terms.rows[0],live=releasedLiveApplicationContext();
-  let paid=false;
-  // Historical verified coverage remains readable, never an active checkout dependency.
-  const directSelected=directLiveConfiguration().ready;
-  if(directSelected){
-    const result=await db.query<{paid:boolean}>(`SELECT EXISTS(
-      SELECT 1 FROM student_direct_live_obligations o JOIN student_direct_live_attempts a ON a.obligation_id=o.id
-      WHERE o.school_id=$1 AND o.student_id=$2 AND o.academic_term_id=$3
-        AND o.amount_minor=320000 AND o.school_share_minor=0 AND o.bro_share_minor=0
-        AND o.currency='NGN' AND a.state='PAID' AND a.verified_at IS NOT NULL
-        AND a.provider_transaction_id ~ '^[1-9][0-9]*$') AS paid`,[schoolId,studentId,term.id]);
-    paid=result.rows[0]?.paid===true;
-  }
-  if(!paid && hostedLiveSelected()){
-    const result=await readHostedSubscriptionCoverage(db,schoolId,term.id);
-    paid=result.rows.find(r=>r.studentId===studentId)?.paid===true;
-  }else if(!paid && live){
-    const result=await readLiveSchoolSubscriptionStudents(db,schoolId,term.id,live);
-    paid=result.rows.find(r=>r.studentId===studentId)?.paid===true;
-  }else if(!paid && !directSelected && flutterwavePaymentMode()==="LIVE"){
-    return {...base,termId:term.id};
-  }else if(!paid && !directSelected){
-    const result=await db.query<{paid:boolean}>(`SELECT EXISTS(
-      SELECT 1 FROM student_subscription_payments p JOIN subscriptions s
-        ON s.id=p.subscription_id AND s.school_id=p.school_id AND s.student_id=p.student_id
-      WHERE p.school_id=$1 AND p.student_id=$2 AND p.academic_term_id=$3
-        AND p.provider='FLUTTERWAVE' AND p.provider_mode='SANDBOX' AND p.currency='NGN'
-        AND p.status='PAID' AND p.reconciliation_status='RECONCILED'
-        AND p.provider_transaction_id ~ '^[1-9][0-9]*$' AND p.paid_at IS NOT NULL
-        AND p.gross_amount_minor>0 AND p.gross_amount_minor=round(s.amount*100)
-        AND lower(s.status)='active' AND lower(s.verification_status)='verified'
-        AND s.term=$4) AS paid`,[schoolId,studentId,term.id,term.name]);
-    paid=result.rows[0]?.paid===true;
-  }
-  return{schoolId,studentId,termId:term.id,status:paid?"VERIFIED":"PAYMENT_REQUIRED",restricted:!paid};
+  const term=terms.rows[0];
+  if(term.id!==rollout?.termId)return base;
+  // New collection periods require exact direct proof. Never reinterpret an old
+  // 5,000 split, school fee, or sandbox payment as the new 3,200 payment.
+  const result=await db.query<{paid:boolean}>(`SELECT EXISTS(
+    SELECT 1 FROM student_direct_live_obligations o JOIN student_direct_live_attempts a ON a.obligation_id=o.id
+    WHERE o.school_id=$1 AND o.student_id=$2 AND o.academic_term_id=$3
+      AND o.amount_minor=320000 AND o.school_share_minor=0 AND o.bro_share_minor=0
+      AND o.currency='NGN' AND a.state='PAID' AND a.verified_at IS NOT NULL
+      AND a.provider_transaction_id ~ '^[1-9][0-9]*$' AND a.provider_reference IS NOT NULL
+      AND EXISTS(SELECT 1 FROM student_direct_live_events ev WHERE ev.attempt_id=a.id
+        AND ev.kind='PROVIDER_PAYMENT_VERIFIED' AND ev.details->>'transactionId'=a.provider_transaction_id)
+    ) AS paid`,[schoolId,studentId,term.id]);
+  const paid=result.rows[0]?.paid===true;
+  const enforcementDate=new Date(Date.parse(`${rollout.termStartDate}T00:00:00Z`)+7*86_400_000).toISOString().slice(0,10);
+  return{schoolId,studentId,termId:term.id,status:paid?"VERIFIED":"PAYMENT_REQUIRED",
+    restricted:!paid&&lagosDate()>=enforcementDate};
 }
 export async function readStudentPlatformAccess(db:CommunicationQueryClient,userId:number){
   const profiles=await db.query<{id:number;schoolId:number}>(`SELECT st.id,st.school_id AS "schoolId"

@@ -23646,6 +23646,7 @@ export const GetMyStudentPlatformAccess200StudentsItemStatus = {
   VERIFIED: 'VERIFIED',
   PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
   UNAVAILABLE: 'UNAVAILABLE',
+  NOT_REQUIRED: 'NOT_REQUIRED',
 } as const;
 
 export type GetMyStudentPlatformAccess200StudentsItem = {

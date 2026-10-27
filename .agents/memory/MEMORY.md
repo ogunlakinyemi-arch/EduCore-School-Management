@@ -1,4 +1,4 @@
-- [Prospective BRO commission](bro-commission-policy.md) — ₦150 needs future-dated Owner approval; retain old ₦100 earnings and keep commissions outside the ₦3,200 collection.
+- [Prospective BRO commission](bro-commission-policy.md) — approved 27 October; ₦150 only after eligible January-term/later verified payment; preserve ₦100 history and separate expense.
 - [Tenant-key publish ordering](tenant-key-publish-ordering.md) — publish parent tenant uniqueness before dependent composite foreign keys when existing tables are involved.
 - [School settlement visibility](school-settlement-visibility.md) — school account instructions and status only; internal provider diagnostics belong to Owner administration.
 - [Rollback retention](migration-rollback-retention.md) — check every retainable evidence root under protective locks; empty-schema rollback success is insufficient.
@@ -79,7 +79,7 @@
 - [Sandbox callback isolation](sandbox-callback-isolation.md) — TEST charges can trigger app writes; verify callback/webhook targets and use dedicated Development aliases consistently.
 - [Settlement removal consent](settlement-profile-removal-consent.md) — building a Development cleanup feature never authorizes deleting existing bank profiles.
 - [Repository references](repository-reference-policy.md) — compare current Replit source with freshly verified GitHub main before fixes; preserve local work and do not infer push permission.
-- [Subscription business policy](subscription-business-policy.md) — school-only 1,900 checkout split, deferred 100 Partner liability, term-end Owner approval, immutable history and no live activation.
+- [Subscription business policy](subscription-business-policy.md) — free current term; ₦3,200 collection from each school's actual January 2027 second term; preserve history and LIVE gates.
 - [School billing authority](school-billing-authority-policy.md) — server-owned mode and numeric identities; legacy TEST records and redirects never establish LIVE payment.
 - [Bank provider selection](bank-provider-selection-policy.md) — shared cross-role directory; verified payout codes, explicit unavailable fallback and no unapproved schema changes.
 - [Employee deactivation boundary](employee-deactivation-boundary.md) — deny school employment permissions without globally disabling independent family or other-tenant access.

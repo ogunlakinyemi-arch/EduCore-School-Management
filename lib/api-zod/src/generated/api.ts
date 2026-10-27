@@ -17,7 +17,7 @@ export const GetMyStudentPlatformAccessResponse = zod.object({
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
   "termId": zod.number().int().nullable(),
-  "status": zod.enum(['VERIFIED', 'PAYMENT_REQUIRED', 'UNAVAILABLE']),
+  "status": zod.enum(['VERIFIED', 'PAYMENT_REQUIRED', 'UNAVAILABLE', 'NOT_REQUIRED']),
   "restricted": zod.boolean()
 }))
 })

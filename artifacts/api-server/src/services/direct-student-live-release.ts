@@ -1,3 +1,4 @@
+import {readStudentRollout} from "./student-platform-rollout";
 import {createHash} from "node:crypto";
 import type {StudentSubscriptionSqlPool} from "../lib/student-subscription-billing";
 import {directLiveConfiguration,DIRECT_STUDENT_RELEASE} from "../lib/flutterwave-direct-live-config";
@@ -123,7 +124,9 @@ export async function previewDirectRelease(pool:StudentSubscriptionSqlPool,scope
   const config=directLiveConfiguration(deps.env);
   const c=await pool.connect();
   let schema:Awaited<ReturnType<typeof inspectDirectReleaseSchema>>,r:any,t:any;
+  let rollout:Awaited<ReturnType<typeof readStudentRollout>>;
   try{
+    rollout=await readStudentRollout(c,scope.schoolId,scope.termId);
     schema=await inspectDirectReleaseSchema(c);
     r=(await c.query(`SELECT id,version,product,status,amount_minor,currency,billing_period,school_share_minor,
       effective_at,ends_at,effective_at::text AS effective_at_exact,ends_at::text AS ends_at_exact
@@ -155,6 +158,8 @@ export async function previewDirectRelease(pool:StudentSubscriptionSqlPool,scope
   const termReady=!!t&&t.is_current&&t.session_current&&String(t.status).toUpperCase()==="ACTIVE"
     &&String(t.session_status).toUpperCase()==="ACTIVE"&&String(t.school_status).toUpperCase()==="ACTIVE";
   const checks=[
+    {code:"COLLECTION_ROLLOUT",label:"School January 2027 second-term collection",status:rollout!.chargeable?"READY":"BLOCKED",
+      detail:`Policies approved 27 October 2026. Current-term platform access is free; no devices or cards required. ${rollout!.collectionStartDate?`This school's configured collection start is ${rollout!.collectionStartDate}.`:"Configure this school's January 2027 second academic term; no date is assumed."}`},
     {code:"MERCHANT_CONFIG",label:"Dedicated LIVE merchant configuration",status:config.configurationReady&&!!config.merchantScope?"READY":"BLOCKED",detail:"Production LIVE mode, dedicated LIVE key/verifier and a reviewed merchant scope are required. Secret values are never returned."},
     {code:"HTTPS_ENDPOINTS",label:"Callback and webhook configuration",status:config.callbackUrl&&config.webhookReady?"READY":"BLOCKED",detail:"Exact public HTTPS callback and same-origin direct webhook URL required. Dashboard registration needs independent merchant evidence."},
     {code:"SCHEMA",label:"Required schema and immutable history",status:schema.ready?"READY":"BLOCKED",detail:schema.ready?"Direct schema and history guards present.":schema.issues.join("; ")},

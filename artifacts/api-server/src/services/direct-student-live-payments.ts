@@ -6,6 +6,7 @@ import { flutterwaveLiveWebhookVerifier } from "../lib/flutterwave-live-config";
 import { previewStudentNfcReconciliation } from "./student-nfc-reconciliation";
 import type { StudentSubscriptionSqlPool } from "../lib/student-subscription-billing";
 import {inspectDirectReleaseSchema,findApprovedDirectReview} from "./direct-student-live-release";
+import {initialStudentFreePeriod,readStudentRollout} from "./student-platform-rollout";
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 export class DirectPaymentBlocked extends Error{
   constructor(public readonly code:string,public readonly statusCode=409){super(code);}
@@ -22,6 +23,7 @@ async function event(c:Db,id:number,kind:string,actorId:number|null,details:obje
 }
 /** No provider access, conversion or writes. Fresh evidence is checked before each new POST. */
 export async function directStudentReadiness(pool:StudentSubscriptionSqlPool,scope:Scope,deps:Dependencies={}){
+  if(initialStudentFreePeriod())return{ready:false as const,blockers:["FREE_ROLLOUT_NO_PLATFORM_PAYMENT"]};
   const config=directLiveConfiguration(deps.env);
   if(!config.ready)return{ready:false as const,blockers:["LIVE_DIRECT_CONFIGURATION_AND_RELEASE_REVIEW_REQUIRED"]};
   const report=await (deps.report??previewStudentNfcReconciliation)(pool,scope);
@@ -36,6 +38,8 @@ export async function directStudentReadiness(pool:StudentSubscriptionSqlPool,sco
   }finally{schemaClient.release();}
   const c=await pool.connect();
   try{
+    const rollout=await readStudentRollout(c,scope.schoolId,scope.termId);
+    if(!rollout.chargeable)return{ready:false as const,blockers:["FREE_ROLLOUT_NO_PLATFORM_PAYMENT",rollout.reason]};
     const review=await findApprovedDirectReview(c,scope,report.evidenceDigest,config);
     if(!review)return{ready:false as const,blockers:["ACTIVE_3200_RULE_AND_EXPLICIT_MATCHING_RECONCILIATION_APPROVAL_REQUIRED"]};
     return{ready:true as const,blockers:[],review};
@@ -52,6 +56,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
   let c=await pool.connect(),attempt:any;
   try{
     await c.query("BEGIN");
+    if(!(await readStudentRollout(c,input.schoolId,input.termId)).chargeable)block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
       [`direct-student:${input.schoolId}:${input.studentId}:${input.termId}`]);
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`direct-release:${review.request_id}`]);

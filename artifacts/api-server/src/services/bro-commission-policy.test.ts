@@ -29,6 +29,8 @@ function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved
   const policyRow={id:1,status:"SCHEDULED",amount_minor:15000,effective_at:policy.effectiveAt,ends_at:null,
     version:2,approved:options.approved??true};
   const query=vi.fn(async(sql:string,args?:unknown[])=>{
+    if(sql.includes('t.school_id AS "schoolId"'))return{rows:[{id:4,schoolId:1,name:"Second Term",
+      startDate:"2027-01-05",endDate:"2027-04-01",isCurrent:true,status:"ACTIVE",sessionStatus:"ACTIVE"}]};
     if(sql.includes("to_regclass"))return{rows:[{ready:options.ready??true}]};
     if(sql.includes("SELECT * FROM bro_term_commission_entitlements"))return{rows:saved?[saved]:[]};
     if(sql.includes("SELECT o.id AS obligation_id"))return{rows:[{obligation_id:7,attempt_id:8,paid_at:eligible.paidAt,

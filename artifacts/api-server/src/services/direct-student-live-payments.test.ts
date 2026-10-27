@@ -32,6 +32,8 @@ describe("direct LIVE transport safety (fake transport, no credentials or networ
     expect(directAllocation).toMatchObject({amountMinor:320000,platformGrossMinor:320000,schoolShareMinor:0,broShareMinor:0});
   });
   it("never converts old obligations just because a proposed price/report exists",async()=>{
+    vi.useFakeTimers();vi.setSystemTime(new Date("2027-01-18T12:00:00Z"));
+    try{
     const scope={schoolId:1,studentId:31,termId:4};
     const connect=vi.fn(async()=>{throw Error("No DB read before a complete review");});
     const pool={connect} as any;
@@ -41,6 +43,7 @@ describe("direct LIVE transport safety (fake transport, no credentials or networ
       expect(r).toMatchObject({ready:false,blockers:["LEGACY_HISTORY_OR_OBLIGATION_REQUIRES_SEPARATE_TRANSITION_APPROVAL"]});
     }
     expect(connect).not.toHaveBeenCalled();
+    }finally{vi.useRealTimers();}
   });
   it("makes only non-split 3200 checkout and checks signed LIVE webhook auth without keys in payload",async()=>{
     const calls:{url:string;init:RequestInit}[]=[];

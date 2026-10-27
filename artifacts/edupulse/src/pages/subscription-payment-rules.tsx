@@ -196,6 +196,13 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
 
   return <div className="fade-up">
     <PageHeading eyebrow="Owner / Payment rules" title="Subscription & payment rules" description="Intent, evidence and activation are kept separate. Drafts are never billable; activation requires an explicit preview and your fresh confirmation." action={refresh} />
+    <div className="panel p-4 text-sm" role="status" data-testid="student-rollout-policy">
+      Business policies approved and effective 27 October 2026: Student platform subscription ₦3,200 per academic term,
+      and separate BRO commission ₦150 per eligible paid student per term. Current-term use is free, with no NFC device
+      or card requirement and no platform payment due. Collection starts only when each school's saved January 2027
+      second term begins. BRO accrual requires verified payment for that term or a later eligible term.
+      School fee settings and historical records are unchanged. Financial rule activation and merchant release remain separate.
+    </div>
 
     {flash && <div role="status" className="panel mb-6 flex items-center justify-between gap-3 p-4 text-sm font-semibold" data-testid="status-flash"><span>{flash}</span><button type="button" className="text-xs underline" onClick={() => setFlash('')} data-testid="button-dismiss-flash">Dismiss</button></div>}
 

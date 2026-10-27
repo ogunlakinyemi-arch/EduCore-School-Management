@@ -1,7 +1,6 @@
 import { pool } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
 import { logger } from "../lib/logger";
-import { STUDENT_SUBSCRIPTION_GROSS_MINOR } from "../lib/student-subscription-billing";
 import { queueCommunicationNotification, type CommunicationQueryClient } from "./communication-service";
 import { subscriptionPolicy, type SubscriptionStudent } from "./subscription-enforcement-policy";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
@@ -9,6 +8,7 @@ import { hostedLiveSelected, readHostedSubscriptionCoverage } from "./hosted-sub
 import { assertManualSchoolUnlocked, readManualSchoolState, readSubscriptionScopeCounts } from "./school-subscription-lock";
 import { readStudentTermPlatformAccess } from "./student-platform-access";
 import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
+import { initialStudentFreePeriod,readStudentRollout } from "./student-platform-rollout";
 import {
   assertLiveApplicationContext,readLiveSchoolSubscriptionStudents,releasedLiveApplicationContext,
   type LiveApplicationContext,
@@ -38,40 +38,39 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
   // Ambiguous or missing calendars are NOT evidence of nonpayment.
   if (calendar.rows.length !== 1) return null;
   const term = calendar.rows[0];
-  const hostedLive = hostedLiveSelected();
-  const students = hostedLive ? await readHostedSubscriptionCoverage(db,schoolId,term.termId)
-    : live ? await readLiveSchoolSubscriptionStudents(db,schoolId,term.termId,live)
-    : await db.query<SubscriptionStudent & { amountMinor: number }>(
+  const rollout=await readStudentRollout(db,schoolId,term.termId,term.today);
+  if(!rollout.chargeable){
+    const students=await db.query("SELECT id FROM students WHERE school_id=$1 AND lower(status)='active'",[schoolId]);
+    return {schoolId,...term,status:"NOT_REQUIRED",state:"ACTIVE",enforcementDate:term.startDate,
+      inGracePeriod:false,schoolLocked:false,restrictedStudentIds:[] as number[],
+      studentsTotal:students.rows.length,studentsPaid:0,studentsAffected:0,
+      ...await readSubscriptionScopeCounts(db,schoolId,[],false),
+      amountDueMinor:0,amountPaidMinor:0,outstandingMinor:0,rollout};
+  }
+  const hostedLive = false;
+  const students = await db.query<SubscriptionStudent & { amountMinor: number }>(
     `SELECT st.id AS "studentId",
        EXISTS (
-         SELECT 1 FROM subscriptions s WHERE s.school_id=st.school_id AND s.student_id=st.id
-          AND s.term=$2 AND LOWER(s.status)='active' AND LOWER(s.verification_status)='verified'
-          AND (EXISTS (SELECT 1 FROM student_subscription_payments p
-                WHERE p.subscription_id=s.id AND p.school_id=st.school_id AND p.student_id=st.id
-                  AND p.academic_term_id=$3 AND p.status='PAID' AND p.reconciliation_status='RECONCILED')
-            OR (s.allocation_snapshot->>'termId'=$3::text AND s.expires_at::date=$4::date+1)
-            OR (s.allocation_snapshot IS NULL AND s.expires_at::date=$4::date+1))
+         SELECT 1 FROM student_direct_live_obligations o JOIN student_direct_live_attempts a ON a.obligation_id=o.id
+          WHERE o.school_id=st.school_id AND o.student_id=st.id AND o.academic_term_id=$2
+            AND o.amount_minor=320000 AND o.currency='NGN' AND o.school_share_minor=0 AND o.bro_share_minor=0
+            AND a.state='PAID' AND a.verified_at IS NOT NULL AND a.provider_reference IS NOT NULL
+            AND a.provider_transaction_id ~ '^[1-9][0-9]*$'
+            AND EXISTS(SELECT 1 FROM student_direct_live_events ev WHERE ev.attempt_id=a.id
+              AND ev.kind='PROVIDER_PAYMENT_VERIFIED' AND ev.details->>'transactionId'=a.provider_transaction_id)
        ) AS paid,
+       false AS waived,
        EXISTS (
-         SELECT 1 FROM subscriptions s WHERE s.school_id=st.school_id AND s.student_id=st.id
-           AND s.term=$2 AND LOWER(s.status)='waived' AND LOWER(s.verification_status)='verified'
-           AND s.expires_at::date=$4::date+1
-       ) AS waived,
-       EXISTS (
-         SELECT 1 FROM student_subscription_payments p WHERE p.school_id=st.school_id
-           AND p.student_id=st.id AND p.academic_term_id=$3 AND p.status IN ('PENDING','RECONCILIATION_REQUIRED')
+         SELECT 1 FROM student_direct_live_obligations o JOIN student_direct_live_attempts a ON a.obligation_id=o.id
+           WHERE o.school_id=st.school_id AND o.student_id=st.id AND o.academic_term_id=$2
+             AND a.state IN ('RESERVED','READY','UNKNOWN','PENDING')
        ) AS pending,
-       EXISTS (
-         SELECT 1 FROM subscriptions s WHERE s.school_id=st.school_id AND s.student_id=st.id
-           AND s.term=$2 AND s.expires_at::date=$4::date+1
-           AND (LOWER(s.verification_status) NOT IN ('verified','pending','unverified','rejected','failed')
-             OR LOWER(s.status) NOT IN ('active','pending','waived','cancelled','expired','inactive','failed'))
-       ) AS unknown,
-       COALESCE((SELECT round(s.amount*100)::integer FROM subscriptions s
-         WHERE s.school_id=st.school_id AND s.student_id=st.id AND s.term=$2
-           AND s.expires_at::date=$4::date+1 ORDER BY s.id DESC LIMIT 1),$5::integer) AS "amountMinor"
-      FROM students st WHERE st.school_id=$1 AND LOWER(st.status)='active' ORDER BY st.id`,
-    [schoolId, term.termName, term.termId, term.endDate, STUDENT_SUBSCRIPTION_GROSS_MINOR],
+       false AS unknown,320000 AS "amountMinor"
+      FROM students st WHERE st.school_id=$1 AND LOWER(st.status)='active' AND upper(st.admission_status)='ADMITTED'
+        AND NOT EXISTS(SELECT 1 FROM student_subscription_terms legacy WHERE legacy.school_id=st.school_id
+          AND legacy.student_id=st.id AND legacy.academic_term_id=$2)
+      ORDER BY st.id`,
+    [schoolId, term.termId],
   );
   const policy = subscriptionPolicy(term, students.rows, term.today);
   if (!policy.inGracePeriod && students.rows.some(s => s.unknown)) {
@@ -102,6 +101,7 @@ export async function assertSubscriptionAccess(schoolId: number, studentId?: num
   await assertManualSchoolUnlocked(db, schoolId);
   // Normal school/teacher/reader operations are NOT auto-locked by students.
   if (studentId == null) return;
+  if(initialStudentFreePeriod() || !(await readStudentRollout(db,schoolId)).chargeable)return;
   const platformAccess=await readStudentTermPlatformAccess(db,schoolId,studentId);
   if(platformAccess.restricted)throw new AuthError(platformAccess.status==="UNAVAILABLE"?503:403,
     "A verified platform payment for this student and academic term is required. A school fee, transfer claim or receipt upload is not platform payment.",

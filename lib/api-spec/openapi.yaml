@@ -58,7 +58,7 @@ paths:
                         schoolId: { type: integer }
                         studentId: { type: integer }
                         termId: { type: [integer, "null"] }
-                        status: { type: string, enum: [VERIFIED, PAYMENT_REQUIRED, UNAVAILABLE] }
+                        status: { type: string, enum: [VERIFIED, PAYMENT_REQUIRED, UNAVAILABLE, NOT_REQUIRED] }
                         restricted: { type: boolean }
         "403": { description: Active student required }
         "503": { description: Coverage cannot be verified }

@@ -27,7 +27,7 @@ export function AssistedNfcPayment({ schoolId, onCreated }: { schoolId?: number;
   if (!canCreateAssistedNfcPayment(context, schoolId) || !userId || !schoolId) return null;
   return <>
     <Button onClick={() => setOpen(true)} testId="button-create-assisted-nfc">
-      <Plus size={14} />Pay ₦3,200 Student platform fee
+      <Plus size={14} />Student platform subscription — free rollout
     </Button>
     {open && <Modal title="Pay Student platform fee" eyebrow="School → Yetenia EduCore" onClose={() => setOpen(false)}>
       <PlatformPaymentForm key={`${userId}:${schoolId}`} schoolId={schoolId} identity={userId} onCreated={onCreated} />

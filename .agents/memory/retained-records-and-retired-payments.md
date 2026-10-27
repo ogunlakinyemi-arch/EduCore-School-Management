@@ -20,7 +20,9 @@ reviewed scope and explicit approval. School-only student platform billing is
 separate from parent-facing fees; Teacher/Staff remains platform-only and BRO
 commission remains independent. Intended prices are not active rules.
 
-Student core access requires verified platform payment for the current student
-and academic term, even if a legacy active/waived flag or school receipt exists.
+Subject to the [free current-term launch](subscription-business-policy.md),
+student core access in collection terms requires verified platform payment for
+the exact student and academic term, retaining the existing seven-day grace.
+A legacy active/waived flag or school receipt is not new direct-payment proof.
 Preserve essential identity, payment/status/instructions and support access.
 Keep school/card/device security restrictions independent of payment success.

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "@workspace/db";
 import { requireAuthentication,getUserContext } from "../middlewares/auth";
 import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
+import {readStudentRollout} from "../services/student-platform-rollout";
 import { authenticateDirectStudentWebhook,directStudentReadiness,startDirectStudentPayment,
   verifyDirectStudentPayment,DirectPaymentBlocked } from "../services/direct-student-live-payments";
 const router=Router();
@@ -49,6 +50,8 @@ router.post("/schools/:schoolId/platform-subscriptions/assistance",requireAuthen
   const c=await pool.connect();
   try{
     await c.query("BEGIN");
+    if(!(await readStudentRollout(c,sid.data,body.data.termId)).chargeable)
+      throw new DirectPaymentBlocked("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
     const valid=(await c.query(`SELECT st.id FROM students st JOIN academic_terms t ON t.id=$3 AND t.school_id=st.school_id
       WHERE st.school_id=$1 AND st.id=$2 AND lower(st.status)='active'`,
       [sid.data,body.data.studentId,body.data.termId])).rows[0];

@@ -3,7 +3,34 @@ name: Subscription allocation and disclosure policy
 description: User-approved future student allocation, history protection and Owner-only full-split disclosure.
 ---
 
-## Latest requested school-collected student workflow
+## Approved launch and collection timing
+
+Business-policy approval/effective date for both the ₦3,200 Student platform
+policy and the separate ₦150 BRO policy is 2026-10-27. Schools must be able to
+onboard and use EduCore in the current term without NFC hardware/cards or a new
+student platform charge, obligation, checkout, overdue state or subscription
+restriction.
+
+Collection starts only from each school's actual configured second academic
+term beginning in January 2027, and later terms. Never substitute a universal
+January start date. Missing or ambiguous calendar evidence cannot authorize
+billing; keep ordinary access available while configuration is resolved.
+The ₦150 liability requires eligible, independently verified exact-student/term
+₦3,200 direct payment for an eligible collection term. It is not a school/BRO
+split, and current-term, unpaid, legacy and review records cannot earn it.
+
+**Why:** The user explicitly deferred subscriptions because the current term
+had progressed too far and NFC devices/cards will not yet be distributed.
+They approved the policies on 27 October, not immediate collection.
+
+**How to apply:** Separate business effective date, school calendar collection
+start, financial activation/release and actual payment verification. Preserve
+historical ₦5,000 obligations, payments, commissions and school-configured fees.
+Keep manual school locks, security and genuine NFC-use safeguards independent.
+Do not change Production/secrets, call payment APIs, charge, publish or bypass
+merchant/release gates. Teacher/Staff pricing remains a separate policy.
+
+## School-collected student workflow, subject to launch timing above
 
 For BRO rates, the later [prospective BRO policy](bro-commission-policy.md)
 supersedes earlier ₦100 prospective language here, but never historical earnings.

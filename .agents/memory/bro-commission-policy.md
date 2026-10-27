@@ -3,8 +3,12 @@ name: Prospective BRO commission and recovery hold
 description: New ₦150 policy, historical ₦100 preservation, independent funding and approval boundaries.
 ---
 
-The user requires ₦150 per eligible student per academic term prospectively,
-through the existing effective-dated Owner approval mechanism. Already-earned
+The user requires ₦150 per eligible student per academic term prospectively.
+The business policy is approved/effective 2026-10-27, but accrual starts only
+for a school's actual January 2027 second term and later eligible terms,
+after independently verified exact-student/term ₦3,200 direct payment.
+See [launch timing](subscription-business-policy.md). Retain the existing
+effective-dated financial rule/release approval mechanism. Already-earned
 or paid ₦100 commissions and their audit trails must remain unchanged.
 
 **Why:** The new rate is a prospective policy change, not permission to
@@ -30,14 +34,14 @@ late payment or duplicate processing.
 audit and a fresh preview confirmation, and book a liability only from
 independently verified exact-scope payment and eligible student/BRO evidence.
 
-The user reported an unresolved recovery safety gate and expressly prohibited
-database migration application and service restarts while it remains unresolved.
+The earlier Development storage/restart hold was explicitly cleared on
+2026-10-27 after the user confirmed database-inclusive checkpoint recovery.
 
-**Why:** Source changes and mocked tests do not establish operational recovery
-safety or authorize database changes.
+**Why:** The user accepted the Replit rollback dialog and an identified checkpoint
+as recovery availability evidence. Do not keep treating that earlier hold as
+unresolved; source tests alone still cannot establish recovery safety.
 
-**How to apply:** Keep storage changes unapplied and the new policy inactive.
-Before operational activation, require confirmed recovery clearance, explicit
-authorization for storage rehearsal/application and restart, then Owner approval
-of a specific future effective date. Never infer authorization for Production,
-secrets, LIVE switches or payments.
+**How to apply:** Verify current database identity and the scope of authorization
+before future writes. Business approval does not authorize Production, secrets,
+LIVE switches, charges, publishing or BRO payouts, and must not be forged into
+authenticated application-Owner financial approval evidence.

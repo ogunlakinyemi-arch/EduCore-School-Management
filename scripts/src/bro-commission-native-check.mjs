@@ -35,7 +35,9 @@ try{
     CREATE TABLE app_users(id integer PRIMARY KEY);
     CREATE TABLE schools(id integer PRIMARY KEY);
     CREATE TABLE students(id integer PRIMARY KEY,school_id integer,status text,admission_status text);
-    CREATE TABLE academic_terms(id integer PRIMARY KEY,school_id integer,academic_session_id integer,start_date date,end_date date);
+    CREATE TABLE academic_sessions(id integer PRIMARY KEY,school_id integer,status text);
+    CREATE TABLE academic_terms(id integer PRIMARY KEY,school_id integer,academic_session_id integer,start_date date,end_date date,
+      name text DEFAULT 'Third Term',is_current boolean DEFAULT true,status text DEFAULT 'ACTIVE');
     CREATE TABLE partner_profiles(id integer PRIMARY KEY,status text);
     CREATE TABLE school_partner_attributions(id integer PRIMARY KEY,school_id integer,partner_profile_id integer,
       status text,starts_at timestamptz,ends_at timestamptz);
@@ -48,13 +50,16 @@ try{
     CREATE TABLE commission_ledger(id serial PRIMARY KEY,school_id integer,student_id integer,payment_id integer,
       academic_session_id integer,term text,rate numeric,amount numeric,status text);
     INSERT INTO app_users VALUES(9); INSERT INTO schools VALUES(1),(2);
+    INSERT INTO academic_sessions VALUES(11,1,'ACTIVE');
+    INSERT INTO academic_terms(id,school_id,academic_session_id,start_date,end_date,name)
+      VALUES(100,1,11,'2027-01-18','2027-04-01','Second Term');
     INSERT INTO partner_profiles VALUES(4,'ACTIVE');
     INSERT INTO school_partner_attributions VALUES(3,1,4,'ACTIVE','2026-01-01Z',NULL);
     INSERT INTO subscription_rule_proposals VALUES
-      (1,'BRO_COMMISSION','SCHEDULED',15000,'2026-05-01T23:00Z',NULL,'2026-01-01Z',2),
+      (1,'BRO_COMMISSION','SCHEDULED',15000,'2026-10-26T23:00Z',NULL,'2026-10-27Z',2),
       (2,'STUDENT_PLATFORM','ACTIVE',320000,'2026-01-01Z',NULL,'2025-12-01Z',2);
     INSERT INTO audit_logs(role,record_id,event_type,metadata) VALUES('PLATFORM_OWNER',1,'SUBSCRIPTION_RULE_ACTIVATED',
-      '{"after":{"product":"BRO_COMMISSION","amountMinor":15000,"version":2,"effectiveAt":"2026-05-01T23:00:00Z"}}');
+      '{"after":{"product":"BRO_COMMISSION","amountMinor":15000,"version":2,"effectiveAt":"2026-10-26T23:00:00Z"}}');
   `);
   // Applies DDL only to the brand-new fictional cluster, never to Development/Production.
   await pool.query(readFileSync(join(root,"lib/db/drizzle/0176_direct_student_live_preparation.sql"),"utf8"));
@@ -62,12 +67,20 @@ try{
   const output=join(scratch,"bro.mjs");
   await build({entryPoints:[join(root,"artifacts/api-server/src/services/bro-commission-policy.ts")],
     bundle:true,platform:"node",format:"esm",outfile:output,logLevel:"silent"});
-  const {accrueBroCommission,broStorageReady}=await import(pathToFileURL(output).href);
+  const {accrueBroCommission:actualAccrue,broStorageReady}=await import(pathToFileURL(output).href);
+  // Fixed future clock ONLY inside the credential-free fictional fixture.
+  // SQL, locking, constraints, commit/rollback and audits still use actual PostgreSQL.
+  const commissionPool={connect:async()=>{
+    const c=await pool.connect();
+    return{release:()=>c.release(),query:(sql,args)=>c.query(
+      sql.replace(/\bnow\(\)/gi,"'2027-03-01T12:00Z'::timestamptz"),args)};
+  }};
+  const accrueBroCommission=(_db,scope,actor)=>actualAccrue(commissionPool,scope,actor);
   assert.equal(await broStorageReady(pool),true);
   const actor={id:9,email:"fictional@example.test",clerkUserId:"fixture-only"};
-  async function evidence(studentId,termId,start="2026-05-02",status="ACTIVE"){
+  async function evidence(studentId,termId,start="2027-01-18",status="ACTIVE"){
     await pool.query("INSERT INTO students VALUES($1,1,$2,'ADMITTED')",[studentId,status]);
-    await pool.query("INSERT INTO academic_terms VALUES($1,1,11,$2,'2026-08-01')",[termId,start]);
+    await pool.query("INSERT INTO academic_terms(id,school_id,academic_session_id,start_date,end_date) VALUES($1,1,11,$2,'2027-04-01')",[termId,start]);
     const review=(await pool.query(`INSERT INTO student_direct_live_reviews(school_id,academic_term_id,rule_id,
       report_digest,merchant_scope,no_split_confirmed,approved_by,expires_at,reason)
       VALUES(1,$1,2,$2,'fictional-merchant',true,9,'2099-01-01Z','Fictional fixture only') RETURNING id`,
@@ -78,7 +91,7 @@ try{
     const attempt=(await pool.query(`INSERT INTO student_direct_live_attempts
       (obligation_id,reference,idempotency_key,state,provider_transaction_id,provider_reference,
         provider_fee_minor,additional_fee_minor,verified_at,created_by)
-      VALUES($1,$2,$3,'PAID',$4,'fictional-provider',0,0,'2026-05-10T09:00Z',9) RETURNING id`,
+      VALUES($1,$2,$3,'PAID',$4,'fictional-provider',0,0,'2027-01-20T09:00Z',9) RETURNING id`,
       [obligation.id,`SCV4_live_FICTIONAL${studentId}`,`fictional-key-${studentId}`,String(studentId)])).rows[0];
     await pool.query(`INSERT INTO student_direct_live_events(attempt_id,kind,details)
       VALUES($1,'PROVIDER_PAYMENT_VERIFIED',$2::jsonb)`,[attempt.id,JSON.stringify({transactionId:String(studentId)})]);
@@ -105,10 +118,10 @@ try{
     assert.deepEqual((await pool.query("SELECT * FROM commission_ledger")).rows,before);
   });
   await check("late payment does not reprice a term starting before the boundary",async()=>{
-    await assert.rejects(accrueBroCommission(pool,await evidence(33,6,"2026-04-30"),actor),/No approved BRO policy/);
+    await assert.rejects(accrueBroCommission(pool,await evidence(33,6,"2026-12-01"),actor),/ineligible/);
   });
   await check("inactive students and cross-school replay are denied",async()=>{
-    await assert.rejects(accrueBroCommission(pool,await evidence(34,7,"2026-05-02","INACTIVE"),actor),/unique eligible/);
+    await assert.rejects(accrueBroCommission(pool,await evidence(34,7,"2027-01-18","INACTIVE"),actor),/unique eligible/);
     await assert.rejects(accrueBroCommission(pool,{...scope,schoolId:2},actor),/another school/);
   });
   await check("audit failure rolls back the actual liability",async()=>{
@@ -126,8 +139,8 @@ try{
   });
   await check("latest unapproved policy never falls back to an older approval",async()=>{
     await pool.query(`INSERT INTO subscription_rule_proposals VALUES
-      (3,'BRO_COMMISSION','SCHEDULED',15000,'2026-05-03Z',NULL,'2026-01-01Z',2)`);
-    await assert.rejects(accrueBroCommission(pool,await evidence(36,9,"2026-05-04"),actor),/ineligible/);
+      (3,'BRO_COMMISSION','SCHEDULED',15000,'2027-01-19Z',NULL,'2026-10-27Z',2)`);
+    await assert.rejects(accrueBroCommission(pool,await evidence(36,9,"2027-01-20"),actor),/ineligible/);
   });
   console.log(`${passed} isolated PostgreSQL checks passed. No application database or provider accessed.`);
 }finally{

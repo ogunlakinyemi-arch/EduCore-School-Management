@@ -36,7 +36,10 @@ async function withForm(run:(host:HTMLDivElement)=>Promise<void>){
   const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
   try{
     await act(async()=>root.render(<QueryClientProvider client={client}><AssistedNfcPayment schoolId={1}/></QueryClientProvider>));
-    await act(async()=>{host.querySelector('button')!.click();await new Promise(r=>setTimeout(r,25));});
+    await act(async()=>{host.querySelector('button')!.click();});
+    for(let i=0;i<100&&!host.querySelector('[data-testid="select-assisted-student"]');i++){
+      await act(async()=>{await new Promise(r=>setTimeout(r,20));});
+    }
     await run(host);
   }finally{await act(async()=>root.unmount());client.clear();host.remove();}
 }
