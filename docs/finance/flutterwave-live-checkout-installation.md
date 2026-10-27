@@ -9,6 +9,10 @@ importer, and the Production SQL console has not been certified for whole-file
 transactions, dollar-quoted bodies, error recovery or subsequent lifecycle
 preservation. This document is not a new automated Production migration path.
 
+The [console rehearsal evidence](flutterwave-live-sql-console-rehearsal.md)
+records the actual outcome: blocked before SQL because an independently verified
+disposable Replit target and authenticated console control were not established.
+
 ## Minimum dependency-ordered package
 
 Files remain under `lib/db/dev-reconciliation/`:
