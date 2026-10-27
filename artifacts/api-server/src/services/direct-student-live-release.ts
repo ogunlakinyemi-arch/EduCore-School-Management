@@ -3,6 +3,7 @@ import {createHash} from "node:crypto";
 import type {StudentSubscriptionSqlPool} from "../lib/student-subscription-billing";
 import {directLiveConfiguration,DIRECT_STUDENT_RELEASE} from "../lib/flutterwave-direct-live-config";
 import {previewStudentNfcReconciliation} from "./student-nfc-reconciliation";
+import {inspectFinancialGuards} from "./financial-guard-schema";
 
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 export class DirectReleaseError extends Error{
@@ -33,15 +34,6 @@ const columns:Record<string,string[]>={
   academic_terms:["id","school_id","academic_session_id","is_current","status","start_date","end_date"],
   academic_sessions:["id","school_id","is_current","status"],
 };
-const guards:Record<string,string>={
-  student_direct_review_history:"student_direct_live_reviews",
-  student_direct_obligation_history:"student_direct_live_obligations",
-  student_direct_event_history:"student_direct_live_events",
-  student_direct_attempt_history:"student_direct_live_attempts",
-  student_direct_release_request_history:"student_direct_live_release_requests",
-  student_direct_release_decision_history:"student_direct_live_release_decisions",
-  student_direct_release_binding_history:"student_direct_live_review_bindings",
-};
 /** SELECT-only catalog inspection. No missing-table casts, DDL or automatic initialization. */
 export async function inspectDirectReleaseSchema(c:Db){
   const tables=await c.query(`SELECT t.relname AS name,t.relrowsecurity AS rls,
@@ -57,15 +49,7 @@ export async function inspectDirectReleaseSchema(c:Db){
     if(!t||t.rls||!t.readable||(name.startsWith("student_direct_")&&!t.writable)
       ||required.some(col=>!t.columns.includes(col)))issues.push(`TABLE_COLUMNS_OR_PRIVILEGES:${name}`);
   }
-  const triggers=await c.query(`SELECT tg.tgname,t.relname,p.proname,tg.tgenabled
-    FROM pg_trigger tg JOIN pg_class t ON t.oid=tg.tgrelid
-    JOIN pg_namespace n ON n.oid=t.relnamespace JOIN pg_proc p ON p.oid=tg.tgfoid
-    WHERE n.nspname='public' AND tg.tgname=ANY($1::text[])`,[Object.keys(guards)]);
-  for(const [name,table] of Object.entries(guards)){
-    const expected=name==="student_direct_attempt_history"?"guard_student_direct_attempt":"guard_student_direct_history";
-    if(!triggers.rows.some(t=>t.tgname===name&&t.relname===table&&t.proname===expected&&["O","A"].includes(t.tgenabled)))
-      issues.push(`HISTORY_GUARD:${name}`);
-  }
+  issues.push(...(await inspectFinancialGuards(c,"direct")).issues);
   const indexes=await c.query(`SELECT i.indisunique,i.indisvalid,pg_get_expr(i.indpred,i.indrelid) AS predicate,
     pg_get_indexdef(i.indexrelid) AS definition
     FROM pg_index i JOIN pg_class n ON n.oid=i.indexrelid JOIN pg_namespace ns ON ns.oid=n.relnamespace

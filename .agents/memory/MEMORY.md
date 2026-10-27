@@ -111,3 +111,4 @@
 - [Owner subscription rule governance](owner-rule-governance.md) — intended fees require reviewed effective-dated activation; bank assistance is not a payment.
 - [Retained records and retired payments](retained-records-and-retired-payments.md) — former test rows are now retained real records; archive split/hosted workflows without cleanup.
 - [Financial approval boundaries](financial-approval-boundaries.md) — lossless canonical evidence and no resurrection of older approvals after withdrawal or expiry.
+- [Procedural schema verification](procedural-schema-verification.md) — empty structural diffs and successful ledgers do not certify functions/triggers; verify approved catalog definitions separately.

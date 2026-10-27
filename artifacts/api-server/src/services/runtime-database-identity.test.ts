@@ -6,6 +6,10 @@ describe("allowlisted runtime identity",()=>{
       .toMatchObject({configurationTargetFingerprint:"1234567890abcdef12345678",
         servingRevision:"educore-00042-abc",servingRevisionSource:"K_REVISION",
         platformDatabaseResourceId:null,targetBindingVerified:false});
+    expect(runtimeDatabaseIdentity({targetFingerprint:"1234567890abcdef12345678"},{}))
+      .toMatchObject({platformDatabaseResourceIdSource:"UNAVAILABLE",targetBindingStatus:"UNVERIFIED",
+        targetBindingReason:"AUTHORITATIVE_INFRASTRUCTURE_MAPPING_UNAVAILABLE",
+        configurationFingerprintIsConnectionProof:false});
   });
   it("reports unavailable runtime metadata explicitly",()=>{
     expect(runtimeDatabaseIdentity(undefined,{})).toMatchObject({
@@ -19,5 +23,10 @@ describe("allowlisted runtime identity",()=>{
     for(const value of ["private-user","private-password","private-host","private-person","postgresql","DATABASE_URL","CLERK_SECRET_KEY"])
       expect(output).not.toContain(value);
     expect(result.configurationTargetFingerprint).toBeNull();expect(result.servingRevision).toBeNull();
+  });
+  it("does not trust environment assertions as authoritative infrastructure evidence",()=>{
+    expect(runtimeDatabaseIdentity({targetFingerprint:"1234567890abcdef12345678"},{
+      PLATFORM_DATABASE_RESOURCE_ID:"claimed-resource",TARGET_BINDING_VERIFIED:"true",
+    })).toMatchObject({platformDatabaseResourceId:null,targetBindingVerified:false,targetBindingStatus:"UNVERIFIED"});
   });
 });

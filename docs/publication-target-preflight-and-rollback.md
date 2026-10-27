@@ -53,11 +53,12 @@ ledger, not just filenames or ledger entries. The relevant ordered set is:
 | 0177 | `student_direct_live_release_requests`, `student_direct_live_release_decisions`, `student_direct_live_review_bindings`; latest-decision index and append-only triggers; depends on 0175/0176 |
 | 0178 | `bro_term_commission_entitlements`; student/term and direct-attempt uniqueness; append-only and exact verified-payment/attribution/approved-rule guards; depends on 0175/0176 |
 
-Last available **replica** evidence (27 October 2026, 20:19 UTC) found the
-proposal table and all seven direct review/release/binding/obligation/attempt/
-event tables absent. That observation does not establish the serving primary.
-The assistance table, staff `ends_at`, BRO table, all definitions/privileges,
-base foreign-key dependencies and ledger alignment still require comparison.
+Earlier **replica** evidence (27 October 2026, 20:19 UTC) found new tables absent.
+After the later publication, replica evidence at 21:46 UTC found all ten expected
+tables, staff `ends_at`, validated inspected constraints and valid/ready indexes,
+but all four source guard functions and nine triggers were absent. The platform
+ledger records 50 statements for that build. Neither this replica observation
+nor the ledger establishes the serving primary or procedural source parity.
 Table existence alone is not compatibility.
 
 Use the single SELECT in `docs/direct-release-schema-preflight.sql` for
@@ -67,6 +68,10 @@ functions, privileges, RLS and endpoint role. Compare its output to exact
 service. It deliberately neither declares identity verified nor applies fixes.
 Catalog privilege observations must be repeated under the actual application
 role; admin/superuser success is not proof of runtime permission.
+
+For the subsequently observed four-function/nine-trigger procedural gap, see
+`docs/financial-guard-repair-0179.md`. Source-only 0179 does not authorize a
+Production migration; an empty structural Publish diff does not certify guards.
 
 Prerequisites include the existing schools, students, users, sessions/terms,
 Partner profiles/attributions and staff billing engine. Resolve pre-existing

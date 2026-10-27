@@ -1,5 +1,6 @@
 import {describe,it,expect,vi} from "vitest";
 import {accrueBroCommission,broEntitlementAmount,broCommissionSnapshot,type BroEligibility,type BroPolicy} from "./bro-commission-policy";
+import {financialGuardCatalogFixture} from "../test/financial-guard-catalog-fixture";
 const policy:BroPolicy={id:1,status:"SCHEDULED",amountMinor:15000,effectiveAt:"2027-01-04T23:00:00Z",endsAt:null,approved:true};
 const eligible:BroEligibility={termStart:"2027-01-04T23:00:00Z",paidAt:"2027-01-05T10:00:00Z",
   verified:true,studentEligible:true,attributionEligible:true,legacyExists:false};
@@ -24,11 +25,14 @@ describe("prospective independent BRO policy",()=>{
   });
 });
 function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved?:boolean;termStart?:string}={}){
+  const catalog=financialGuardCatalogFixture();
   let saved=options.oldEntry??null;
   const audits:any[]=[];
   const policyRow={id:1,status:"SCHEDULED",amount_minor:15000,effective_at:policy.effectiveAt,ends_at:null,
     version:2,approved:options.approved??true};
   const query=vi.fn(async(sql:string,args?:unknown[])=>{
+    if(sql.includes("FROM pg_proc"))return{rows:catalog.functions};
+    if(sql.includes("FROM pg_trigger tg"))return{rows:catalog.triggers};
     if(sql.includes('t.school_id AS "schoolId"'))return{rows:[{id:4,schoolId:1,name:"Second Term",
       startDate:"2027-01-05",endDate:"2027-04-01",isCurrent:true,status:"ACTIVE",sessionStatus:"ACTIVE"}]};
     if(sql.includes("to_regclass"))return{rows:[{ready:options.ready??true}]};

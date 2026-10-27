@@ -1,5 +1,6 @@
 /** Independent BRO expense. Never changes a collection, split, legacy ledger or payout. */
 import {lagosDate,readStudentRollout} from "./student-platform-rollout";
+import {inspectFinancialGuards} from "./financial-guard-schema";
 export const BRO_TERM_RATE_MINOR = 15_000;
 export type BroSql = {query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
 type Pool = BroSql & {connect:()=>Promise<BroSql & {release:()=>void}>};
@@ -18,7 +19,7 @@ export async function broStorageReady(c:BroSql):Promise<boolean>{
       AND tgname='bro_term_commission_append_only' AND NOT tgisinternal AND tgenabled='O')
     AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid=to_regclass('bro_term_commission_entitlements')
       AND tgname='bro_term_commission_scope_guard' AND NOT tgisinternal AND tgenabled='O') AS ready`);
-  return rows[0]?.ready===true;
+  return rows[0]?.ready===true&&(await inspectFinancialGuards(c,"bro")).ready;
 }
 export type BroEligibility = {
   termStart:string;paidAt:string;verified:boolean;studentEligible:boolean;

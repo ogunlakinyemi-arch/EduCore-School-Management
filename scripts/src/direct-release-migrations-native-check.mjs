@@ -21,7 +21,7 @@ export function assertNoDuplicatedChecks(statements){
   }
 }
 const root=fileURLToPath(new URL("../../",import.meta.url));
-const baseline=`
+export const baseline=`
  CREATE TABLE app_users(id integer PRIMARY KEY);
  CREATE TABLE schools(id integer PRIMARY KEY);
  CREATE TABLE students(id integer PRIMARY KEY,school_id integer,status text,admission_status text);

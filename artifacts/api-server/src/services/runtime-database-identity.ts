@@ -13,8 +13,14 @@ export function runtimeDatabaseIdentity(target:Target|undefined,env:NodeJS.Proce
     configurationTargetFingerprint:fingerprint,
     fingerprintAlgorithm:"RESOLVED_PG_HOST_PORT_DATABASE_SHA256_96_V1",
     platformDatabaseResourceId:null,
+    platformDatabaseResourceIdSource:"UNAVAILABLE",
     servingRevision:revision,
     servingRevisionSource:revision?"K_REVISION":"UNAVAILABLE",
     targetBindingVerified:false,
+    targetBindingStatus:"UNVERIFIED",
+    targetBindingReason:"AUTHORITATIVE_INFRASTRUCTURE_MAPPING_UNAVAILABLE",
+    configurationFingerprintIsConnectionProof:false,
+    // Only an authoritative resource/configuration mapping could establish binding.
+    // SQL readiness and K_REVISION do not supply that mapping.
   };
 }
