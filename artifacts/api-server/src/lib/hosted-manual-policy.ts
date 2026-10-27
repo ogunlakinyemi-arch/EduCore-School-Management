@@ -17,7 +17,8 @@ export function hostedConfiguration(env: NodeJS.ProcessEnv = process.env) {
   const blockers: string[] = [];
   if (!enabled) blockers.push("Hosted payments have not been enabled.");
   if (!["TEST", "LIVE"].includes(env.EDUCORE_HOSTED_PAYMENTS_MODE ?? "")) blockers.push("Select an explicit TEST or LIVE mode.");
-  if (!secret || !webhookHash) blockers.push(`Dedicated ${mode} secret and webhook verification hash are required.`);
+  if (!secret) blockers.push(`Dedicated ${mode} secret ${mode === "LIVE" ? "FLUTTERWAVE_LIVE_SECRET_KEY" : "FLUTTERWAVE_SECRET_Test_Key"} is required.`);
+  if (!webhookHash) blockers.push(`Dedicated ${mode} webhook verification hash ${mode === "LIVE" ? "FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH" : "FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH"} is required.`);
   const otherSecret = mode === "LIVE" ? env.FLUTTERWAVE_SECRET_Test_Key : env.FLUTTERWAVE_LIVE_SECRET_KEY;
   const otherHash = mode === "LIVE" ? env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH : env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH;
   if ((secret && secret === otherSecret) || (webhookHash && webhookHash === otherHash)) {

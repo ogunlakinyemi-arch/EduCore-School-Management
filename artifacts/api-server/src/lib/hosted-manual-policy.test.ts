@@ -16,6 +16,31 @@ describe("hosted collection policy and one provider adapter",()=>{
     expect(hostedConfiguration({...env,FLUTTERWAVE_LIVE_SECRET_KEY:env.FLUTTERWAVE_SECRET_Test_Key}).blockers).toContain("TEST and LIVE credentials must be distinct.");
     expect(hostedConfiguration({...env,FLUTTERWAVE_SECRET_Test_Key:undefined,FLUTTERWAVE_SECRET_KEY:"generic-is-not-a-fallback"}).blockers.length).toBeGreaterThan(0);
   });
+  it("names the missing dedicated TEST hash without blaming the existing TEST secret",()=>{
+    const c=hostedConfiguration({...env,FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH:undefined,
+      FLUTTERWAVE_WEBHOOK_VERIF_HASH:"synthetic-generic-not-a-fallback",
+      FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:"synthetic-live-not-a-fallback"});
+    expect(c.blockers).toEqual(["Dedicated TEST webhook verification hash FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH is required."]);
+    expect(c.webhookHash).toBeUndefined();
+  });
+  it("never borrows a LIVE or generic secret for TEST",()=>{
+    const c=hostedConfiguration({...env,FLUTTERWAVE_SECRET_Test_Key:undefined,
+      FLUTTERWAVE_LIVE_SECRET_KEY:"synthetic-live-not-a-fallback",FLUTTERWAVE_SECRET_KEY:"synthetic-generic-not-a-fallback"});
+    expect(c.secret).toBeUndefined();
+    expect(c.blockers).toEqual(["Dedicated TEST secret FLUTTERWAVE_SECRET_Test_Key is required."]);
+  });
+  it("does not enable hosted TEST implicitly or borrow separate LIVE billing settings",()=>{
+    const c=hostedConfiguration({NODE_ENV:"development",EDUCORE_FLUTTERWAVE_MODE:"LIVE",
+      PUBLIC_APP_URL:"https://production.example.test"});
+    expect(c.enabled).toBe(false);
+    expect(c.blockers).toContain("Select an explicit TEST or LIVE mode.");
+    expect(c.blockers).toContain("Configure the approved HTTPS app base URL.");
+  });
+  it.each(["http://fixture.example.test","https://user:password@fixture.example.test",
+    "https://fixture.example.test/?key=value","https://fixture.example.test/#fragment"])("rejects unsafe public base %s",url=>{
+    expect(hostedConfiguration({...env,EDUCORE_HOSTED_PAYMENTS_PUBLIC_URL:url}).blockers)
+      .toContain("Configure the approved HTTPS app base URL.");
+  });
   it("initializes hosted collection with no subaccounts, transfer or split instruction",async()=>{
     const http=vi.fn().mockResolvedValue({ok:true,json:async()=>({status:"success",data:{link:"https://checkout.flutterwave.com/v3/fixture"}})});
     const adapter=new FlutterwaveHostedAdapter("fixture-secret","fixture-hash",http);
