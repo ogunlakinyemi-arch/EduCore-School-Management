@@ -1,5 +1,31 @@
 import type { CommunicationQueryClient } from "./communication-service";
 
+/** One read-only catalog query, not one request per school or session.
+ * Retired schools and historical terms remain selectable for retained invoices. */
+export async function readNfcFeeCollectionFilterOptions(db:CommunicationQueryClient,schoolId?:number){
+  const {rows}=await db.query(`
+    SELECT
+      ($1::int IS NULL OR EXISTS(SELECT 1 FROM schools WHERE id=$1)) AS "schoolExists",
+      COALESCE((SELECT jsonb_agg(s ORDER BY s.name,s.id) FROM (
+        SELECT id,name FROM schools
+      ) s),'[]'::jsonb) AS schools,
+      COALESCE((SELECT jsonb_agg(t ORDER BY t."schoolName",t."startDate" DESC,t.id) FROM (
+        SELECT t.id,t.school_id AS "schoolId",sc.name AS "schoolName",
+          ses.name AS "sessionName",t.name,t.start_date::text AS "startDate",t.end_date::text AS "endDate",
+          (t.is_current=true AND ses.is_current=true AND upper(t.status)='ACTIVE'
+            AND upper(ses.status)='ACTIVE' AND lower(sc.status)='active'
+            AND (now() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date) AS "isCurrent"
+        FROM academic_terms t
+        JOIN schools sc ON sc.id=t.school_id
+        JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
+        WHERE ($1::int IS NULL OR t.school_id=$1)
+      ) t),'[]'::jsonb) AS terms
+  `,[schoolId??null]);
+  return rows[0] as {schoolExists:boolean;schools:{id:number;name:string}[];terms:{
+    id:number;schoolId:number;schoolName:string;sessionName:string;name:string;startDate:string;endDate:string;isCurrent:boolean;
+  }[]};
+}
+
 export const collectionStatuses=["FULLY_PAID","UNPAID","PENDING_EVIDENCE","UNDER_REVIEW","REJECTED","PARTIALLY_PAID","NOT_CONFIGURED","CANCELLED","REVIEW_REQUIRED"] as const;
 export function collectionStatus(amount:number|null,paid:number,paymentStates:string[],invoiceStatus:string){
   if(amount===null)return "NOT_CONFIGURED";

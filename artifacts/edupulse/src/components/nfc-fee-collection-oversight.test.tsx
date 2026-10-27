@@ -14,6 +14,8 @@ vi.mock('@workspace/api-client-react', async orig => ({
   ...(await orig<object>()),
   useGetAuthorizedContext: () => ({ data: { user: { id: 42 }, isPlatformOwner: true }, isLoading: false, isError: false }),
   useGetNfcFeeCollectionOversight: (p: unknown, o: unknown) => hook(p, o),
+  useGetNfcFeeCollectionFilterOptions: () => ({data:{schools:[{id:3,name:'Lekki Hills'}],terms:[]},
+    isSuccess:true,isLoading:false,isError:false,isFetching:false,refetch:vi.fn()}),
 }));
 
 import { NfcFeeCollectionOversight, csvCell, toOversightCsv, oversightQueryKey, formatMinor } from './nfc-fee-collection-oversight';

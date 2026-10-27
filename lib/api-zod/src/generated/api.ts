@@ -29233,6 +29233,34 @@ export const GetNfcFeeCollectionOversightResponse = zod.object({
 })
 
 
+/**
+ * @summary Read-only Owner school and academic-term choices from existing records
+ */
+
+
+
+export const GetNfcFeeCollectionFilterOptionsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetNfcFeeCollectionFilterOptionsResponse = zod.object({
+  "schools": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "terms": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "sessionName": zod.string(),
+  "name": zod.string(),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "isCurrent": zod.boolean().describe('Current active school/session/term and within term dates in Africa/Lagos')
+}))
+})
+
+
 export const GetDirectStudentLiveReadinessParams = zod.object({
   "schoolId": zod.coerce.number().int()
 })

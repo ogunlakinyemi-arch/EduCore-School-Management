@@ -378,6 +378,7 @@ import type {
   GetMyStaffNfcSubscriptionsParams,
   GetMyStaffSubscriptionAccessParams,
   GetMyStudentPlatformAccess200,
+  GetNfcFeeCollectionFilterOptionsParams,
   GetNfcFeeCollectionOversightParams,
   GetOfficialCardBrand200,
   GetOfficialCardPreview200,
@@ -567,6 +568,7 @@ import type {
   MedicalVisitInput,
   MedicalVisitPatch,
   NfcCard,
+  NfcFeeCollectionFilterOptions,
   NfcFeeCollectionOversight,
   NfcGuestCheckoutInput,
   NfcPaymentLink,
@@ -57931,6 +57933,90 @@ export function useGetNfcFeeCollectionOversight<TData = Awaited<ReturnType<typeo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetNfcFeeCollectionOversightQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetNfcFeeCollectionFilterOptionsUrl = (params?: GetNfcFeeCollectionFilterOptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/nfc-fee-collection-oversight/filter-options?${stringifiedParams}` : `/api/platform/nfc-fee-collection-oversight/filter-options`
+}
+
+/**
+ * @summary Read-only Owner school and academic-term choices from existing records
+ */
+export const getNfcFeeCollectionFilterOptions = async (params?: GetNfcFeeCollectionFilterOptionsParams, options?: Parameters<typeof customFetch>[1]): Promise<NfcFeeCollectionFilterOptions> => {
+
+  return customFetch<NfcFeeCollectionFilterOptions>(getGetNfcFeeCollectionFilterOptionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNfcFeeCollectionFilterOptionsQueryKey = (params?: GetNfcFeeCollectionFilterOptionsParams,) => {
+    return [
+    `/api/platform/nfc-fee-collection-oversight/filter-options`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNfcFeeCollectionFilterOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getNfcFeeCollectionFilterOptions>>, TError = ErrorType<void>>(params?: GetNfcFeeCollectionFilterOptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNfcFeeCollectionFilterOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNfcFeeCollectionFilterOptionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNfcFeeCollectionFilterOptions>>> = ({ signal }) => getNfcFeeCollectionFilterOptions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNfcFeeCollectionFilterOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNfcFeeCollectionFilterOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getNfcFeeCollectionFilterOptions>>>
+export type GetNfcFeeCollectionFilterOptionsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read-only Owner school and academic-term choices from existing records
+ */
+
+export function useGetNfcFeeCollectionFilterOptions<TData = Awaited<ReturnType<typeof getNfcFeeCollectionFilterOptions>>, TError = ErrorType<void>>(
+ params?: GetNfcFeeCollectionFilterOptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNfcFeeCollectionFilterOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNfcFeeCollectionFilterOptionsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -1,4 +1,20 @@
 paths:
+  /platform/nfc-fee-collection-oversight/filter-options:
+    get:
+      operationId: getNfcFeeCollectionFilterOptions
+      tags: [finance]
+      summary: Read-only Owner school and academic-term choices from existing records
+      parameters:
+        - {in: query, name: schoolId, schema: {type: integer, minimum: 1}}
+      responses:
+        '200':
+          description: Schools and terms, scoped to the selected school when specified
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NfcFeeCollectionFilterOptions'}
+        '400': {description: Invalid or unknown school}
+        '403': {description: Active global Owner required}
+        '503': {description: Options unavailable}
   /platform/nfc-fee-collection-oversight:
     get:
       operationId: getNfcFeeCollectionOversight
@@ -18,9 +34,38 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/NfcFeeCollectionOversight'}
         '403': {description: Active global Owner required}
+        '400': {description: Invalid filters or academic term outside the selected school}
         '503': {description: Evidence unavailable}
 components:
   schemas:
+    NfcFeeCollectionSchoolOption:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+    NfcFeeCollectionTermOption:
+      type: object
+      required: [id, schoolId, schoolName, sessionName, name, startDate, endDate, isCurrent]
+      properties:
+        id: {type: integer}
+        schoolId: {type: integer}
+        schoolName: {type: string}
+        sessionName: {type: string}
+        name: {type: string}
+        startDate: {type: string}
+        endDate: {type: string}
+        isCurrent: {type: boolean, description: Current active school/session/term and within term dates in Africa/Lagos}
+    NfcFeeCollectionFilterOptions:
+      type: object
+      required: [schools, terms]
+      properties:
+        schools:
+          type: array
+          items: {$ref: '#/components/schemas/NfcFeeCollectionSchoolOption'}
+        terms:
+          type: array
+          items: {$ref: '#/components/schemas/NfcFeeCollectionTermOption'}
     NfcFeeCollectionOversight:
       type: object
       required: [items, total, limit, offset]

@@ -89,6 +89,7 @@
 - [Public registration policy](public-registration-policy.md) — only School Admin/Partner applications; Owner approval before operational access; preserve existing users.
 - [Application decision confirmation](application-decision-confirmation.md) — transport failure is not rollback; reconcile status without repeating decisions or notifications.
 - [Dashboard overlay policy](admin-form-presentation-policy.md) — all roles are in UX scope; genuine overlays above content, inline expansions in flow, unchanged authorization and saving.
+- [Academic oversight filters](academic-oversight-filter-policy.md) — use school-owned academic periods, not typed IDs or duplicate financial terms; never default ambiguously across schools.
 - [Attendance engine policy](attendance-notification-controls.md) — preserve school-specific safeguards when extending schedules; morning Tag-in is provisional, never biometric proof.
 - [Telegram invitation authority](telegram-invitation-authority.md) — Admin-known links start onboarding only; final chat binding requires a fresh parent-owned token and consent.
 - [Production DB outage signals](production-db-outage-signals.md) — pool termination crashes the API; DB failures masquerade as 401 sign-outs; 28000 reason isn't logged.

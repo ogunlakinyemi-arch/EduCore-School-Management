@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Receipt } from 'lucide-react';
 import {
   useGetAuthorizedContext, useGetNfcFeeCollectionOversight, getGetNfcFeeCollectionOversightQueryKey,
+  useGetNfcFeeCollectionFilterOptions, getGetNfcFeeCollectionFilterOptionsQueryKey,
 } from '@workspace/api-client-react';
-import type { GetNfcFeeCollectionOversightParams, NfcFeeCollectionRow } from '@workspace/api-client-react';
+import type { GetNfcFeeCollectionOversightParams, NfcFeeCollectionRow, NfcFeeCollectionTermOption } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, SkeletonPage } from '@/components/shared';
 import { Freshness, entry, note, FRESH_MS } from '@/pages/payroll-common';
 
@@ -41,6 +42,16 @@ export function formatMinor(minor: number | null | undefined, currency = 'NGN') 
 /** Actor-isolated cache key: one signed-in identity never reads another's cached rows. */
 export const oversightQueryKey = (params: GetNfcFeeCollectionOversightParams, userId: number | string | undefined) =>
   [...getGetNfcFeeCollectionOversightQueryKey(params), `actor:${userId ?? 'unknown'}`] as const;
+
+export function defaultOversightTerm(terms: NfcFeeCollectionTermOption[]): string {
+  const current=terms.filter(t=>t.isCurrent);
+  return current.length===1?String(current[0].id):'';
+}
+export function oversightTermLabel(t:NfcFeeCollectionTermOption):string{
+  return `${t.schoolName} · ${t.sessionName} · ${t.name} (${t.startDate} – ${t.endDate}) · #${t.id}${t.isCurrent?' · Current':''}`;
+}
+type AppliedFilters={search:string;schoolId:string;termId:string};
+type DraftFilters=Omit<AppliedFilters,'termId'>&{termId:string|null};
 
 /** Neutralise spreadsheet formula injection, then RFC4180-quote. */
 export function csvCell(v: unknown): string {
@@ -127,49 +138,94 @@ export function OversightRows({ rows }: { rows: NfcFeeCollectionRow[] }) {
 export function NfcFeeCollectionOversight() {
   const ctx = useGetAuthorizedContext();
   const userId = ctx.data?.user?.id;
-  const [draft, setDraft] = useState({ search: '', schoolId: '', termId: '' });
-  const [applied, setApplied] = useState(draft);
+  // A null draft term means "resolve the default once choices load", not term 0.
+  const [draft, setDraft] = useState<DraftFilters>({ search: '', schoolId: '', termId: null });
+  const catalog=useGetNfcFeeCollectionFilterOptions({}, {query:{
+    queryKey:[...getGetNfcFeeCollectionFilterOptionsQueryKey({}),`actor:${userId??'unknown'}`],
+    enabled:userId!=null,staleTime:FRESH_MS,refetchInterval:FRESH_MS,
+  }});
+  const schoolParams=draft.schoolId?{schoolId:Number(draft.schoolId)}:{};
+  const schoolTerms=useGetNfcFeeCollectionFilterOptions(schoolParams,{query:{
+    queryKey:[...getGetNfcFeeCollectionFilterOptionsQueryKey(schoolParams),`actor:${userId??'unknown'}`],
+    enabled:userId!=null&&!!draft.schoolId,staleTime:FRESH_MS,refetchInterval:draft.schoolId?FRESH_MS:false,
+  }});
+  const choices=draft.schoolId?schoolTerms:catalog;
+  const terms=useMemo(()=>(choices.data?.terms??[]).filter(t=>!draft.schoolId||t.schoolId===Number(draft.schoolId)),[choices.data,draft.schoolId]);
+  const selectedTerm=draft.termId??defaultOversightTerm(terms);
+  const [applied,setApplied]=useState<AppliedFilters|null>(()=>choices.isSuccess
+    ?{search:'',schoolId:'',termId:defaultOversightTerm(terms)}:null);
   const [status, setStatus] = useState<'all' | Status>('all');
   const [page, setPage] = useState(0);
+  useEffect(()=>{
+    if(!choices.isSuccess||choices.isFetching)return;
+    if(draft.termId===null){
+      const resolved={...draft,termId:defaultOversightTerm(terms)};
+      setDraft(resolved);
+      if(applied===null)setApplied(resolved);
+    }else if(draft.termId&&!terms.some(t=>String(t.id)===draft.termId)){
+      // Removed/reassigned terms must not be replaced silently with a different one.
+      setDraft(d=>({...d,termId:''}));
+    }
+  },[choices.isSuccess,choices.isFetching,terms,draft,applied]);
+  const changeSchool=(schoolId:string)=>{
+    const compatible=!!selectedTerm&&terms.some(t=>String(t.id)===selectedTerm&&(!schoolId||t.schoolId===Number(schoolId)));
+    setDraft(d=>({...d,schoolId,termId:compatible?selectedTerm:null}));
+  };
   const pos = (v: string) => { const n = Number(v.trim()); return v.trim() && Number.isInteger(n) && n > 0 ? n : undefined; };
   const params: GetNfcFeeCollectionOversightParams = {
     limit: PAGE_SIZE, offset: page * PAGE_SIZE,
-    ...(applied.search.trim() ? { search: applied.search.trim().slice(0, 100) } : {}),
-    ...(pos(applied.schoolId) ? { schoolId: pos(applied.schoolId) } : {}),
-    ...(pos(applied.termId) ? { termId: pos(applied.termId) } : {}),
+    ...(applied?.search.trim() ? { search: applied.search.trim().slice(0, 100) } : {}),
+    ...(applied?.schoolId ? { schoolId: pos(applied.schoolId) } : {}),
+    ...(applied?.termId ? { termId: pos(applied.termId) } : {}),
     ...(status !== 'all' ? { status } : {}),
   };
-  const q = useGetNfcFeeCollectionOversight(params, { query: { queryKey: oversightQueryKey(params, userId), enabled: userId != null, staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
+  const q = useGetNfcFeeCollectionOversight(params, { query: { queryKey: oversightQueryKey(params, userId), enabled: userId != null&&applied!==null, staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
   const rows = q.data?.items ?? [];
   const total = q.data?.total ?? 0;
-  const submit = (e: FormEvent) => { e.preventDefault(); setApplied(draft); setPage(0); };
+  const choicesReady=choices.isSuccess&&!choices.isFetching&&draft.termId!==null;
+  const submit = (e: FormEvent) => { e.preventDefault(); if(!choicesReady)return;setApplied({...draft,termId:selectedTerm}); setPage(0); };
   return <section className="panel overflow-hidden" data-testid="nfc-fee-collection-oversight">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-4">
       <div><div className="eyebrow">Read only</div><h2 className="display-font text-xl font-bold">NFC Fee Collection Oversight</h2></div>
       <div className="flex flex-wrap items-center gap-2">
-        <Freshness updatedAt={q.dataUpdatedAt} fetching={q.isFetching} onRefresh={() => q.refetch()} />
-        <Button variant="outline" disabled={!rows.length} onClick={() => downloadCsv(rows)} testId="button-export-oversight-csv">Export this page (CSV)</Button>
+        <Freshness updatedAt={q.dataUpdatedAt} fetching={q.isFetching} onRefresh={() => applied?q.refetch():catalog.refetch()} />
+        <Button variant="outline" disabled={!rows.length||applied===null||q.isError} onClick={() => downloadCsv(rows)} testId="button-export-oversight-csv">Export this page (CSV)</Button>
       </div>
     </div>
     <div className="p-4 pb-0"><OversightWarning /></div>
     <form onSubmit={submit} className="flex flex-wrap gap-2 px-4 pb-4">
+      <select className={`${entry} w-full sm:max-w-[260px]`} aria-label="School" value={draft.schoolId}
+        disabled={!catalog.isSuccess} onChange={e=>changeSchool(e.target.value)} data-testid="select-oversight-school">
+        <option value="">All schools</option>
+        {(catalog.data?.schools??[]).map(s=><option key={s.id} value={s.id}>{s.name} · #{s.id}</option>)}
+      </select>
+      <select className={`${entry} w-full sm:max-w-[420px]`} aria-label="Academic term" aria-describedby="oversight-term-help"
+        value={selectedTerm} disabled={!choices.isSuccess||choices.isFetching||draft.termId===null}
+        onChange={e=>setDraft(d=>({...d,termId:e.target.value}))} data-testid="select-oversight-term">
+        <option value="">{choices.isLoading?'Loading academic terms…':'Select academic term'}</option>
+        {terms.map(t=><option key={t.id} value={t.id}>{oversightTermLabel(t)}</option>)}
+      </select>
       <input className={`${entry} max-w-xs`} maxLength={100} placeholder="Search school, student, admission no" aria-label="Search" value={draft.search} onChange={e => setDraft(d => ({ ...d, search: e.target.value }))} data-testid="input-oversight-search" />
-      <input className={`${entry} max-w-[120px]`} inputMode="numeric" placeholder="School ID" aria-label="School ID" value={draft.schoolId} onChange={e => setDraft(d => ({ ...d, schoolId: e.target.value }))} data-testid="input-oversight-school" />
-      <input className={`${entry} max-w-[120px]`} inputMode="numeric" placeholder="Term ID" aria-label="Term ID" value={draft.termId} onChange={e => setDraft(d => ({ ...d, termId: e.target.value }))} data-testid="input-oversight-term" />
       <select className={`${entry} max-w-[220px]`} value={status} onChange={e => { setStatus(e.target.value as typeof status); setPage(0); }} aria-label="Status filter" data-testid="select-oversight-status">
         <option value="all">All statuses</option>{OVERSIGHT_STATUSES.map(s => <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}
       </select>
-      <Button type="submit" variant="outline" testId="button-oversight-apply">Apply</Button>
-      <Button variant="quiet" onClick={() => { const b = { search: '', schoolId: '', termId: '' }; setDraft(b); setApplied(b); setStatus('all'); setPage(0); }}>Clear</Button>
+      <Button type="submit" variant="outline" disabled={!choicesReady} testId="button-oversight-apply">Apply</Button>
+      <Button variant="quiet" onClick={() => { setDraft({search:'',schoolId:'',termId:null});setApplied(null);setStatus('all');setPage(0); }}>Clear</Button>
     </form>
+    <p id="oversight-term-help" className={`${note} px-4 pb-3`}>{choices.isError?'Academic terms could not be loaded. Retry below.'
+      :choices.isLoading?'Loading existing academic terms…'
+      :!terms.length?'This school has no existing academic terms. No term will be created here.'
+      :!selectedTerm?'No term selected: Apply includes all terms for the selected schools. Choose a term to narrow the view.'
+      :'Use Apply to update the rows. School, session and dates distinguish terms; Clear restores the default filters.'}</p>
     <p className={`${note} px-4 pb-3`}>Each row is one immutable school fee invoice line. A student can appear on several historical rows. Private files, proof images, parent contacts and bank details are never shown or exported.</p>
-    {ctx.isLoading || q.isLoading ? <SkeletonPage /> : q.isError || ctx.isError ? <ErrorState retry={() => { ctx.refetch(); q.refetch(); }} /> : !rows.length
+    {q.isError || ctx.isError || catalog.isError || choices.isError ? <ErrorState retry={() => { ctx.refetch();catalog.refetch();if(draft.schoolId)schoolTerms.refetch();if(applied)q.refetch(); }} />
+      :ctx.isLoading || q.isLoading || applied===null ? <SkeletonPage /> : !rows.length
       ? <EmptyState icon={Receipt} title="No fee lines match" description="Adjust the search, school ID, term ID or status filter." />
       : <OversightRows rows={rows} />}
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[hsl(var(--border))] p-4 text-sm">
       <span data-testid="text-oversight-range">{total ? `${page * PAGE_SIZE + 1}–${Math.min(total, page * PAGE_SIZE + rows.length)} of ${total}` : '0 rows'}</span>
-      <div className="flex gap-2"><Button variant="outline" disabled={page === 0 || q.isFetching} onClick={() => setPage(p => Math.max(0, p - 1))} testId="button-oversight-prev">Previous</Button>
-        <Button variant="outline" disabled={(page + 1) * PAGE_SIZE >= total || q.isFetching} onClick={() => setPage(p => p + 1)} testId="button-oversight-next">Next</Button></div>
+      <div className="flex gap-2"><Button variant="outline" disabled={applied===null||page === 0 || q.isFetching} onClick={() => setPage(p => Math.max(0, p - 1))} testId="button-oversight-prev">Previous</Button>
+        <Button variant="outline" disabled={applied===null||(page + 1) * PAGE_SIZE >= total || q.isFetching} onClick={() => setPage(p => p + 1)} testId="button-oversight-next">Next</Button></div>
     </div>
   </section>;
 }

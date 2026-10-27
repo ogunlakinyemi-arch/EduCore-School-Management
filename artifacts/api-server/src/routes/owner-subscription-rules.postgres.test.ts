@@ -76,7 +76,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       CREATE TABLE students(id integer PRIMARY KEY,school_id integer,user_id integer,status text DEFAULT 'ACTIVE',
         first_name text DEFAULT 'Fictional',last_name text DEFAULT 'Student',admission_no text DEFAULT 'TEST-ONLY');
       CREATE TABLE schools(id integer PRIMARY KEY,status text DEFAULT 'ACTIVE',name text DEFAULT 'Fictional School');
-      CREATE TABLE academic_sessions(id integer PRIMARY KEY,school_id integer,is_current boolean DEFAULT true,status text DEFAULT 'ACTIVE');
+       CREATE TABLE academic_sessions(id integer PRIMARY KEY,school_id integer,is_current boolean DEFAULT true,status text DEFAULT 'ACTIVE',name text DEFAULT 'Fictional Session');
       CREATE TABLE academic_terms(id integer PRIMARY KEY,school_id integer,academic_session_id integer DEFAULT 11,
         name text DEFAULT 'QA Current',is_current boolean DEFAULT true,status text DEFAULT 'ACTIVE',
         start_date date DEFAULT CURRENT_DATE-10,end_date date DEFAULT CURRENT_DATE+20);
@@ -301,7 +301,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     const missing=await request("/platform/nfc-fee-collection-oversight?schoolId=1&termId=4");
     expect(missing.status).toBe(200);
     expect((await missing.json() as any).items.map((r:any)=>r.status)).toEqual(["NOT_CONFIGURED","NOT_CONFIGURED"]);
-    expect(state.queries-before).toBe(1);
+    expect(state.queries-before).toBe(2);
     await db.query(`INSERT INTO fee_invoices(id,school_id,student_id,student_name_snapshot,admission_no_snapshot,
       academic_term_id,status,total_minor,paid_minor,outstanding_minor)
       VALUES(90,1,31,'Historically Named Student','STUDENT-31',4,'UNPAID',850000,0,850000)`);
@@ -330,6 +330,45 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect((await readNfcFeeCollectionOversight(db,{schoolId:1,termId:4,status:"REVIEW_REQUIRED",limit:100,offset:0})).items[0].status)
       .toBe("REVIEW_REQUIRED");
     expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_obligations")).rows[0].n).toBe(0);
+  });
+  it("loads existing school/term choices read-only and rejects cross-school or nonexistent term filters",async()=>{
+    const endpoint="/platform/nfc-fee-collection-oversight";
+    for(const role of ["PARENT","STUDENT","TEACHER","SCHOOL_ADMIN"])
+      expect((await request(`${endpoint}/filter-options`,"GET",undefined,{"x-role":role})).status).toBe(403);
+    await db.query(`INSERT INTO schools(id,name) VALUES(2,'Other Fictional School');
+      INSERT INTO academic_sessions(id,school_id,name) VALUES(12,2,'Fictional Session');
+      INSERT INTO academic_terms(id,school_id,academic_session_id,name) VALUES(5,2,12,'QA Current');
+      INSERT INTO academic_terms(id,school_id,academic_session_id,name,is_current,status,start_date,end_date)
+        VALUES(6,1,11,'QA Current',false,'COMPLETED','2020-01-01','2020-04-01')`);
+    try{
+      const snapshot=async()=>(await db.query(`SELECT
+        (SELECT jsonb_agg(t ORDER BY id) FROM academic_terms t) AS terms,
+        (SELECT jsonb_agg(s ORDER BY id) FROM academic_sessions s) AS sessions,
+        (SELECT count(*) FROM fee_payments) AS payments,
+        (SELECT count(*) FROM student_direct_live_obligations) AS obligations`)).rows[0];
+      const before=await snapshot();
+      const all=await request(`${endpoint}/filter-options`);
+      expect(all.status).toBe(200);
+      const options=await all.json() as any;
+      expect(options.schools.map((s:any)=>s.id).sort()).toEqual([1,2]);
+      expect(options.terms.filter((t:any)=>t.isCurrent).map((t:any)=>t.id).sort()).toEqual([4,5]);
+      expect(options.terms.find((t:any)=>t.id===6)).toMatchObject({schoolId:1,isCurrent:false,startDate:"2020-01-01"});
+      const scoped=await request(`${endpoint}/filter-options?schoolId=1`);
+      expect((await scoped.json() as any).terms.map((t:any)=>t.id).sort()).toEqual([4,6]);
+      expect((await request(`${endpoint}/filter-options?schoolId=99999`)).status).toBe(400);
+      expect((await request(`${endpoint}/filter-options?schoolId=invalid`)).status).toBe(400);
+      expect((await request(`${endpoint}?schoolId=1&termId=5`)).status).toBe(400);
+      expect((await request(`${endpoint}?termId=99999`)).status).toBe(400);
+      expect((await request(`${endpoint}?schoolId=1&termId=4`)).status).toBe(200);
+      expect((await request(`${endpoint}?termId=5`)).status).toBe(200);
+      await db.query("UPDATE academic_terms SET end_date=CURRENT_DATE-1 WHERE id=5");
+      const expired=await request(`${endpoint}/filter-options?schoolId=2`);
+      expect((await expired.json() as any).terms[0].isCurrent).toBe(false);
+      await db.query("UPDATE academic_terms SET end_date=CURRENT_DATE+20 WHERE id=5");
+      expect(await snapshot()).toEqual(before);
+    }finally{
+      await db.query("DELETE FROM academic_terms WHERE id IN (5,6); DELETE FROM academic_sessions WHERE id=12; DELETE FROM schools WHERE id=2");
+    }
   });
   it("keeps direct LIVE checkout blocked without release evidence or a fresh approved 3200 rule; mock provider is never called",async()=>{
     const mock=vi.fn(async()=>{throw Error("Provider was called");});

@@ -15936,6 +15936,28 @@ export interface OwnerSubscriptionRulesOverview {
   assistance: OwnerSubscriptionRulesOverviewAssistanceItem[];
 }
 
+export interface NfcFeeCollectionSchoolOption {
+  id: number;
+  name: string;
+}
+
+export interface NfcFeeCollectionTermOption {
+  id: number;
+  schoolId: number;
+  schoolName: string;
+  sessionName: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  /** Current active school/session/term and within term dates in Africa/Lagos */
+  isCurrent: boolean;
+}
+
+export interface NfcFeeCollectionFilterOptions {
+  schools: NfcFeeCollectionSchoolOption[];
+  terms: NfcFeeCollectionTermOption[];
+}
+
 export type NfcFeeCollectionRowPaymentsItem = {
   id: number;
   reference: string;
@@ -27243,6 +27265,13 @@ export const GetNfcFeeCollectionOversightStatus = {
   CANCELLED: 'CANCELLED',
   REVIEW_REQUIRED: 'REVIEW_REQUIRED',
 } as const;
+
+export type GetNfcFeeCollectionFilterOptionsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
 
 export type GetDirectStudentLiveReadinessParams = {
 studentId: number;

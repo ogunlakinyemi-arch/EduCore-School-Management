@@ -6195,6 +6195,8 @@ paths:
     $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules"
   /platform/nfc-fee-collection-oversight:
     $ref: "./nfc-fee-collection-oversight.yaml#/paths/~1platform~1nfc-fee-collection-oversight"
+  /platform/nfc-fee-collection-oversight/filter-options:
+    $ref: "./nfc-fee-collection-oversight.yaml#/paths/~1platform~1nfc-fee-collection-oversight~1filter-options"
   /schools/{schoolId}/platform-subscriptions/live-readiness:
     $ref: "./direct-student-live.yaml#/paths/~1schools~1{schoolId}~1platform-subscriptions~1live-readiness"
   /schools/{schoolId}/platform-subscriptions/checkout:
