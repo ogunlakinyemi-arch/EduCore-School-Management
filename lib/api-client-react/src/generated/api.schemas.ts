@@ -15556,6 +15556,32 @@ export interface SchoolSettlementReviewInput {
   note: string;
 }
 
+export type StaffSubscriptionAccessStatus = typeof StaffSubscriptionAccessStatus[keyof typeof StaffSubscriptionAccessStatus];
+
+
+export const StaffSubscriptionAccessStatus = {
+  PAID: 'PAID',
+  UNPAID: 'UNPAID',
+  PENDING: 'PENDING',
+  FAILED: 'FAILED',
+  EXPIRED: 'EXPIRED',
+  REFUNDED: 'REFUNDED',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+} as const;
+
+export interface StaffSubscriptionAccess {
+  schoolId: number;
+  restricted: boolean;
+  status: StaffSubscriptionAccessStatus;
+  /** @nullable */
+  termId: number | null;
+  /** @nullable */
+  subscriptionId: number | null;
+  priceMinor: 200000;
+  renewalPath: string;
+}
+
 export type ExistingProfileInvitationRequestRole = typeof ExistingProfileInvitationRequestRole[keyof typeof ExistingProfileInvitationRequestRole];
 
 
@@ -25986,6 +26012,13 @@ export const ListSchoolTeacherDutyStatus = {
 } as const;
 
 export type ReceiveStudentSubscriptionFlutterwaveWebhookBody = { [key: string]: unknown };
+
+export type GetMyStaffSubscriptionAccessParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
 
 export type GetMyStaffNfcSubscriptionsParams = {
 /**

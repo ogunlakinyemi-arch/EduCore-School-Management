@@ -5957,6 +5957,8 @@ paths:
     $ref: "./student-subscription-billing-feedback.yaml#/paths/~1webhooks~1flutterwave~1student-subscription"
   /subscriptions/{subscriptionId}/payments/{paymentId}:
     $ref: "./student-subscription-billing-feedback.yaml#/paths/~1subscriptions~1{subscriptionId}~1payments~1{paymentId}"
+  /staff-nfc/access:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1access"
   /staff-nfc/subscriptions/me:
     $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1subscriptions~1me"
   /staff-nfc/subscriptions/generate:

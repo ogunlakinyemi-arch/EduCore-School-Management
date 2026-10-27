@@ -56,6 +56,11 @@ class FinalizationMemoryDatabase {
   }
 
   async query(sql: string, values: unknown[] = []) {
+    if (sql.includes("UPDATE staff_nfc_payments") && sql.includes("provider_transaction_id=$1")) {
+      this.payment.providerTransactionId = values[0];
+      this.payment.status = values[4];
+      return { rows: [] };
+    }
     if (sql.includes("SELECT p.id,p.subscription_id AS") && sql.includes("FROM staff_nfc_payments p")) {
       return { rows: [{ ...this.payment }] };
     }
@@ -87,11 +92,13 @@ class FinalizationMemoryDatabase {
             amountMinor: values[13],
             currency: "NGN",
           };
+      if (this.allocations.some(saved => saved.idempotencyKey === allocation.idempotencyKey)) return { rows: [] };
       this.allocations.push(allocation);
       return { rows: [{ id: this.allocations.length }] };
     }
     if (sql.includes("SELECT id FROM staff_nfc_allocations WHERE idempotency_key")) {
-      return { rows: [] };
+      const index = this.allocations.findIndex(a => a.idempotencyKey === values[0]);
+      return { rows: index < 0 ? [] : [{ id: index + 1 }] };
     }
     if (sql.includes("SELECT e.employee_no AS")) {
       return { rows: [{
@@ -178,6 +185,30 @@ class FinalizationMemoryDatabase {
 }
 
 describe("staff NFC route finalization regressions", () => {
+  it("credits the full verified NGN 2,000 to platform only and replay cannot duplicate it", async () => {
+    const database = new FinalizationMemoryDatabase();
+    Object.assign(database.payment, {
+      provider: "FLUTTERWAVE", providerMode: "SANDBOX",
+      schoolShareMinor: 0, platformShareMinor: 200000, partnerShareMinor: 0,
+      ruleSchoolShareMinor: 0, rulePlatformShareMinor: 200000,
+      rulePartnerCommissionMinor: 0, ruleNoPartnerPlatformShareMinor: 200000,
+    });
+    const verified: VerifiedPayment = { reference: database.payment.reference, amountMinor: 200000,
+      currency: "NGN", status: "succeeded", providerTransactionId: "551234" };
+    await completeVerifiedPayment(81, verified, null, database as any);
+    await completeVerifiedPayment(81, verified, null, database as any);
+    expect(database.allocations.filter(a => a.entryType === "CREDIT")).toEqual([
+      expect.objectContaining({ recipientType: "PLATFORM", amountMinor: 200000 }),
+    ]);
+    expect(database.allocations.some(a => ["SCHOOL", "PARTNER"].includes(a.recipientType))).toBe(false);
+  });
+  it.each(["pending", "failed"] as const)("does not credit or activate a verified %s result", async status => {
+    const database = new FinalizationMemoryDatabase();
+    const result = await completeVerifiedPayment(81, { reference: database.payment.reference, amountMinor: 200000,
+      currency: "NGN", status, providerTransactionId: "551234" }, null, database as any);
+    expect(result.activated).toBe(false);
+    expect(database.allocations).toEqual([]);
+  });
   it.each([
     { partnerProfileId: null, expected: [["SCHOOL", 80_000], ["PLATFORM", 120_000]] },
     { partnerProfileId: 81, expected: [["SCHOOL", 80_000], ["PLATFORM", 110_000], ["PARTNER", 10_000]] },

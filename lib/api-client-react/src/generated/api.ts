@@ -371,6 +371,7 @@ import type {
   GetMyPartnerNfcStudentsParams,
   GetMyStaffNfcPartnerCommissionsParams,
   GetMyStaffNfcSubscriptionsParams,
+  GetMyStaffSubscriptionAccessParams,
   GetOfficialCardBrand200,
   GetOfficialCardPreview200,
   GetOfficialCardPreviewParams,
@@ -816,6 +817,7 @@ import type {
   StaffNfcRefundResponse,
   StaffNfcVerificationInput,
   StaffNfcWebhookAck,
+  StaffSubscriptionAccess,
   StatusInput,
   Student,
   StudentCardReplacementRequest,
@@ -50314,6 +50316,90 @@ export function useGetStudentSubscriptionPayment<TData = Awaited<ReturnType<type
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStudentSubscriptionPaymentQueryOptions(subscriptionId,paymentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyStaffSubscriptionAccessUrl = (params: GetMyStaffSubscriptionAccessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/staff-nfc/access?${stringifiedParams}` : `/api/staff-nfc/access`
+}
+
+/**
+ * @summary Read current-term staff operational access without granting role permissions
+ */
+export const getMyStaffSubscriptionAccess = async (params: GetMyStaffSubscriptionAccessParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffSubscriptionAccess> => {
+
+  return customFetch<StaffSubscriptionAccess>(getGetMyStaffSubscriptionAccessUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyStaffSubscriptionAccessQueryKey = (params?: GetMyStaffSubscriptionAccessParams,) => {
+    return [
+    `/api/staff-nfc/access`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyStaffSubscriptionAccessQueryOptions = <TData = Awaited<ReturnType<typeof getMyStaffSubscriptionAccess>>, TError = ErrorType<StaffNfcError | void>>(params: GetMyStaffSubscriptionAccessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStaffSubscriptionAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyStaffSubscriptionAccessQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyStaffSubscriptionAccess>>> = ({ signal }) => getMyStaffSubscriptionAccess(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyStaffSubscriptionAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyStaffSubscriptionAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getMyStaffSubscriptionAccess>>>
+export type GetMyStaffSubscriptionAccessQueryError = ErrorType<StaffNfcError | void>
+
+
+/**
+ * @summary Read current-term staff operational access without granting role permissions
+ */
+
+export function useGetMyStaffSubscriptionAccess<TData = Awaited<ReturnType<typeof getMyStaffSubscriptionAccess>>, TError = ErrorType<StaffNfcError | void>>(
+ params: GetMyStaffSubscriptionAccessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStaffSubscriptionAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyStaffSubscriptionAccessQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

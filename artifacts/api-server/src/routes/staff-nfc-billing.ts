@@ -13,6 +13,7 @@ import {
 } from "../lib/fee-providers/factory";
 import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import { visibleSubscription } from "../lib/subscription-visibility";
+import { isDirectStaffRule, readStaffSubscriptionAccess, staffSubscriptionSchools } from "../services/staff-subscription-access";
 import {
   AuthError,
   assertRoles,
@@ -382,6 +383,18 @@ function subscriptionProjection(row: any, eligibility?: StaffNfcEligibility) {
   };
 }
 
+router.get("/staff-nfc/access", wrap(async (req, res) => {
+  const { schoolId } = parse(schoolQuery, req.query);
+  const context = requester(req);
+  const applicable = staffSubscriptionSchools(context).includes(schoolId);
+  // Scope is authorized even when the additional subscription gate is exempt.
+  if (!isPlatformOwner(context)) assertSchoolAccess(req, schoolId, ["TEACHER", "STAFF", "SCHOOL_ADMIN", "ACCOUNTANT"]);
+  res.set("Cache-Control", "no-store").json(applicable
+    ? await readStaffSubscriptionAccess(pool, context.user.id, schoolId)
+    : { schoolId, restricted: false, status: "NOT_APPLICABLE", termId: null,
+        subscriptionId: null, priceMinor: 200000, renewalPath: "/my-nfc-subscription" });
+}));
+
 router.get("/staff-nfc/subscriptions/me", wrap(async (req, res) => {
   const query = parse(schoolQuery, req.query);
   const { employee } = await findOwnStaffEmployee(pool, req, query.schoolId);
@@ -522,6 +535,9 @@ router.post("/staff-nfc/subscriptions/generate", wrap(async (req, res) => {
 router.post("/finance/staff-nfc/billing-rules", wrap(async (req, res) => {
   ownerFinance(req);
   const rule = parse(ruleInput, req.body, "Billing rule is invalid");
+  if (!isDirectStaffRule(rule)) {
+    throw new AuthError(400, "New Teacher/Staff rules must charge NGN 2,000 entirely to the platform, with no school or BRO allocation.");
+  }
   if (rule.schoolShareMinor + rule.platformShareMinor + rule.partnerCommissionMinor !== rule.priceMinor
       || rule.schoolShareMinor + rule.noPartnerPlatformShareMinor !== rule.priceMinor) {
     throw new AuthError(400, "School, platform, and eligible BRO allocations must exactly balance each branch");
@@ -1020,6 +1036,8 @@ router.post("/staff-nfc/subscriptions/:subscriptionId/checkout", wrap(async (req
       `SELECT s.id,s.employee_id AS "employeeId",s.school_id AS "schoolId",
               s.academic_session_id AS "sessionId",s.academic_term_id AS "termId",
               s.price_minor AS "priceMinor",s.currency,s.status,s.due_date AS "dueDate",
+              s.school_share_minor AS "schoolShareMinor",s.platform_share_minor AS "platformShareMinor",
+              s.partner_share_minor AS "partnerShareMinor",
               e.email,COALESCE(NULLIF(e.email,''),u.email) AS "customerEmail",
               trim(concat_ws(' ',e.first_name,e.middle_name,e.last_name)) AS "customerName"
          FROM staff_nfc_subscriptions s
@@ -1065,6 +1083,13 @@ router.post("/staff-nfc/subscriptions/:subscriptionId/checkout", wrap(async (req
       }
       reservation = saved;
     } else {
+      if (Number(subscription.priceMinor) !== 200000 || subscription.currency !== "NGN"
+          || Number(subscription.schoolShareMinor) !== 0 || Number(subscription.partnerShareMinor) !== 0
+          || Number(subscription.platformShareMinor) !== 200000) {
+        throw new AuthError(409,
+          "This historical staff subscription retains its original billing snapshot. Contact support for a reviewed transition before starting a new payment; no existing checkout or receipt has been changed.",
+          "STAFF_BILLING_TRANSITION_REQUIRED");
+      }
       const pending = await client.query(
         `SELECT id FROM staff_nfc_payments
           WHERE subscription_id=$1 AND status IN ('PENDING','RECONCILIATION_REQUIRED')

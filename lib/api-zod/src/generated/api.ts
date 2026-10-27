@@ -23523,6 +23523,27 @@ export const GetStudentSubscriptionPaymentResponse = zod.object({
 
 
 /**
+ * @summary Read current-term staff operational access without granting role permissions
+ */
+
+
+
+export const GetMyStaffSubscriptionAccessQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetMyStaffSubscriptionAccessResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "restricted": zod.boolean(),
+  "status": zod.enum(['PAID', 'UNPAID', 'PENDING', 'FAILED', 'EXPIRED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'NOT_APPLICABLE']),
+  "termId": zod.number().int().nullable(),
+  "subscriptionId": zod.number().int().nullable(),
+  "priceMinor": zod.literal(200000),
+  "renewalPath": zod.string()
+})
+
+
+/**
  * @summary List only the authenticated staff member's term subscriptions, cards, receipts and recent payments
  */
 

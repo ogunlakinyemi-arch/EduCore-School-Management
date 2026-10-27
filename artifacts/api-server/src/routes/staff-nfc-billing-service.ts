@@ -9,6 +9,7 @@ import {
   type VerifiedPayment,
 } from "../lib/fee-providers";
 import { configuredTestAdapter } from "../lib/fee-providers/factory";
+import { isDirectStaffRule } from "../services/staff-subscription-access";
 
 export const STAFF_NFC_PRODUCT = "TEACHER_STAFF_NFC_EID" as const;
 export const STAFF_NFC_CURRENCY = "NGN" as const;
@@ -307,6 +308,19 @@ export async function generateStaffNfcTermSubscriptions(
   );
   const eligibleCount = employeeRows.rows.length;
   if (!eligibleCount) return { eligibleCount: 0, generatedCount: 0, unchangedCount: 0 };
+  const existing = await client.query<{ employeeId: number }>(
+    `SELECT employee_id AS "employeeId" FROM staff_nfc_subscriptions
+      WHERE school_id=$1 AND academic_session_id=$2 AND academic_term_id=$3`,
+    [schoolId, academicSessionId, academicTermId],
+  );
+  if (employeeRows.rows.every(employee => existing.rows.some(saved => Number(saved.employeeId) === Number(employee.id)))) {
+    return { eligibleCount, generatedCount: 0, unchangedCount: eligibleCount };
+  }
+  if (!isDirectStaffRule(rule)) {
+    throw new StaffNfcDomainError(409,
+      "An effective NGN 2,000 platform-only staff billing rule is required. Existing subscriptions and payment snapshots are unchanged.",
+      "DIRECT_STAFF_RULE_REQUIRED");
+  }
 
   const inserted = await client.query<{ id: number }>(
     `INSERT INTO staff_nfc_subscriptions (
@@ -341,8 +355,9 @@ export async function generateStaffNfcTermSubscriptions(
       createdBy,
       JSON.stringify(employeeRows.rows.map((employee) => ({
         id: Number(employee.id),
-        partner_profile_id: employee.partnerProfileId == null ? null : Number(employee.partnerProfileId),
-        attribution_id: employee.attributionId == null ? null : Number(employee.attributionId),
+        // New staff subscriptions are platform-only, not BRO commission events.
+        partner_profile_id: null,
+        attribution_id: null,
       }))),
     ],
   );

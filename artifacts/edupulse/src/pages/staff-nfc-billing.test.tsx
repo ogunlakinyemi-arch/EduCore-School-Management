@@ -2,12 +2,21 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import {
-  AllocationBreakdown, canPay, isVerifiedPaid, nairaMinor, parseCallbackParams, parseNairaToMinor, safeCheckoutUrl, validateRuleAmounts,
+  AllocationBreakdown, canPay, hasDirectStaffSnapshot, isVerifiedPaid, nairaMinor, parseCallbackParams, parseNairaToMinor, safeCheckoutUrl, validateDirectStaffRule, validateRuleAmounts,
 } from './staff-nfc-billing';
 
 const rule = { priceMinor: 200000, schoolShareMinor: 80000, platformShareMinor: 110000, partnerCommissionMinor: 10000, noPartnerPlatformShareMinor: 120000 };
 
 describe('staff NFC billing helpers', () => {
+  it('accepts only the fixed platform-only rule for new subscriptions while retaining historic validation', () => {
+    const direct = { priceMinor: 200000, schoolShareMinor: 0, platformShareMinor: 200000,
+      partnerCommissionMinor: 0, noPartnerPlatformShareMinor: 200000 };
+    expect(validateDirectStaffRule(direct)).toEqual([]);
+    expect(validateDirectStaffRule(rule)).not.toEqual([]);
+    expect(validateDirectStaffRule({ ...direct, priceMinor: 320000 })).not.toEqual([]);
+    expect(hasDirectStaffSnapshot({ ...direct, partnerShareMinor: 0 })).toBe(true);
+    expect(hasDirectStaffSnapshot({ ...direct, partnerShareMinor: 10000 })).toBe(false);
+  });
   it('formats money exactly', () => {
     expect(nairaMinor(200000)).toBe('₦2,000.00');
     expect(parseNairaToMinor('2000.5')).toBe(200050);

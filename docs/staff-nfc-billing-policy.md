@@ -1,5 +1,98 @@
 # Teacher/Staff NFC E-ID billing policy
 
+## Current platform-only policy
+
+The latest requested Teacher/Staff subscription price is **NGN 2,000 per employee
+per academic term**, paid directly to Yetenia through the existing Flutterwave
+checkout. New billing rules must have school share 0, BRO share 0, and platform
+share 200,000 minor units in both attribution branches. Staff subscriptions do
+not use the student's NGN 3,200 price. No provider subaccounts/splits are supplied
+by the staff checkout initializer.
+
+The existing rule/version, subscription, payment, allocation, receipt and refund
+models are reused; no schema change or migration is necessary. An Owner must
+append an effective-dated platform-only rule through the existing Billing Rules
+screen before generating new subscriptions. No rule was inserted or changed in
+an application database during this implementation. New subscriptions carry no
+BRO attribution. Existing already-issued snapshots, receipts, allocations and
+in-flight checkouts are not repriced or rewritten. Re-generating an already
+complete term remains a no-op. Starting a fresh checkout against an old
+non-platform-only snapshot is blocked pending a separately reviewed transition;
+existing reference verification and historical refund/reconciliation remain intact.
+
+Verified success alone creates the platform credit. Pending/failed outcomes
+create no revenue/entitlement. Actual provider fees remain a separate platform
+expense, not a school allocation. Existing frozen historic allocations remain
+necessary for verification of previously initiated payments and refund reversals.
+
+### Explicit operational access policy
+
+An additional staff subscription check is applied inside the existing
+authentication middleware to **writes** under academic, curriculum, library,
+operations, transport, school attendance, and school lesson-note/curriculum
+paths. Existing role/resource/tenant checks still run and never acquire new
+permissions. The school in the URL takes precedence over caller query/body
+school scope. A same-school School Admin/Accountant, global Owner, or a
+non-Teacher/Staff role is not subject to this added check. An unrelated school's
+privileged role does not exempt a teacher in another school.
+
+Read-only/history routes, own account, renewal/payment verification/status,
+receipts, inbox and support stay available. Family routes remain their existing
+authorization paths. The dashboard shows renewal status and disables forms on
+operational pages; the API check is authoritative. It queries fresh current-term
+and active employment evidence on every protected request. A bare subscription
+PAID flag is insufficient: a matching PAID Flutterwave payment with provider
+identity, paid timestamp, amount/currency and employee/school/term is required.
+MOCK payments never unlock this staff dashboard policy, and SANDBOX payments
+cannot unlock Production. This does not add LIVE staff payment support.
+
+Expiry/no current term, an unpaid new term, pending, failed or refunded payment
+restricts operational changes. Verification restores access on the next server
+request; the UI invalidates access after verification and refreshes every 15
+seconds/on focus. Infrastructure failure denies protected writes with 503,
+without blocking renewal, account access, help or read-only records.
+
+The source changes have not been loaded by restarting any workflow. No payment,
+application-database SQL, secret change, Production change or deployment is part
+of this implementation. Signed-in browser acceptance remains unverified.
+
+### Checks actually executed
+
+- API contract regeneration and composite-library typecheck: passed.
+- API and EduCore frontend typechecks: passed.
+- Staff policy/access/finalization tests: 77 passed across three suites.
+- Employee NFC and existing school subscription policy regressions: 33 passed.
+- Existing student webhook regression suite: 15 passed with the hosted feature
+  disabled **for that test process only** to exercise its legacy checkout path.
+  The initial run with the inherited hosted flag enabled returned the correct
+  hosted-checkout-required refusal rather than the legacy test's expected code.
+  No saved environment setting was changed.
+- Staff frontend and existing subscription-banner tests: 27 passed.
+- Actual PostgreSQL staff access predicate tests: 14 passed on a separately
+  verified, credential-free private disposable cluster. The controller stopped
+  the server and removed its temporary directory.
+- `git diff --check`: passed.
+- App screenshot attempt failed because the services are stopped; no signed-in
+  browser test or runtime-provider acceptance is claimed.
+
+Reproduce the native SQL check from the workspace root:
+
+```sh
+NODE_REAL=$(node -p 'process.execPath')
+env -i PATH="$PATH" HOME=/tmp LANG=C.UTF-8 NODE_ENV=test \
+  "$NODE_REAL" scripts/src/staff-subscription-access-native-check.mjs
+```
+
+This fixture proves the real authorization query against fictional minimal
+tables. It does **not** prove full application-schema installation, Production
+permissions, a provider transaction or live deployment readiness.
+
+## Historical policy retained for existing snapshots
+
+The allocation amounts below describe the **earlier** versioned policy, not new
+staff billing. They must not be used to create new rules or reinterpret the
+current student collection request.
+
 This policy supplements `attached_assets/Pasted-Yemait-EduCore-Consolidated-Testing-Feedback-Correction_1790850219635.txt`. It records the user's confirmed billing decisions, not provider delivery or settlement evidence.
 
 ## Confirmed amounts and fee policy

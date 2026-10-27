@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { AuthError, type UserContext } from "../middlewares/auth";
 import { assertSubscriptionAccess } from "./subscription-enforcement";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
+import { isStaffSubscriptionOperation, readStaffSubscriptionAccess, staffSubscriptionSchools } from "./staff-subscription-access";
 
 /**
  * Supplement existing authorization, never replace it. Family identity is
@@ -24,6 +25,24 @@ async function enforceResolvedSubscription(req: Request, context: UserContext) {
   const path = req.originalUrl.split("?")[0].replace(/^\/api/, "");
   const roles = context.roles.filter(role => role.status === "ACTIVE");
   if (roles.some(role => role.role === "PLATFORM_OWNER")) return;
+  if (isStaffSubscriptionOperation(path, req.method)) {
+    // The school encoded in the URL is authoritative over query/body scope.
+    // Existing handlers still validate resource ownership and their own RBAC.
+    const schoolInPath = path.match(/^\/schools\/(\d+)(?:\/|$)/)?.[1];
+    const target = Number(schoolInPath ?? req.query?.schoolId ?? req.body?.schoolId ?? req.body?.scope?.schoolId);
+    const scopes = staffSubscriptionSchools(context);
+    const targets = Number.isSafeInteger(target) && target > 0 ? scopes.filter(id => id === target) : scopes;
+    for (const schoolId of targets) {
+      let access;
+      try { access = await readStaffSubscriptionAccess(pool, context.user.id, schoolId); }
+      catch {
+        throw new AuthError(503, "Staff subscription status is temporarily unavailable. Account, payments and support remain available.", "STAFF_SUBSCRIPTION_UNAVAILABLE");
+      }
+      if (access.restricted) throw new AuthError(403,
+        "A verified current-term staff subscription is required for this operation. Renew from My NFC Subscription; account, payments and read-only records remain available.",
+        "STAFF_SUBSCRIPTION_REQUIRED");
+    }
+  }
   const protectedFamilyPath = /\/(?:attendance|assignments|results|report-cards|curriculum|timetable)(?:\/|$)/.test(path);
   const communicationWrite = req.method === "POST" && /^\/communication\/(?:parent\/threads|threads)/.test(path);
   let familyAccessChecked = false;

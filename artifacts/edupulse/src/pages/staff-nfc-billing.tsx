@@ -42,6 +42,11 @@ export function validateRuleAmounts(a: RuleAmounts): string[] {
   if (a.schoolShareMinor + a.noPartnerPlatformShareMinor !== a.priceMinor) errors.push('Without a BRO, school + platform must equal the price.');
   return errors;
 }
+export function validateDirectStaffRule(a: RuleAmounts): string[] {
+  return a.priceMinor === 200000 && a.schoolShareMinor === 0 && a.platformShareMinor === 200000 &&
+    a.partnerCommissionMinor === 0 && a.noPartnerPlatformShareMinor === 200000
+    ? [] : ['New Teacher/Staff subscriptions must be ₦2,000 platform revenue only, with no school or BRO share.'];
+}
 /** Checkout redirect only to a server-provided https URL (http allowed for localhost sandbox). */
 export function safeCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -63,6 +68,8 @@ export function parseCallbackParams(search: string): CallbackParams {
 /** A subscription counts as paid only when the server says PAID. Callback params never do. */
 export const isVerifiedPaid = (s?: Pick<StaffNfcSubscription, 'status'> | null) => s?.status === 'PAID';
 export const canPay = (s?: Pick<StaffNfcSubscription, 'status'> | null) => !!s && ['UNPAID', 'FAILED', 'CANCELLED', 'PENDING'].includes(s.status);
+export const hasDirectStaffSnapshot = (s: Pick<StaffNfcSubscription, 'priceMinor' | 'schoolShareMinor' | 'platformShareMinor' | 'partnerShareMinor'>) =>
+  s.priceMinor === 200000 && s.schoolShareMinor === 0 && s.platformShareMinor === 200000 && s.partnerShareMinor === 0;
 export const allocationLabel: Record<string, string> = {
   SCHOOL: 'School', PLATFORM: 'Platform', PARTNER: 'BRO', REVERSAL: 'Reversal', PLATFORM_PROVIDER_FEE: 'Provider fee (platform expense)',
 };
@@ -193,6 +200,7 @@ export function MyStaffNfcSubscriptionPage() {
   const verifiedKey = useRef<string | null>(null);
 
   const refetchOwn = () => {
+    qc.invalidateQueries({ predicate: q => q.queryKey[0] === '/api/staff-nfc/access' });
     qc.invalidateQueries({ queryKey: getGetMyStaffNfcSubscriptionsQueryKey(params) });
     qc.invalidateQueries({ queryKey: getGetMyEmployeeNfcProfileQueryKey() });
     qc.invalidateQueries({ predicate: q => typeof q.queryKey[0] === 'string' && /^\/api\/staff-nfc\/payments\/\d+\/receipt$/.test(q.queryKey[0]) });
@@ -251,10 +259,11 @@ export function MyStaffNfcSubscriptionPage() {
               <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="display-font text-4xl font-bold tabular-nums">{nairaMinor(cur.priceMinor)}</div><Tone value={cur.status} /></div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3"><Info label="Due date" value={date(cur.dueDate)} /><Info label="Paid on" value={date(cur.paidAt)} /><Info label="Card service" value={cur.isEligibleForNfc ? 'Allowed' : 'Restricted'} /></div>
               <div className="mt-6 flex flex-wrap gap-3">
-                {canPay(cur) && <Button onClick={() => pay(cur)} disabled={checkout.isPending} testId="button-pay-subscription"><CreditCard size={16} />{checkout.isPending ? 'Opening checkout...' : cur.status === 'PENDING' ? 'Continue payment' : 'Pay for this term'}</Button>}
+                {canPay(cur) && hasDirectStaffSnapshot(cur) && <Button onClick={() => pay(cur)} disabled={checkout.isPending} testId="button-pay-subscription"><CreditCard size={16} />{checkout.isPending ? 'Opening checkout...' : cur.status === 'PENDING' ? 'Continue payment' : 'Pay for this term'}</Button>}
                 {cur.latestPayment && isVerifiedPaid(cur) && <Button variant="outline" onClick={() => setReceiptId(cur.latestPayment!.id)} testId="button-view-receipt"><ReceiptText size={16} />Receipt</Button>}
               </div>
               {cur.status === 'PENDING' && <p className={`mt-4 ${note}`}>A payment is awaiting provider confirmation. This page refreshes automatically.</p>}
+              {canPay(cur) && !hasDirectStaffSnapshot(cur) && <p role="status" className={`mt-4 ${note}`}>This subscription retains a historical allocation rule. New Teacher/Staff payments are ₦2,000 directly to Yetenia, with no school or BRO share. Contact support for a reviewed transition; do not pay again while an earlier checkout needs reconciliation. Existing payment references, verification and receipts remain available.</p>}
             </> : <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">No subscription has been generated for this term yet. Your school administrator generates term subscriptions.</p>}
           </section>
           <section className="space-y-4">
@@ -437,18 +446,18 @@ export function StaffNfcBillingRulesPage() {
   const params = { status: 'all' as const };
   const q = useListStaffNfcBillingRules(params, { query: { enabled: allowed, queryKey: getListStaffNfcBillingRulesQueryKey(params), ...FRESH } });
   const create = useCreateStaffNfcBillingRule();
-  const [f, setF] = useState({ price: '', school: '', platform: '', partner: '', noPartner: '', effectiveAt: '' });
+  const [f, setF] = useState({ price: '2000', school: '0', platform: '2000', partner: '0', noPartner: '2000', effectiveAt: '' });
   const [fail, setFail] = useState<string[]>([]);
   const [ok, setOk] = useState('');
   const amounts = useMemo(() => ({ priceMinor: parseNairaToMinor(f.price) ?? NaN, schoolShareMinor: parseNairaToMinor(f.school) ?? NaN, platformShareMinor: parseNairaToMinor(f.platform) ?? NaN, partnerCommissionMinor: parseNairaToMinor(f.partner) ?? NaN, noPartnerPlatformShareMinor: parseNairaToMinor(f.noPartner) ?? NaN }), [f]);
-  const live = validateRuleAmounts(amounts);
+  const live = validateDirectStaffRule(amounts);
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const errs = validateRuleAmounts(amounts);
+    const errs = validateDirectStaffRule(amounts);
     if (!f.effectiveAt || Number.isNaN(new Date(f.effectiveAt).getTime())) errs.push('Choose an effective date and time.');
     if (errs.length) { setFail(errs); return; }
     create.mutate({ data: { product: 'TEACHER_STAFF_NFC_EID', billingFrequency: 'ACADEMIC_TERM', currency: 'NGN', ...amounts, effectiveAt: new Date(f.effectiveAt).toISOString() } }, {
-      onSuccess: r => { setFail([]); setOk(`Version ${r.version} created. It applies only to subscriptions generated on or after ${date(r.effectiveAt)}; existing subscriptions keep their original amounts.`); setF({ price: '', school: '', platform: '', partner: '', noPartner: '', effectiveAt: '' }); qc.invalidateQueries({ queryKey: getListStaffNfcBillingRulesQueryKey() }); },
+      onSuccess: r => { setFail([]); setOk(`Version ${r.version} created. It applies only to subscriptions generated on or after ${date(r.effectiveAt)}; existing subscriptions keep their original amounts.`); setF({ price: '2000', school: '0', platform: '2000', partner: '0', noPartner: '2000', effectiveAt: '' }); qc.invalidateQueries({ queryKey: getListStaffNfcBillingRulesQueryKey() }); },
       onError: er => { setOk(''); setFail([errMsg(er)]); },
     });
   };
@@ -459,7 +468,7 @@ export function StaffNfcBillingRulesPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <form onSubmit={submit} className="panel space-y-4 p-6" data-testid="form-billing-rule">
           <div className="eyebrow">New version</div>
-          <p className={note} data-testid="rule-status-note">Rules are immutable. Status is assigned by the server when a version is created and is shown in history; historical versions are never edited.</p>
+          <p className={note} data-testid="rule-status-note">New Teacher/Staff rules are fixed at ₦2,000, entirely platform revenue, with no school or BRO share. Rules are immutable. Status is assigned by the server; historical versions are never edited.</p>
           <div className="grid grid-cols-3 gap-2 text-xs font-bold"><Info label="Product" value="Teacher/Staff NFC E-ID" className="col-span-3 sm:col-span-1" /><Info label="Frequency" value="Per academic term" /><Info label="Currency" value="NGN" /></div>
           <Field label="Price (₦)"><input className={entry} inputMode="decimal" value={f.price} onChange={set('price')} data-testid="input-rule-price" /></Field>
           <Field label="School share (₦)"><input className={entry} inputMode="decimal" value={f.school} onChange={set('school')} data-testid="input-rule-school" /></Field>

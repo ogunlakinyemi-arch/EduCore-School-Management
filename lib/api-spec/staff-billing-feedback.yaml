@@ -1,4 +1,21 @@
 paths:
+  /staff-nfc/access:
+    get:
+      operationId: getMyStaffSubscriptionAccess
+      tags: [finance]
+      summary: Read current-term staff operational access without granting role permissions
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Fresh private subscription decision; account, renewal, support and historical reads remain accessible
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffSubscriptionAccess" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503":
+          description: Subscription infrastructure unavailable; never inferred as paid
   /staff-nfc/subscriptions/me:
     get:
       operationId: getMyStaffNfcSubscriptions
@@ -353,6 +370,17 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/StaffNfcError" }
   schemas:
+    StaffSubscriptionAccess:
+      type: object
+      required: [schoolId, restricted, status, termId, subscriptionId, priceMinor, renewalPath]
+      properties:
+        schoolId: { type: integer }
+        restricted: { type: boolean }
+        status: { type: string, enum: [PAID, UNPAID, PENDING, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED, NOT_APPLICABLE] }
+        termId: { type: [integer, "null"] }
+        subscriptionId: { type: [integer, "null"] }
+        priceMinor: { type: integer, const: 200000 }
+        renewalPath: { type: string }
     StaffNfcError:
       type: object
       required: [error]

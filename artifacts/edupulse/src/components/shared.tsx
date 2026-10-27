@@ -8,6 +8,7 @@ import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { PwaInstall } from '@/components/pwa-install';
 import { SubscriptionAccessBanner } from '@/components/subscription-access-banner';
+import { StaffSubscriptionGuard } from '@/components/staff-subscription-guard';
 import { usePhase9List } from '@/hooks/use-phase9-api';
 import { 
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
@@ -303,7 +304,11 @@ export function Shell({ children }: { children: ReactNode }) {
         <main className="nav-grid w-full min-w-0 max-w-full flex-1 p-4 sm:p-5 md:p-8">
           <div className="mx-auto w-full min-w-0 max-w-[1440px]">
             {!isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && (studentRole || roles.includes('TEACHER') || roles.includes('PARENT')) && <SubscriptionAccessBanner audience={studentRole ? 'student' : roles.includes('TEACHER') ? 'teacher' : 'parent'} />}
-            {children}
+            <StaffSubscriptionGuard schoolId={schoolId} actorId={context?.user?.id} path={location}
+              active={!isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && !financeRole &&
+                context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && ['TEACHER', 'STAFF'].includes(r.role)) === true}>
+              {children}
+            </StaffSubscriptionGuard>
           </div>
         </main>
       </div>

@@ -19,7 +19,7 @@ vi.mock('@/components/shared', async () => {
 });
 vi.mock('@workspace/api-client-react', () => {
   const idle = st.idle;
-  const sub = { id: 5, status: 'UNPAID', priceMinor: 200000, dueDate: '2025-01-10', paidAt: null, cardStatus: 'NONE', isEligibleForNfc: false, sessionName: '2024/25', termName: 'First', latestPayment: null };
+  const sub = { id: 5, status: 'UNPAID', priceMinor: 200000, schoolShareMinor: 0, platformShareMinor: 200000, partnerShareMinor: 0, dueDate: '2025-01-10', paidAt: null, cardStatus: 'NONE', isEligibleForNfc: false, sessionName: '2024/25', termName: 'First', latestPayment: null };
   const k = () => ['k'];
   return {
     useGetAuthorizedContext: () => ({ data: { isPlatformOwner: st.owner, roles: st.roles }, isLoading: false }),

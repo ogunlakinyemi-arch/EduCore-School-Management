@@ -11,6 +11,7 @@ import {
   type StaffNfcSqlExecutor,
   verifyFlutterwaveStaffWebhookSignature,
 } from "./staff-nfc-billing-service";
+import { STAFF_DIRECT_RULE } from "../services/staff-subscription-access";
 
 const noPartnerRule = {
   priceMinor: 200_000,
@@ -30,6 +31,35 @@ function mockExecutor(handler: (sql: string, values?: readonly unknown[]) => Pro
 }
 
 describe("staff NFC immutable allocation and provider policies", () => {
+  it("uses a platform-only rule for new term generation and strips legacy school attribution", async () => {
+    let inserted: readonly unknown[] = [];
+    const executor = mockExecutor((sql, values) => {
+      if (sql.includes("FROM academic_terms t")) return { rows: [{ schoolId: 20, sessionId: 30, dueDate: "2026-12-31", eligible: true }] };
+      if (sql.includes("FROM staff_nfc_billing_rules")) return { rows: [{ ...STAFF_DIRECT_RULE, id: 2, version: 2, currency: "NGN" }] };
+      if (sql.includes("FROM employees e")) return { rows: [{ id: 10, partnerProfileId: 99, attributionId: 88 }] };
+      if (sql.includes("INSERT INTO staff_nfc_subscriptions")) { inserted = values!; return { rows: [{ id: 3 }] }; }
+      return { rows: [] };
+    });
+    expect(await generateStaffNfcTermSubscriptions(executor, 20, 30, 40, 50))
+      .toEqual({ eligibleCount: 1, generatedCount: 1, unchangedCount: 0 });
+    expect(inserted.slice(6, 11)).toEqual([200000, 0, 200000, 200000, 0]);
+    expect(JSON.parse(String(inserted[14]))).toEqual([{ id: 10, partner_profile_id: null, attribution_id: null }]);
+  });
+  it("preserves an already-issued legacy term but refuses new issuance under its old school-share rule", async () => {
+    let existing = true;
+    const executor = mockExecutor(sql => {
+      if (sql.includes("FROM academic_terms t")) return { rows: [{ schoolId: 20, sessionId: 30, dueDate: "2026-12-31", eligible: true }] };
+      if (sql.includes("FROM staff_nfc_billing_rules")) return { rows: [{ ...noPartnerRule, id: 2, version: 1, currency: "NGN" }] };
+      if (sql.includes("FROM employees e")) return { rows: [{ id: 10, partnerProfileId: null, attributionId: null }] };
+      if (sql.includes("FROM staff_nfc_subscriptions")) return { rows: existing ? [{ employeeId: 10 }] : [] };
+      throw new Error("No writes allowed in this preservation fixture");
+    });
+    expect(await generateStaffNfcTermSubscriptions(executor, 20, 30, 40, 50))
+      .toEqual({ eligibleCount: 1, generatedCount: 0, unchangedCount: 1 });
+    existing = false;
+    await expect(generateStaffNfcTermSubscriptions(executor, 20, 30, 40, 50))
+      .rejects.toMatchObject({ code: "DIRECT_STAFF_RULE_REQUIRED" });
+  });
   it("balances the no-Partner NGN 2,000 split", () => {
     expect(calculateStaffNfcAllocations(noPartnerRule, null)).toEqual([
       { recipientType: "SCHOOL", recipientId: null, amountMinor: 80_000 },
