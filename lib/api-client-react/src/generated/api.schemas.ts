@@ -15936,6 +15936,78 @@ export interface OwnerSubscriptionRulesOverview {
   assistance: OwnerSubscriptionRulesOverviewAssistanceItem[];
 }
 
+export type NfcFeeCollectionRowPaymentsItem = {
+  id: number;
+  reference: string;
+  /** @nullable */
+  receiptNumber: string | null;
+  method: string;
+  date: string;
+  amountMinor: number;
+  status: string;
+  /** @nullable */
+  recordedBy: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+};
+
+export interface NfcFeeCollectionRow {
+  /** @nullable */
+  invoiceId: number | null;
+  /** @nullable */
+  lineId: number | null;
+  schoolId: number;
+  schoolName: string;
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  termId: number;
+  termName: string;
+  /** @nullable */
+  feeName: string | null;
+  /** @nullable */
+  amountMinor: number | null;
+  paidMinor: number;
+  currency: string;
+  invoiceStatus: string;
+  status: string;
+  payments: NfcFeeCollectionRowPaymentsItem[];
+}
+
+export interface NfcFeeCollectionOversight {
+  total: number;
+  limit: number;
+  offset: number;
+  items: NfcFeeCollectionRow[];
+}
+
+export interface DirectStudentScope {
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  termId: number;
+}
+
+export interface DirectStudentAssistanceInput {
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  termId: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  requestNote: string;
+}
+
+export interface DirectStudentAttempt {
+  id: number;
+  reference: string;
+  state: string;
+  /** @nullable */
+  checkoutUrl: string | null;
+}
+
 export type AccountApplicationInput4b96100ApplicantType = typeof AccountApplicationInput4b96100ApplicantType[keyof typeof AccountApplicationInput4b96100ApplicantType];
 
 
@@ -27131,4 +27203,70 @@ export const GetLessonNoteMonitoringStatus = {
   ARCHIVED: 'ARCHIVED',
   MISSING: 'MISSING',
 } as const;
+
+export type GetNfcFeeCollectionOversightParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @maxLength 100
+ */
+search?: string;
+status?: GetNfcFeeCollectionOversightStatus;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetNfcFeeCollectionOversightStatus = typeof GetNfcFeeCollectionOversightStatus[keyof typeof GetNfcFeeCollectionOversightStatus];
+
+
+export const GetNfcFeeCollectionOversightStatus = {
+  FULLY_PAID: 'FULLY_PAID',
+  UNPAID: 'UNPAID',
+  PENDING_EVIDENCE: 'PENDING_EVIDENCE',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  REJECTED: 'REJECTED',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+  CANCELLED: 'CANCELLED',
+  REVIEW_REQUIRED: 'REVIEW_REQUIRED',
+} as const;
+
+export type GetDirectStudentLiveReadinessParams = {
+studentId: number;
+termId: number;
+};
+
+export type GetDirectStudentLiveReadiness200 = {
+  ready: boolean;
+  blockers: string[];
+  amountMinor: number;
+  schoolShareMinor: number;
+  broShareMinor: number;
+  currency: string;
+  mode: string;
+  providerValidated: boolean;
+};
+
+export type RequestDirectStudentAssistance201 = {
+  id: number;
+  status: string;
+};
+
+export type VerifyDirectStudentLiveCallbackParams = {
+tx_ref: string;
+transaction_id: string;
+};
 

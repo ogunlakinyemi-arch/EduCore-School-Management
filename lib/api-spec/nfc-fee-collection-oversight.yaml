@@ -1,0 +1,67 @@
+paths:
+  /platform/nfc-fee-collection-oversight:
+    get:
+      operationId: getNfcFeeCollectionOversight
+      tags: [finance]
+      summary: Read-only Owner oversight of school NFC fee collection
+      parameters:
+        - {in: query, name: schoolId, schema: {type: integer, minimum: 1}}
+        - {in: query, name: termId, schema: {type: integer, minimum: 1}}
+        - {in: query, name: search, schema: {type: string, maxLength: 100}}
+        - {in: query, name: status, schema: {type: string, enum: [FULLY_PAID, UNPAID, PENDING_EVIDENCE, UNDER_REVIEW, REJECTED, PARTIALLY_PAID, NOT_CONFIGURED, CANCELLED, REVIEW_REQUIRED]}}
+        - {in: query, name: limit, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {in: query, name: offset, schema: {type: integer, minimum: 0, default: 0}}
+      responses:
+        '200':
+          description: Fee line snapshots and minimal payment metadata, never private receipt files
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NfcFeeCollectionOversight'}
+        '403': {description: Active global Owner required}
+        '503': {description: Evidence unavailable}
+components:
+  schemas:
+    NfcFeeCollectionOversight:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        total: {type: integer}
+        limit: {type: integer}
+        offset: {type: integer}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/NfcFeeCollectionRow'}
+    NfcFeeCollectionRow:
+      type: object
+      required: [invoiceId, lineId, schoolId, schoolName, studentId, studentName, admissionNo, termId, termName, feeName, amountMinor, paidMinor, currency, invoiceStatus, status, payments]
+      properties:
+        invoiceId: {type: [integer, 'null']}
+        lineId: {type: [integer, 'null']}
+        schoolId: {type: integer}
+        schoolName: {type: string}
+        studentId: {type: integer}
+        studentName: {type: string}
+        admissionNo: {type: string}
+        termId: {type: integer}
+        termName: {type: string}
+        feeName: {type: [string, 'null']}
+        amountMinor: {type: [integer, 'null']}
+        paidMinor: {type: integer}
+        currency: {type: string}
+        invoiceStatus: {type: string}
+        status: {type: string}
+        payments:
+          type: array
+          items:
+            type: object
+            required: [id, reference, receiptNumber, method, date, amountMinor, status, recordedBy, reviewedBy]
+            properties:
+              id: {type: integer}
+              reference: {type: string}
+              receiptNumber: {type: [string, 'null']}
+              method: {type: string}
+              date: {type: string}
+              amountMinor: {type: integer}
+              status: {type: string}
+              recordedBy: {type: [string, 'null']}
+              reviewedBy: {type: [string, 'null']}

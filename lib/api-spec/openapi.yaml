@@ -6193,6 +6193,18 @@ paths:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1reminders"
   /platform/subscription-payment-rules:
     $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules"
+  /platform/nfc-fee-collection-oversight:
+    $ref: "./nfc-fee-collection-oversight.yaml#/paths/~1platform~1nfc-fee-collection-oversight"
+  /schools/{schoolId}/platform-subscriptions/live-readiness:
+    $ref: "./direct-student-live.yaml#/paths/~1schools~1{schoolId}~1platform-subscriptions~1live-readiness"
+  /schools/{schoolId}/platform-subscriptions/checkout:
+    $ref: "./direct-student-live.yaml#/paths/~1schools~1{schoolId}~1platform-subscriptions~1checkout"
+  /schools/{schoolId}/platform-subscriptions/assistance:
+    $ref: "./direct-student-live.yaml#/paths/~1schools~1{schoolId}~1platform-subscriptions~1assistance"
+  /platform/subscription-payment-assistance/{id}/checkout:
+    $ref: "./direct-student-live.yaml#/paths/~1platform~1subscription-payment-assistance~1{id}~1checkout"
+  /flutterwave/direct-student/callback:
+    $ref: "./direct-student-live.yaml#/paths/~1flutterwave~1direct-student~1callback"
   /platform/subscription-payment-rules/{ruleId}:
     $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}"
   /platform/subscription-payment-rules/{ruleId}/preview:

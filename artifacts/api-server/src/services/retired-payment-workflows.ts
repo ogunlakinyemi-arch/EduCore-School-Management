@@ -8,6 +8,7 @@ export function retiredPaymentWorkflow(path: string, method: string): boolean {
   if (/^\/hosted-payments(?:\/|$)/.test(p) || /^\/flutterwave\/split-/.test(p)) return true;
   if (/^\/flutterwave\/live\/school-subaccounts(?:\/|$)/.test(p) ||
       /^\/platform\/flutterwave\/live\/school-subaccounts(?:\/|$)/.test(p)) return true;
+  if(/^\/schools\/\d+\/finance\/live-subaccount-onboarding(?:\/|$)/.test(p))return true;
   if (!["POST","PUT","PATCH","DELETE"].includes(method.toUpperCase())) return false;
   return /^\/schools\/\d+\/finance\/(?:live-subaccount-onboarding|payment-settlement)(?:\/|$)/.test(p) ||
     /^\/student-nfc\/assisted-requests(?:\/|$)/.test(p) ||

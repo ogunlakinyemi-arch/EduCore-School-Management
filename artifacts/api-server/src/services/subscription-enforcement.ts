@@ -8,6 +8,7 @@ import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import { hostedLiveSelected, readHostedSubscriptionCoverage } from "./hosted-subscription-coverage";
 import { assertManualSchoolUnlocked, readManualSchoolState, readSubscriptionScopeCounts } from "./school-subscription-lock";
 import { readStudentTermPlatformAccess } from "./student-platform-access";
+import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
 import {
   assertLiveApplicationContext,readLiveSchoolSubscriptionStudents,releasedLiveApplicationContext,
   type LiveApplicationContext,
@@ -105,6 +106,9 @@ export async function assertSubscriptionAccess(schoolId: number, studentId?: num
   if(platformAccess.restricted)throw new AuthError(platformAccess.status==="UNAVAILABLE"?503:403,
     "A verified platform payment for this student and academic term is required. A school fee, transfer claim or receipt upload is not platform payment.",
     "STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED");
+  // Fresh direct proof and the manual lock above supersede an old split-era
+  // computed restriction. Card/UID/device checks remain in the caller.
+  if(directLiveConfiguration().ready)return;
   let snapshot: EnforcementSnapshot;
   try { snapshot = await readSchoolSubscription(db, schoolId,live); }
   catch (error) {

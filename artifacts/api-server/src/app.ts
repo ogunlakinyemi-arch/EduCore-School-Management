@@ -7,6 +7,7 @@ import express, {
 import cors from "cors";
 import { hostedManualPaymentsRouter, hostedManualWebhookRouter } from "./routes/hosted-manual-payments";
 import { rejectRetiredPaymentWorkflows } from "./services/retired-payment-workflows";
+import { directStudentPublicRouter,directStudentWebhookRouter } from "./routes/direct-student-live-payments";
 import { paymentReceiptsRouter } from "./routes/payment-receipts";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -128,6 +129,9 @@ app.use(
 );
 app.use("/api/webhooks/flutterwave/hosted-manual",
   express.raw({ type: "application/json", limit: "64kb" }), hostedManualWebhookRouter);
+app.use("/api/webhooks/flutterwave/direct-student",
+  express.raw({type:"application/json",limit:"64kb"}),directStudentWebhookRouter);
+app.use("/api",directStudentPublicRouter);
 app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(

@@ -244,6 +244,9 @@ import type {
   DeviceAttendanceReceipt,
   DeviceCredentialRotation,
   DeviceSuspensionInput,
+  DirectStudentAssistanceInput,
+  DirectStudentAttempt,
+  DirectStudentScope,
   DiscrepancyResolutionInput,
   DownloadPrintableNfcCardParams,
   DriverTransportView,
@@ -354,6 +357,8 @@ import type {
   GetCompanyPayrollReportParams,
   GetDevelopmentPaymentDiagnostic200,
   GetDevelopmentPaymentDiagnosticParams,
+  GetDirectStudentLiveReadiness200,
+  GetDirectStudentLiveReadinessParams,
   GetDriverTransportParams,
   GetEmployeeParams,
   GetEmployeePhotoParams,
@@ -373,6 +378,7 @@ import type {
   GetMyStaffNfcSubscriptionsParams,
   GetMyStaffSubscriptionAccessParams,
   GetMyStudentPlatformAccess200,
+  GetNfcFeeCollectionOversightParams,
   GetOfficialCardBrand200,
   GetOfficialCardPreview200,
   GetOfficialCardPreviewParams,
@@ -561,6 +567,7 @@ import type {
   MedicalVisitInput,
   MedicalVisitPatch,
   NfcCard,
+  NfcFeeCollectionOversight,
   NfcGuestCheckoutInput,
   NfcPaymentLink,
   NfcPaymentLinkInput,
@@ -723,6 +730,7 @@ import type {
   RejectManualBankTransferParams,
   ReplaceEmployeeNfcCardBody,
   RequestAdmissionDocumentUploadParams,
+  RequestDirectStudentAssistance201,
   RequestFeeAdjustmentParams,
   RequestFeeRefundParams,
   RequestStaffAdmissionDocumentUploadParams,
@@ -929,6 +937,7 @@ import type {
   UpsertTransportAssignmentFeePlanParams,
   VendorTerminalEvent,
   VendorTerminalReceipt,
+  VerifyDirectStudentLiveCallbackParams,
   VerifyLiveSchoolSubscriptionCallbackParams,
   VerifyManualBankTransferParams,
   VerifyMyStaffNfcPaymentParams,
@@ -57849,6 +57858,485 @@ export const useCreateOwnerSubscriptionRuleDraft = <TError = ErrorType<void>,
       > => {
       return useMutation(getCreateOwnerSubscriptionRuleDraftMutationOptions(options));
     }
+
+export const getGetNfcFeeCollectionOversightUrl = (params?: GetNfcFeeCollectionOversightParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/nfc-fee-collection-oversight?${stringifiedParams}` : `/api/platform/nfc-fee-collection-oversight`
+}
+
+/**
+ * @summary Read-only Owner oversight of school NFC fee collection
+ */
+export const getNfcFeeCollectionOversight = async (params?: GetNfcFeeCollectionOversightParams, options?: Parameters<typeof customFetch>[1]): Promise<NfcFeeCollectionOversight> => {
+
+  return customFetch<NfcFeeCollectionOversight>(getGetNfcFeeCollectionOversightUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNfcFeeCollectionOversightQueryKey = (params?: GetNfcFeeCollectionOversightParams,) => {
+    return [
+    `/api/platform/nfc-fee-collection-oversight`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNfcFeeCollectionOversightQueryOptions = <TData = Awaited<ReturnType<typeof getNfcFeeCollectionOversight>>, TError = ErrorType<void>>(params?: GetNfcFeeCollectionOversightParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNfcFeeCollectionOversight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNfcFeeCollectionOversightQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNfcFeeCollectionOversight>>> = ({ signal }) => getNfcFeeCollectionOversight(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNfcFeeCollectionOversight>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNfcFeeCollectionOversightQueryResult = NonNullable<Awaited<ReturnType<typeof getNfcFeeCollectionOversight>>>
+export type GetNfcFeeCollectionOversightQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read-only Owner oversight of school NFC fee collection
+ */
+
+export function useGetNfcFeeCollectionOversight<TData = Awaited<ReturnType<typeof getNfcFeeCollectionOversight>>, TError = ErrorType<void>>(
+ params?: GetNfcFeeCollectionOversightParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNfcFeeCollectionOversight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNfcFeeCollectionOversightQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDirectStudentLiveReadinessUrl = (schoolId: number,
+    params: GetDirectStudentLiveReadinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/platform-subscriptions/live-readiness?${stringifiedParams}` : `/api/schools/${schoolId}/platform-subscriptions/live-readiness`
+}
+
+export const getDirectStudentLiveReadiness = async (schoolId: number,
+    params: GetDirectStudentLiveReadinessParams, options?: Parameters<typeof customFetch>[1]): Promise<GetDirectStudentLiveReadiness200> => {
+
+  return customFetch<GetDirectStudentLiveReadiness200>(getGetDirectStudentLiveReadinessUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDirectStudentLiveReadinessQueryKey = (schoolId: number,
+    params?: GetDirectStudentLiveReadinessParams,) => {
+    return [
+    `/api/schools/${schoolId}/platform-subscriptions/live-readiness`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDirectStudentLiveReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getDirectStudentLiveReadiness>>, TError = ErrorType<void>>(schoolId: number,
+    params: GetDirectStudentLiveReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDirectStudentLiveReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDirectStudentLiveReadinessQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDirectStudentLiveReadiness>>> = ({ signal }) => getDirectStudentLiveReadiness(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDirectStudentLiveReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDirectStudentLiveReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getDirectStudentLiveReadiness>>>
+export type GetDirectStudentLiveReadinessQueryError = ErrorType<void>
+
+
+
+export function useGetDirectStudentLiveReadiness<TData = Awaited<ReturnType<typeof getDirectStudentLiveReadiness>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params: GetDirectStudentLiveReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDirectStudentLiveReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDirectStudentLiveReadinessQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateDirectStudentLiveCheckoutUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/platform-subscriptions/checkout`
+}
+
+export const createDirectStudentLiveCheckout = async (schoolId: number,
+    directStudentScope: DirectStudentScope, options?: Parameters<typeof customFetch>[1]): Promise<DirectStudentAttempt> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DirectStudentAttempt>(getCreateDirectStudentLiveCheckoutUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(directStudentScope)
+  }
+);}
+
+
+
+
+
+export const getCreateDirectStudentLiveCheckoutMutationKey = () => ['createDirectStudentLiveCheckout'] as const;
+
+export const getCreateDirectStudentLiveCheckoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDirectStudentLiveCheckout>>, TError,CreateDirectStudentLiveCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDirectStudentLiveCheckout>>, TError,CreateDirectStudentLiveCheckoutMutationVariables, TContext> => {
+
+const mutationKey = getCreateDirectStudentLiveCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDirectStudentLiveCheckout>>, CreateDirectStudentLiveCheckoutMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  createDirectStudentLiveCheckout(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDirectStudentLiveCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createDirectStudentLiveCheckout>>>
+    export type CreateDirectStudentLiveCheckoutMutationBody = BodyType<DirectStudentScope>
+    export type CreateDirectStudentLiveCheckoutMutationError = ErrorType<void>
+    export type CreateDirectStudentLiveCheckoutMutationVariables = {schoolId: number;data: BodyType<DirectStudentScope>}
+
+    export const useCreateDirectStudentLiveCheckout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDirectStudentLiveCheckout>>, TError,CreateDirectStudentLiveCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDirectStudentLiveCheckout>>,
+        TError,
+        CreateDirectStudentLiveCheckoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateDirectStudentLiveCheckoutMutationOptions(options));
+    }
+
+export const getRequestDirectStudentAssistanceUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/platform-subscriptions/assistance`
+}
+
+export const requestDirectStudentAssistance = async (schoolId: number,
+    directStudentAssistanceInput: DirectStudentAssistanceInput, options?: Parameters<typeof customFetch>[1]): Promise<RequestDirectStudentAssistance201> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RequestDirectStudentAssistance201>(getRequestDirectStudentAssistanceUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(directStudentAssistanceInput)
+  }
+);}
+
+
+
+
+
+export const getRequestDirectStudentAssistanceMutationKey = () => ['requestDirectStudentAssistance'] as const;
+
+export const getRequestDirectStudentAssistanceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestDirectStudentAssistance>>, TError,RequestDirectStudentAssistanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestDirectStudentAssistance>>, TError,RequestDirectStudentAssistanceMutationVariables, TContext> => {
+
+const mutationKey = getRequestDirectStudentAssistanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestDirectStudentAssistance>>, RequestDirectStudentAssistanceMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  requestDirectStudentAssistance(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestDirectStudentAssistanceMutationResult = NonNullable<Awaited<ReturnType<typeof requestDirectStudentAssistance>>>
+    export type RequestDirectStudentAssistanceMutationBody = BodyType<DirectStudentAssistanceInput>
+    export type RequestDirectStudentAssistanceMutationError = ErrorType<void>
+    export type RequestDirectStudentAssistanceMutationVariables = {schoolId: number;data: BodyType<DirectStudentAssistanceInput>}
+
+    export const useRequestDirectStudentAssistance = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestDirectStudentAssistance>>, TError,RequestDirectStudentAssistanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestDirectStudentAssistance>>,
+        TError,
+        RequestDirectStudentAssistanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestDirectStudentAssistanceMutationOptions(options));
+    }
+
+export const getCreateAssistedDirectStudentCheckoutUrl = (id: number,) => {
+
+
+
+
+  return `/api/platform/subscription-payment-assistance/${id}/checkout`
+}
+
+export const createAssistedDirectStudentCheckout = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DirectStudentAttempt> => {
+
+  return customFetch<DirectStudentAttempt>(getCreateAssistedDirectStudentCheckoutUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateAssistedDirectStudentCheckoutMutationKey = () => ['createAssistedDirectStudentCheckout'] as const;
+
+export const getCreateAssistedDirectStudentCheckoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAssistedDirectStudentCheckout>>, TError,CreateAssistedDirectStudentCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAssistedDirectStudentCheckout>>, TError,CreateAssistedDirectStudentCheckoutMutationVariables, TContext> => {
+
+const mutationKey = getCreateAssistedDirectStudentCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAssistedDirectStudentCheckout>>, CreateAssistedDirectStudentCheckoutMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  createAssistedDirectStudentCheckout(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAssistedDirectStudentCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createAssistedDirectStudentCheckout>>>
+
+    export type CreateAssistedDirectStudentCheckoutMutationError = ErrorType<void>
+    export type CreateAssistedDirectStudentCheckoutMutationVariables = {id: number}
+
+    export const useCreateAssistedDirectStudentCheckout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAssistedDirectStudentCheckout>>, TError,CreateAssistedDirectStudentCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAssistedDirectStudentCheckout>>,
+        TError,
+        CreateAssistedDirectStudentCheckoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAssistedDirectStudentCheckoutMutationOptions(options));
+    }
+
+export const getVerifyDirectStudentLiveCallbackUrl = (params: VerifyDirectStudentLiveCallbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/flutterwave/direct-student/callback?${stringifiedParams}` : `/api/flutterwave/direct-student/callback`
+}
+
+export const verifyDirectStudentLiveCallback = async (params: VerifyDirectStudentLiveCallbackParams, options?: Parameters<typeof customFetch>[1]): Promise<DirectStudentAttempt> => {
+
+  return customFetch<DirectStudentAttempt>(getVerifyDirectStudentLiveCallbackUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyDirectStudentLiveCallbackQueryKey = (params?: VerifyDirectStudentLiveCallbackParams,) => {
+    return [
+    `/api/flutterwave/direct-student/callback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getVerifyDirectStudentLiveCallbackQueryOptions = <TData = Awaited<ReturnType<typeof verifyDirectStudentLiveCallback>>, TError = ErrorType<void>>(params: VerifyDirectStudentLiveCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof verifyDirectStudentLiveCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getVerifyDirectStudentLiveCallbackQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof verifyDirectStudentLiveCallback>>> = ({ signal }) => verifyDirectStudentLiveCallback(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof verifyDirectStudentLiveCallback>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type VerifyDirectStudentLiveCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof verifyDirectStudentLiveCallback>>>
+export type VerifyDirectStudentLiveCallbackQueryError = ErrorType<void>
+
+
+
+export function useVerifyDirectStudentLiveCallback<TData = Awaited<ReturnType<typeof verifyDirectStudentLiveCallback>>, TError = ErrorType<void>>(
+ params: VerifyDirectStudentLiveCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof verifyDirectStudentLiveCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getVerifyDirectStudentLiveCallbackQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getEditOwnerSubscriptionRuleDraftUrl = (ruleId: number,) => {
 

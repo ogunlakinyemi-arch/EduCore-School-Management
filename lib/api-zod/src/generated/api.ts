@@ -29175,6 +29175,163 @@ export const CreateOwnerSubscriptionRuleDraftResponse = zod.object({
 
 
 /**
+ * @summary Read-only Owner oversight of school NFC fee collection
+ */
+
+
+export const getNfcFeeCollectionOversightQuerySearchMax = 100;
+
+export const getNfcFeeCollectionOversightQueryLimitDefault = 50;
+export const getNfcFeeCollectionOversightQueryLimitMax = 100;
+
+export const getNfcFeeCollectionOversightQueryOffsetDefault = 0;
+export const getNfcFeeCollectionOversightQueryOffsetMin = 0;
+
+
+
+export const GetNfcFeeCollectionOversightQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "search": zod.coerce.string().max(getNfcFeeCollectionOversightQuerySearchMax).optional(),
+  "status": zod.enum(['FULLY_PAID', 'UNPAID', 'PENDING_EVIDENCE', 'UNDER_REVIEW', 'REJECTED', 'PARTIALLY_PAID', 'NOT_CONFIGURED', 'CANCELLED', 'REVIEW_REQUIRED']).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getNfcFeeCollectionOversightQueryLimitMax).default(getNfcFeeCollectionOversightQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getNfcFeeCollectionOversightQueryOffsetMin).default(getNfcFeeCollectionOversightQueryOffsetDefault)
+})
+
+export const GetNfcFeeCollectionOversightResponse = zod.object({
+  "total": zod.number().int(),
+  "limit": zod.number().int(),
+  "offset": zod.number().int(),
+  "items": zod.array(zod.object({
+  "invoiceId": zod.number().int().nullable(),
+  "lineId": zod.number().int().nullable(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "termId": zod.number().int(),
+  "termName": zod.string(),
+  "feeName": zod.string().nullable(),
+  "amountMinor": zod.number().int().nullable(),
+  "paidMinor": zod.number().int(),
+  "currency": zod.string(),
+  "invoiceStatus": zod.string(),
+  "status": zod.string(),
+  "payments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "reference": zod.string(),
+  "receiptNumber": zod.string().nullable(),
+  "method": zod.string(),
+  "date": zod.string(),
+  "amountMinor": zod.number().int(),
+  "status": zod.string(),
+  "recordedBy": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable()
+}))
+}))
+})
+
+
+export const GetDirectStudentLiveReadinessParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+export const GetDirectStudentLiveReadinessQueryParams = zod.object({
+  "studentId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int()
+})
+
+export const GetDirectStudentLiveReadinessResponse = zod.object({
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "amountMinor": zod.number().int(),
+  "schoolShareMinor": zod.number().int(),
+  "broShareMinor": zod.number().int(),
+  "currency": zod.string(),
+  "mode": zod.string(),
+  "providerValidated": zod.boolean()
+})
+
+
+export const CreateDirectStudentLiveCheckoutParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+export const CreateDirectStudentLiveCheckoutHeader = zod.object({
+  "Idempotency-Key": zod.string()
+})
+
+
+
+
+
+export const CreateDirectStudentLiveCheckoutBody = zod.object({
+  "studentId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1)
+})
+
+export const CreateDirectStudentLiveCheckoutResponse = zod.object({
+  "id": zod.number().int(),
+  "reference": zod.string(),
+  "state": zod.string(),
+  "checkoutUrl": zod.string().nullable()
+})
+
+
+export const RequestDirectStudentAssistanceParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+
+
+export const requestDirectStudentAssistanceBodyRequestNoteMin = 3;
+export const requestDirectStudentAssistanceBodyRequestNoteMax = 500;
+
+
+
+export const RequestDirectStudentAssistanceBody = zod.object({
+  "studentId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "requestNote": zod.string().min(requestDirectStudentAssistanceBodyRequestNoteMin).max(requestDirectStudentAssistanceBodyRequestNoteMax)
+})
+
+export const RequestDirectStudentAssistanceResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.string()
+})
+
+
+export const CreateAssistedDirectStudentCheckoutParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const CreateAssistedDirectStudentCheckoutHeader = zod.object({
+  "Idempotency-Key": zod.string()
+})
+
+export const CreateAssistedDirectStudentCheckoutResponse = zod.object({
+  "id": zod.number().int(),
+  "reference": zod.string(),
+  "state": zod.string(),
+  "checkoutUrl": zod.string().nullable()
+})
+
+
+export const VerifyDirectStudentLiveCallbackQueryParams = zod.object({
+  "tx_ref": zod.coerce.string(),
+  "transaction_id": zod.coerce.string()
+})
+
+export const VerifyDirectStudentLiveCallbackResponse = zod.object({
+  "id": zod.number().int(),
+  "reference": zod.string(),
+  "state": zod.string(),
+  "checkoutUrl": zod.string().nullable()
+})
+
+
+/**
  * @summary Edit only a draft with an optimistic version
  */
 

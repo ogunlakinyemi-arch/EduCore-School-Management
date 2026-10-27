@@ -4,6 +4,7 @@ import { liveReleaseConfiguration } from "./flutterwave-live-release";
 import { liveAmountMinor } from "./flutterwave-live-finalization-event";
 import { LiveFinalizationBlocked, type LiveCollectionVerifier } from "./flutterwave-live-verification";
 import type { StudentSubscriptionSqlPool } from "./student-subscription-billing";
+import { directLiveConfiguration } from "./flutterwave-direct-live-config";
 
 function fail(code:string):never {throw new LiveFinalizationBlocked(code);}
 function object(value:unknown):Record<string,any> {
@@ -30,8 +31,8 @@ export function authenticateLiveWebhook(headers:Record<string,unknown>,env:NodeJ
  * Caller must additionally pass the DB release gate before using this transport. */
 export class FlutterwaveLiveTransport {
   constructor(private readonly env:NodeJS.ProcessEnv=process.env,
-    private readonly fetcher:typeof fetch=fetch) {
-    if(!liveReleaseConfiguration(env).ready)fail("LIVE_RELEASE_CONFIGURATION_BLOCKED");
+    private readonly fetcher:typeof fetch=fetch,private readonly purpose:"LEGACY_SPLIT"|"DIRECT_STUDENT"="LEGACY_SPLIT") {
+    if(!(purpose==="DIRECT_STUDENT"?directLiveConfiguration(env).ready:liveReleaseConfiguration(env).ready))fail("LIVE_RELEASE_CONFIGURATION_BLOCKED");
   }
   private async request(endpoint:string,init:RequestInit,signal?:AbortSignal) {
     const timeout=AbortSignal.timeout(3000);
@@ -61,6 +62,7 @@ export class FlutterwaveLiveTransport {
     }
   }
   async checkout(input:{reference:string;email:string;schoolSubaccountId:string}) {
+    if(this.purpose!=="LEGACY_SPLIT")fail("LIVE_CHECKOUT_INPUT_INVALID");
     if(!/^SCV3_live_[A-Za-z0-9_-]{8,80}$/.test(input.reference)
       ||!/^RS_[A-Za-z0-9]{12,80}$/.test(input.schoolSubaccountId)
       ||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))fail("LIVE_CHECKOUT_INPUT_INVALID");
@@ -74,6 +76,7 @@ export class FlutterwaveLiveTransport {
     return data.link as string;
   }
   async collection(transactionId:string,reference:string,signal?:AbortSignal) {
+    if(this.purpose!=="LEGACY_SPLIT")fail("LIVE_VERIFICATION_INPUT_INVALID");
     if(!/^[1-9][0-9]{0,15}$/.test(transactionId)||BigInt(transactionId)>BigInt(Number.MAX_SAFE_INTEGER)
       ||!/^SCV3_live_[A-Za-z0-9_-]{8,80}$/.test(reference))
       fail("LIVE_VERIFICATION_INPUT_INVALID");
@@ -87,6 +90,39 @@ export class FlutterwaveLiveTransport {
     const providerFeeMinor=liveAmountMinor(d.app_fee),additionalFeeMinor=liveAmountMinor(d.merchant_fee);
     if(providerFeeMinor+additionalFeeMinor>=300000)fail("LIVE_VERIFICATION_MISMATCH");
     return {transactionId,reference,providerReference:d.flw_ref as string,providerFeeMinor,additionalFeeMinor};
+  }
+  async directStudentCheckout(input:{reference:string;email:string}){
+    if(this.purpose!=="DIRECT_STUDENT" || !/^SCV4_live_[A-Za-z0-9_-]{8,80}$/.test(input.reference)
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))fail("LIVE_CHECKOUT_INPUT_INVALID");
+    const data=await this.request("payments",{method:"POST",body:JSON.stringify({
+      tx_ref:input.reference,amount:3200,currency:"NGN",
+      redirect_url:directLiveConfiguration(this.env).callbackUrl,customer:{email:input.email},
+    })});
+    if(!liveCheckoutUrl(data.link))fail("LIVE_CHECKOUT_LINK_INVALID");
+    return data.link as string;
+  }
+  async directStudentCollection(transactionId:string,reference:string){
+    if(this.purpose!=="DIRECT_STUDENT" || !/^[1-9][0-9]{0,15}$/.test(transactionId)
+      || BigInt(transactionId)>BigInt(Number.MAX_SAFE_INTEGER)
+      || !/^SCV4_live_[A-Za-z0-9_-]{8,80}$/.test(reference))fail("LIVE_VERIFICATION_INPUT_INVALID");
+    const d=await this.request(`transactions/${transactionId}/verify`,{method:"GET"});
+    if(String(d.id)!==transactionId || d.tx_ref!==reference || d.currency!=="NGN"
+      || liveAmountMinor(d.amount)!==320000
+      || (Array.isArray(d.subaccounts)&&d.subaccounts.length>0) || d.subaccount_id || d.subaccount
+      || (typeof d.flw_ref==="string"&&d.flw_ref.length>200))fail("LIVE_VERIFICATION_MISMATCH");
+    if(!["successful","failed","cancelled","pending"].includes(d.status))fail("LIVE_VERIFICATION_MISMATCH");
+    // A failed or cancelled attempt is retryable only if the provider explicitly
+    // reports zero charged amount; any charged/unknown failure remains uncertain.
+    if(d.status==="successful" && (liveAmountMinor(d.charged_amount)!==320000
+      || typeof d.flw_ref!=="string" || !d.flw_ref.length))fail("LIVE_VERIFICATION_MISMATCH");
+    if(d.status==="failed" || d.status==="cancelled"){
+      if(liveAmountMinor(d.charged_amount)!==0)fail("LIVE_VERIFICATION_MISMATCH");
+    }
+    const providerFeeMinor=d.status==="successful"?liveAmountMinor(d.app_fee):null;
+    const additionalFeeMinor=d.status==="successful"?liveAmountMinor(d.merchant_fee):null;
+    if(providerFeeMinor!==null && additionalFeeMinor!==null && providerFeeMinor+additionalFeeMinor>=320000)fail("LIVE_VERIFICATION_MISMATCH");
+    return {transactionId,reference,providerReference:typeof d.flw_ref==="string"?d.flw_ref:null,providerFeeMinor,additionalFeeMinor,
+      status:d.status as "successful"|"failed"|"cancelled"|"pending"};
   }
 }
 

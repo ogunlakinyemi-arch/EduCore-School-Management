@@ -1,0 +1,119 @@
+paths:
+  /schools/{schoolId}/platform-subscriptions/live-readiness:
+    get:
+      operationId: getDirectStudentLiveReadiness
+      tags: [subscriptions]
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: integer}}
+        - {name: studentId, in: query, required: true, schema: {type: integer}}
+        - {name: termId, in: query, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: Readiness only, not provider validation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ready, blockers, amountMinor, schoolShareMinor, broShareMinor, currency, mode, providerValidated]
+                properties:
+                  ready: {type: boolean}
+                  blockers: {type: array, items: {type: string}}
+                  amountMinor: {type: integer}
+                  schoolShareMinor: {type: integer}
+                  broShareMinor: {type: integer}
+                  currency: {type: string}
+                  mode: {type: string}
+                  providerValidated: {type: boolean}
+        '403': {description: School Admin or global Owner required}
+  /schools/{schoolId}/platform-subscriptions/checkout:
+    post:
+      operationId: createDirectStudentLiveCheckout
+      tags: [subscriptions]
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: integer}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DirectStudentScope'}
+      responses:
+        '200':
+          description: Durable existing or newly reserved attempt
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectStudentAttempt'}
+        '409': {description: "Release, rule, reconciliation or existing attempt blocks checkout"}
+  /schools/{schoolId}/platform-subscriptions/assistance:
+    post:
+      operationId: requestDirectStudentAssistance
+      tags: [subscriptions]
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DirectStudentAssistanceInput'}
+      responses:
+        '201':
+          description: Request only, no bank or provider payment
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties: {id: {type: integer}, status: {type: string}}
+        '409': {description: Existing request must be resolved}
+  /platform/subscription-payment-assistance/{id}/checkout:
+    post:
+      operationId: createAssistedDirectStudentCheckout
+      tags: [subscriptions]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Attempt bound to independently verified bank credit
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectStudentAttempt'}
+        '409': {description: "Bank credit, rule, reconciliation or current attempt requires review"}
+  /flutterwave/direct-student/callback:
+    get:
+      operationId: verifyDirectStudentLiveCallback
+      tags: [subscriptions]
+      security: []
+      parameters:
+        - {name: tx_ref, in: query, required: true, schema: {type: string}}
+        - {name: transaction_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Independent provider verification; redirects never establish payment
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectStudentAttempt'}
+        '409': {description: Release disabled or reconciliation required}
+components:
+  schemas:
+    DirectStudentScope:
+      type: object
+      additionalProperties: false
+      required: [studentId, termId]
+      properties: {studentId: {type: integer, minimum: 1}, termId: {type: integer, minimum: 1}}
+    DirectStudentAssistanceInput:
+      type: object
+      additionalProperties: false
+      required: [studentId, termId, requestNote]
+      properties:
+        studentId: {type: integer, minimum: 1}
+        termId: {type: integer, minimum: 1}
+        requestNote: {type: string, minLength: 3, maxLength: 500}
+    DirectStudentAttempt:
+      type: object
+      required: [id, reference, state, checkoutUrl]
+      properties:
+        id: {type: integer}
+        reference: {type: string}
+        state: {type: string}
+        checkoutUrl: {type: [string, 'null']}

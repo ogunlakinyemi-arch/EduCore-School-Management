@@ -2,6 +2,8 @@ import type { CommunicationQueryClient } from "./communication-service";
 import { hostedLiveSelected,readHostedSubscriptionCoverage } from "./hosted-subscription-coverage";
 import { releasedLiveApplicationContext,readLiveSchoolSubscriptionStudents } from "./flutterwave-live-application";
 import { assertManualSchoolUnlocked } from "./school-subscription-lock";
+import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
+import { flutterwavePaymentMode } from "../lib/flutterwave-payment-mode";
 
 export type StudentPlatformAccess={
   schoolId:number;studentId:number;termId:number|null;
@@ -31,13 +33,25 @@ export async function readStudentTermPlatformAccess(db:CommunicationQueryClient,
   const term=terms.rows[0],live=releasedLiveApplicationContext();
   let paid=false;
   // Historical verified coverage remains readable, never an active checkout dependency.
-  if(hostedLiveSelected()){
+  const directSelected=directLiveConfiguration().ready;
+  if(directSelected){
+    const result=await db.query<{paid:boolean}>(`SELECT EXISTS(
+      SELECT 1 FROM student_direct_live_obligations o JOIN student_direct_live_attempts a ON a.obligation_id=o.id
+      WHERE o.school_id=$1 AND o.student_id=$2 AND o.academic_term_id=$3
+        AND o.amount_minor=320000 AND o.school_share_minor=0 AND o.bro_share_minor=0
+        AND o.currency='NGN' AND a.state='PAID' AND a.verified_at IS NOT NULL
+        AND a.provider_transaction_id ~ '^[1-9][0-9]*$') AS paid`,[schoolId,studentId,term.id]);
+    paid=result.rows[0]?.paid===true;
+  }
+  if(!paid && hostedLiveSelected()){
     const result=await readHostedSubscriptionCoverage(db,schoolId,term.id);
     paid=result.rows.find(r=>r.studentId===studentId)?.paid===true;
-  }else if(live){
+  }else if(!paid && live){
     const result=await readLiveSchoolSubscriptionStudents(db,schoolId,term.id,live);
     paid=result.rows.find(r=>r.studentId===studentId)?.paid===true;
-  }else{
+  }else if(!paid && !directSelected && flutterwavePaymentMode()==="LIVE"){
+    return {...base,termId:term.id};
+  }else if(!paid && !directSelected){
     const result=await db.query<{paid:boolean}>(`SELECT EXISTS(
       SELECT 1 FROM student_subscription_payments p JOIN subscriptions s
         ON s.id=p.subscription_id AND s.school_id=p.school_id AND s.student_id=p.student_id
