@@ -1,7 +1,7 @@
 # Integrated Flutterwave payment mode
 
-Current managed-schema release blocker, exact technical evidence and an unsent
-support request are recorded in
+Current managed-schema release blocker, exact technical evidence and Quinn's
+supplied Support guidance are recorded in
 [the protected SQL Publish handoff](finance/flutterwave-live-managed-publish-blocker.md).
 Configuration selection alone is not LIVE activation.
 

@@ -1,5 +1,74 @@
 # Flutterwave LIVE — runtime-role and Publish lifecycle decision
 
+## Quinn's latest response supplied by the user
+
+The user supplied this exact guidance on 2026-10-27:
+
+> Replit cannot confirm a separate restricted production PostgreSQL login is supported;
+> Publish doesn't synchronize custom roles/grants/memberships/default privileges;
+> credential regeneration only changes the production connection-string password
+> and redeploys; PITR role/privilege behavior is undocumented.
+
+This supersedes the open role-lifecycle investigation below. Do not request the
+same confirmation again, introduce a custom runtime login, or treat password
+regeneration as role isolation. There is no new Support escalation.
+
+### Concrete design without a custom role
+
+Keep the **original nine functions and twenty triggers** under the existing
+documented database credential. The six reviewed forward files contain no
+`CREATE ROLE`, `SET ROLE`, `GRANT`, `REVOKE`, owner reassignment or
+`SECURITY DEFINER`. They do not require the separate-role prototype to enforce
+their normal DML invariants. This is not a promise that a database owner cannot
+deliberately disable/drop a trigger with DDL.
+
+`requireLiveRelease` already uses the ordinary application pool and checks the
+approved manifest, required columns and enabled row-level guards. It has no
+custom-login requirement. Role-free acceptance and fail-closed missing-guard
+behavior are now explicit mocked-catalog regression tests.
+
+Application least privilege remains useful for HTTP authorization and narrowing
+service entry points, but cannot replace these database guarantees. The shared
+`ResilientPool` accepts arbitrary SQL; another service path, operator or SQL
+injection with that same credential does not have to use a wrapper's checks.
+CHECK/UNIQUE/FK constraints validate current state, not immutable OLD-to-NEW
+history, permanent claims or mandatory atomic auditing. The existing
+counterexample review demonstrates those gaps. No new wrapper/ORM/framework
+would make it an all-writer database boundary.
+
+### Installation, not a missing runtime-role implementation, is blocked
+
+The Drizzle configuration is offline/review-only, push commands refuse writes,
+post-merge skips schema changes and the audit exporter emits no functions or
+triggers. Adding custom SQL to a folder or journal does not make managed Publish
+execute it. No documented custom-SQL Publish extension was established.
+
+Replit's documented **Database → My Data → SQL console** runs SQL commands;
+Production editing is a separate explicit UI action. It is an owner/operator
+manual SQL feature, not a Publish importer, not an Agent write capability, and
+not a documented guarantee of whole-file session/transaction/error handling for
+this package or preservation during later Publish.
+
+**Smallest next step:** retain the original single-credential/trigger design.
+If an owner-operated installation is chosen, use the existing reviewed package
+and runbook—not a role redesign—and first establish an authorized execution
+procedure with the required transaction/session/stop-on-error guarantees and
+matching Development/future-Publish review. That would be a separately authorized
+manual Production SQL operation, excluded from the current request. Within a
+Publish-only/no-Production-SQL release, there is no executable installation step
+established here; leave LIVE fail-closed until Publish can carry the protected
+objects. No Production SQL, restart, deployment or approval seed was performed.
+
+Reference: https://docs.replit.com/features/data-and-storage/work-with-your-data
+
+Focused validation after this decision: **148 tests passed across five files**,
+including the role-free acceptance case and false/null/absent guard-readiness
+denials; API TypeScript check passed. Only documentation, project memory and
+regression tests changed. No runtime implementation, protected SQL, credentials
+or database was changed; no deployment or restart was performed.
+
+## Historical prototype review — not an adopted release design
+
 **Release verdict: NO-GO.** PostgreSQL role separation works in isolation for
 append-only history; the current application has no established role separation,
 and no documented end-to-end managed-Replit provisioning/Publish/restore workflow

@@ -80,9 +80,21 @@ describe("default-disabled LIVE runtime and separate webhook secrets",()=>{
     query.mockRejectedValueOnce(new Error("missing relation"));
     await expect(requireLiveRelease(pool,runtimeEnv())).rejects.toHaveProperty("code","LIVE_TARGET_SCHEMA_UNAVAILABLE");
   });
-  it("rejects a manifest when runtime schema or immutable guards are missing",async()=>{
+  it("does not require a separate database role when the original DB guards are verified",async()=>{
+    // Fictional approved manifest/catalog responses, never an actual approval.
+    // The ordinary application pool suffices; no SET ROLE or ACL mutation occurs.
     const query=vi.fn().mockResolvedValueOnce({rows:[{release_id:"SCV3_V1"}]})
-      .mockResolvedValueOnce({rows:[]}).mockResolvedValueOnce({rows:[{ready:false}]}),release=vi.fn();
+      .mockResolvedValueOnce({rows:[]}).mockResolvedValueOnce({rows:[{ready:true}]}),release=vi.fn();
+    const result=await requireLiveRelease({connect:async()=>({query,release})},runtimeEnv());
+    expect(result.capability.enabled).toBe(true);
+    expect(query).toHaveBeenCalledTimes(3);
+    expect(query.mock.calls.every(([sql])=>/^\s*SELECT\b/.test(String(sql)))).toBe(true);
+    expect(release).toHaveBeenCalledOnce();
+  });
+  it.each([false,null,undefined])("rejects a manifest when DB guard readiness is %s",async ready=>{
+    const query=vi.fn().mockResolvedValueOnce({rows:[{release_id:"SCV3_V1"}]})
+      .mockResolvedValueOnce({rows:[]})
+      .mockResolvedValueOnce({rows:ready===undefined?[]:[{ready}]}),release=vi.fn();
     await expect(requireLiveRelease({connect:async()=>({query,release})},runtimeEnv()))
       .rejects.toHaveProperty("code","LIVE_TARGET_SCHEMA_UNAVAILABLE");
     expect(release).toHaveBeenCalledOnce();

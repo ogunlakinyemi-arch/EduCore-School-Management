@@ -95,22 +95,26 @@ are in `flutterwave-live-application-redesign.md` and
 This establishes a missing verified integration contract, not a claim that
 PostgreSQL or Replit can never support these objects.
 
-## Exact minimal Replit support escalation — not sent
+## Quinn's response supersedes the unsent escalation
 
-> Please identify the supported managed-Publish procedure for EduCore's six
-> reviewed SQL files listed here, preserving all nine functions, twenty security/
-> history triggers, constraints, ownership and runtime permissions. The current
-> Publish preview contains no LIVE objects; the three required approval tables
-> are absent from the Production replica. We need either a supported custom-SQL
-> extension to Development-to-Production schema release, or a sanctioned
-> platform-operated installation with guaranteed retention on subsequent Publish.
-> Please specify staging, dependency ordering, DDL ownership/runtime-role handling,
-> grants after recreation, credential rotation and restore verification. We cannot
-> use startup/build SQL, unsupported Production DDL or remove financial guards.
+The user has supplied Quinn's actual guidance. It is recorded in
+[the permission-boundary decision](flutterwave-live-permission-boundary-review.md):
+separate restricted Production login support cannot be confirmed; Publish does
+not synchronize custom roles/grants/memberships/default privileges; credential
+regeneration changes the connection-string password and redeploys, not the role;
+PITR role/privilege behavior is undocumented. The earlier unsent request is
+withdrawn as a next action; do not draft or send another role-lifecycle escalation.
 
-Attach this document and the exact reviewed SQL package/runbook through the
-project's support channel. Do not attach connection strings, credentials, bank
-records, raw provider payloads or private identity data.
+The concrete design is the original protected SQL under the existing credential,
+not the separate-role or trigger-free prototypes. No role/grant provisioning is
+present in the six drafts. Application authorization cannot substitute for their
+all-writer DML guards. The remaining blocker is an allowed installation/release
+mechanism, not implementation of a new login.
+
+The documented SQL console is an owner/operator manual-SQL feature, not a
+custom-SQL Publish hook. A manual installation is outside the current
+no-Production-SQL scope, and whole-file execution/later-Publish preservation must
+be verified rather than assumed. No SQL-console editing was enabled or executed.
 
 Relevant official reference:
 https://docs.replit.com/features/data-and-storage/development-and-production
@@ -119,8 +123,11 @@ establish this protected custom-object/permission lifecycle.
 
 ## Acceptance gates and action owners
 
-1. **Replit/platform owner:** supply the supported preservation procedure.
-   Do not stage or publish until this is explicit.
+1. **Release owner:** retain the original single-credential/trigger design.
+   Do not wait for a custom-role feature or substitute application-only checks.
+   Choose an allowed installation route: a separately authorized, verified
+   owner-operated procedure, or managed Publish when it can carry all protected
+   objects. No such execution is established in the current no-Production-SQL scope.
 2. **Authorized release operator:** revalidate the intended resource, available
    recovery baseline, privileges and exact package; review the actual generated
    plan, preserve existing data and all guards, and verify each committed stage.
@@ -146,7 +153,7 @@ Production restart or provider charge is represented as completed by this handof
 
 ## Focused validation outcome
 
-- **145 tests passed across five files:** payment mode, LIVE configuration,
+- **148 tests passed across five files:** payment mode, LIVE configuration,
   LIVE runtime, fee-provider adapters and LIVE webhook readiness. Tests use the
   repository's network-restricted harness and fictional/injected dependencies,
   not real provider transport.
@@ -155,7 +162,7 @@ Production restart or provider charge is represented as completed by this handof
   Build output does not mean the built revision was deployed or started.
 - Static package check: all six forward hashes match this handoff and the
   reviewed installation runbook; nine unique functions and twenty unique
-  triggers; all six rollback companions exist. No protected SQL/source changes.
+  triggers; all six rollback companions exist. No protected SQL/runtime implementation changes.
 - The three new handoff links resolve; whitespace/diff check passed.
 - No database migration or permission/trigger execution rehearsal was performed.
   These checks do not establish Publish support or permission equivalence.

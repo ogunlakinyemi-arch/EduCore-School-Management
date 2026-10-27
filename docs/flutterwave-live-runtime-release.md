@@ -86,7 +86,7 @@ variable. Exact constant-time `verif-hash` authentication remains in the adapter
 
 ## Migration review — no automatic application
 
-**Current managed-release blocker and unsent support request:**
+**Current managed-release blocker and supplied Support guidance:**
 [protected SQL Publish handoff](finance/flutterwave-live-managed-publish-blocker.md).
 The sequence below is a dependency/review specification, not permission to run
 raw Production DDL. No supported importer is configured in this repository.
