@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildNavSections, navMode } from './navigation-model';
+import { buildNavSections, navMode, isNavActive, hasActiveGlobalOwner } from './navigation-model';
 
 describe('navigation model', () => {
   it('puts the authorized school schedule directly under Attendance, without adding it for teachers', () => {
@@ -21,6 +21,23 @@ describe('navigation model', () => {
     expect(navMode(['PARENT'], false)).toBe('flat');
     expect(navMode(['TEACHER'], false)).toBe('teacher');
     expect(navMode(['TEACHER', 'SCHOOL_ADMIN'], false)).toBe('admin');
+  });
+  it('matches query-specific destinations without breaking ordinary path activation',()=>{
+    expect(isNavActive('/payment-settlement?tab=schools','/payment-settlement','tab=schools')).toBe(true);
+    expect(isNavActive('/payment-settlement?tab=schools','/payment-settlement','?tab=history')).toBe(false);
+    expect(isNavActive('/payment-settlement?tab=schools','/payment-settlement','')).toBe(false);
+    expect(isNavActive('/payment-settlement?tab=schools','/other','tab=schools')).toBe(false);
+    expect(isNavActive('/subscriptions','/subscriptions/retained-history')).toBe(true);
+    expect(isNavActive('/','/subscriptions')).toBe(false);
+    expect(isNavActive('/activation','/activation/history')).toBe(false);
+  });
+  it('does not infer active global ownership from a flag, inactive role, or school-scoped membership',()=>{
+    const active={isPlatformOwner:true,user:{status:'ACTIVE'},roles:[{role:'PLATFORM_OWNER',schoolId:null,status:'ACTIVE'}]};
+    expect(hasActiveGlobalOwner(active)).toBe(true);
+    expect(hasActiveGlobalOwner({...active,isPlatformOwner:false})).toBe(false);
+    expect(hasActiveGlobalOwner({...active,user:{}})).toBe(false);
+    expect(hasActiveGlobalOwner({...active,roles:[{role:'PLATFORM_OWNER',status:'ACTIVE'}]})).toBe(false);
+    expect(hasActiveGlobalOwner(undefined)).toBe(false);
   });
 });
 

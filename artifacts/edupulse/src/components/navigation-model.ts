@@ -2,6 +2,16 @@ export type NavMode = 'admin' | 'teacher' | 'flat';
 export type NavGroupDef = { id: string; label: string; hrefs: string[] };
 export type NavSection = { id: string; label: string; hrefs: string[] };
 
+/** Visibility only: protected routes and server authorization remain authoritative. */
+export function hasActiveGlobalOwner(context: {
+  isPlatformOwner?: boolean;
+  user?: { status?: string };
+  roles?: readonly { role: string; schoolId?: number | null; status: string }[];
+} | null | undefined): boolean {
+  return context?.isPlatformOwner === true && context.user?.status === 'ACTIVE'
+    && context.roles?.some(r => r.role === 'PLATFORM_OWNER' && r.schoolId === null && r.status === 'ACTIVE') === true;
+}
+
 export const adminGroups: NavGroupDef[] = [
   { id: 'records', label: 'Records', hrefs: ['/records'] },
   { id: 'students-parents', label: 'Students & Parents', hrefs: ['/students', '/parents', '/student-care', '/behaviour'] },
@@ -10,7 +20,7 @@ export const adminGroups: NavGroupDef[] = [
   { id: 'academics', label: 'Academics', hrefs: ['/academics', '/academic-calendar', '/timetable', '/promotion'] },
   { id: 'attendance', label: 'Attendance', hrefs: ['/attendance', '/attendance/schedule'] },
   { id: 'assessments-results', label: 'Assessments & Results', hrefs: ['/academic-work', '/results'] },
-  { id: 'finance', label: 'Finance', hrefs: ['/finance', '/finance-workspace', '/subscriptions', '/subscription-payment-rules', '/subscription-enforcement'] },
+  { id: 'finance', label: 'Finance', hrefs: ['/finance', '/finance-workspace', '/subscriptions', '/subscription-payment-rules', '/payment-settlement?tab=schools', '/subscription-enforcement'] },
   { id: 'communication', label: 'Communication', hrefs: ['/communications', '/inbox'] },
   { id: 'transport', label: 'Transport', hrefs: ['/transport'] },
   { id: 'library', label: 'Library', hrefs: ['/library'] },
@@ -60,8 +70,12 @@ export function buildNavSections(visibleHrefs: string[], mode: NavMode): NavSect
   return sections;
 }
 
-export function isNavActive(href: string, location: string) {
-  if (href === '/') return location === '/';
-  if (href === '/activation') return location === '/activation';
-  return location === href || location.startsWith(href + '/');
+export function isNavActive(href: string, location: string, search = '') {
+  const [path, query] = href.split('?', 2);
+  const pathMatches = path === '/' ? location === '/'
+    : path === '/activation' ? location === '/activation'
+    : location === path || location.startsWith(path + '/');
+  if (!pathMatches || !query) return pathMatches;
+  const current = new URLSearchParams(search);
+  return [...new URLSearchParams(query)].every(([key, value]) => current.get(key) === value);
 }

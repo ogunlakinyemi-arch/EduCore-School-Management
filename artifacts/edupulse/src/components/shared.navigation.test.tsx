@@ -18,6 +18,8 @@ const state = vi.hoisted(() => ({
   ownerDirectoryCalls: [] as any[],
   librarian: false,
   loading: false,
+  location: '/',
+  search: '',
 }));
 
 vi.mock('@clerk/react', () => ({
@@ -27,6 +29,8 @@ vi.mock('@clerk/react', () => ({
 vi.mock('./fee-payment-notifications', () => ({ FeePaymentNotifications: () => null }));
 vi.mock('@/pages/communication-inbox', () => ({ CommunicationInboxBadge: () => null }));
 vi.mock('@/components/subscription-access-banner', () => ({ SubscriptionAccessBanner: () => null }));
+vi.mock('@/components/student-subscription-guard', () => ({ StudentSubscriptionGuard: ({children}:any) => children }));
+vi.mock('@/components/staff-subscription-guard', () => ({ StaffSubscriptionGuard: ({children}:any) => children }));
 vi.mock('@/components/pwa-install', () => ({ PwaInstall: () => null }));
 vi.mock('@/hooks/use-phase9-api', () => ({
   usePhase9List: () => ({ data: { canManageLoans: state.librarian, canManageCatalogue: state.librarian, canAssignStaff: false } }),
@@ -47,7 +51,8 @@ vi.mock('@workspace/api-client-react', () => ({
   getListPlatformNotificationsQueryKey: () => ['platform-notifications'],
 }));
 vi.mock('wouter', () => ({
-  useLocation: () => ['/'],
+  useLocation: () => [state.location],
+  useSearch: () => state.search,
   Link: ({ href, children, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }));
 
@@ -58,7 +63,7 @@ describe('Platform Owner navigation', () => {
     state.schoolId = 12;
     state.context = {
       isPlatformOwner: true,
-      user: { name: 'Platform Owner' },
+      user: { name: 'Platform Owner', status: 'ACTIVE' },
       roles: [
         { role: 'PLATFORM_OWNER', schoolId: null, status: 'ACTIVE' },
         { role: 'SCHOOL_ADMIN', schoolId: 12, status: 'ACTIVE' },
@@ -67,6 +72,7 @@ describe('Platform Owner navigation', () => {
     };
     state.ownerDirectoryCalls = [];
     state.librarian = false;
+    state.location = '/'; state.search = '';
   });
 
   it('keeps platform links and hides school-operation links even for a mixed-role Owner', () => {
@@ -74,7 +80,7 @@ describe('Platform Owner navigation', () => {
       <Shell><div>Dashboard content</div></Shell>,
     );
 
-    for (const href of ['/schools', '/records', '/students', '/company-employees', '/partners', '/account-applications', '/devices', '/cards', '/audit', '/users', '/results', '/communications', '/platform/attendance']) {
+    for (const href of ['/schools', '/records', '/students', '/company-employees', '/partners', '/account-applications', '/devices', '/cards', '/audit', '/users', '/results', '/communications', '/platform/attendance', '/subscription-payment-rules', '/payment-settlement?tab=schools']) {
       expect(html).toContain(`href="${href}"`);
     }
     for (const href of ['/parents', '/employees', '/academics', '/subjects', '/classes', '/academic-work', '/timetable', '/attendance', '/finance', '/people/imports', '/my-academics', '/my-fees']) {
@@ -83,6 +89,46 @@ describe('Platform Owner navigation', () => {
     expect(html).toContain('aria-label="Owner school context"');
     expect(html).toContain('Suspended School');
     expect(state.ownerDirectoryCalls.some(call => call.params.status === 'all')).toBe(true);
+  });
+
+  it('only exposes the new financial links for an active global Owner account and membership', () => {
+    const owner = structuredClone(state.context);
+    const denied = [
+      {...owner, user:{...owner.user,status:'INACTIVE'}},
+      {...owner, roles:[{role:'PLATFORM_OWNER',schoolId:null,status:'INACTIVE'}]},
+      {...owner, roles:[{role:'PLATFORM_OWNER',schoolId:12,status:'ACTIVE'}]},
+      {...owner, roles:[]},
+      ...['SCHOOL_ADMIN','ACCOUNTANT','TEACHER','STUDENT','PARENT','PARTNER'].map(role=>({
+        isPlatformOwner:false,user:{status:'ACTIVE'},roles:[{role,schoolId:12,status:'ACTIVE'}],
+      })),
+      ...['DEVICE_ACTIVATION_OFFICER','COMPANY_ACCOUNTANT'].map(role=>({
+        ...owner,roles:[...owner.roles,{role,schoolId:null,status:'ACTIVE'}],
+      })),
+    ];
+    for (const context of denied) {
+      state.context=context;
+      const html=renderToStaticMarkup(<Shell>Content</Shell>);
+      expect(html).not.toContain('href="/subscription-payment-rules"');
+      expect(html).not.toContain('href="/payment-settlement?tab=schools"');
+    }
+    state.context=owner;
+    state.schoolId=0;
+    const html=renderToStaticMarkup(<Shell>Owner content</Shell>);
+    expect(html).toContain('Subscription &amp; Payment Rules');
+    expect(html).toContain('NFC Fee Collection Oversight');
+    expect(html).not.toContain('Split Settlements');
+    expect(html).not.toContain('Hosted Payments');
+  });
+
+  it('highlights the direct oversight link only for the schools query tab', () => {
+    state.location='/payment-settlement';
+    for(const [search,active] of [['tab=schools',true],['tab=company',false],['tab=history',false],['',false]] as const){
+      state.search=search;
+      const host=document.createElement('div');
+      host.innerHTML=renderToStaticMarkup(<Shell>Owner content</Shell>);
+      expect(host.querySelector('a[href="/payment-settlement?tab=schools"]')?.getAttribute('aria-current'))
+        .toBe(active?'page':null);
+    }
   });
 
   it('does not show the Owner context selector to a School Admin', () => {

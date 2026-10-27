@@ -1,6 +1,7 @@
 import { Link } from 'wouter';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
 import { PageHeading, useTenant } from '@/components/shared';
+import { hasActiveGlobalOwner } from '@/components/navigation-model';
 
 export function FinanceWorkspacePage() {
   const { schoolId } = useTenant();
@@ -14,7 +15,11 @@ export function FinanceWorkspacePage() {
   const links = owner
     ? [
         ['/staff-nfc-finance', 'Staff NFC subscriptions', 'Payment allocations, provider fees, refunds and reconciliation.'],
-        ['/billing-rules', 'Billing rules', 'Effective-dated rules for new term subscriptions.'],
+        ...(hasActiveGlobalOwner(data) ? [
+          ['/subscription-payment-rules', 'Subscription & Payment Rules', 'Review platform subscription rules and payment assistance. Student LIVE activation remains separately gated.'],
+          ['/payment-settlement?tab=schools', 'NFC Fee Collection Oversight', 'Read-only parent-to-school fee collection, with school and academic-term filters.'],
+        ] : []),
+        ['/billing-rules', 'Staff NFC billing rules', 'Existing effective-dated staff billing rules.'],
         ['/payment-settlement', 'Payment & settlement', 'Platform configuration and school settlement oversight.'],
         ['/payroll', 'Company payroll', 'YETENIA TECHNOLOGIES LIMITED employees, approvals and verified salary outcomes.'],
       ]

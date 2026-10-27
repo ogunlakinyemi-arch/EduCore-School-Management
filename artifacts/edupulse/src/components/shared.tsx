@@ -1,9 +1,9 @@
-import { useLocation, Link } from 'wouter';
+import { useLocation, useSearch, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
 import { ViewportFormDialog } from './viewport-form-dialog';
 import { HelpLink } from './help-link';
 import { useAuth, UserButton } from '@clerk/react';
-import { buildNavSections, isNavActive, navMode } from './navigation-model';
+import { buildNavSections, isNavActive, navMode, hasActiveGlobalOwner } from './navigation-model';
 import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { PwaInstall } from '@/components/pwa-install';
@@ -98,6 +98,7 @@ const nav: NavItem[] = [
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/subscription-payment-rules', label: 'Subscription & Payment Rules', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
+  { href: '/payment-settlement?tab=schools', label: 'NFC Fee Collection Oversight', icon: ReceiptText, roles: ['PLATFORM_OWNER'] },
   { href: '/student-subscription', label: 'My Subscription', icon: WalletCards, roles: ['STUDENT'] },
   { href: '/subscription-enforcement', label: 'Term Enforcement', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
@@ -118,7 +119,9 @@ const ownerNavPaths = new Set([
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results', '/platform/attendance',
   '/communications',
+  '/subscription-payment-rules', '/payment-settlement?tab=schools',
 ]);
+const ownerPaymentNavPaths = new Set(['/subscription-payment-rules', '/payment-settlement?tab=schools']);
 
 export function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -127,6 +130,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { schoolId } = useTenant();
   const contextQuery = useGetAuthorizedContext();
   const context = contextQuery.data;
+  const search = useSearch();
   
   const roles = context?.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role as string) || [];
   const isActivationOfficer = roles.includes('DEVICE_ACTIVATION_OFFICER');
@@ -140,6 +144,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const libraryPerms = usePhase9List<{ canManageLoans: boolean; canManageCatalogue: boolean; canAssignStaff: boolean }>('library/permissions', schoolId, {}, teacherOnly && !isPlatformOwner);
   const librarianDuty = libraryPerms.data?.canManageLoans === true || libraryPerms.data?.canManageCatalogue === true || libraryPerms.data?.canAssignStaff === true;
   const visibleNav = nav.filter(item => {
+    if (ownerPaymentNavPaths.has(item.href) && !hasActiveGlobalOwner(context)) return false;
     if (isActivationOfficer) return item.roles?.includes('DEVICE_ACTIVATION_OFFICER') === true;
     if (isCompanyAccountant) return item.roles?.includes('COMPANY_ACCOUNTANT') === true;
     if (isPlatformOwner) return ownerNavPaths.has(item.href);
@@ -218,7 +223,7 @@ export function Shell({ children }: { children: ReactNode }) {
             const renderLink = (item: NavItem, nested = false) => {
               const Icon = item.icon;
               const itemLabel = item.href === '/curriculum' && roles.includes('TEACHER') && !roles.includes('SCHOOL_ADMIN') ? 'My Curriculum' : item.label;
-              const active = isNavActive(item.href, location);
+              const active = isNavActive(item.href, location, search);
               return (
                 <Link key={item.href} href={item.href} onClick={() => setOpen(false)} aria-current={active ? 'page' : undefined} className={cx('group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] outline-none hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--sidebar-ring))]', nested && 'py-2 pl-4', active && 'bg-[hsl(var(--sidebar-primary))] font-bold text-[hsl(var(--sidebar-primary-foreground))] hover:bg-[hsl(var(--sidebar-primary))]')} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
                   <Icon size={18} strokeWidth={active ? 2.4 : 1.8} />
@@ -235,7 +240,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 {dash && renderLink(dash)}
                 {sections.map(section => {
                   const items = section.hrefs.map(h => byHref.get(h)).filter((i): i is NavItem => !!i);
-                  const hasActive = items.some(i => isNavActive(i.href, location));
+                  const hasActive = items.some(i => isNavActive(i.href, location, search));
                   const expanded = hasActive || openSections.includes(section.id);
                   const panelId = `nav-section-${section.id}`;
                   return (

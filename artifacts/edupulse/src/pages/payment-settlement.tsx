@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { useLocation, useSearch } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { Landmark } from 'lucide-react';
 import {
@@ -109,7 +110,16 @@ function SchoolAdminSettlement({ schoolId }: { schoolId: number }) {
 
 function OwnerSettlement() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'company' | 'schools' | 'history'>('company');
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const requestedTab = new URLSearchParams(search).get('tab');
+  const tab = requestedTab === 'schools' || requestedTab === 'history' ? requestedTab : 'company';
+  const setTab = (value: 'company' | 'schools' | 'history') => {
+    const params = new URLSearchParams(search);
+    if (value === 'company') params.delete('tab');
+    else params.set('tab', value);
+    navigate(`/payment-settlement${params.size ? `?${params}` : ''}`);
+  };
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState(''); const [fail, setFail] = useState('');
   const company = useGetPlatformPaymentSettlement({ query: { queryKey: getGetPlatformPaymentSettlementQueryKey(), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
