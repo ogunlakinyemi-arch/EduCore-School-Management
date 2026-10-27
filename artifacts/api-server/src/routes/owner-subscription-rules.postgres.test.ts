@@ -45,9 +45,27 @@ const releaseEnv:NodeJS.ProcessEnv={
 const fictionalReport=async()=>({sourceStatus:"COMPLETE",evidenceDigest:"f".repeat(64),rows:[
   {studentId:31,status:"NEW_OBLIGATION_AFTER_REVIEW"},{studentId:33,status:"NEW_OBLIGATION_AFTER_REVIEW"}]}) as any;
 const releaseDeps={env:releaseEnv,report:fictionalReport};
+// Both clocks are fixture-owned. JS-only time travel would disagree with NOW()
+// in the real PostgreSQL authorization, grace-period and release queries.
+const freeFixtureTime="2026-10-27T12:00:00Z";
+function fixtureClockSql(sql:string){
+  return sql.replace(/\bnow\s*\(\s*\)/gi,"owner_rules_fixture_now()")
+    .replace(/\bCURRENT_DATE\b/gi,"(owner_rules_fixture_now() AT TIME ZONE 'Africa/Lagos')::date");
+}
+function withFixtureClock<T extends {query:any}>(connection:T):T{
+  return new Proxy(connection,{
+    get(target,key){
+      if(key==="query")return(sql:string,...args:any[])=>target.query(fixtureClockSql(sql),...args);
+      if(key==="connect")return async()=>withFixtureClock(await (target as any).connect());
+      const value=Reflect.get(target,key);
+      return typeof value==="function"?value.bind(target):value;
+    },
+  });
+}
 const suite=process.env.EDUCORE_OWNER_RULES_ROOT?describe:describe.skip;
 suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
   let db:Pool,server:ReturnType<typeof app.listen>,base="";
+  const originalFetch=globalThis.fetch;
   const app=express();
   app.use("/fixture-direct-webhook",express.raw({type:"application/json"}),directStudentWebhookRouter);
   app.use(express.json());app.use(router);app.use(studentAccessRouter);app.use(nfcFeeOversightRouter);app.use(directStudentPaymentsRouter);
@@ -65,6 +83,15 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     const r=await request(path,"POST",d);expect(r.status).toBe(201);
     return await r.json() as any;
   };
+  async function setFixtureTime(instant:string){
+    vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date(instant));
+    await db.query("UPDATE owner_rules_fixture_clock SET instant=$1",[instant]);
+  }
+  async function enterCollectionTerm(){
+    await setFixtureTime("2027-01-26T12:00:00Z");
+    await db.query(`UPDATE academic_terms SET name='Second Term',start_date='2027-01-18',
+      end_date='2027-04-09',is_current=true,status='ACTIVE' WHERE id=4 AND school_id=1`);
+  }
   beforeAll(async()=>{
     const root=process.env.EDUCORE_OWNER_RULES_ROOT!;
     assert.equal(process.env.NODE_ENV,"test");
@@ -80,6 +107,19 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       max:4,connectionTimeoutMillis:1500,statement_timeout:8000});
     const identity=(await db.query("SELECT current_setting('data_directory') AS data,current_setting('listen_addresses') AS listen,current_user AS role")).rows[0];
     assert.equal(realpathSync(identity.data),realpathSync(data));assert.equal(identity.listen,"");assert.equal(identity.role,"owner_rules_qa");
+    // Install only AFTER proving this connection belongs to the private cluster.
+    await db.query(`CREATE TABLE owner_rules_fixture_clock(instant timestamptz NOT NULL);
+      INSERT INTO owner_rules_fixture_clock VALUES('${freeFixtureTime}');
+      CREATE FUNCTION owner_rules_fixture_now() RETURNS timestamptz LANGUAGE sql STABLE AS
+        $$ SELECT instant FROM owner_rules_fixture_clock $$;`);
+    db=withFixtureClock(db);
+    vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date(freeFixtureTime));
+    globalThis.fetch=async(input,init)=>{
+      const address=new URL(input instanceof Request?input.url:String(input));
+      if(!["127.0.0.1","localhost"].includes(address.hostname))
+        throw new Error("External network is forbidden in the disposable Owner-rule fixture");
+      return originalFetch(input,init);
+    };
     state.db=db;
     await db.query(`CREATE TABLE staff_nfc_billing_rules(id serial PRIMARY KEY,version integer NOT NULL,
       product text NOT NULL,billing_frequency text NOT NULL,price_minor integer NOT NULL,
@@ -142,8 +182,12 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
   afterAll(async()=>{
     if(server){server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));}
     if(db)await db.end();
+    globalThis.fetch=originalFetch;vi.useRealTimers();
   });
   beforeEach(async()=>{
+    await setFixtureTime(freeFixtureTime);
+    await db.query(`UPDATE academic_terms SET name='QA Current',start_date='2026-10-17',
+      end_date='2026-11-16',is_current=true,status='ACTIVE' WHERE id=4 AND school_id=1`);
     // These are exclusively the independently verified disposable fixture tables.
     await db.query(`TRUNCATE student_direct_live_release_decisions,student_direct_live_review_bindings,
       student_direct_live_release_requests,student_direct_live_events,student_direct_live_attempts,
@@ -272,7 +316,33 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect(JSON.stringify(json)).not.toMatch(/(?:SECRET_KEY|sk_live_|publishable_key|encryption_key)/i);
     expect(r.headers.get("cache-control")).toBe("no-store");
   });
+  it("keeps the current term free without rewriting history or allowing LIVE payment, while preserving manual locks",async()=>{
+    await db.query("INSERT INTO subscriptions VALUES(71,1,31,'Historical term',5000,'active','verified')");
+    const before=(await db.query("SELECT * FROM subscriptions ORDER BY id")).rows;
+    expect(await readStudentTermPlatformAccess(db,1,31)).toMatchObject({
+      status:"NOT_REQUIRED",restricted:false,termId:null,
+    });
+    const ctx={user:{id:9,status:"ACTIVE"},roles:[{role:"STUDENT",status:"ACTIVE",schoolId:1}]} as any;
+    await expect(enforceRequestSubscription({originalUrl:"/api/library/books",method:"GET",query:{}} as any,ctx))
+      .resolves.toBeUndefined();
+    const provider=vi.fn(async()=>{throw Error("Provider must never be called");});
+    expect(await directStudentReadiness(db as any,{schoolId:1,studentId:31,termId:4},
+      {...releaseDeps,fetcher:provider})).toMatchObject({
+        ready:false,blockers:["FREE_ROLLOUT_NO_PLATFORM_PAYMENT"],
+      });
+    await expect(startDirectStudentPayment(db as any,{
+      schoolId:1,studentId:31,termId:4,actorId:9,email:"fictional@example.test",idempotencyKey:"free-no-charge-001",
+    },{...releaseDeps,fetcher:provider})).rejects.toMatchObject({code:"FREE_ROLLOUT_NO_PLATFORM_PAYMENT"});
+    expect(provider).not.toHaveBeenCalled();
+    expect((await db.query(`SELECT (SELECT count(*)::int FROM student_direct_live_obligations) AS obligations,
+      (SELECT count(*)::int FROM student_direct_live_attempts) AS attempts`)).rows[0])
+      .toEqual({obligations:0,attempts:0});
+    expect((await db.query("SELECT * FROM subscriptions ORDER BY id")).rows).toEqual(before);
+    await db.query("INSERT INTO school_subscription_manual_locks(school_id,locked,version) VALUES(1,true,1)");
+    await expect(readStudentPlatformAccess(db,9)).rejects.toMatchObject({statusCode:403});
+  });
   it("restricts student core APIs but leaves account/payment/help paths without a subscription lookup",async()=>{
+    await enterCollectionTerm();
     const ctx={user:{id:9,status:"ACTIVE"},roles:[{role:"STUDENT",status:"ACTIVE",schoolId:1}]} as any;
     await expect(enforceRequestSubscription({originalUrl:"/api/library/books?studentId=33",method:"GET",query:{studentId:"33"}} as any,ctx))
       .rejects.toMatchObject({statusCode:403,eventType:"STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED"});
@@ -282,6 +352,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect(state.queries).toBe(before);
   });
   it("binds platform verification to student/school/term and never treats an active flag, school payment or pending evidence as proof",async()=>{
+    await enterCollectionTerm();
     await db.query(`INSERT INTO subscriptions VALUES(71,1,31,'QA Current',5000,'active','verified')`);
     const historical=(await db.query("SELECT * FROM subscriptions WHERE id=71")).rows;
     expect((await readStudentTermPlatformAccess(db,1,31)).restricted).toBe(true);
@@ -302,11 +373,34 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     await db.query("UPDATE student_subscription_payments SET gross_amount_minor=500000,reconciliation_status='PENDING' WHERE id=81");
     expect((await readStudentTermPlatformAccess(db,1,31)).restricted).toBe(true);
     await db.query("UPDATE student_subscription_payments SET reconciliation_status='RECONCILED' WHERE id=81");
+    // A historical split payment is preserved, never converted into direct proof.
+    const legacyPayment=(await db.query("SELECT * FROM student_subscription_payments WHERE id=81")).rows;
+    expect((await readStudentTermPlatformAccess(db,1,31)).restricted).toBe(true);
+    const proposal=await insert(draft("STUDENT_PLATFORM"));
+    const review=(await db.query(`INSERT INTO student_direct_live_reviews
+      (school_id,academic_term_id,rule_id,report_digest,merchant_scope,no_split_confirmed,approved_by,expires_at,reason)
+      VALUES(1,4,$1,repeat('a',64),'FICTIONAL_NON_SPLIT_MERCHANT',true,9,
+        now()+interval '1 day','Fictional verified-proof fixture') RETURNING id`,[proposal.id])).rows[0];
+    const obligation=(await db.query(`INSERT INTO student_direct_live_obligations
+      (school_id,student_id,academic_term_id,rule_id,review_id,merchant_scope,created_by)
+      VALUES(1,31,4,$1,$2,'FICTIONAL_NON_SPLIT_MERCHANT',9) RETURNING id`,[proposal.id,review.id])).rows[0];
+    const attempt=(await db.query(`INSERT INTO student_direct_live_attempts
+      (obligation_id,reference,idempotency_key,state,provider_transaction_id,provider_reference,
+        provider_fee_minor,additional_fee_minor,verified_at,created_by)
+      VALUES($1,'SCV4_live_fixture_proof_001','fictional-proof-001','PAID','991','FICTIONAL-991',
+        55,0,now(),9) RETURNING id`,[obligation.id])).rows[0];
+    expect((await readStudentTermPlatformAccess(db,1,31)).restricted).toBe(true);
+    await db.query(`INSERT INTO student_direct_live_events(attempt_id,kind,details)
+      VALUES($1,'PROVIDER_PAYMENT_VERIFIED','{"transactionId":"wrong"}')`,[attempt.id]);
+    expect((await readStudentTermPlatformAccess(db,1,31)).restricted).toBe(true);
+    await db.query(`INSERT INTO student_direct_live_events(attempt_id,kind,details)
+      VALUES($1,'PROVIDER_PAYMENT_VERIFIED','{"transactionId":"991"}')`,[attempt.id]);
     expect((await readStudentTermPlatformAccess(db,1,31)).status).toBe("VERIFIED");
     expect((await readStudentPlatformAccess(db,9)).restricted).toBe(false);
     const ctx={user:{id:9,status:"ACTIVE"},roles:[{role:"STUDENT",status:"ACTIVE",schoolId:1}]} as any;
     await expect(enforceRequestSubscription({originalUrl:"/api/library/books",method:"GET",query:{}} as any,ctx)).resolves.toBeUndefined();
     expect((await db.query("SELECT * FROM subscriptions WHERE id=71")).rows).toEqual(historical);
+    expect((await db.query("SELECT * FROM student_subscription_payments WHERE id=81")).rows).toEqual(legacyPayment);
     expect((await readStudentTermPlatformAccess(db,1,33)).restricted).toBe(true);
     await db.query("INSERT INTO school_subscription_manual_locks(school_id,locked,version) VALUES(1,true,1)");
     await expect(readStudentPlatformAccess(db,9)).rejects.toMatchObject({statusCode:403});
@@ -395,6 +489,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     }
   });
   it("keeps direct LIVE checkout blocked without release evidence or a fresh approved 3200 rule; mock provider is never called",async()=>{
+    await enterCollectionTerm();
     const mock=vi.fn(async()=>{throw Error("Provider was called");});
     const scope={schoolId:1,studentId:31,termId:4};
     const result=await directStudentReadiness(db as any,scope,{env:{NODE_ENV:"test"},fetcher:mock});
@@ -430,6 +525,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect(state.connections+state.queries).toBe(0);
   });
   it("keeps GET readiness read-only and requires review plus explicit confirmation before rule scheduling",async()=>{
+    await enterCollectionTerm();
     const {review,scope,preview}=await releaseRequest();
     expect(preview.approvalReady).toBe(true);expect(preview.checkoutEnabled).toBe(false);
     expect(review.status).toBe("CREATED");
@@ -492,6 +588,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect(invalid.status).toBe(400);
   });
   it("fails closed when required schema/history protection is missing and never writes on inspection",async()=>{
+    await enterCollectionTerm();
     const c=await db.connect();
     try{
       expect((await inspectDirectReleaseSchema(c)).ready).toBe(true);
@@ -513,7 +610,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       noSplitConfirmed:true,policy:"NEW_ONLY_PRESERVE_LEGACY",reason:"Fictional expiry fixture",
       expiresAt:new Date(Date.now()+600).toISOString()},9,releaseDeps);
     expect((await decide(review,"EXPIRED")).status).toBe(409);
-    await new Promise(resolve=>setTimeout(resolve,650));
+    await setFixtureTime(new Date(Date.now()+650).toISOString());
     const listed=await (await request(`${releaseBase}/reviews?${new URLSearchParams(scope as any)}`)).json() as any;
     expect(listed.reviews[0].status).toBe("EXPIRED");
     expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_release_decisions")).rows[0].n).toBe(0);
@@ -521,6 +618,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect((await decide(review,"APPROVED")).status).toBe(409);
   });
   it("keeps a lost checkout response permanently claimed; authenticated webhook readback alone unlocks the exact student-term",async()=>{
+    await enterCollectionTerm();
     const proposal=await insert(draft("STUDENT_PLATFORM"));
     await db.query("UPDATE subscription_rule_proposals SET status='ACTIVE',effective_at=now()-interval '1 day' WHERE id=$1",[proposal.id]);
     const scope={schoolId:1,termId:4,ruleId:proposal.id},preview=await previewDirectRelease(db as any,scope,releaseDeps);
@@ -572,6 +670,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     }finally{spy.mockRestore();vi.unstubAllEnvs();}
   });
   it("keeps the School Admin platform action TEST-only and blocked without a direct release, rejecting amount and school tampering",async()=>{
+    await enterCollectionTerm();
     const prior=process.env.NODE_ENV;process.env.NODE_ENV="development";
     try{
       const url="/schools/1/platform-subscriptions";
@@ -592,6 +691,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     }finally{process.env.NODE_ENV=prior;}
   });
   it("uses only a reviewed direct 3200 scope, stores verified attempts once and reuses a reference without another provider POST",async()=>{
+    await enterCollectionTerm();
     const approvedDigest="f".repeat(64);
     const env={
       NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",
