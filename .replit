@@ -40,6 +40,9 @@ COMMUNICATION_EMAIL_PROVIDER = "resend"
 EMAIL_FROM = "Yetenia EduCore <notification@yetenia.com>"
 EDUCORE_NOTIFICATION_LIVE_FROM = "2026-10-23T20:49:25.893Z"
 PUBLIC_APP_URL = "https://educore.yetenia.com"
+EDUCORE_FLUTTERWAVE_MODE = "LIVE"
+EDUCORE_FLUTTERWAVE_RELEASE = "SCV3_V1"
+FLUTTERWAVE_LIVE_WEBHOOK_URL = "https://educore.yetenia.com/api/webhooks/flutterwave/live/student-subscription"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-2357c139-bab2-4688-9e2e-9a940e1cb1cc"
