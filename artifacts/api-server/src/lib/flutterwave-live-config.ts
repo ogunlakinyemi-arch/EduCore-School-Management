@@ -1,11 +1,12 @@
 import { confirmedLiveSplitModel } from "./flutterwave-live-model";
+import { flutterwavePaymentMode } from "./flutterwave-payment-mode";
 
 /** Server-only configuration. Never return credentials or infer dashboard settings.
  * configurationReady describes credential/runtime wiring ONLY, never activation.
  */
 export function flutterwaveLiveStatus(env: NodeJS.ProcessEnv = process.env) {
-  const enabled = env.EDUCORE_FLUTTERWAVE_LIVE_ENABLED === "true";
-  const modeMatches = env.EDUCORE_FLUTTERWAVE_MODE === "LIVE";
+  const enabled = flutterwavePaymentMode(env) === "LIVE";
+  const modeMatches = enabled;
   const runtimeMatches = env.NODE_ENV === "production";
   const secret = env.FLUTTERWAVE_LIVE_SECRET_KEY;
   const credentialConfigured = !!secret;
@@ -13,7 +14,7 @@ export function flutterwaveLiveStatus(env: NodeJS.ProcessEnv = process.env) {
     && /^FLWSECK-(?!TEST-)[A-Za-z0-9_-]{8,}$/.test(secret);
   const hash = flutterwaveLiveWebhookVerifier(env);
   const webhookConfigured = typeof hash === "string" && hash.trim().length >= 16 && hash === hash.trim();
-  const webhookEnvironmentMatches = env.EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT === "LIVE";
+  const webhookEnvironmentMatches = modeMatches;
   const webhookSeparated = !env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH
     || env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH !== hash;
   const configurationReady = enabled && modeMatches && runtimeMatches && credentialValid
@@ -38,27 +39,25 @@ export function flutterwaveLiveStatus(env: NodeJS.ProcessEnv = process.env) {
   };
 }
 
-/** Prefer a dedicated LIVE secret. Shared legacy slot is valid only when
- * explicitly bound to LIVE. Do not copy/relabel the TEST verifier at runtime. */
+/** LIVE exclusively uses its dedicated verifier. Never reinterpret a shared or
+ * TEST verifier as LIVE, even when old webhook-environment flags say LIVE. */
 export function flutterwaveLiveWebhookVerifier(env:NodeJS.ProcessEnv=process.env):string|undefined {
-  if(env.EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT!=="LIVE")return undefined;
-  const dedicated=env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH,established=env.FLUTTERWAVE_WEBHOOK_VERIF_HASH;
-  // Do not silently mask a differently configured established dashboard verifier.
-  if(dedicated!==undefined&&established!==undefined&&dedicated!==established)return undefined;
-  const value=dedicated??established;
+  if(flutterwavePaymentMode(env)!=="LIVE")return undefined;
+  const value=env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH;
+  if(value!==undefined && value===env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH)return undefined;
   return typeof value==="string"&&value===value.trim()&&value.length>=16?value:undefined;
 }
 
 /** Dedicated TEST verifier, or legacy shared verifier only when not bound to LIVE. */
 export function flutterwaveTestWebhookVerifier(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  const scope = env.EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT;
-  if (scope !== undefined && scope !== "TEST" && scope !== "LIVE") return undefined;
+  if(flutterwavePaymentMode(env)!=="TEST")return undefined;
   const dedicated = env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH;
   if (dedicated !== undefined) {
     if (dedicated.trim().length < 16 || dedicated !== dedicated.trim()) return undefined;
-    if (dedicated === env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH
-      || scope === "LIVE" && dedicated === env.FLUTTERWAVE_WEBHOOK_VERIF_HASH) return undefined;
+    if (dedicated === env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH) return undefined;
     return dedicated;
   }
-  return scope === "LIVE" ? undefined : env.FLUTTERWAVE_WEBHOOK_VERIF_HASH || undefined;
+  const legacy=env.FLUTTERWAVE_WEBHOOK_VERIF_HASH;
+  if(legacy && legacy===env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH)return undefined;
+  return legacy || undefined;
 }

@@ -74,17 +74,18 @@ instead of the previously discussed external-payment-service architecture.
 versioned allocation policy. Architectural extraction requires a new explicit
 request; neither this repair nor mocked provider tests authorize LIVE activation.
 
-Use additive, reviewable migration drafts and disposable PostgreSQL only.
-Development implementation permission does not authorize applying even those
-drafts to the Development application database; Production requires its own
-separate approval too. Do not inspect actual secret values, make actual LIVE
-provider requests, change LIVE flags/dashboard settings or publish.
+As of 2026-10-27, the user explicitly authorizes repairing the existing integrated
+LIVE configuration and enabling LIVE when its security prerequisites are valid.
+This supersedes the earlier blanket prohibition on LIVE configuration enablement;
+it does not authorize provider calls, charges, shared/Production database access,
+schema or migration changes, deletion, or automatic publishing.
 
-**Why:** The user explicitly limited the coordinated LIVE workflow request to
-safe code/tests/docs and required remaining operational blockers to be reported,
-not treated as completed acceptance.
+**Why:** The user explicitly requested a simple TEST/LIVE mode configuration
+without weakening payment security, while retaining these operational limits.
 
-**How to apply:** Keep fixture capability injection separate from release gates.
-Do not mix LIVE financial records into historically unscoped shared/SANDBOX
-records merely to demonstrate activation or commission approval. Review explicit
-environment-aware app and UI consumption before any operational connection.
+**How to apply:** Authorization is not readiness evidence. Missing LIVE secrets,
+dashboard registration or school-specific LIVE approvals must remain fail-closed;
+TEST approvals do not substitute. Do not inspect actual secret values. A restart
+requires verified startup safety and must not be inferred from a successful build.
+Keep fixture capabilities separate from operational release gates and preserve
+all historical payment policies and environment boundaries.

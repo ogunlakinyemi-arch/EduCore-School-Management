@@ -13,7 +13,8 @@ const env:NodeJS.ProcessEnv={};
 const query=vi.fn(async(sql:string,values?:any[])=>({rows:sql.includes("SELECT bool_or")&&values?.[0]===1&&values?.[1]===10?[{admin:true}]:[]}));
 const release=vi.fn(),connect=vi.fn(async()=>({query,release}));
 beforeEach(async()=>{
-  query.mockClear();release.mockClear();connect.mockClear();delete env.EDUCORE_FLUTTERWAVE_MODE;
+  query.mockClear();release.mockClear();connect.mockClear();
+  for(const key of Object.keys(env))delete env[key];
   const app=express();app.use(createSchoolBillingContextRouter({pool:{connect} as any,env}));
   await new Promise<void>(r=>{server=app.listen(0,"127.0.0.1",()=>r())});
   url=`http://127.0.0.1:${(server.address() as any).port}/flutterwave/live/billing-context`;
@@ -41,5 +42,16 @@ describe("authenticated school billing HTTP boundary without shared databases",(
     env.EDUCORE_FLUTTERWAVE_MODE="LIVE";
     const response=await fetch(`${url}?schoolId=10`);
     expect(await response.json()).toMatchObject({mode:"UNAVAILABLE",reason:"LIVE_RELEASE_UNAVAILABLE",students:[]});
+  });
+  it("uses only the mode selector despite stale legacy LIVE flags or release metadata",async()=>{
+    env.EDUCORE_FLUTTERWAVE_MODE="TEST";
+    env.EDUCORE_FLUTTERWAVE_LIVE_ENABLED="true";
+    env.EDUCORE_FLUTTERWAVE_RELEASE="SCV3_V1";
+    env.EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT="LIVE";
+    expect(await (await fetch(`${url}?schoolId=10`)).json()).toMatchObject({mode:"TEST",reason:"TEST_RUNTIME"});
+  });
+  it.each(["live","", "INVALID", " LIVE"])("invalid mode %s cannot select either payment runtime",async mode=>{
+    env.EDUCORE_FLUTTERWAVE_MODE=mode;
+    expect(await (await fetch(`${url}?schoolId=10`)).json()).toMatchObject({mode:"UNAVAILABLE",students:[]});
   });
 });

@@ -6,12 +6,12 @@ import {processReleasedLiveWebhook,verifyLiveCallback} from "../services/flutter
 
 // Fictional configuration and an injected HTTP transport only; never inherited keys.
 export const runtimeEnv=():NodeJS.ProcessEnv=>({
-  NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",EDUCORE_FLUTTERWAVE_LIVE_ENABLED:"true",
-  EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT:"LIVE",EDUCORE_FLUTTERWAVE_RELEASE:"SCV3_V1",
+  NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",EDUCORE_FLUTTERWAVE_RELEASE:"SCV3_V1",
   EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE:"fictional_merchant",
   FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-fictional-live-key",
   FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:"fictional-live-verifier-value",
   FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH:"fictional-test-verifier-value",PUBLIC_APP_URL:"https://payment.invalid",
+  FLUTTERWAVE_LIVE_WEBHOOK_URL:"https://payment.invalid/api/webhooks/flutterwave/live/student-subscription",
 });
 const reference="SCV3_live_fictional_payment_123",school="RS_FictionalSchool123";
 const data=()=>({id:123,tx_ref:reference,flw_ref:"fictional-provider-123",status:"successful",currency:"NGN",
@@ -29,21 +29,23 @@ describe("default-disabled LIVE runtime and separate webhook secrets",()=>{
     expect(pool.connect).not.toHaveBeenCalled();
   });
   it.each(["FLUTTERWAVE_LIVE_SECRET_KEY","FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH",
-    "FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH","PUBLIC_APP_URL","EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE",
+    "FLUTTERWAVE_LIVE_WEBHOOK_URL","PUBLIC_APP_URL","EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE",
     "EDUCORE_FLUTTERWAVE_RELEASE"])("blocks absent %s",key=>{
     expect(liveReleaseConfiguration({...runtimeEnv(),[key]:undefined}).ready).toBe(false);
   });
   it("keeps TEST and LIVE hashes distinct; shared TEST never becomes LIVE evidence",()=>{
     const env=runtimeEnv();
     expect(flutterwaveLiveWebhookVerifier(env)).toBe(env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH);
-    expect(flutterwaveTestWebhookVerifier(env)).toBe(env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH);
+    expect(flutterwaveTestWebhookVerifier(env)).toBeUndefined();
+    expect(flutterwaveTestWebhookVerifier({...env,EDUCORE_FLUTTERWAVE_MODE:"TEST"})).toBe(env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH);
     expect(liveReleaseConfiguration({...env,FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH:env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH}).ready).toBe(false);
     expect(flutterwaveLiveWebhookVerifier({FLUTTERWAVE_WEBHOOK_VERIF_HASH:"legacy-test-hash-value"})).toBeUndefined();
   });
-  it("rejects conflicting LIVE aliases instead of silently masking the established verifier",()=>{
+  it("uses only the dedicated LIVE verifier, never the legacy shared slot",()=>{
     const env:NodeJS.ProcessEnv={...runtimeEnv(),FLUTTERWAVE_WEBHOOK_VERIF_HASH:"different-established-live-verifier"};
-    expect(flutterwaveLiveWebhookVerifier(env)).toBeUndefined();
-    expect(liveReleaseConfiguration(env).ready).toBe(false);
+    expect(flutterwaveLiveWebhookVerifier(env)).toBe(env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH);
+    expect(liveReleaseConfiguration(env).ready).toBe(true);
+    expect(flutterwaveLiveWebhookVerifier({...env,FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:undefined})).toBeUndefined();
     expect(flutterwaveLiveWebhookVerifier({...env,
       FLUTTERWAVE_WEBHOOK_VERIF_HASH:env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH}))
       .toBe(env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH);

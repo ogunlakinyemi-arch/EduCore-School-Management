@@ -22,7 +22,7 @@ function live(): NodeJS.ProcessEnv {
     EDUCORE_FLUTTERWAVE_LIVE_ENABLED: "true",
     EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT: "LIVE",
     FLUTTERWAVE_LIVE_SECRET_KEY: "FLWSECK-fictional-live-credential",
-    FLUTTERWAVE_WEBHOOK_VERIF_HASH: "fictional-live-verifier-123",
+    FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH: "fictional-live-verifier-123",
     FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: "fictional-test-verifier-456",
   };
 }
@@ -39,13 +39,11 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     }
   });
   it.each([
-    ["EDUCORE_FLUTTERWAVE_LIVE_ENABLED", undefined], ["EDUCORE_FLUTTERWAVE_LIVE_ENABLED", "TRUE"],
     ["EDUCORE_FLUTTERWAVE_MODE", "TEST"], ["EDUCORE_FLUTTERWAVE_MODE", undefined],
     ["NODE_ENV", "development"], ["NODE_ENV", "test"],
     ["FLUTTERWAVE_LIVE_SECRET_KEY", undefined], ["FLUTTERWAVE_LIVE_SECRET_KEY", "FLWSECK_TEST-fictional-test-key"],
     ["FLUTTERWAVE_LIVE_SECRET_KEY", "malformed"], ["FLUTTERWAVE_LIVE_SECRET_KEY", " FLWSECK-fictional-live-key"],
-    ["FLUTTERWAVE_WEBHOOK_VERIF_HASH", undefined], ["FLUTTERWAVE_WEBHOOK_VERIF_HASH", "short"],
-    ["EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT", undefined], ["EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT", "TEST"],
+    ["FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH", undefined], ["FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH", "short"],
     ["FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH", "fictional-live-verifier-123"],
   ])("rejects missing/mismatched %s (%s) without transport", (key, value) => {
     const env = { ...live(), [key!]: value };
@@ -117,11 +115,11 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     expect(configuredPayrollProviderCapability(env)).toMatchObject({ mode: "NOT_CONFIGURED", credentialsConfigured: false });
   });
   it("separates LIVE and TEST webhook verifiers and refuses shared-hash LIVE fallback", () => {
-    expect(flutterwaveTestWebhookVerifier(live())).toBe(live().FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH);
+    expect(flutterwaveTestWebhookVerifier(live())).toBeUndefined();
     expect(flutterwaveTestWebhookVerifier({ ...live(), FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: undefined })).toBeUndefined();
-    expect(flutterwaveTestWebhookVerifier({ ...live(), FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: live().FLUTTERWAVE_WEBHOOK_VERIF_HASH })).toBeUndefined();
+    expect(flutterwaveTestWebhookVerifier({ ...live(), FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: live().FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH })).toBeUndefined();
     expect(flutterwaveTestWebhookVerifier({ FLUTTERWAVE_WEBHOOK_VERIF_HASH: "fictional-legacy-test-verifier" })).toBe("fictional-legacy-test-verifier");
-    expect(flutterwaveLiveStatus({ ...live(), FLUTTERWAVE_WEBHOOK_VERIF_HASH: undefined }).configurationReady).toBe(false);
+    expect(flutterwaveLiveStatus({ ...live(), FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH: undefined }).configurationReady).toBe(false);
     expect(flutterwaveTestWebhookVerifier({ ...live(), EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT: "invalid" })).toBeUndefined();
   });
   it("projects no credentials and never represents configuration as readiness evidence", () => {
@@ -152,7 +150,7 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
     await expect(adapter.verifyCheckoutStatus(input)).rejects.toThrow("transport remains blocked");
     await expect(adapter.getPaymentStatus({ ...input, providerTransactionId: "123456" })).rejects.toThrow("transport remains blocked");
     await expect(adapter.handleWebhook({ rawBody: '{"event":"charge.completed"}',
-      headers: { "verif-hash": live().FLUTTERWAVE_WEBHOOK_VERIF_HASH }, resolveExpectedPayment })).rejects.toThrow("event persistence remains blocked");
+      headers: { "verif-hash": live().FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH }, resolveExpectedPayment })).rejects.toThrow("event persistence remains blocked");
     await expect(adapter.requestRefund({ providerTransactionId: "123456", amountMinor: 10000,
       currency: "NGN", reason: "Fictional refund must not execute" })).rejects.toThrow("transport remains blocked");
     expect(fetch).not.toHaveBeenCalled();
@@ -161,7 +159,7 @@ describe("isolated LIVE wiring with immutable readiness gate", () => {
   it.each([undefined, "incorrect-verifier", "fictional-test-verifier-456"])("rejects wrong LIVE hash %s", hash => {
     const adapter = new FlutterwaveLiveAdapter(live(), { fetch: vi.fn() });
     expect(() => adapter.authenticateWebhook({ "verif-hash": hash })).toThrow("hash is invalid");
-    expect(() => adapter.authenticateWebhook({ "flutterwave-signature": live().FLUTTERWAVE_WEBHOOK_VERIF_HASH })).toThrow("hash is invalid");
+    expect(() => adapter.authenticateWebhook({ "flutterwave-signature": live().FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH })).toThrow("hash is invalid");
   });
   it.each([false, true])("keeps school-only fixed V3 allocation, eligible Partner %s", hasPartner => {
     expect(fixedSplitInstructions("RS_FictionalSchool123", hasPartner ? "RS_FictionalPartner12" : null, 3))
@@ -187,7 +185,7 @@ it("LIVE HTTP ingress rejects wrong/test hashes and never acknowledges unpersist
   try {
     if (!server.listening) await new Promise<void>(resolve => server.once("listening", resolve));
     const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/live`;
-    for (const [hash, status] of [[undefined, 401], ["fictional-test-verifier-456", 401], [live().FLUTTERWAVE_WEBHOOK_VERIF_HASH, 503]] as const) {
+    for (const [hash, status] of [[undefined, 401], ["fictional-test-verifier-456", 401], [live().FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH, 503]] as const) {
       const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...(hash ? { "verif-hash": hash } : {}) }, body: '{"event":"charge.completed"}' });
       expect(response.status).toBe(status);
       const body = await response.text();
@@ -207,7 +205,7 @@ it("LIVE HTTP ingress rejects wrong/test hashes and never acknowledges unpersist
       ]) {
         for (let attempt = 0; attempt < 2; attempt++) {
           const response = await fetch(url, { method: "POST", headers: {
-            "content-type": "application/json", "verif-hash": live().FLUTTERWAVE_WEBHOOK_VERIF_HASH!,
+            "content-type": "application/json", "verif-hash": live().FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH!,
           }, body: JSON.stringify(payload) });
           expect(response.status).toBe(503);
           expect(await response.json()).toMatchObject({ processed: false });
@@ -217,7 +215,7 @@ it("LIVE HTTP ingress rejects wrong/test hashes and never acknowledges unpersist
     } finally {
       handleWebhook.mockRestore();
     }
-    vi.stubEnv("EDUCORE_FLUTTERWAVE_LIVE_ENABLED", "");
+    vi.stubEnv("EDUCORE_FLUTTERWAVE_MODE", "TEST");
     expect((await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(503);
   } finally { vi.unstubAllEnvs(); }
 });

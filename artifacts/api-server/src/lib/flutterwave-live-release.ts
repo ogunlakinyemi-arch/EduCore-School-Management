@@ -41,15 +41,20 @@ export function liveReleaseConfiguration(env:NodeJS.ProcessEnv=process.env) {
   const base=env.PUBLIC_APP_URL
     ? configuredStudentSubscriptionCheckoutBaseUrl({environment:"production",publicAppUrl:env.PUBLIC_APP_URL}) : null;
   const blockers:string[]=[];
-  if(!status.configurationReady) blockers.push("LIVE_CREDENTIAL_MODE_OR_WEBHOOK_BINDING");
-  const testHash=env.FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH;
-  if(!testHash || testHash!==testHash.trim() || testHash.length<16 || !status.webhookSeparated)
-    blockers.push("DEDICATED_TEST_WEBHOOK_HASH");
+  if(!status.modeMatches) blockers.push("EDUCORE_FLUTTERWAVE_MODE");
+  if(!status.runtimeMatches) blockers.push("PRODUCTION_RUNTIME_REQUIRED");
+  if(!status.credentialValid) blockers.push("FLUTTERWAVE_LIVE_SECRET_KEY");
+  if(!status.webhookConfigured || !status.webhookSeparated) blockers.push("FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH");
   if(env.EDUCORE_FLUTTERWAVE_RELEASE!==LIVE_RELEASE) blockers.push("RELEASE_APPROVAL");
   if(!/^[A-Za-z0-9_-]{8,80}$/.test(env.EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE??"")) blockers.push("MERCHANT_SCOPE");
   if(!base) blockers.push("PUBLIC_APP_URL");
+  // Operator-declared dashboard registration must match the canonical production
+  // raw-body LIVE route exactly. Never accept a Development/TEST callback URL.
+  const webhookUrl=base?`${base}/api/webhooks/flutterwave/live/student-subscription`:null;
+  if(!webhookUrl || env.FLUTTERWAVE_LIVE_WEBHOOK_URL!==webhookUrl)
+    blockers.push("FLUTTERWAVE_LIVE_WEBHOOK_URL");
   return {ready:blockers.length===0,blockers,merchantScope:env.EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE??"",
-    callbackUrl:base?`${base}/api/flutterwave/live/callback`:null};
+    callbackUrl:base?`${base}/api/flutterwave/live/callback`:null,webhookUrl};
 }
 export async function requireLiveRelease(pool:StudentSubscriptionSqlPool,env:NodeJS.ProcessEnv=process.env) {
   const config=liveReleaseConfiguration(env);

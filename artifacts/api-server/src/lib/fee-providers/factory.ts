@@ -7,6 +7,7 @@ import {
 } from "./index";
 import { developmentFlutterwaveCredential } from "../flutterwave-development-config";
 import { flutterwaveLiveStatus, flutterwaveTestWebhookVerifier } from "../flutterwave-live-config";
+import { flutterwavePaymentMode } from "../flutterwave-payment-mode";
 
 /** Never auto-select LIVE based on credentials, and never fall back to TEST. */
 export function configuredLiveStudentSubscriptionAdapter(env: NodeJS.ProcessEnv = process.env) {
@@ -29,7 +30,7 @@ export function configuredTestAdapter(
     if (!secretKey) return null;
     return new PaystackTestAdapter({ secretKey });
   }
-  if (env.EDUCORE_FLUTTERWAVE_MODE !== undefined && env.EDUCORE_FLUTTERWAVE_MODE !== "TEST") return null;
+  if (flutterwavePaymentMode(env) !== "TEST") return null;
   if (env.NODE_ENV === "development" && !env.REPLIT_DEPLOYMENT) {
     const credential = developmentFlutterwaveCredential(env);
     if (credential.state === "INVALID" || credential.state === "CONFLICT") {
@@ -65,7 +66,7 @@ export function configuredCheckoutReturnUrl(): string | null {
  * Deployed configuration stays unchanged.
  */
 export function configuredStudentNfcTestAdapter(): PaymentProviderAdapter | null {
-  if (process.env.EDUCORE_FLUTTERWAVE_MODE !== undefined && process.env.EDUCORE_FLUTTERWAVE_MODE !== "TEST") return null;
+  if (flutterwavePaymentMode() !== "TEST") return null;
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
     const credential = developmentFlutterwaveCredential();
     if (credential.state === "CONFLICT") return null;

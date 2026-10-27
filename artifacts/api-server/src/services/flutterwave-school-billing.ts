@@ -5,6 +5,7 @@ import { liveCheckoutUrl } from "../lib/flutterwave-live-transport";
 import { verifyLiveSplitAuthority } from "../lib/flutterwave-live-split-authority";
 import { liveVerifiedIssuance } from "./flutterwave-live-application";
 import { GetSchoolBillingContextResponse } from "@workspace/api-zod";
+import { flutterwavePaymentMode } from "../lib/flutterwave-payment-mode";
 import type { z } from "zod";
 type SchoolBillingContext=z.infer<typeof GetSchoolBillingContextResponse>;
 type SchoolBillingStudent=SchoolBillingContext["students"][number];
@@ -28,10 +29,9 @@ export async function readSchoolBillingContext(pool:StudentSubscriptionSqlPool,
           AND o.role='PLATFORM_OWNER' AND o.status='ACTIVE')
       HAVING count(*)>0`,[input.actorId,input.schoolId])).rows[0];
     if(!actor)throw new AuthError(403,"Current school finance access is required");
-    const liveSelected=env.EDUCORE_FLUTTERWAVE_MODE==="LIVE"
-      ||env.EDUCORE_FLUTTERWAVE_LIVE_ENABLED==="true"||!!env.EDUCORE_FLUTTERWAVE_RELEASE;
-    if(!liveSelected){
-      if(env.EDUCORE_FLUTTERWAVE_MODE===undefined||env.EDUCORE_FLUTTERWAVE_MODE==="TEST"){
+    const mode=flutterwavePaymentMode(env);
+    if(mode!=="LIVE"){
+      if(mode==="TEST"){
         result.mode="TEST";result.reason="TEST_RUNTIME";
       }
       return result;

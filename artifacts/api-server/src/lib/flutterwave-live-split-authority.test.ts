@@ -72,7 +72,7 @@ describe("written support model and hash-bound LIVE account review; no network o
       NODE_ENV: "production", EDUCORE_FLUTTERWAVE_MODE: "LIVE", EDUCORE_FLUTTERWAVE_LIVE_ENABLED: "true",
       EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT: "LIVE",
       FLUTTERWAVE_LIVE_SECRET_KEY: "FLWSECK-fictional-live-credential",
-      FLUTTERWAVE_WEBHOOK_VERIF_HASH: "fictional-live-verifier-123",
+      FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH: "fictional-live-verifier-123",
       FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH: "fictional-test-verifier-456",
     });
     expect(status).toMatchObject({
