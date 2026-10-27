@@ -45,7 +45,8 @@ async function enforceResolvedSubscription(req: Request, context: UserContext) {
     for (const schoolId of targets) {
       let access;
       try { access = await readStaffSubscriptionAccess(pool, context.user.id, schoolId); }
-      catch {
+      catch(error) {
+        if(error instanceof AuthError&&error.eventType==="SCHOOL_SUBSCRIPTION_LOCKED")throw error;
         throw new AuthError(503, "Staff subscription status is temporarily unavailable. Account, payments and support remain available.", "STAFF_SUBSCRIPTION_UNAVAILABLE");
       }
       if (access.restricted) throw new AuthError(403,

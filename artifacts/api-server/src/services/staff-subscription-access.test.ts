@@ -8,6 +8,9 @@ const state = vi.hoisted(() => ({ row: null as Record<string, unknown> | null, u
 const query = vi.hoisted(() => vi.fn());
 vi.mock("@workspace/db", () => ({ pool: { query } }));
 vi.mock("./subscription-enforcement", () => ({ assertSubscriptionAccess: vi.fn() }));
+// These regressions exercise the payable period. Free-term behavior has its
+// own date- and school-calendar-specific suite.
+vi.mock("./staff-free-rollout",()=>({readStaffCollection:vi.fn(async()=>({chargeable:true}))}));
 vi.mock("../middlewares/auth", () => ({
   AuthError: class extends Error {
     constructor(public statusCode: number, message: string, public eventType: string) { super(message); }

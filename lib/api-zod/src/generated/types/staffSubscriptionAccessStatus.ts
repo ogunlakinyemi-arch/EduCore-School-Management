@@ -18,4 +18,5 @@ export const StaffSubscriptionAccessStatus = {
   REFUNDED: 'REFUNDED',
   PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
   NOT_APPLICABLE: 'NOT_APPLICABLE',
+  NOT_REQUIRED: 'NOT_REQUIRED',
 } as const;

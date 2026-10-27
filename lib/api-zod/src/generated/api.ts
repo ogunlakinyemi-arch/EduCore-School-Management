@@ -9,6 +9,36 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Database-backed readiness, separate from process liveness
+ */
+export const GetDatabaseReadinessResponse = zod.object({
+  "ready": zod.boolean(),
+  "dependency": zod.enum(['database'])
+})
+
+
+/**
+ * @summary Owner-only read-only school calendar checklist and database diagnostics
+ */
+export const GetPilotReadinessResponse = zod.object({
+  "checkedAt": zod.string(),
+  "productionChangeAllowed": zod.literal(false),
+  "targetBindingVerified": zod.literal(false),
+  "recoveryVerified": zod.literal(false),
+  "calendars": zod.array(zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "currentTermId": zod.number().int().nullable(),
+  "currentCalendar": zod.enum(['READY', 'AMBIGUOUS', 'MISSING']),
+  "januaryCollectionStart": zod.string().nullable(),
+  "januaryCalendar": zod.enum(['CONFIGURED', 'REVIEW_REQUIRED']),
+  "checklist": zod.array(zod.string())
+})),
+  "blockers": zod.array(zod.string())
+})
+
+
+/**
  * @summary Read own verified student platform access without altering obligations
  */
 export const GetMyStudentPlatformAccessResponse = zod.object({
@@ -23618,7 +23648,7 @@ export const GetMyStaffSubscriptionAccessQueryParams = zod.object({
 export const GetMyStaffSubscriptionAccessResponse = zod.object({
   "schoolId": zod.number().int(),
   "restricted": zod.boolean(),
-  "status": zod.enum(['PAID', 'UNPAID', 'PENDING', 'FAILED', 'EXPIRED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'NOT_APPLICABLE']),
+  "status": zod.enum(['PAID', 'UNPAID', 'PENDING', 'FAILED', 'EXPIRED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'NOT_APPLICABLE', 'NOT_REQUIRED']),
   "termId": zod.number().int().nullable(),
   "subscriptionId": zod.number().int().nullable(),
   "priceMinor": zod.literal(200000),
@@ -23687,6 +23717,8 @@ export const getMyStaffNfcSubscriptionsResponseSubscriptionsItemLatestPaymentOne
 
 
 export const GetMyStaffNfcSubscriptionsResponse = zod.object({
+  "freeRollout": zod.boolean().optional(),
+  "checkoutAllowed": zod.boolean().optional(),
   "employee": zod.object({
   "id": zod.number().int(),
   "name": zod.string(),

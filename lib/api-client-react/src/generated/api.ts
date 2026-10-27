@@ -234,6 +234,7 @@ import type {
   CurriculumVersion,
   CurriculumVersionDetail,
   CurriculumVersionInput,
+  DatabaseReadiness,
   DeferredCommission,
   DeferredCommissionTotals,
   DeleteEmployeePhotoParams,
@@ -701,6 +702,7 @@ import type {
   PickupCompletionInput,
   PickupDecision,
   PickupPersonDecision,
+  PilotReadiness,
   PlatformDashboard,
   PlatformDevice,
   PlatformDeviceInput,
@@ -986,6 +988,160 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetDatabaseReadinessUrl = () => {
+
+
+
+
+  return `/api/readyz`
+}
+
+/**
+ * @summary Database-backed readiness, separate from process liveness
+ */
+export const getDatabaseReadiness = async ( options?: Parameters<typeof customFetch>[1]): Promise<DatabaseReadiness> => {
+
+  return customFetch<DatabaseReadiness>(getGetDatabaseReadinessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDatabaseReadinessQueryKey = () => {
+    return [
+    `/api/readyz`
+    ] as const;
+    }
+
+
+export const getGetDatabaseReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getDatabaseReadiness>>, TError = ErrorType<DatabaseReadiness>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDatabaseReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDatabaseReadinessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDatabaseReadiness>>> = ({ signal }) => getDatabaseReadiness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDatabaseReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDatabaseReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getDatabaseReadiness>>>
+export type GetDatabaseReadinessQueryError = ErrorType<DatabaseReadiness>
+
+
+/**
+ * @summary Database-backed readiness, separate from process liveness
+ */
+
+export function useGetDatabaseReadiness<TData = Awaited<ReturnType<typeof getDatabaseReadiness>>, TError = ErrorType<DatabaseReadiness>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDatabaseReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDatabaseReadinessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPilotReadinessUrl = () => {
+
+
+
+
+  return `/api/platform/pilot-readiness`
+}
+
+/**
+ * @summary Owner-only read-only school calendar checklist and database diagnostics
+ */
+export const getPilotReadiness = async ( options?: Parameters<typeof customFetch>[1]): Promise<PilotReadiness> => {
+
+  return customFetch<PilotReadiness>(getGetPilotReadinessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPilotReadinessQueryKey = () => {
+    return [
+    `/api/platform/pilot-readiness`
+    ] as const;
+    }
+
+
+export const getGetPilotReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getPilotReadiness>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPilotReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPilotReadinessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPilotReadiness>>> = ({ signal }) => getPilotReadiness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPilotReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPilotReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getPilotReadiness>>>
+export type GetPilotReadinessQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner-only read-only school calendar checklist and database diagnostics
+ */
+
+export function useGetPilotReadiness<TData = Awaited<ReturnType<typeof getPilotReadiness>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPilotReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPilotReadinessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetMyStudentPlatformAccessUrl = () => {
 

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const st = vi.hoisted(() => ({ roles: [] as Array<{ role: string; schoolId: number | null; status: string }>, owner: false, catalogCalls: 0, idle: () => ({ data: undefined as unknown, isLoading: false, isError: false, refetch: () => {}, mutate: () => {}, isPending: false }) }));
+const st = vi.hoisted(() => ({ free:false,roles: [] as Array<{ role: string; schoolId: number | null; status: string }>, owner: false, catalogCalls: 0, idle: () => ({ data: undefined as unknown, isLoading: false, isError: false, refetch: () => {}, mutate: () => {}, isPending: false }) }));
 const idle = st.idle;
 
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
@@ -23,7 +23,7 @@ vi.mock('@workspace/api-client-react', () => {
   const k = () => ['k'];
   return {
     useGetAuthorizedContext: () => ({ data: { isPlatformOwner: st.owner, roles: st.roles }, isLoading: false }),
-    useGetMyStaffNfcSubscriptions: () => ({ ...idle(), data: { employee: { id: 1 }, currentSession: { academicSessionName: '2024/25' }, currentTerm: { academicTermName: 'First' }, currentSubscription: sub, nextSubscription: null, subscriptions: [sub] } }),
+    useGetMyStaffNfcSubscriptions: () => ({ ...idle(), data: {freeRollout:st.free,checkoutAllowed:!st.free, employee: { id: 1 }, currentSession: { academicSessionName: '2024/25' }, currentTerm: { academicTermName: 'First' }, currentSubscription: sub, nextSubscription: null, subscriptions: [sub] } }),
     useGetMyEmployeeNfcProfile: () => idle(),
     useCreateStaffNfcCheckout: idle, useVerifyMyStaffNfcPayment: idle, useGenerateStaffNfcTermSubscriptions: idle,
     useGetStaffNfcReceipt: idle, useListStaffNfcBillingRules: idle, useCreateStaffNfcBillingRule: idle, useListStaffNfcFinance: idle,
@@ -41,7 +41,15 @@ vi.mock('@workspace/api-client-react', () => {
 import { MyStaffNfcSubscriptionPage, PartnerStaffNfcCommissionsPage } from './staff-nfc-billing';
 
 describe('staff NFC page guards', () => {
-  beforeEach(() => { st.catalogCalls = 0; st.owner = false; });
+  beforeEach(() => {st.free=false; st.catalogCalls = 0; st.owner = false; });
+  it("shows free platform access and historical records without offering checkout",()=>{
+    st.free=true;st.roles=[{role:"TEACHER",schoolId:7,status:"ACTIVE"}];
+    const html=renderToStaticMarkup(<MyStaffNfcSubscriptionPage/>);
+    expect(html).toContain("staff-free-rollout");
+    expect(html).not.toContain("button-pay-subscription");
+    expect(html).toContain("row-history-5");
+    expect(html).toContain("NFC card/device");
+  });
 
   it('STAFF self page renders and offers Pay without any academic catalog query', () => {
     st.roles = [{ role: 'STAFF', schoolId: 7, status: 'ACTIVE' }];

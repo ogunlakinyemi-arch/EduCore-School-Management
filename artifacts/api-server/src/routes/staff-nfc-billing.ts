@@ -14,6 +14,7 @@ import {
 import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import { visibleSubscription } from "../lib/subscription-visibility";
 import { isDirectStaffRule, readStaffSubscriptionAccess, staffSubscriptionSchools } from "../services/staff-subscription-access";
+import {readStaffCollection} from "../services/staff-free-rollout";
 import {
   AuthError,
   assertRoles,
@@ -417,6 +418,7 @@ router.get("/staff-nfc/subscriptions/me", wrap(async (req, res) => {
     return subscriptionProjection(row, eligibility);
   }));
   const currentTermRow = current.rows[0] ?? null;
+  const rollout=await readStaffCollection(pool,query.schoolId);
   const currentSubscription = currentTermRow
     ? projected.find((row) => row.termId === Number(currentTermRow.termId)) ?? null
     : null;
@@ -456,6 +458,8 @@ router.get("/staff-nfc/subscriptions/me", wrap(async (req, res) => {
     nextSubscription: null,
     cardStatus,
     subscriptions: projected,
+    freeRollout:!rollout.chargeable,
+    checkoutAllowed:rollout.chargeable,
   });
 }));
 
@@ -1015,6 +1019,8 @@ router.post("/staff-nfc/subscriptions/:subscriptionId/checkout", wrap(async (req
   const query = parse(schoolQuery, req.query);
   const key = idempotencyKey(req);
   const { context } = await findOwnStaffEmployee(pool, req, query.schoolId);
+  if(!(await readStaffCollection(pool,query.schoolId)).chargeable)
+    throw new AuthError(409,"Current-term Teacher/Staff access is free. No subscription checkout is available.","STAFF_FREE_ROLLOUT_NO_PAYMENT");
   const mock = developmentMockEnabled();
   let adapter: ReturnType<typeof configuredTestAdapter> | null = null;
   if (!mock) {
@@ -1049,6 +1055,8 @@ router.post("/staff-nfc/subscriptions/:subscriptionId/checkout", wrap(async (req
     );
     const subscription = subscriptionResult.rows[0];
     if (!subscription) throw new AuthError(404, "Staff NFC subscription not found");
+    if(!(await readStaffCollection(client,query.schoolId,Number(subscription.termId))).chargeable)
+      throw new AuthError(409,"This term is not eligible for Teacher/Staff collection.","STAFF_FREE_ROLLOUT_NO_PAYMENT");
     if (["PAID", "REFUNDED", "PARTIALLY_REFUNDED"].includes(String(subscription.status))) {
       throw new AuthError(409, "This staff NFC term subscription is not payable");
     }

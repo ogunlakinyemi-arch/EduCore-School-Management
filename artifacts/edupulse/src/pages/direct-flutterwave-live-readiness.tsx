@@ -13,6 +13,7 @@ import type { DirectReleaseReadiness, DirectReleaseReview, DirectReleaseDecision
 import { Button, PageHeading, cx } from '@/components/shared';
 import { hasActiveGlobalOwner } from '@/components/navigation-model';
 import { entry, note, FRESH_MS } from '@/pages/payroll-common';
+import {PilotCalendarReadiness} from "@/components/pilot-calendar-readiness";
 
 export const POLICY = 'NEW_ONLY_PRESERVE_LEGACY';
 export const PLATFORM_AMOUNT_MINOR = 320000;
@@ -103,6 +104,7 @@ function OwnerWorkspace({ actor }: { actor: number }) {
       description="Review one exact school, term and Student platform rule. Readiness is read-only; reviews are recorded only from the explicit buttons below."
       action={<Link href="/subscription-payment-rules" className="text-sm font-bold underline" data-testid="link-back-rules">Subscription & Payment Rules</Link>} />
     <OperationalSwitchWarning />
+    <PilotCalendarReadiness actorId={actor} />
     <section className="panel p-5" data-testid="section-scope">
       <div className="eyebrow mb-3">01 · Exact scope</div>
       <div className="grid gap-3 md:grid-cols-3">

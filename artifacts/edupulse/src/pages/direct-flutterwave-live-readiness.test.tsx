@@ -31,6 +31,8 @@ const f = vi.hoisted(() => ({
 const okCtx = { isPlatformOwner: true, user: { id: 7, status: 'ACTIVE' }, roles: [{ role: 'PLATFORM_OWNER', schoolId: null, status: 'ACTIVE' }] };
 const q = (data: unknown) => ({ data, isSuccess: true, isLoading: false, isFetching: false, isError: false, refetch: vi.fn() });
 vi.mock('@workspace/api-client-react', () => ({
+  useGetPilotReadiness:()=>q({checkedAt:"2026-10-27",calendars:[],productionChangeAllowed:false}),
+  getGetPilotReadinessQueryKey:()=>["/api/platform/pilot-readiness"],
   useGetAuthorizedContext: () => ({ data: f.ctx, isLoading: false }),
   getGetNfcFeeCollectionFilterOptionsQueryKey: (p: unknown) => ['opts', p],
   useGetNfcFeeCollectionFilterOptions: () => q({ schools: [{ id: 1, name: 'Ikoyi Grammar' }], terms: [{ id: 4, schoolId: 1, schoolName: 'Ikoyi Grammar', sessionName: '2026/27', name: 'First', startDate: '2026-09-01', endDate: '2026-12-15', isCurrent: true }] }),

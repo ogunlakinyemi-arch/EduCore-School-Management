@@ -1,3 +1,4 @@
+import {readStaffCollection} from "../services/staff-free-rollout";
 import {
   createHash,
   createHmac,
@@ -243,6 +244,8 @@ export async function generateStaffNfcTermSubscriptions(
   academicTermId: number,
   createdBy: number | null,
 ): Promise<{ eligibleCount: number; generatedCount: number; unchangedCount: number }> {
+  if(!(await readStaffCollection(client,schoolId,academicTermId)).chargeable)
+    return{eligibleCount:0,generatedCount:0,unchangedCount:0};
   const term = await client.query<{
     schoolId: number;
     sessionId: number;

@@ -1,5 +1,8 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it,vi } from "vitest";
+// Immutable-billing regressions concern an explicitly chargeable future term.
+// The free-period and actual January calendar are tested independently.
+vi.mock("../services/staff-free-rollout",()=>({readStaffCollection:vi.fn(async()=>({chargeable:true}))}));
 import {
   calculateStaffNfcAllocations,
   calculateStaffNfcRefundReversals,

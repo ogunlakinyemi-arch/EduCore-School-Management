@@ -228,7 +228,9 @@ export function MyStaffNfcSubscriptionPage() {
     runVerifyRef.current(callback);
   }, [callback, enabled]);
 
-  const pay = (s: StaffNfcSubscription) => checkout.mutate({ subscriptionId: s.id, params }, {
+  const pay = (s: StaffNfcSubscription) => {
+    if(sub.data?.checkoutAllowed!==true)return;
+    checkout.mutate({ subscriptionId: s.id, params }, {
     onSuccess: res => {
       const url = safeCheckoutUrl(res.checkoutUrl);
       if (url) { window.location.assign(url); return; }
@@ -236,7 +238,8 @@ export function MyStaffNfcSubscriptionPage() {
       setMessage({ tone: 'warn', text: 'The provider did not return a secure checkout link. Your payment is still pending verification; try again shortly.' });
     },
     onError: e => setMessage({ tone: 'err', text: errMsg(e) }),
-  });
+    });
+  };
 
   if (!schoolId && !access.loading && !access.isPlatformOwner && !access.isSelfRole) return <EmptyState icon={CreditCard} title="No school context" description="Your account is not attached to a school yet." />;
   const d = sub.data;
@@ -244,8 +247,14 @@ export function MyStaffNfcSubscriptionPage() {
   const card = profile.data;
   const history = [...(d?.subscriptions ?? [])].sort((a, b) => b.id - a.id);
   return <div className="fade-up">
-    <PageHeading eyebrow="My account / NFC E-ID" title="My NFC subscription" description="Your E-ID card works for the term only after the server has verified your payment." />
+    <PageHeading eyebrow="My account / NFC E-ID" title="My NFC subscription" description="Platform access and physical NFC card eligibility are separate. Historical payments remain unchanged." />
     <Gate allowed={access.isSelfRole} loading={access.loading} title="My NFC subscription">
+      {d?.freeRollout&&<div className="panel mb-5 p-4 text-sm" role="status" data-testid="staff-free-rollout">
+        Teacher/Staff current-term platform access is free under the policy effective 27 October 2026.
+        No ₦2,000 payment, new subscription or NFC card/device is required to perform authorized platform tasks.
+        Normal billing resumes only from your school's actual second term beginning in January 2027.
+        Historical paid and unpaid records below are retained, not new charges. Manual school locks still apply.
+      </div>}
       {message && <div role="status" data-testid="status-nfc-message" className={cx('mb-5 rounded-xl border px-4 py-3 text-sm font-semibold', message.tone === 'ok' && 'border-[hsl(157_37%_43%/.3)] bg-[hsl(157_37%_43%/.08)]', message.tone === 'warn' && 'border-[hsl(35_83%_53%/.4)] bg-[hsl(35_83%_53%/.1)]', message.tone === 'err' && 'border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] text-[hsl(var(--destructive))]')}>
         {message.text}
         {callback?.reference && <Button variant="outline" className="ml-3" onClick={() => runVerify(callback)} disabled={verify.isPending} testId="button-retry-verify"><RefreshCw size={14} />Retry verification</Button>}
@@ -256,20 +265,20 @@ export function MyStaffNfcSubscriptionPage() {
           <section className="panel p-6 md:p-8" data-testid="panel-current-term">
             <div className="eyebrow">{d.currentSession?.academicSessionName} · {d.currentTerm.academicTermName}</div>
             {cur ? <>
-              <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="display-font text-4xl font-bold tabular-nums">{nairaMinor(cur.priceMinor)}</div><Tone value={cur.status} /></div>
+              <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="display-font text-4xl font-bold tabular-nums">{nairaMinor(d.freeRollout?0:cur.priceMinor)}</div><Tone value={d.freeRollout?'NOT_REQUIRED':cur.status} /></div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3"><Info label="Due date" value={date(cur.dueDate)} /><Info label="Paid on" value={date(cur.paidAt)} /><Info label="Card service" value={cur.isEligibleForNfc ? 'Allowed' : 'Restricted'} /></div>
               <div className="mt-6 flex flex-wrap gap-3">
-                {canPay(cur) && hasDirectStaffSnapshot(cur) && <Button onClick={() => pay(cur)} disabled={checkout.isPending} testId="button-pay-subscription"><CreditCard size={16} />{checkout.isPending ? 'Opening checkout...' : cur.status === 'PENDING' ? 'Continue payment' : 'Pay for this term'}</Button>}
+                {d.checkoutAllowed===true && canPay(cur) && hasDirectStaffSnapshot(cur) && <Button onClick={() => pay(cur)} disabled={checkout.isPending} testId="button-pay-subscription"><CreditCard size={16} />{checkout.isPending ? 'Opening checkout...' : cur.status === 'PENDING' ? 'Continue payment' : 'Pay for this term'}</Button>}
                 {cur.latestPayment && isVerifiedPaid(cur) && <Button variant="outline" onClick={() => setReceiptId(cur.latestPayment!.id)} testId="button-view-receipt"><ReceiptText size={16} />Receipt</Button>}
               </div>
               {cur.status === 'PENDING' && <p className={`mt-4 ${note}`}>A payment is awaiting provider confirmation. This page refreshes automatically.</p>}
-              {canPay(cur) && !hasDirectStaffSnapshot(cur) && <p role="status" className={`mt-4 ${note}`}>This subscription retains a historical allocation rule. New Teacher/Staff payments are ₦2,000 directly to Yetenia, with no school or BRO share. Contact support for a reviewed transition; do not pay again while an earlier checkout needs reconciliation. Existing payment references, verification and receipts remain available.</p>}
-            </> : <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">No subscription has been generated for this term yet. Your school administrator generates term subscriptions.</p>}
+              {d.checkoutAllowed===true&&canPay(cur) && !hasDirectStaffSnapshot(cur) && <p role="status" className={`mt-4 ${note}`}>This subscription retains a historical allocation rule. New Teacher/Staff payments are ₦2,000 directly to Yetenia, with no school or BRO share. Contact support for a reviewed transition; do not pay again while an earlier checkout needs reconciliation. Existing payment references, verification and receipts remain available.</p>}
+            </> : <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">{d.freeRollout?"No subscription is required for free current-term platform access.":"No subscription has been generated for this term yet. Your school administrator generates term subscriptions."}</p>}
           </section>
           <section className="space-y-4">
             <div className="panel p-6" data-testid="panel-card-status"><div className="eyebrow">NFC card</div>
               <div className="mt-3 flex items-center justify-between"><span className="text-lg font-bold">{profile.isLoading ? '...' : (card?.status ?? d.cardStatus ?? 'NONE')}</span>{card && <Tone value={card.termEligibility} />}</div>
-              {card && <p className={`mt-2 ${note}`}>{card.nfcEligible ? 'Eligible for NFC services this term.' : 'Not eligible for NFC services until the term is paid.'}</p>}
+              {card && <p className={`mt-2 ${note}`}>{d.freeRollout?'Physical card eligibility is separate and does not restrict free current-term platform access.':card.nfcEligible ? 'Eligible for NFC services this term.' : 'Not eligible for NFC services until the term is paid.'}</p>}
               {profile.isError && <p className={`mt-2 ${note}`}>Card detail unavailable right now.</p>}
             </div>
             <div className="panel p-6"><div className="eyebrow">Next term</div>

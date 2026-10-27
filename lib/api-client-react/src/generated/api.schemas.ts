@@ -9917,6 +9917,8 @@ export const StaffNfcMineResponseCardStatus = {
 } as const;
 
 export interface StaffNfcMineResponse {
+  freeRollout?: boolean;
+  checkoutAllowed?: boolean;
   employee: StaffNfcMineResponseEmployee;
   currentSession: StaffNfcTermContext | null;
   currentTerm: StaffNfcTermContext | null;
@@ -13529,6 +13531,56 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type DatabaseReadinessDependency = typeof DatabaseReadinessDependency[keyof typeof DatabaseReadinessDependency];
+
+
+export const DatabaseReadinessDependency = {
+  database: 'database',
+} as const;
+
+export interface DatabaseReadiness {
+  ready: boolean;
+  dependency: DatabaseReadinessDependency;
+}
+
+export type PilotCalendarCurrentCalendar = typeof PilotCalendarCurrentCalendar[keyof typeof PilotCalendarCurrentCalendar];
+
+
+export const PilotCalendarCurrentCalendar = {
+  READY: 'READY',
+  AMBIGUOUS: 'AMBIGUOUS',
+  MISSING: 'MISSING',
+} as const;
+
+export type PilotCalendarJanuaryCalendar = typeof PilotCalendarJanuaryCalendar[keyof typeof PilotCalendarJanuaryCalendar];
+
+
+export const PilotCalendarJanuaryCalendar = {
+  CONFIGURED: 'CONFIGURED',
+  REVIEW_REQUIRED: 'REVIEW_REQUIRED',
+} as const;
+
+export interface PilotCalendar {
+  schoolId: number;
+  schoolName: string;
+  /** @nullable */
+  currentTermId: number | null;
+  currentCalendar: PilotCalendarCurrentCalendar;
+  /** @nullable */
+  januaryCollectionStart: string | null;
+  januaryCalendar: PilotCalendarJanuaryCalendar;
+  checklist: string[];
+}
+
+export interface PilotReadiness {
+  checkedAt: string;
+  productionChangeAllowed: false;
+  targetBindingVerified: false;
+  recoveryVerified: false;
+  calendars: PilotCalendar[];
+  blockers: string[];
+}
+
 export interface SchoolPayoutConfirmation {
   /** @pattern ^[a-f0-9]{64}$ */
   confirmationToken: string;
@@ -15650,6 +15702,7 @@ export const StaffSubscriptionAccessStatus = {
   REFUNDED: 'REFUNDED',
   PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
   NOT_APPLICABLE: 'NOT_APPLICABLE',
+  NOT_REQUIRED: 'NOT_REQUIRED',
 } as const;
 
 export interface StaffSubscriptionAccess {

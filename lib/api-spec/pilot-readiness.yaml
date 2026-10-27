@@ -1,0 +1,63 @@
+paths:
+  /readyz:
+    get:
+      operationId: getDatabaseReadiness
+      tags: [health]
+      summary: Database-backed readiness, separate from process liveness
+      security: []
+      responses:
+        "200":
+          description: The application pool acquired a connection and completed a bounded read
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DatabaseReadiness" }
+        "503":
+          description: Database dependency is unavailable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DatabaseReadiness" }
+  /platform/pilot-readiness:
+    get:
+      operationId: getPilotReadiness
+      tags: [platform]
+      summary: Owner-only read-only school calendar checklist and database diagnostics
+      responses:
+        "200":
+          description: Current application database evidence, not Production release authorization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PilotReadiness" }
+        "401": { description: Authentication required }
+        "403": { description: Active global Owner required }
+        "503": { description: Database or calendar review unavailable }
+components:
+  schemas:
+    DatabaseReadiness:
+      type: object
+      required: [ready, dependency]
+      properties:
+        ready: { type: boolean }
+        dependency: { type: string, enum: [database] }
+    PilotCalendar:
+      type: object
+      required: [schoolId, schoolName, currentTermId, currentCalendar, januaryCollectionStart, januaryCalendar, checklist]
+      properties:
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        currentTermId: { type: [integer, "null"] }
+        currentCalendar: { type: string, enum: [READY, AMBIGUOUS, MISSING] }
+        januaryCollectionStart: { type: [string, "null"] }
+        januaryCalendar: { type: string, enum: [CONFIGURED, REVIEW_REQUIRED] }
+        checklist: { type: array, items: { type: string } }
+    PilotReadiness:
+      type: object
+      required: [checkedAt, productionChangeAllowed, targetBindingVerified, recoveryVerified, calendars, blockers]
+      properties:
+        checkedAt: { type: string }
+        productionChangeAllowed: { type: boolean, enum: [false] }
+        targetBindingVerified: { type: boolean, enum: [false] }
+        recoveryVerified: { type: boolean, enum: [false] }
+        calendars:
+          type: array
+          items: { $ref: "#/components/schemas/PilotCalendar" }
+        blockers: { type: array, items: { type: string } }

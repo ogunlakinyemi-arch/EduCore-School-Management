@@ -11,6 +11,8 @@ import type { StaffNfcSubscription } from './staffNfcSubscription';
 import type { StaffNfcTermContext } from './staffNfcTermContext';
 
 export interface StaffNfcMineResponse {
+  freeRollout?: boolean;
+  checkoutAllowed?: boolean;
   employee: StaffNfcMineResponseEmployee;
   currentSession: StaffNfcTermContext | null;
   currentTerm: StaffNfcTermContext | null;

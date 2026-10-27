@@ -1,4 +1,6 @@
 import type { StaffNfcSqlExecutor } from "../routes/staff-nfc-billing-service";
+import {readStaffCollection} from "./staff-free-rollout";
+import {assertManualSchoolUnlocked} from "./school-subscription-lock";
 
 export const STAFF_SUBSCRIPTION_PRICE_MINOR = 200_000;
 export const STAFF_DIRECT_RULE = {
@@ -49,7 +51,7 @@ export function isStaffSubscriptionOperation(path: string, method: string) {
 export type StaffSubscriptionAccess = {
   schoolId: number;
   restricted: boolean;
-  status: "PAID" | "UNPAID" | "PENDING" | "FAILED" | "EXPIRED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "NOT_APPLICABLE";
+  status: "PAID" | "UNPAID" | "PENDING" | "FAILED" | "EXPIRED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "NOT_APPLICABLE" | "NOT_REQUIRED";
   termId: number | null;
   subscriptionId: number | null;
   priceMinor: number;
@@ -85,6 +87,13 @@ export async function readStaffSubscriptionAccess(
     WHERE e.user_id=$1 AND e.school_id=$2 AND UPPER(e.employment_status)='ACTIVE'
       AND UPPER(e.employee_type) IN ('TEACHER','STAFF') ORDER BY e.id LIMIT 1`, [userId, schoolId, process.env.NODE_ENV ?? "development"]);
   const row = result.rows[0];
+  if(row){
+    await assertManualSchoolUnlocked(db,schoolId);
+    if(!(await readStaffCollection(db,schoolId)).chargeable)return{
+      schoolId,restricted:false,status:"NOT_REQUIRED",termId:row.termId??null,
+      subscriptionId:row.subscriptionId??null,priceMinor:0,renewalPath:"/my-nfc-subscription",
+    };
+  }
   const paid = row?.status === "PAID" && row.verified === true && row.termId !== null;
   const statuses = ["PENDING", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"] as const;
   const status: StaffSubscriptionAccess["status"] = paid ? "PAID" : !row?.termId ? "EXPIRED"

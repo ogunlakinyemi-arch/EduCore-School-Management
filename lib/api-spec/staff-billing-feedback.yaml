@@ -376,7 +376,7 @@ components:
       properties:
         schoolId: { type: integer }
         restricted: { type: boolean }
-        status: { type: string, enum: [PAID, UNPAID, PENDING, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED, NOT_APPLICABLE] }
+        status: { type: string, enum: [PAID, UNPAID, PENDING, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED, NOT_APPLICABLE, NOT_REQUIRED] }
         termId: { type: [integer, "null"] }
         subscriptionId: { type: [integer, "null"] }
         priceMinor: { type: integer, const: 200000 }
@@ -494,6 +494,8 @@ components:
       type: object
       required: [employee, currentSession, currentTerm, subscriptions]
       properties:
+        freeRollout: { type: boolean }
+        checkoutAllowed: { type: boolean }
         employee: { type: object, required: [id, name, employeeNumber], properties: { id: { type: integer }, name: { type: string }, employeeNumber: { type: string }, schoolId: { type: integer }, schoolName: { type: string } } }
         currentSession: { oneOf: [{ $ref: "#/components/schemas/StaffNfcTermContext" }, { type: "null" }] }
         currentTerm: { oneOf: [{ $ref: "#/components/schemas/StaffNfcTermContext" }, { type: "null" }] }
