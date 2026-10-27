@@ -128,6 +128,7 @@ import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import { enqueueFinancePaymentNotificationsSafely } from "./finance-notifications-service";
 import { enqueueFinanceInvoiceCommunicationsSafely } from "./finance-communication-service";
 import { enqueueInvoiceGeneratedNotificationsSafely } from "./invoice-notifications-service";
+import { cashCollectionDate } from "../lib/cash-collection-date";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -2556,7 +2557,7 @@ router.get("/parent/fees/invoices/:invoiceId/lines",async(req,res):Promise<void>
 router.post("/school/finance/invoices/:invoiceId/cash-payments",async(req,res):Promise<void>=>{
   const client=await pool.connect();
   try {
-    const schoolId=schoolIdForMutation(req,ListFeeInvoicesQueryParams,["SCHOOL_ADMIN"]);
+    const schoolId=schoolIdForMutation(req,ListFeeInvoicesQueryParams,["SCHOOL_ADMIN","ACCOUNTANT"]);
     const invoiceId=Number(req.params.invoiceId);
     const body=parsed(RecordSchoolCashPaymentBody,req.body ?? {});
     const key=req.get("Idempotency-Key");
@@ -2568,7 +2569,7 @@ router.post("/school/finance/invoices/:invoiceId/cash-payments",async(req,res):P
     const context=getUserContext(req);
     const storedKey=`CASH:${context.user.id}:${key}`;
     await client.query("BEGIN");
-    const invoice=(await client.query("SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE",[invoiceId,schoolId])).rows[0];
+    const invoice=(await client.query("SELECT *,issue_date::text AS cash_issue_date FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE",[invoiceId,schoolId])).rows[0];
     if(!invoice) throw new AuthError(404,"Invoice not found");
     const previous=await client.query("SELECT p.*,r.receipt_number FROM fee_payments p JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id WHERE p.school_id=$1 AND p.idempotency_key=$2",[schoolId,storedKey]);
     if(previous.rows[0]) {
@@ -2576,10 +2577,13 @@ router.post("/school/finance/invoices/:invoiceId/cash-payments",async(req,res):P
       if(p.status!=="VERIFIED") throw new AuthError(409,"This cash record was reversed or refunded; review its existing receipt");
       if(p.invoice_id!==invoiceId||p.amount_minor!==body.amountMinor||p.verification_evidence_ref!==body.evidenceReference.trim()||
         p.reviewer_notes!==body.notes.trim()||p.verification_metadata?.receivedFrom!==body.receivedFrom.trim()||
+        (body.receivedOn!==undefined && body.receivedOn!==(p.verification_metadata?.receivedOn ??
+          new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(p.verified_at))))||
         JSON.stringify([...(p.selected_line_ids??[])].sort((a,b)=>a-b))!==JSON.stringify([...(body.lineIds??[])].sort((a,b)=>a-b))) throw new AuthError(409,"Cash idempotency key already records different evidence");
       await client.query("COMMIT");res.json({...mapPayment(p),receiptNumber:p.receipt_number});return;
     }
     if(["PAID","CANCELLED","WAIVED"].includes(invoice.status)) throw new AuthError(409,"Invoice is not payable");
+    const receivedOn=cashCollectionDate(body.receivedOn,invoice.cash_issue_date);
     const reserved=await client.query("SELECT 1 FROM fee_provider_checkout_sessions WHERE invoice_id=$1 AND school_id=$2 AND state IN ('INITIALIZING','READY','FAILED')",[invoiceId,schoolId]);
     if(reserved.rows.length) throw new AuthError(409,"Reconcile the invoice's online checkout before recording cash");
     const amount=payableAmount(body.amountMinor,invoice.outstanding_minor);
@@ -2589,25 +2593,44 @@ router.post("/school/finance/invoices/:invoiceId/cash-payments",async(req,res):P
     if(amount<invoice.outstanding_minor && lineAmount===null && !settings.rows[0]?.partial_payments_enabled) throw new AuthError(400,"Partial payments are disabled");
     const duplicate=await client.query("SELECT 1 FROM fee_payments WHERE school_id=$1 AND method='CASH' AND lower(btrim(verification_evidence_ref))=lower(btrim($2))",[schoolId,body.evidenceReference]);
     if(duplicate.rows.length) throw new AuthError(409,"This cash evidence has already been recorded");
-    const metadata={source:"CASH_RECEIVED",receivedFrom:body.receivedFrom.trim(),evidenceReference:body.evidenceReference.trim(),notes:body.notes.trim(),actorUserId:context.user.id};
+    const actorName=[context.user.firstName,context.user.lastName].filter(Boolean).join(" ").trim()||context.user.email;
+    const metadata={source:"CASH_RECEIVED",receivedFrom:body.receivedFrom.trim(),receivedOn,
+      evidenceReference:body.evidenceReference.trim(),notes:body.notes.trim(),actorUserId:context.user.id,actorName};
+    // Capture line balances BEFORE inserting the verified payment. The parent
+    // invoice row lock serializes competing payment/verification operations.
+    const selectedBalances=body.lineIds?.length ? await feeLineBalances(client,invoice) : null;
     const payment=(await client.query(`INSERT INTO fee_payments(school_id,invoice_id,student_id,employee_id,parent_id,reference,idempotency_key,
       amount_minor,currency,method,provider,status,submitted_by,verified_by,verified_at,verification_evidence_ref,reviewer_notes,verification_metadata,selected_line_ids)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'CASH','CASH','VERIFIED',$10,$10,NOW(),$11,$12,$13::jsonb,$14) RETURNING *`,
       [schoolId,invoiceId,invoice.student_id,invoice.employee_id,invoice.parent_id,`CASH-${randomUUID()}`,storedKey,amount,invoice.currency,
         context.user.id,body.evidenceReference.trim(),body.notes.trim(),JSON.stringify(metadata),body.lineIds ?? null])).rows[0];
+    if(selectedBalances) {
+      for(const line of selectedBalances.lines.filter((l:any)=>body.lineIds!.includes(l.id))) {
+        await client.query(`INSERT INTO fee_payment_line_allocations
+          (school_id,invoice_id,payment_id,line_id,amount_minor) VALUES($1,$2,$3,$4,$5)`,
+          [schoolId,invoiceId,payment.id,line.id,line.outstandingMinor]);
+      }
+    }
     const nextPaid=invoice.paid_minor+amount;
     await client.query("UPDATE fee_invoices SET paid_minor=$1,outstanding_minor=total_minor-$1,status=$2 WHERE id=$3 AND school_id=$4",
       [nextPaid,invoiceStatus(nextPaid,invoice.total_minor),invoiceId,schoolId]);
     const branding=(await client.query(`SELECT s.name,s.logo,l.id AS logo_version_id FROM schools s
       LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true WHERE s.id=$1`,[schoolId])).rows[0];
     const receiptNumber=`RCP-${schoolId}-${String(payment.id).padStart(8,"0")}`;
+    const feeItems=(await client.query(`SELECT id,category_name_snapshot AS name,amount_minor AS "amountMinor"
+      FROM fee_invoice_lines WHERE invoice_id=$1 AND school_id=$2 ORDER BY id`,[invoiceId,schoolId])).rows
+      .filter((line:any)=>!body.lineIds?.length||body.lineIds.includes(line.id))
+      .map((line:any)=>({...line,receivedMinor:selectedBalances?.lines.find((l:any)=>l.id===line.id)?.outstandingMinor??null}));
     const snapshot={invoiceId,schoolId,schoolName:branding?.name,
       schoolLogo:branding?.logo_version_id ? canonicalSchoolLogoVersionUrl(schoolId,Number(branding.logo_version_id)) : branding?.logo,
       schoolLogoVersionId:branding?.logo_version_id ?? null,invoiceNumber:invoice.invoice_number,
       studentName:invoice.student_name_snapshot,studentId:invoice.student_id,employeeId:invoice.employee_id,
       admissionNo:invoice.admission_no_snapshot,className:invoice.class_name_snapshot,section:invoice.section_snapshot,
       parentName:metadata.receivedFrom,amountMinor:amount,currency:invoice.currency,method:"CASH",reference:payment.reference,
-      receiptNumber,sessionId:invoice.academic_session_id,termId:invoice.academic_term_id,
+      receiptNumber,sessionId:invoice.academic_session_id,termId:invoice.academic_term_id,feeItems,
+      allocationScope:body.lineIds?.length?"SELECTED_FEE_LINES":"INVOICE_BALANCE",
+      invoiceTotalMinor:invoice.total_minor,previousPaidMinor:invoice.paid_minor,
+      previousBalanceMinor:invoice.outstanding_minor,remainingBalanceMinor:invoice.total_minor-nextPaid,
       paidAt:new Date(payment.verified_at).toISOString(),verifiedAt:new Date(payment.verified_at).toISOString(),
       outstandingMinor:invoice.total_minor-nextPaid,...metadata};
     await client.query("INSERT INTO fee_receipts(school_id,payment_id,invoice_id,receipt_number,snapshot) VALUES($1,$2,$3,$4,$5::jsonb)",

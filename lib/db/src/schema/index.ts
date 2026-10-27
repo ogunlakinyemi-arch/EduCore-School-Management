@@ -29,6 +29,7 @@ export * from "./telegram";
 export * from "./library";
 export * from "./operations";
 export * from "./staff-nfc-billing";
+export * from "./owner-subscription-rules";
 export * from "./employee-nfc";
 export * from "./school-workflows";
 export * from "./transport";

@@ -9,6 +9,7 @@ import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { PwaInstall } from '@/components/pwa-install';
 import { SubscriptionAccessBanner } from '@/components/subscription-access-banner';
 import { StaffSubscriptionGuard } from '@/components/staff-subscription-guard';
+import { StudentSubscriptionGuard } from '@/components/student-subscription-guard';
 import { usePhase9List } from '@/hooks/use-phase9-api';
 import { 
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
@@ -96,8 +97,8 @@ const nav: NavItem[] = [
   { href: '/account-applications', label: 'New Users / Applications', icon: ClipboardCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
-  { href: '/flutterwave-settlements', label: 'Split Settlements', icon: CircleDollarSign, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
-  { href: '/hosted-payments', label: 'Hosted Payments', icon: CircleDollarSign, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/subscription-payment-rules', label: 'Subscription & Payment Rules', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
+  { href: '/student-subscription', label: 'My Subscription', icon: WalletCards, roles: ['STUDENT'] },
   { href: '/subscription-enforcement', label: 'Term Enforcement', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
   { href: '/card-replacements', label: 'Card Replacements', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'PARENT', 'STUDENT'] },
@@ -113,7 +114,7 @@ const nav: NavItem[] = [
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/records', '/students', '/company-employees', '/users', '/partners', '/account-applications',
-  '/devices', '/subscriptions', '/flutterwave-settlements', '/hosted-payments', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
+  '/devices', '/subscriptions', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results', '/platform/attendance',
   '/communications',
@@ -303,12 +304,14 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="min-w-0 px-5 pt-3 md:px-8"><PwaInstall /></div>
         <main className="nav-grid w-full min-w-0 max-w-full flex-1 p-4 sm:p-5 md:p-8">
           <div className="mx-auto w-full min-w-0 max-w-[1440px]">
-            {!isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && (studentRole || roles.includes('TEACHER') || roles.includes('PARENT')) && <SubscriptionAccessBanner audience={studentRole ? 'student' : roles.includes('TEACHER') ? 'teacher' : 'parent'} />}
+            {!isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && !studentRole && (roles.includes('TEACHER') || roles.includes('PARENT')) && <SubscriptionAccessBanner audience={roles.includes('TEACHER') ? 'teacher' : 'parent'} />}
+            <StudentSubscriptionGuard active={studentRole && !isPlatformOwner && !financeRole} actorId={context?.user?.id} path={location}>
             <StaffSubscriptionGuard schoolId={schoolId} actorId={context?.user?.id} path={location}
               active={!isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && !financeRole &&
                 context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && ['TEACHER', 'STAFF'].includes(r.role)) === true}>
               {children}
             </StaffSubscriptionGuard>
+            </StudentSubscriptionGuard>
           </div>
         </main>
       </div>

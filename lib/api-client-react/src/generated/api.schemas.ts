@@ -1427,6 +1427,88 @@ export interface ApiError {
   code?: string;
 }
 
+export type StudentNfcReconciliationRowStatus = typeof StudentNfcReconciliationRowStatus[keyof typeof StudentNfcReconciliationRowStatus];
+
+
+export const StudentNfcReconciliationRowStatus = {
+  CANDIDATE_AFTER_REVIEW: 'CANDIDATE_AFTER_REVIEW',
+  NEW_OBLIGATION_AFTER_REVIEW: 'NEW_OBLIGATION_AFTER_REVIEW',
+  OWNER_REVIEW: 'OWNER_REVIEW',
+  PRESERVE_COMPLETED_HISTORY: 'PRESERVE_COMPLETED_HISTORY',
+} as const;
+
+export interface StudentNfcReconciliationRow {
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  status: StudentNfcReconciliationRowStatus;
+  reasons: string[];
+  subscriptionIds: number[];
+  /** @nullable */
+  originalAmountMinor: number | null;
+  /** @nullable */
+  originalOutstandingMinor: number | null;
+  /** @nullable */
+  proposedPlatformAmountMinor: number | null;
+  invoiceIds: number[];
+  /** @nullable */
+  schoolFeeTotalMinor: number | null;
+  /** @nullable */
+  schoolFeePaidMinor: number | null;
+  /** @nullable */
+  schoolFeeOutstandingMinor: number | null;
+  paymentReferences: string[];
+  receiptNumbers: string[];
+  evidenceDigest: string;
+}
+
+export interface StudentNfcReconciliationSource {
+  name: string;
+  complete: boolean;
+  recordCount: number;
+  issues: string[];
+}
+
+export type StudentNfcReconciliationReportSourceStatus = typeof StudentNfcReconciliationReportSourceStatus[keyof typeof StudentNfcReconciliationReportSourceStatus];
+
+
+export const StudentNfcReconciliationReportSourceStatus = {
+  COMPLETE: 'COMPLETE',
+  INCOMPLETE: 'INCOMPLETE',
+} as const;
+
+export type StudentNfcReconciliationReportSummary = {
+  candidates: number;
+  newObligations: number;
+  ownerReview: number;
+  preserved: number;
+};
+
+export interface StudentNfcReconciliationReport {
+  reportVersion: string;
+  readOnly: true;
+  applyAvailable: false;
+  approvalRequired: true;
+  generatedAt: string;
+  evidenceDigest: string;
+  schoolId: number;
+  termId: number;
+  /** @nullable */
+  academicSessionId: number | null;
+  schoolName: string;
+  termName: string;
+  /** @nullable */
+  termStart: string | null;
+  /** @nullable */
+  termEnd: string | null;
+  platformAmountMinor: number;
+  sourceStatus: StudentNfcReconciliationReportSourceStatus;
+  sources: StudentNfcReconciliationSource[];
+  warnings: string[];
+  rows: StudentNfcReconciliationRow[];
+  summary: StudentNfcReconciliationReportSummary;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -15649,6 +15731,211 @@ export interface SchoolCurriculumTopicsResponse {
   curriculumVersion: CurriculumVersion;
 }
 
+export type OwnerSubscriptionRuleInputProduct = typeof OwnerSubscriptionRuleInputProduct[keyof typeof OwnerSubscriptionRuleInputProduct];
+
+
+export const OwnerSubscriptionRuleInputProduct = {
+  STUDENT_PLATFORM: 'STUDENT_PLATFORM',
+  TEACHER_STAFF_PLATFORM: 'TEACHER_STAFF_PLATFORM',
+  BRO_COMMISSION: 'BRO_COMMISSION',
+} as const;
+
+export type OwnerSubscriptionRuleInputCurrency = typeof OwnerSubscriptionRuleInputCurrency[keyof typeof OwnerSubscriptionRuleInputCurrency];
+
+
+export const OwnerSubscriptionRuleInputCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type OwnerSubscriptionRuleInputBillingPeriod = typeof OwnerSubscriptionRuleInputBillingPeriod[keyof typeof OwnerSubscriptionRuleInputBillingPeriod];
+
+
+export const OwnerSubscriptionRuleInputBillingPeriod = {
+  ACADEMIC_TERM: 'ACADEMIC_TERM',
+} as const;
+
+export type OwnerSubscriptionRuleInputSchoolShareMinor = typeof OwnerSubscriptionRuleInputSchoolShareMinor[keyof typeof OwnerSubscriptionRuleInputSchoolShareMinor];
+
+
+export const OwnerSubscriptionRuleInputSchoolShareMinor = {
+  NUMBER_0: 0,
+} as const;
+
+export interface OwnerSubscriptionRuleInput {
+  product: OwnerSubscriptionRuleInputProduct;
+  /**
+     * @minimum 1
+     * @maximum 100000000
+     */
+  amountMinor: number;
+  currency: OwnerSubscriptionRuleInputCurrency;
+  billingPeriod: OwnerSubscriptionRuleInputBillingPeriod;
+  schoolShareMinor: OwnerSubscriptionRuleInputSchoolShareMinor;
+  effectiveAt: string;
+  /** @nullable */
+  endsAt?: string | null;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type OwnerSubscriptionRuleEditProduct = typeof OwnerSubscriptionRuleEditProduct[keyof typeof OwnerSubscriptionRuleEditProduct];
+
+
+export const OwnerSubscriptionRuleEditProduct = {
+  STUDENT_PLATFORM: 'STUDENT_PLATFORM',
+  TEACHER_STAFF_PLATFORM: 'TEACHER_STAFF_PLATFORM',
+  BRO_COMMISSION: 'BRO_COMMISSION',
+} as const;
+
+export type OwnerSubscriptionRuleEditCurrency = typeof OwnerSubscriptionRuleEditCurrency[keyof typeof OwnerSubscriptionRuleEditCurrency];
+
+
+export const OwnerSubscriptionRuleEditCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type OwnerSubscriptionRuleEditBillingPeriod = typeof OwnerSubscriptionRuleEditBillingPeriod[keyof typeof OwnerSubscriptionRuleEditBillingPeriod];
+
+
+export const OwnerSubscriptionRuleEditBillingPeriod = {
+  ACADEMIC_TERM: 'ACADEMIC_TERM',
+} as const;
+
+export type OwnerSubscriptionRuleEditSchoolShareMinor = typeof OwnerSubscriptionRuleEditSchoolShareMinor[keyof typeof OwnerSubscriptionRuleEditSchoolShareMinor];
+
+
+export const OwnerSubscriptionRuleEditSchoolShareMinor = {
+  NUMBER_0: 0,
+} as const;
+
+export interface OwnerSubscriptionRuleEdit {
+  product: OwnerSubscriptionRuleEditProduct;
+  /**
+     * @minimum 1
+     * @maximum 100000000
+     */
+  amountMinor: number;
+  currency: OwnerSubscriptionRuleEditCurrency;
+  billingPeriod: OwnerSubscriptionRuleEditBillingPeriod;
+  schoolShareMinor: OwnerSubscriptionRuleEditSchoolShareMinor;
+  effectiveAt: string;
+  /** @nullable */
+  endsAt?: string | null;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  /** @minimum 1 */
+  version: number;
+}
+
+export interface OwnerSubscriptionRuleActivationInput {
+  /** @minimum 1 */
+  version: number;
+  /** @pattern ^[a-f0-9]{64}$ */
+  previewDigest: string;
+}
+
+export interface OwnerSubscriptionRuleRetirementInput {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface OwnerSubscriptionRule {
+  id: number;
+  product: string;
+  status: string;
+  amountMinor: number;
+  currency: string;
+  billingPeriod: string;
+  schoolShareMinor: number;
+  effectiveAt: string;
+  /** @nullable */
+  endsAt?: string | null;
+  reason: string;
+  version: number;
+  /** @nullable */
+  nativeRuleId?: number | null;
+}
+
+export interface OwnerSubscriptionRulePreview {
+  rule: OwnerSubscriptionRule;
+  activationAvailable: boolean;
+  /** @nullable */
+  blocker?: string | null;
+  previewDigest: string;
+}
+
+export type OwnerPaymentAssistanceInputAmountMinor = typeof OwnerPaymentAssistanceInputAmountMinor[keyof typeof OwnerPaymentAssistanceInputAmountMinor];
+
+
+export const OwnerPaymentAssistanceInputAmountMinor = {
+  NUMBER_320000: 320000,
+} as const;
+
+export interface OwnerPaymentAssistanceInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  termId: number;
+  amountMinor: OwnerPaymentAssistanceInputAmountMinor;
+  /** @maxLength 500 */
+  requestNote: string;
+}
+
+export interface OwnerBankCreditConfirmation {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bankName: string;
+  /**
+     * @minLength 6
+     * @maxLength 120
+     */
+  bankStatementReference: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  creditDate: string;
+  /** @minimum 1 */
+  verifiedAmountMinor: number;
+  independentlyChecked: true;
+}
+
+export interface OwnerPaymentAssistanceResult {
+  id: number;
+  status: string;
+  providerInitiationAvailable?: boolean;
+}
+
+export type OwnerSubscriptionRulesOverviewStaffRulesItem = { [key: string]: unknown };
+
+export type OwnerSubscriptionRulesOverviewBroRulesItem = { [key: string]: unknown };
+
+export type OwnerSubscriptionRulesOverviewAuditItem = { [key: string]: unknown };
+
+export type OwnerSubscriptionRulesOverviewAssistanceItem = { [key: string]: unknown };
+
+export interface OwnerSubscriptionRulesOverview {
+  intendedStudentFeeMinor: number;
+  intendedStaffFeeMinor: number;
+  studentCheckoutAvailable: boolean;
+  providerInitiationAvailable: boolean;
+  staffRules: OwnerSubscriptionRulesOverviewStaffRulesItem[];
+  broRules: OwnerSubscriptionRulesOverviewBroRulesItem[];
+  proposals: OwnerSubscriptionRule[];
+  audit: OwnerSubscriptionRulesOverviewAuditItem[];
+  assistance: OwnerSubscriptionRulesOverviewAssistanceItem[];
+}
+
 export type AccountApplicationInput4b96100ApplicantType = typeof AccountApplicationInput4b96100ApplicantType[keyof typeof AccountApplicationInput4b96100ApplicantType];
 
 
@@ -16134,6 +16421,88 @@ export interface PlatformOwnerBootstrapResult4b96100 {
 export interface ApiError4b96100 {
   error: string;
   code?: string;
+}
+
+export type StudentNfcReconciliationRow4b96100Status = typeof StudentNfcReconciliationRow4b96100Status[keyof typeof StudentNfcReconciliationRow4b96100Status];
+
+
+export const StudentNfcReconciliationRow4b96100Status = {
+  CANDIDATE_AFTER_REVIEW: 'CANDIDATE_AFTER_REVIEW',
+  NEW_OBLIGATION_AFTER_REVIEW: 'NEW_OBLIGATION_AFTER_REVIEW',
+  OWNER_REVIEW: 'OWNER_REVIEW',
+  PRESERVE_COMPLETED_HISTORY: 'PRESERVE_COMPLETED_HISTORY',
+} as const;
+
+export interface StudentNfcReconciliationRow4b96100 {
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  status: StudentNfcReconciliationRow4b96100Status;
+  reasons: string[];
+  subscriptionIds: number[];
+  /** @nullable */
+  originalAmountMinor: number | null;
+  /** @nullable */
+  originalOutstandingMinor: number | null;
+  /** @nullable */
+  proposedPlatformAmountMinor: number | null;
+  invoiceIds: number[];
+  /** @nullable */
+  schoolFeeTotalMinor: number | null;
+  /** @nullable */
+  schoolFeePaidMinor: number | null;
+  /** @nullable */
+  schoolFeeOutstandingMinor: number | null;
+  paymentReferences: string[];
+  receiptNumbers: string[];
+  evidenceDigest: string;
+}
+
+export interface StudentNfcReconciliationSource4b96100 {
+  name: string;
+  complete: boolean;
+  recordCount: number;
+  issues: string[];
+}
+
+export type StudentNfcReconciliationReport4b96100SourceStatus = typeof StudentNfcReconciliationReport4b96100SourceStatus[keyof typeof StudentNfcReconciliationReport4b96100SourceStatus];
+
+
+export const StudentNfcReconciliationReport4b96100SourceStatus = {
+  COMPLETE: 'COMPLETE',
+  INCOMPLETE: 'INCOMPLETE',
+} as const;
+
+export type StudentNfcReconciliationReport4b96100Summary = {
+  candidates: number;
+  newObligations: number;
+  ownerReview: number;
+  preserved: number;
+};
+
+export interface StudentNfcReconciliationReport4b96100 {
+  reportVersion: string;
+  readOnly: true;
+  applyAvailable: false;
+  approvalRequired: true;
+  generatedAt: string;
+  evidenceDigest: string;
+  schoolId: number;
+  termId: number;
+  /** @nullable */
+  academicSessionId: number | null;
+  schoolName: string;
+  termName: string;
+  /** @nullable */
+  termStart: string | null;
+  /** @nullable */
+  termEnd: string | null;
+  platformAmountMinor: number;
+  sourceStatus: StudentNfcReconciliationReport4b96100SourceStatus;
+  sources: StudentNfcReconciliationSource4b96100[];
+  warnings: string[];
+  rows: StudentNfcReconciliationRow4b96100[];
+  summary: StudentNfcReconciliationReport4b96100Summary;
 }
 
 export interface HealthStatus4b96100 {
@@ -23071,6 +23440,29 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type GetMyStudentPlatformAccess200StudentsItemStatus = typeof GetMyStudentPlatformAccess200StudentsItemStatus[keyof typeof GetMyStudentPlatformAccess200StudentsItemStatus];
+
+
+export const GetMyStudentPlatformAccess200StudentsItemStatus = {
+  VERIFIED: 'VERIFIED',
+  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export type GetMyStudentPlatformAccess200StudentsItem = {
+  schoolId: number;
+  studentId: number;
+  /** @nullable */
+  termId: number | null;
+  status: GetMyStudentPlatformAccess200StudentsItemStatus;
+  restricted: boolean;
+};
+
+export type GetMyStudentPlatformAccess200 = {
+  restricted: boolean;
+  students: GetMyStudentPlatformAccess200StudentsItem[];
+};
+
 export type GetSchoolBillingContextParams = {
 /**
  * @minimum 1
@@ -24899,10 +25291,28 @@ export type RecordSchoolCashPaymentBody = {
      */
   notes: string;
   /**
+     * Actual cash collection date in Nigeria; omitted by legacy clients to use the recording date
+     * @minLength 10
+     * @maxLength 10
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  receivedOn?: string;
+  /**
      * @minItems 1
      * @items.minimum 1
      */
   lineIds?: number[];
+};
+
+export type PreviewStudentNfcReconciliationParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+termId: number;
 };
 
 export type ListAcademicSessionsParams = {

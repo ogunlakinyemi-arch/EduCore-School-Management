@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { ReceiptDownloadButton, ReceiptFilePicker, uploadPrivateReceipt, validateReceiptFile } from '@/components/private-receipt';
 import { HostedSchoolPayout } from '@/components/hosted-school-payout';
+import { StudentNfcReconciliation } from '@/components/student-nfc-reconciliation';
 
 // All monetary values from this API are NGN minor units (kobo).
 type Policy = { grossMinor: number; schoolMinor: number; broMinor: number; platformWithBroMinor: number; platformWithoutBroMinor: number };
@@ -348,6 +349,7 @@ export function HostedPaymentsPage() {
         description={isPlatformOwner ? 'Collection ledger, reconciliation and confirmation of externally completed settlements.' : 'Create hosted checkouts for eligible subscriptions in the current term.'}
         action={<TenantPicker />}
       />
+      {isPlatformOwner && <StudentNfcReconciliation defaultSchoolId={schoolId ?? null} />}
       {message && (
         <div role={message.tone === 'error' ? 'alert' : 'status'} className={`rounded-xl border px-4 py-3 text-sm ${message.tone === 'error' ? 'border-[hsl(var(--destructive)/.3)] text-[hsl(var(--destructive))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--secondary))]'}`}>{message.text}</div>
       )}

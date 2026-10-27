@@ -372,6 +372,7 @@ import type {
   GetMyStaffNfcPartnerCommissionsParams,
   GetMyStaffNfcSubscriptionsParams,
   GetMyStaffSubscriptionAccessParams,
+  GetMyStudentPlatformAccess200,
   GetOfficialCardBrand200,
   GetOfficialCardPreview200,
   GetOfficialCardPreviewParams,
@@ -572,9 +573,19 @@ import type {
   OwnPayrollPayslip,
   OwnerAttendanceClass,
   OwnerAttendanceReport,
+  OwnerBankCreditConfirmation,
+  OwnerPaymentAssistanceInput,
+  OwnerPaymentAssistanceResult,
   OwnerReaderReason,
   OwnerSchoolDirectory,
   OwnerSchoolOverview,
+  OwnerSubscriptionRule,
+  OwnerSubscriptionRuleActivationInput,
+  OwnerSubscriptionRuleEdit,
+  OwnerSubscriptionRuleInput,
+  OwnerSubscriptionRulePreview,
+  OwnerSubscriptionRuleRetirementInput,
+  OwnerSubscriptionRulesOverview,
   OwnerUidInventory,
   OwnerUidRead,
   Parent,
@@ -688,6 +699,7 @@ import type {
   PreviewCurriculumImportBody,
   PreviewPeopleImportParams,
   PreviewPlatformSchoolMessage200,
+  PreviewStudentNfcReconciliationParams,
   PromotionBatch,
   PromotionBatchDetail,
   PromotionHistoryEntry,
@@ -827,6 +839,7 @@ import type {
   StudentIdentificationPolicyInput,
   StudentInput,
   StudentNfcLedger,
+  StudentNfcReconciliationReport,
   StudentPhotoConfirmation,
   StudentPhotoResult,
   StudentPhotoUploadIntent,
@@ -953,6 +966,83 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetMyStudentPlatformAccessUrl = () => {
+
+
+
+
+  return `/api/student/platform-subscription-access`
+}
+
+/**
+ * @summary Read own verified student platform access without altering obligations
+ */
+export const getMyStudentPlatformAccess = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetMyStudentPlatformAccess200> => {
+
+  return customFetch<GetMyStudentPlatformAccess200>(getGetMyStudentPlatformAccessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyStudentPlatformAccessQueryKey = () => {
+    return [
+    `/api/student/platform-subscription-access`
+    ] as const;
+    }
+
+
+export const getGetMyStudentPlatformAccessQueryOptions = <TData = Awaited<ReturnType<typeof getMyStudentPlatformAccess>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStudentPlatformAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyStudentPlatformAccessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyStudentPlatformAccess>>> = ({ signal }) => getMyStudentPlatformAccess({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyStudentPlatformAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyStudentPlatformAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getMyStudentPlatformAccess>>>
+export type GetMyStudentPlatformAccessQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read own verified student platform access without altering obligations
+ */
+
+export function useGetMyStudentPlatformAccess<TData = Awaited<ReturnType<typeof getMyStudentPlatformAccess>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStudentPlatformAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyStudentPlatformAccessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetHostedSchoolPayoutUrl = (reference: string,) => {
 
@@ -31663,6 +31753,87 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getRecordSchoolCashPaymentMutationOptions(options));
     }
 
+export const getPreviewStudentNfcReconciliationUrl = (params: PreviewStudentNfcReconciliationParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/owner/finance/student-nfc-reconciliation?${stringifiedParams}` : `/api/owner/finance/student-nfc-reconciliation`
+}
+
+/**
+ * Owner-only read-only reconciliation preview. Never reprices, migrates, initiates payment or activates cards.
+ */
+export const previewStudentNfcReconciliation = async (params: PreviewStudentNfcReconciliationParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentNfcReconciliationReport> => {
+
+  return customFetch<StudentNfcReconciliationReport>(getPreviewStudentNfcReconciliationUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewStudentNfcReconciliationQueryKey = (params?: PreviewStudentNfcReconciliationParams,) => {
+    return [
+    `/api/owner/finance/student-nfc-reconciliation`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getPreviewStudentNfcReconciliationQueryOptions = <TData = Awaited<ReturnType<typeof previewStudentNfcReconciliation>>, TError = ErrorType<void>>(params: PreviewStudentNfcReconciliationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewStudentNfcReconciliation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewStudentNfcReconciliationQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewStudentNfcReconciliation>>> = ({ signal }) => previewStudentNfcReconciliation(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewStudentNfcReconciliation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PreviewStudentNfcReconciliationQueryResult = NonNullable<Awaited<ReturnType<typeof previewStudentNfcReconciliation>>>
+export type PreviewStudentNfcReconciliationQueryError = ErrorType<void>
+
+
+
+export function usePreviewStudentNfcReconciliation<TData = Awaited<ReturnType<typeof previewStudentNfcReconciliation>>, TError = ErrorType<void>>(
+ params: PreviewStudentNfcReconciliationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewStudentNfcReconciliation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPreviewStudentNfcReconciliationQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListAcademicSessionsUrl = (params: ListAcademicSessionsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -57512,5 +57683,688 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSendWeeklyLessonNoteRemindersMutationOptions(options));
+    }
+
+export const getGetOwnerSubscriptionPaymentRulesUrl = () => {
+
+
+
+
+  return `/api/platform/subscription-payment-rules`
+}
+
+/**
+ * @summary Owner-only billing rules, historical audit and assistance queue
+ */
+export const getOwnerSubscriptionPaymentRules = async ( options?: Parameters<typeof customFetch>[1]): Promise<OwnerSubscriptionRulesOverview> => {
+
+  return customFetch<OwnerSubscriptionRulesOverview>(getGetOwnerSubscriptionPaymentRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerSubscriptionPaymentRulesQueryKey = () => {
+    return [
+    `/api/platform/subscription-payment-rules`
+    ] as const;
+    }
+
+
+export const getGetOwnerSubscriptionPaymentRulesQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerSubscriptionPaymentRules>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerSubscriptionPaymentRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerSubscriptionPaymentRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerSubscriptionPaymentRules>>> = ({ signal }) => getOwnerSubscriptionPaymentRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerSubscriptionPaymentRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerSubscriptionPaymentRulesQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerSubscriptionPaymentRules>>>
+export type GetOwnerSubscriptionPaymentRulesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner-only billing rules, historical audit and assistance queue
+ */
+
+export function useGetOwnerSubscriptionPaymentRules<TData = Awaited<ReturnType<typeof getOwnerSubscriptionPaymentRules>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerSubscriptionPaymentRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerSubscriptionPaymentRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateOwnerSubscriptionRuleDraftUrl = () => {
+
+
+
+
+  return `/api/platform/subscription-payment-rules`
+}
+
+/**
+ * @summary Store a draft only; no native billing rule or checkout is created
+ */
+export const createOwnerSubscriptionRuleDraft = async (ownerSubscriptionRuleInput: OwnerSubscriptionRuleInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnerSubscriptionRule> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnerSubscriptionRule>(getCreateOwnerSubscriptionRuleDraftUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerSubscriptionRuleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateOwnerSubscriptionRuleDraftMutationKey = () => ['createOwnerSubscriptionRuleDraft'] as const;
+
+export const getCreateOwnerSubscriptionRuleDraftMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOwnerSubscriptionRuleDraft>>, TError,CreateOwnerSubscriptionRuleDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOwnerSubscriptionRuleDraft>>, TError,CreateOwnerSubscriptionRuleDraftMutationVariables, TContext> => {
+
+const mutationKey = getCreateOwnerSubscriptionRuleDraftMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOwnerSubscriptionRuleDraft>>, CreateOwnerSubscriptionRuleDraftMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOwnerSubscriptionRuleDraft(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOwnerSubscriptionRuleDraftMutationResult = NonNullable<Awaited<ReturnType<typeof createOwnerSubscriptionRuleDraft>>>
+    export type CreateOwnerSubscriptionRuleDraftMutationBody = BodyType<OwnerSubscriptionRuleInput>
+    export type CreateOwnerSubscriptionRuleDraftMutationError = ErrorType<void>
+    export type CreateOwnerSubscriptionRuleDraftMutationVariables = {data: BodyType<OwnerSubscriptionRuleInput>}
+
+    /**
+ * @summary Store a draft only; no native billing rule or checkout is created
+ */
+export const useCreateOwnerSubscriptionRuleDraft = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOwnerSubscriptionRuleDraft>>, TError,CreateOwnerSubscriptionRuleDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOwnerSubscriptionRuleDraft>>,
+        TError,
+        CreateOwnerSubscriptionRuleDraftMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateOwnerSubscriptionRuleDraftMutationOptions(options));
+    }
+
+export const getEditOwnerSubscriptionRuleDraftUrl = (ruleId: number,) => {
+
+
+
+
+  return `/api/platform/subscription-payment-rules/${ruleId}`
+}
+
+/**
+ * @summary Edit only a draft with an optimistic version
+ */
+export const editOwnerSubscriptionRuleDraft = async (ruleId: number,
+    ownerSubscriptionRuleEdit: OwnerSubscriptionRuleEdit, options?: Parameters<typeof customFetch>[1]): Promise<OwnerSubscriptionRule> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnerSubscriptionRule>(getEditOwnerSubscriptionRuleDraftUrl(ruleId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerSubscriptionRuleEdit)
+  }
+);}
+
+
+
+
+
+export const getEditOwnerSubscriptionRuleDraftMutationKey = () => ['editOwnerSubscriptionRuleDraft'] as const;
+
+export const getEditOwnerSubscriptionRuleDraftMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editOwnerSubscriptionRuleDraft>>, TError,EditOwnerSubscriptionRuleDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof editOwnerSubscriptionRuleDraft>>, TError,EditOwnerSubscriptionRuleDraftMutationVariables, TContext> => {
+
+const mutationKey = getEditOwnerSubscriptionRuleDraftMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof editOwnerSubscriptionRuleDraft>>, EditOwnerSubscriptionRuleDraftMutationVariables> = (props) => {
+          const {ruleId,data} = props ?? {};
+
+          return  editOwnerSubscriptionRuleDraft(ruleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EditOwnerSubscriptionRuleDraftMutationResult = NonNullable<Awaited<ReturnType<typeof editOwnerSubscriptionRuleDraft>>>
+    export type EditOwnerSubscriptionRuleDraftMutationBody = BodyType<OwnerSubscriptionRuleEdit>
+    export type EditOwnerSubscriptionRuleDraftMutationError = ErrorType<void>
+    export type EditOwnerSubscriptionRuleDraftMutationVariables = {ruleId: number;data: BodyType<OwnerSubscriptionRuleEdit>}
+
+    /**
+ * @summary Edit only a draft with an optimistic version
+ */
+export const useEditOwnerSubscriptionRuleDraft = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editOwnerSubscriptionRuleDraft>>, TError,EditOwnerSubscriptionRuleDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof editOwnerSubscriptionRuleDraft>>,
+        TError,
+        EditOwnerSubscriptionRuleDraftMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEditOwnerSubscriptionRuleDraftMutationOptions(options));
+    }
+
+export const getPreviewOwnerSubscriptionRuleActivationUrl = (ruleId: number,) => {
+
+
+
+
+  return `/api/platform/subscription-payment-rules/${ruleId}/preview`
+}
+
+/**
+ * @summary Read-only effective-period and policy preview
+ */
+export const previewOwnerSubscriptionRuleActivation = async (ruleId: number, options?: Parameters<typeof customFetch>[1]): Promise<OwnerSubscriptionRulePreview> => {
+
+  return customFetch<OwnerSubscriptionRulePreview>(getPreviewOwnerSubscriptionRuleActivationUrl(ruleId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewOwnerSubscriptionRuleActivationMutationKey = () => ['previewOwnerSubscriptionRuleActivation'] as const;
+
+export const getPreviewOwnerSubscriptionRuleActivationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewOwnerSubscriptionRuleActivation>>, TError,PreviewOwnerSubscriptionRuleActivationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewOwnerSubscriptionRuleActivation>>, TError,PreviewOwnerSubscriptionRuleActivationMutationVariables, TContext> => {
+
+const mutationKey = getPreviewOwnerSubscriptionRuleActivationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewOwnerSubscriptionRuleActivation>>, PreviewOwnerSubscriptionRuleActivationMutationVariables> = (props) => {
+          const {ruleId} = props ?? {};
+
+          return  previewOwnerSubscriptionRuleActivation(ruleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewOwnerSubscriptionRuleActivationMutationResult = NonNullable<Awaited<ReturnType<typeof previewOwnerSubscriptionRuleActivation>>>
+
+    export type PreviewOwnerSubscriptionRuleActivationMutationError = ErrorType<void>
+    export type PreviewOwnerSubscriptionRuleActivationMutationVariables = {ruleId: number}
+
+    /**
+ * @summary Read-only effective-period and policy preview
+ */
+export const usePreviewOwnerSubscriptionRuleActivation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewOwnerSubscriptionRuleActivation>>, TError,PreviewOwnerSubscriptionRuleActivationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewOwnerSubscriptionRuleActivation>>,
+        TError,
+        PreviewOwnerSubscriptionRuleActivationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewOwnerSubscriptionRuleActivationMutationOptions(options));
+    }
+
+export const getActivateOwnerSubscriptionRuleUrl = (ruleId: number,) => {
+
+
+
+
+  return `/api/platform/subscription-payment-rules/${ruleId}/activate`
+}
+
+/**
+ * @summary Explicitly activate an unchanged, reviewed staff draft
+ */
+export const activateOwnerSubscriptionRule = async (ruleId: number,
+    ownerSubscriptionRuleActivationInput: OwnerSubscriptionRuleActivationInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnerSubscriptionRule> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnerSubscriptionRule>(getActivateOwnerSubscriptionRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerSubscriptionRuleActivationInput)
+  }
+);}
+
+
+
+
+
+export const getActivateOwnerSubscriptionRuleMutationKey = () => ['activateOwnerSubscriptionRule'] as const;
+
+export const getActivateOwnerSubscriptionRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof activateOwnerSubscriptionRule>>, TError,ActivateOwnerSubscriptionRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof activateOwnerSubscriptionRule>>, TError,ActivateOwnerSubscriptionRuleMutationVariables, TContext> => {
+
+const mutationKey = getActivateOwnerSubscriptionRuleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof activateOwnerSubscriptionRule>>, ActivateOwnerSubscriptionRuleMutationVariables> = (props) => {
+          const {ruleId,data} = props ?? {};
+
+          return  activateOwnerSubscriptionRule(ruleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ActivateOwnerSubscriptionRuleMutationResult = NonNullable<Awaited<ReturnType<typeof activateOwnerSubscriptionRule>>>
+    export type ActivateOwnerSubscriptionRuleMutationBody = BodyType<OwnerSubscriptionRuleActivationInput>
+    export type ActivateOwnerSubscriptionRuleMutationError = ErrorType<void>
+    export type ActivateOwnerSubscriptionRuleMutationVariables = {ruleId: number;data: BodyType<OwnerSubscriptionRuleActivationInput>}
+
+    /**
+ * @summary Explicitly activate an unchanged, reviewed staff draft
+ */
+export const useActivateOwnerSubscriptionRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof activateOwnerSubscriptionRule>>, TError,ActivateOwnerSubscriptionRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof activateOwnerSubscriptionRule>>,
+        TError,
+        ActivateOwnerSubscriptionRuleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getActivateOwnerSubscriptionRuleMutationOptions(options));
+    }
+
+export const getRetireOwnerSubscriptionRuleUrl = (ruleId: number,) => {
+
+
+
+
+  return `/api/platform/subscription-payment-rules/${ruleId}/retire`
+}
+
+/**
+ * @summary Retire newest activated native rule without altering historical payments
+ */
+export const retireOwnerSubscriptionRule = async (ruleId: number,
+    ownerSubscriptionRuleRetirementInput: OwnerSubscriptionRuleRetirementInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnerSubscriptionRule> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnerSubscriptionRule>(getRetireOwnerSubscriptionRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerSubscriptionRuleRetirementInput)
+  }
+);}
+
+
+
+
+
+export const getRetireOwnerSubscriptionRuleMutationKey = () => ['retireOwnerSubscriptionRule'] as const;
+
+export const getRetireOwnerSubscriptionRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retireOwnerSubscriptionRule>>, TError,RetireOwnerSubscriptionRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retireOwnerSubscriptionRule>>, TError,RetireOwnerSubscriptionRuleMutationVariables, TContext> => {
+
+const mutationKey = getRetireOwnerSubscriptionRuleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retireOwnerSubscriptionRule>>, RetireOwnerSubscriptionRuleMutationVariables> = (props) => {
+          const {ruleId,data} = props ?? {};
+
+          return  retireOwnerSubscriptionRule(ruleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetireOwnerSubscriptionRuleMutationResult = NonNullable<Awaited<ReturnType<typeof retireOwnerSubscriptionRule>>>
+    export type RetireOwnerSubscriptionRuleMutationBody = BodyType<OwnerSubscriptionRuleRetirementInput>
+    export type RetireOwnerSubscriptionRuleMutationError = ErrorType<void>
+    export type RetireOwnerSubscriptionRuleMutationVariables = {ruleId: number;data: BodyType<OwnerSubscriptionRuleRetirementInput>}
+
+    /**
+ * @summary Retire newest activated native rule without altering historical payments
+ */
+export const useRetireOwnerSubscriptionRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retireOwnerSubscriptionRule>>, TError,RetireOwnerSubscriptionRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retireOwnerSubscriptionRule>>,
+        TError,
+        RetireOwnerSubscriptionRuleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRetireOwnerSubscriptionRuleMutationOptions(options));
+    }
+
+export const getRequestOwnerSubscriptionPaymentAssistanceUrl = () => {
+
+
+
+
+  return `/api/platform/subscription-payment-assistance`
+}
+
+/**
+ * @summary Log an Owner assistance request, not a payment
+ */
+export const requestOwnerSubscriptionPaymentAssistance = async (ownerPaymentAssistanceInput: OwnerPaymentAssistanceInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnerPaymentAssistanceResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnerPaymentAssistanceResult>(getRequestOwnerSubscriptionPaymentAssistanceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerPaymentAssistanceInput)
+  }
+);}
+
+
+
+
+
+export const getRequestOwnerSubscriptionPaymentAssistanceMutationKey = () => ['requestOwnerSubscriptionPaymentAssistance'] as const;
+
+export const getRequestOwnerSubscriptionPaymentAssistanceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestOwnerSubscriptionPaymentAssistance>>, TError,RequestOwnerSubscriptionPaymentAssistanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestOwnerSubscriptionPaymentAssistance>>, TError,RequestOwnerSubscriptionPaymentAssistanceMutationVariables, TContext> => {
+
+const mutationKey = getRequestOwnerSubscriptionPaymentAssistanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestOwnerSubscriptionPaymentAssistance>>, RequestOwnerSubscriptionPaymentAssistanceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestOwnerSubscriptionPaymentAssistance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestOwnerSubscriptionPaymentAssistanceMutationResult = NonNullable<Awaited<ReturnType<typeof requestOwnerSubscriptionPaymentAssistance>>>
+    export type RequestOwnerSubscriptionPaymentAssistanceMutationBody = BodyType<OwnerPaymentAssistanceInput>
+    export type RequestOwnerSubscriptionPaymentAssistanceMutationError = ErrorType<void>
+    export type RequestOwnerSubscriptionPaymentAssistanceMutationVariables = {data: BodyType<OwnerPaymentAssistanceInput>}
+
+    /**
+ * @summary Log an Owner assistance request, not a payment
+ */
+export const useRequestOwnerSubscriptionPaymentAssistance = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestOwnerSubscriptionPaymentAssistance>>, TError,RequestOwnerSubscriptionPaymentAssistanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestOwnerSubscriptionPaymentAssistance>>,
+        TError,
+        RequestOwnerSubscriptionPaymentAssistanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestOwnerSubscriptionPaymentAssistanceMutationOptions(options));
+    }
+
+export const getRecordOwnerSubscriptionBankVerificationUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/platform/subscription-payment-assistance/${requestId}/verify-bank`
+}
+
+/**
+ * @summary Attest independently examined bank credit; does not initiate payment
+ */
+export const recordOwnerSubscriptionBankVerification = async (requestId: number,
+    ownerBankCreditConfirmation: OwnerBankCreditConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<OwnerPaymentAssistanceResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnerPaymentAssistanceResult>(getRecordOwnerSubscriptionBankVerificationUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerBankCreditConfirmation)
+  }
+);}
+
+
+
+
+
+export const getRecordOwnerSubscriptionBankVerificationMutationKey = () => ['recordOwnerSubscriptionBankVerification'] as const;
+
+export const getRecordOwnerSubscriptionBankVerificationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordOwnerSubscriptionBankVerification>>, TError,RecordOwnerSubscriptionBankVerificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordOwnerSubscriptionBankVerification>>, TError,RecordOwnerSubscriptionBankVerificationMutationVariables, TContext> => {
+
+const mutationKey = getRecordOwnerSubscriptionBankVerificationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordOwnerSubscriptionBankVerification>>, RecordOwnerSubscriptionBankVerificationMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  recordOwnerSubscriptionBankVerification(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordOwnerSubscriptionBankVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof recordOwnerSubscriptionBankVerification>>>
+    export type RecordOwnerSubscriptionBankVerificationMutationBody = BodyType<OwnerBankCreditConfirmation>
+    export type RecordOwnerSubscriptionBankVerificationMutationError = ErrorType<void>
+    export type RecordOwnerSubscriptionBankVerificationMutationVariables = {requestId: number;data: BodyType<OwnerBankCreditConfirmation>}
+
+    /**
+ * @summary Attest independently examined bank credit; does not initiate payment
+ */
+export const useRecordOwnerSubscriptionBankVerification = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordOwnerSubscriptionBankVerification>>, TError,RecordOwnerSubscriptionBankVerificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordOwnerSubscriptionBankVerification>>,
+        TError,
+        RecordOwnerSubscriptionBankVerificationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordOwnerSubscriptionBankVerificationMutationOptions(options));
     }
 

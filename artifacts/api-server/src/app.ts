@@ -6,6 +6,7 @@ import express, {
 } from "express";
 import cors from "cors";
 import { hostedManualPaymentsRouter, hostedManualWebhookRouter } from "./routes/hosted-manual-payments";
+import { rejectRetiredPaymentWorkflows } from "./services/retired-payment-workflows";
 import { paymentReceiptsRouter } from "./routes/payment-receipts";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -141,6 +142,7 @@ app.use("/api/exam-record",express.json({limit:"8mb"}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/api",rejectRetiredPaymentWorkflows);
 app.use("/api", flutterwaveLiveRuntimeRouter);
 app.use("/api/hosted-payments", hostedManualPaymentsRouter);
 app.use("/api/payment-receipts", paymentReceiptsRouter);

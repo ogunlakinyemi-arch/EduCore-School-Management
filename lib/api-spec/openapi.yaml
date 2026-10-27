@@ -34,6 +34,34 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /student/platform-subscription-access:
+    get:
+      operationId: getMyStudentPlatformAccess
+      tags: [subscriptions]
+      summary: Read own verified student platform access without altering obligations
+      responses:
+        "200":
+          description: Student and term scoped verified platform coverage
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [restricted, students]
+                properties:
+                  restricted: { type: boolean }
+                  students:
+                    type: array
+                    items:
+                      type: object
+                      required: [schoolId, studentId, termId, status, restricted]
+                      properties:
+                        schoolId: { type: integer }
+                        studentId: { type: integer }
+                        termId: { type: [integer, "null"] }
+                        status: { type: string, enum: [VERIFIED, PAYMENT_REQUIRED, UNAVAILABLE] }
+                        restricted: { type: boolean }
+        "403": { description: Active student required }
+        "503": { description: Coverage cannot be verified }
   /hosted-payments/orders/{reference}/school-payout:
     $ref: './school-payouts.yaml#/paths/~1school-payout'
   /hosted-payments/orders/{reference}/school-payout/reconcile:
@@ -3846,6 +3874,12 @@ paths:
                 evidenceReference: { type: string, minLength: 3, maxLength: 200 }
                 receivedFrom: { type: string, minLength: 3, maxLength: 200 }
                 notes: { type: string, minLength: 3, maxLength: 1000 }
+                receivedOn:
+                  type: string
+                  pattern: '^\d{4}-\d{2}-\d{2}$'
+                  minLength: 10
+                  maxLength: 10
+                  description: Actual cash collection date in Nigeria; omitted by legacy clients to use the recording date
                 lineIds:
                   type: array
                   minItems: 1
@@ -3862,6 +3896,26 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FeePaymentVerificationResult" }
+  /owner/finance/student-nfc-reconciliation:
+    get:
+      operationId: previewStudentNfcReconciliation
+      tags: [Finance]
+      description: Owner-only read-only reconciliation preview. Never reprices, migrates, initiates payment or activates cards.
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Bounded, consistent snapshot for a separately approved future conversion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentNfcReconciliationReport" }
+        "403":
+          description: Platform Owner required
+        "404":
+          description: School or matching term not found
+        "503":
+          description: Evidence could not be read safely
   /academic-sessions:
     get:
       operationId: listAcademicSessions
@@ -6137,6 +6191,20 @@ paths:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1monitoring"
   /schools/{schoolId}/lesson-notes/reminders:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1reminders"
+  /platform/subscription-payment-rules:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules"
+  /platform/subscription-payment-rules/{ruleId}:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}"
+  /platform/subscription-payment-rules/{ruleId}/preview:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}~1preview"
+  /platform/subscription-payment-rules/{ruleId}/activate:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}~1activate"
+  /platform/subscription-payment-rules/{ruleId}/retire:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}~1retire"
+  /platform/subscription-payment-assistance:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-assistance"
+  /platform/subscription-payment-assistance/{requestId}/verify-bank:
+    $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-assistance~1{requestId}~1verify-bank"
 components:
   securitySchemes:
     OwnerUidReaderKey:
@@ -6568,6 +6636,64 @@ components:
       properties:
         error: { type: string }
         code: { type: string }
+    StudentNfcReconciliationRow:
+      type: object
+      required: [studentId, studentName, admissionNo, status, reasons, subscriptionIds, originalAmountMinor, originalOutstandingMinor, proposedPlatformAmountMinor, invoiceIds, schoolFeeTotalMinor, schoolFeePaidMinor, schoolFeeOutstandingMinor, paymentReferences, receiptNumbers, evidenceDigest]
+      properties:
+        studentId: { type: integer }
+        studentName: { type: string }
+        admissionNo: { type: string }
+        status: { type: string, enum: [CANDIDATE_AFTER_REVIEW, NEW_OBLIGATION_AFTER_REVIEW, OWNER_REVIEW, PRESERVE_COMPLETED_HISTORY] }
+        reasons: { type: array, items: { type: string } }
+        subscriptionIds: { type: array, items: { type: integer } }
+        originalAmountMinor: { type: [integer, "null"] }
+        originalOutstandingMinor: { type: [integer, "null"] }
+        proposedPlatformAmountMinor: { type: [integer, "null"] }
+        invoiceIds: { type: array, items: { type: integer } }
+        schoolFeeTotalMinor: { type: [integer, "null"] }
+        schoolFeePaidMinor: { type: [integer, "null"] }
+        schoolFeeOutstandingMinor: { type: [integer, "null"] }
+        paymentReferences: { type: array, items: { type: string } }
+        receiptNumbers: { type: array, items: { type: string } }
+        evidenceDigest: { type: string }
+    StudentNfcReconciliationSource:
+      type: object
+      required: [name, complete, recordCount, issues]
+      properties:
+        name: { type: string }
+        complete: { type: boolean }
+        recordCount: { type: integer }
+        issues: { type: array, items: { type: string } }
+    StudentNfcReconciliationReport:
+      type: object
+      required: [reportVersion, readOnly, applyAvailable, approvalRequired, generatedAt, evidenceDigest, schoolId, termId, academicSessionId, schoolName, termName, termStart, termEnd, platformAmountMinor, sourceStatus, sources, warnings, rows, summary]
+      properties:
+        reportVersion: { type: string }
+        readOnly: { type: boolean, enum: [true] }
+        applyAvailable: { type: boolean, enum: [false] }
+        approvalRequired: { type: boolean, enum: [true] }
+        generatedAt: { type: string }
+        evidenceDigest: { type: string }
+        schoolId: { type: integer }
+        termId: { type: integer }
+        academicSessionId: { type: [integer, "null"] }
+        schoolName: { type: string }
+        termName: { type: string }
+        termStart: { type: [string, "null"] }
+        termEnd: { type: [string, "null"] }
+        platformAmountMinor: { type: integer }
+        sourceStatus: { type: string, enum: [COMPLETE, INCOMPLETE] }
+        sources: { type: array, items: { $ref: "#/components/schemas/StudentNfcReconciliationSource" } }
+        warnings: { type: array, items: { type: string } }
+        rows: { type: array, items: { $ref: "#/components/schemas/StudentNfcReconciliationRow" } }
+        summary:
+          type: object
+          required: [candidates, newObligations, ownerReview, preserved]
+          properties:
+            candidates: { type: integer }
+            newObligations: { type: integer }
+            ownerReview: { type: integer }
+            preserved: { type: integer }
     HealthStatus:
       type: object
       properties:

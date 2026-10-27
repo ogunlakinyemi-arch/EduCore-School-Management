@@ -269,13 +269,15 @@ export async function generateStaffNfcTermSubscriptions(
     version: number;
     currency: string;
     effectiveAt: string;
+    endsAt: string | null;
   }>(
     `SELECT id, version, price_minor AS "priceMinor",
             school_share_minor AS "schoolShareMinor",
             platform_share_minor AS "platformShareMinor",
             partner_commission_minor AS "partnerCommissionMinor",
             no_partner_platform_share_minor AS "noPartnerPlatformShareMinor",
-            currency, effective_at AS "effectiveAt"
+            currency, effective_at AS "effectiveAt",
+            to_jsonb(staff_nfc_billing_rules)->>'ends_at' AS "endsAt"
        FROM staff_nfc_billing_rules
       WHERE product=$1 AND effective_at<=CURRENT_TIMESTAMP
       ORDER BY effective_at DESC, version DESC
@@ -283,7 +285,8 @@ export async function generateStaffNfcTermSubscriptions(
     [STAFF_NFC_PRODUCT],
   );
   const rule = ruleResult.rows[0];
-  if (!rule || rule.currency !== STAFF_NFC_CURRENCY) {
+  if (!rule || rule.currency !== STAFF_NFC_CURRENCY ||
+      (rule.endsAt && new Date(rule.endsAt).getTime() <= Date.now())) {
     throw new StaffNfcDomainError(409, "No effective staff NFC billing rule is configured", "BILLING_RULE_REQUIRED");
   }
   const employeeRows = await client.query<{ id: number; partnerProfileId: number | null; attributionId: number | null }>(

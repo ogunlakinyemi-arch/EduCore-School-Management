@@ -26,6 +26,27 @@ BRO entitlement remains separately idempotent and subject to existing eligibilit
 staff/teacher payments remain separate. Implementation authorizes neither
 Production data/secrets changes, live transactions nor publishing.
 
+### Unpaid transition requires reconciliation and separate approval
+
+Existing unpaid student obligations may transition to the NGN 3,200 per-term
+platform policy only after reconciling the student's payment history, outstanding
+balance, academic term and existing subscription records. Preserve completed
+payments, paid history, receipts, original references and audit trails. Do not
+automatically convert ambiguous, duplicate, disputed or unreconciled balances;
+leave them unchanged and flag them for Owner review.
+
+**Why:** The user explicitly selected migration of unpaid obligations after
+reconciliation rather than limiting the policy to newly issued obligations.
+They require a preview/reconciliation report before any apply, and explicit review
+and approval before Production data changes.
+
+**How to apply:** Build and review the read-only report first. Candidate status or
+an exported digest is not approval, provider verification or permission to write.
+Any later apply must independently verify the database target and revalidate
+fresh evidence under concurrency controls. Keep school-facing fees separate,
+prevent repeat student/term charges and retain the verified-payment plus existing
+card-security gates.
+
 Scope clarification: the Owner confirms the published school application works;
 the reported real-school onboarding obstacle is Flutterwave LIVE payment
 activation, not a general school-product failure.

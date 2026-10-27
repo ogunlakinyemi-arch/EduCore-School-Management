@@ -1,0 +1,26 @@
+---
+name: Retained records and retired payments
+description: Existing test records are now real records; obsolete split/hosted workflows are archived, not erased.
+---
+
+Treat every existing record as retained operational history. The user states
+that former test records are being repurposed as real records. This supersedes
+any inference that a test label authorizes cleanup, anonymization, conversion,
+repricing or reset.
+
+**Why:** The user explicitly prohibited deleting or overwriting student, school,
+subscription, payment, receipt, card/device, BRO and audit records when retiring
+school split settlements and Hosted Payments.
+
+**How to apply:** Remove active UX and disable initiation/configuration without
+dropping historical schema, references or allocation snapshots. Retain only
+separately authorized historical verification/reporting. Do not revoke old
+provider links, reissue obligations or convert unpaid rows without a separately
+reviewed scope and explicit approval. School-only student platform billing is
+separate from parent-facing fees; Teacher/Staff remains platform-only and BRO
+commission remains independent. Intended prices are not active rules.
+
+Student core access requires verified platform payment for the current student
+and academic term, even if a legacy active/waived flag or school receipt exists.
+Preserve essential identity, payment/status/instructions and support access.
+Keep school/card/device security restrictions independent of payment success.

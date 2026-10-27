@@ -46,6 +46,7 @@ export const staffNfcBillingRules = pgTable(
     currency: text("currency").notNull().default("NGN"),
     status: text("status").notNull().default("ACTIVE"),
     effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
     createdBy: integer("created_by").references(() => appUsers.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

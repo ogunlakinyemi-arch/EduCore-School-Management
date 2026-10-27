@@ -66,50 +66,13 @@ export async function assertStudentNfcPaymentAccess(req: Request, subscriptionId
  * reclassified as a verified platform payment.
  */
 export async function ensureStudentNfcSubscription(db: Sql, schoolId: number, studentId: number, sessionId: number, termId: number) {
-  await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
-    [`student-nfc:${schoolId}:${studentId}:${sessionId}:${termId}`]);
+  // Existing bindings are historical evidence, not permission to issue another
+  // legacy NGN 5,000 split. New issuance requires the separately reviewed
+  // platform-only rule/engine and reconciliation approval; neither is active.
   const existing = await db.query(`SELECT subscription_id AS "subscriptionId",legacy_invoice_id AS "legacyInvoiceId"
     FROM student_subscription_terms WHERE school_id=$1 AND student_id=$2 AND academic_session_id=$3 AND academic_term_id=$4`,
     [schoolId,studentId,sessionId,termId]);
-  if (existing.rows[0]) return existing.rows[0];
-  const eligible = await db.query(`SELECT t.name,t.end_date::text AS "endDate"
-    FROM students st JOIN academic_terms t ON t.school_id=st.school_id
-    JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
-    WHERE st.id=$2 AND st.school_id=$1 AND lower(st.status)='active' AND upper(st.admission_status)='ADMITTED'
-      AND t.id=$4 AND ses.id=$3 AND upper(t.status) IN ('ACTIVE','PLANNED') AND upper(ses.status) IN ('ACTIVE','PLANNED')
-      AND t.end_date>=(now() AT TIME ZONE 'Africa/Lagos')::date`,
-    [schoolId,studentId,sessionId,termId]);
-  if (!eligible.rows[0]) return null;
-  const term = eligible.rows[0];
-  // Reuse the authoritative old ledger, including explicit verified waivers.
-  const old = await db.query(`SELECT s.id,s.status,s.verification_status FROM subscriptions s WHERE s.school_id=$1 AND s.student_id=$2
-    AND s.term=$3 AND (s.expires_at::date=$4::date+1
-      OR s.allocation_snapshot->>'termId'=$5::integer::text
-      OR EXISTS(SELECT 1 FROM student_subscription_payments p WHERE p.subscription_id=s.id
-        AND p.school_id=s.school_id AND p.academic_session_id=$6 AND p.academic_term_id=$5))
-    ORDER BY CASE WHEN lower(s.status)='waived' AND lower(s.verification_status)='verified' THEN 0
-      WHEN lower(s.status)='active' AND lower(s.verification_status)='verified' THEN 1 ELSE 2 END,s.id`,
-    [schoolId,studentId,term.name,term.endDate,termId,sessionId]);
-  if (old.rows.length>1) throw new AuthError(409,"Multiple historical NFC subscriptions require Owner reconciliation; no new charge was created");
-  const legacy = await db.query(`SELECT i.id FROM fee_invoices i JOIN fee_invoice_lines l
-    ON l.invoice_id=i.id AND l.school_id=i.school_id
-    WHERE i.school_id=$1 AND i.student_id=$2 AND i.academic_session_id=$3 AND i.academic_term_id=$4
-      AND i.status<>'CANCELLED' AND l.amount_minor>0 AND (l.category_name_snapshot ~* $5 OR l.description_snapshot ~* $5)
-    ORDER BY i.id LIMIT 1`,
-    [schoolId,studentId,sessionId,termId,NFC_CATEGORY_PATTERN]);
-  const authoritativeOld = old.rows[0] && String(old.rows[0].verification_status).toLowerCase()==="verified"
-    && ["active","waived"].includes(String(old.rows[0].status).toLowerCase());
-  let subscriptionId: number|null = !authoritativeOld && legacy.rows[0] ? null : old.rows[0]?.id ?? null;
-  const legacyInvoiceId: number|null = subscriptionId==null ? legacy.rows[0]?.id ?? null : null;
-  if (subscriptionId==null && legacyInvoiceId==null) {
-    const inserted = await db.query(`INSERT INTO subscriptions(school_id,student_id,term,amount,school_share,edupulse_share,provider,expires_at)
-      VALUES($1,$2,$3,5000,1900,3100,'FLUTTERWAVE',($4::date+1)::timestamptz) RETURNING id`,
-      [schoolId,studentId,term.name,term.endDate]);
-    subscriptionId = inserted.rows[0].id;
-  }
-  await db.query(`INSERT INTO student_subscription_terms(school_id,student_id,academic_session_id,academic_term_id,subscription_id,legacy_invoice_id)
-    VALUES($1,$2,$3,$4,$5,$6)`,[schoolId,studentId,sessionId,termId,subscriptionId,legacyInvoiceId]);
-  return {subscriptionId,legacyInvoiceId};
+  return existing.rows[0] ?? null;
 }
 
 export async function ensureClassNfcSubscriptions(db: Sql, schoolId: number, sessionId: number, termId: number, classId: number, section: string|null) {

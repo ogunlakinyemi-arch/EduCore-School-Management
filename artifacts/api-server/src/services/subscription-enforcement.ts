@@ -7,6 +7,7 @@ import { subscriptionPolicy, type SubscriptionStudent } from "./subscription-enf
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import { hostedLiveSelected, readHostedSubscriptionCoverage } from "./hosted-subscription-coverage";
 import { assertManualSchoolUnlocked, readManualSchoolState, readSubscriptionScopeCounts } from "./school-subscription-lock";
+import { readStudentTermPlatformAccess } from "./student-platform-access";
 import {
   assertLiveApplicationContext,readLiveSchoolSubscriptionStudents,releasedLiveApplicationContext,
   type LiveApplicationContext,
@@ -100,6 +101,10 @@ export async function assertSubscriptionAccess(schoolId: number, studentId?: num
   await assertManualSchoolUnlocked(db, schoolId);
   // Normal school/teacher/reader operations are NOT auto-locked by students.
   if (studentId == null) return;
+  const platformAccess=await readStudentTermPlatformAccess(db,schoolId,studentId);
+  if(platformAccess.restricted)throw new AuthError(platformAccess.status==="UNAVAILABLE"?503:403,
+    "A verified platform payment for this student and academic term is required. A school fee, transfer claim or receipt upload is not platform payment.",
+    "STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED");
   let snapshot: EnforcementSnapshot;
   try { snapshot = await readSchoolSubscription(db, schoolId,live); }
   catch (error) {

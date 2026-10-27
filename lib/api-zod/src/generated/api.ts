@@ -9,6 +9,21 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Read own verified student platform access without altering obligations
+ */
+export const GetMyStudentPlatformAccessResponse = zod.object({
+  "restricted": zod.boolean(),
+  "students": zod.array(zod.object({
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "termId": zod.number().int().nullable(),
+  "status": zod.enum(['VERIFIED', 'PAYMENT_REQUIRED', 'UNAVAILABLE']),
+  "restricted": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Owner-only beneficiary, funding prerequisites and school payout state
  */
 export const getHostedSchoolPayoutPathReferenceRegExp = new RegExp('^HCM1_[TL]_[a-f0-9]{32}$');
@@ -13840,6 +13855,11 @@ export const recordSchoolCashPaymentBodyReceivedFromMax = 200;
 export const recordSchoolCashPaymentBodyNotesMin = 3;
 export const recordSchoolCashPaymentBodyNotesMax = 1000;
 
+export const recordSchoolCashPaymentBodyReceivedOnMin = 10;
+export const recordSchoolCashPaymentBodyReceivedOnMax = 10;
+
+
+export const recordSchoolCashPaymentBodyReceivedOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 
@@ -13849,6 +13869,7 @@ export const RecordSchoolCashPaymentBody = zod.object({
   "evidenceReference": zod.string().min(recordSchoolCashPaymentBodyEvidenceReferenceMin).max(recordSchoolCashPaymentBodyEvidenceReferenceMax),
   "receivedFrom": zod.string().min(recordSchoolCashPaymentBodyReceivedFromMin).max(recordSchoolCashPaymentBodyReceivedFromMax),
   "notes": zod.string().min(recordSchoolCashPaymentBodyNotesMin).max(recordSchoolCashPaymentBodyNotesMax),
+  "receivedOn": zod.string().min(recordSchoolCashPaymentBodyReceivedOnMin).max(recordSchoolCashPaymentBodyReceivedOnMax).regex(recordSchoolCashPaymentBodyReceivedOnRegExp).optional().describe('Actual cash collection date in Nigeria; omitted by legacy clients to use the recording date'),
   "lineIds": zod.array(zod.number().int().min(1)).min(1).optional()
 })
 
@@ -13865,6 +13886,68 @@ export const RecordSchoolCashPaymentResponse = zod.object({
   "method": zod.string(),
   "status": zod.enum(['VERIFIED']),
   "receiptNumber": zod.string().min(1)
+})
+
+
+/**
+ * Owner-only read-only reconciliation preview. Never reprices, migrates, initiates payment or activates cards.
+ */
+
+
+
+
+export const PreviewStudentNfcReconciliationQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "termId": zod.coerce.number().int().min(1)
+})
+
+export const PreviewStudentNfcReconciliationResponse = zod.object({
+  "reportVersion": zod.string(),
+  "readOnly": zod.literal(true),
+  "applyAvailable": zod.literal(false),
+  "approvalRequired": zod.literal(true),
+  "generatedAt": zod.string(),
+  "evidenceDigest": zod.string(),
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "academicSessionId": zod.number().int().nullable(),
+  "schoolName": zod.string(),
+  "termName": zod.string(),
+  "termStart": zod.string().nullable(),
+  "termEnd": zod.string().nullable(),
+  "platformAmountMinor": zod.number().int(),
+  "sourceStatus": zod.enum(['COMPLETE', 'INCOMPLETE']),
+  "sources": zod.array(zod.object({
+  "name": zod.string(),
+  "complete": zod.boolean(),
+  "recordCount": zod.number().int(),
+  "issues": zod.array(zod.string())
+})),
+  "warnings": zod.array(zod.string()),
+  "rows": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "status": zod.enum(['CANDIDATE_AFTER_REVIEW', 'NEW_OBLIGATION_AFTER_REVIEW', 'OWNER_REVIEW', 'PRESERVE_COMPLETED_HISTORY']),
+  "reasons": zod.array(zod.string()),
+  "subscriptionIds": zod.array(zod.number().int()),
+  "originalAmountMinor": zod.number().int().nullable(),
+  "originalOutstandingMinor": zod.number().int().nullable(),
+  "proposedPlatformAmountMinor": zod.number().int().nullable(),
+  "invoiceIds": zod.array(zod.number().int()),
+  "schoolFeeTotalMinor": zod.number().int().nullable(),
+  "schoolFeePaidMinor": zod.number().int().nullable(),
+  "schoolFeeOutstandingMinor": zod.number().int().nullable(),
+  "paymentReferences": zod.array(zod.string()),
+  "receiptNumbers": zod.array(zod.string()),
+  "evidenceDigest": zod.string()
+})),
+  "summary": zod.object({
+  "candidates": zod.number().int(),
+  "newObligations": zod.number().int(),
+  "ownerReview": zod.number().int(),
+  "preserved": zod.number().int()
+})
 })
 
 
@@ -29022,6 +29105,279 @@ export const sendWeeklyLessonNoteRemindersResponseQueuedCountMin = 0;
 
 export const SendWeeklyLessonNoteRemindersResponse = zod.object({
   "queuedCount": zod.number().int().min(sendWeeklyLessonNoteRemindersResponseQueuedCountMin)
+})
+
+
+/**
+ * @summary Owner-only billing rules, historical audit and assistance queue
+ */
+export const GetOwnerSubscriptionPaymentRulesResponse = zod.object({
+  "intendedStudentFeeMinor": zod.number().int(),
+  "intendedStaffFeeMinor": zod.number().int(),
+  "studentCheckoutAvailable": zod.boolean(),
+  "providerInitiationAvailable": zod.boolean(),
+  "staffRules": zod.array(zod.record(zod.string(), zod.unknown())),
+  "broRules": zod.array(zod.record(zod.string(), zod.unknown())),
+  "proposals": zod.array(zod.object({
+  "id": zod.number().int(),
+  "product": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "billingPeriod": zod.string(),
+  "schoolShareMinor": zod.number().int(),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string(),
+  "version": zod.number().int(),
+  "nativeRuleId": zod.number().int().nullish()
+})),
+  "audit": zod.array(zod.record(zod.string(), zod.unknown())),
+  "assistance": zod.array(zod.record(zod.string(), zod.unknown()))
+})
+
+
+/**
+ * @summary Store a draft only; no native billing rule or checkout is created
+ */
+export const createOwnerSubscriptionRuleDraftBodyAmountMinorMax = 100000000;
+
+export const createOwnerSubscriptionRuleDraftBodyReasonMin = 3;
+export const createOwnerSubscriptionRuleDraftBodyReasonMax = 500;
+
+
+
+export const CreateOwnerSubscriptionRuleDraftBody = zod.object({
+  "product": zod.enum(['STUDENT_PLATFORM', 'TEACHER_STAFF_PLATFORM', 'BRO_COMMISSION']),
+  "amountMinor": zod.number().int().min(1).max(createOwnerSubscriptionRuleDraftBodyAmountMinorMax),
+  "currency": zod.enum(['NGN']),
+  "billingPeriod": zod.enum(['ACADEMIC_TERM']),
+  "schoolShareMinor": zod.literal(0),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string().min(createOwnerSubscriptionRuleDraftBodyReasonMin).max(createOwnerSubscriptionRuleDraftBodyReasonMax)
+})
+
+export const CreateOwnerSubscriptionRuleDraftResponse = zod.object({
+  "id": zod.number().int(),
+  "product": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "billingPeriod": zod.string(),
+  "schoolShareMinor": zod.number().int(),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string(),
+  "version": zod.number().int(),
+  "nativeRuleId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Edit only a draft with an optimistic version
+ */
+
+
+
+export const EditOwnerSubscriptionRuleDraftParams = zod.object({
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+export const editOwnerSubscriptionRuleDraftBodyAmountMinorMax = 100000000;
+
+export const editOwnerSubscriptionRuleDraftBodyReasonMin = 3;
+export const editOwnerSubscriptionRuleDraftBodyReasonMax = 500;
+
+
+
+
+export const EditOwnerSubscriptionRuleDraftBody = zod.object({
+  "product": zod.enum(['STUDENT_PLATFORM', 'TEACHER_STAFF_PLATFORM', 'BRO_COMMISSION']),
+  "amountMinor": zod.number().int().min(1).max(editOwnerSubscriptionRuleDraftBodyAmountMinorMax),
+  "currency": zod.enum(['NGN']),
+  "billingPeriod": zod.enum(['ACADEMIC_TERM']),
+  "schoolShareMinor": zod.literal(0),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string().min(editOwnerSubscriptionRuleDraftBodyReasonMin).max(editOwnerSubscriptionRuleDraftBodyReasonMax),
+  "version": zod.number().int().min(1)
+})
+
+export const EditOwnerSubscriptionRuleDraftResponse = zod.object({
+  "id": zod.number().int(),
+  "product": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "billingPeriod": zod.string(),
+  "schoolShareMinor": zod.number().int(),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string(),
+  "version": zod.number().int(),
+  "nativeRuleId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Read-only effective-period and policy preview
+ */
+
+
+
+export const PreviewOwnerSubscriptionRuleActivationParams = zod.object({
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+export const PreviewOwnerSubscriptionRuleActivationResponse = zod.object({
+  "rule": zod.object({
+  "id": zod.number().int(),
+  "product": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "billingPeriod": zod.string(),
+  "schoolShareMinor": zod.number().int(),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string(),
+  "version": zod.number().int(),
+  "nativeRuleId": zod.number().int().nullish()
+}),
+  "activationAvailable": zod.boolean(),
+  "blocker": zod.string().nullish(),
+  "previewDigest": zod.string()
+})
+
+
+/**
+ * @summary Explicitly activate an unchanged, reviewed staff draft
+ */
+
+
+
+export const ActivateOwnerSubscriptionRuleParams = zod.object({
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+
+export const activateOwnerSubscriptionRuleBodyPreviewDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const ActivateOwnerSubscriptionRuleBody = zod.object({
+  "version": zod.number().int().min(1),
+  "previewDigest": zod.string().regex(activateOwnerSubscriptionRuleBodyPreviewDigestRegExp)
+})
+
+export const ActivateOwnerSubscriptionRuleResponse = zod.object({
+  "id": zod.number().int(),
+  "product": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "billingPeriod": zod.string(),
+  "schoolShareMinor": zod.number().int(),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string(),
+  "version": zod.number().int(),
+  "nativeRuleId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Retire newest activated native rule without altering historical payments
+ */
+
+
+
+export const RetireOwnerSubscriptionRuleParams = zod.object({
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+export const retireOwnerSubscriptionRuleBodyReasonMin = 3;
+export const retireOwnerSubscriptionRuleBodyReasonMax = 500;
+
+
+
+export const RetireOwnerSubscriptionRuleBody = zod.object({
+  "reason": zod.string().min(retireOwnerSubscriptionRuleBodyReasonMin).max(retireOwnerSubscriptionRuleBodyReasonMax)
+})
+
+export const RetireOwnerSubscriptionRuleResponse = zod.object({
+  "id": zod.number().int(),
+  "product": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "billingPeriod": zod.string(),
+  "schoolShareMinor": zod.number().int(),
+  "effectiveAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date().nullish(),
+  "reason": zod.string(),
+  "version": zod.number().int(),
+  "nativeRuleId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Log an Owner assistance request, not a payment
+ */
+
+
+
+export const requestOwnerSubscriptionPaymentAssistanceBodyRequestNoteMax = 500;
+
+
+
+export const RequestOwnerSubscriptionPaymentAssistanceBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "amountMinor": zod.literal(320000),
+  "requestNote": zod.string().max(requestOwnerSubscriptionPaymentAssistanceBodyRequestNoteMax)
+})
+
+export const RequestOwnerSubscriptionPaymentAssistanceResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.string(),
+  "providerInitiationAvailable": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Attest independently examined bank credit; does not initiate payment
+ */
+
+
+
+export const RecordOwnerSubscriptionBankVerificationParams = zod.object({
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const recordOwnerSubscriptionBankVerificationBodyBankNameMin = 2;
+export const recordOwnerSubscriptionBankVerificationBodyBankNameMax = 100;
+
+export const recordOwnerSubscriptionBankVerificationBodyBankStatementReferenceMin = 6;
+export const recordOwnerSubscriptionBankVerificationBodyBankStatementReferenceMax = 120;
+
+export const recordOwnerSubscriptionBankVerificationBodyCreditDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+
+export const RecordOwnerSubscriptionBankVerificationBody = zod.object({
+  "bankName": zod.string().min(recordOwnerSubscriptionBankVerificationBodyBankNameMin).max(recordOwnerSubscriptionBankVerificationBodyBankNameMax),
+  "bankStatementReference": zod.string().min(recordOwnerSubscriptionBankVerificationBodyBankStatementReferenceMin).max(recordOwnerSubscriptionBankVerificationBodyBankStatementReferenceMax),
+  "creditDate": zod.string().regex(recordOwnerSubscriptionBankVerificationBodyCreditDateRegExp),
+  "verifiedAmountMinor": zod.number().int().min(1),
+  "independentlyChecked": zod.literal(true)
+})
+
+export const RecordOwnerSubscriptionBankVerificationResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.string(),
+  "providerInitiationAvailable": zod.boolean().optional()
 })
 
 

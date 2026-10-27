@@ -4,6 +4,7 @@ import { AuthError, type UserContext } from "../middlewares/auth";
 import { assertSubscriptionAccess } from "./subscription-enforcement";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import { isStaffSubscriptionOperation, readStaffSubscriptionAccess, staffSubscriptionSchools } from "./staff-subscription-access";
+import { isStudentCoreOperation,readStudentPlatformAccess } from "./student-platform-access";
 
 /**
  * Supplement existing authorization, never replace it. Family identity is
@@ -22,9 +23,18 @@ export async function enforceRequestSubscription(req: Request, context: UserCont
 }
 
 async function enforceResolvedSubscription(req: Request, context: UserContext) {
-  const path = req.originalUrl.split("?")[0].replace(/^\/api/, "");
+  const path = decodeURIComponent(req.originalUrl.split("?")[0]).toLowerCase().replace(/^\/api(?=\/|$)/, "");
   const roles = context.roles.filter(role => role.status === "ACTIVE");
   if (roles.some(role => role.role === "PLATFORM_OWNER")) return;
+  const studentCoreSelf=/^\/academic\/(?:students?\/me|me)(?:\/|$)|^\/(?:student|students\/me|attendance\/(?:me|own))(?:\/|$)/.test(path);
+  const schoolOperator=roles.some(r=>["SCHOOL_ADMIN","TEACHER","STAFF","ACCOUNTANT"].includes(r.role));
+  if(roles.some(r=>r.role==="STUDENT") && (studentCoreSelf || !schoolOperator) && isStudentCoreOperation(path,req.method)){
+    const access=await readStudentPlatformAccess(pool,context.user.id);
+    if(access.restricted)throw new AuthError(
+      access.students.length===0 || access.students.some(s=>s.status==="UNAVAILABLE")?503:403,
+      "Verified platform subscription payment for your current academic term is required. Sign-in, account, subscription status, fee instructions and support remain available. Contact your school administrator; a receipt upload or school payment alone does not restore access.",
+      "STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED");
+  }
   if (isStaffSubscriptionOperation(path, req.method)) {
     // The school encoded in the URL is authoritative over query/body scope.
     // Existing handlers still validate resource ownership and their own RBAC.

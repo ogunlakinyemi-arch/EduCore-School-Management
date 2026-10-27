@@ -110,11 +110,7 @@ function SubscriptionPaymentDetails({
               <RefreshCw size={14} />{verifying ? 'Verifying...' : 'Retry verification'}
             </Button>
           )}
-          {checkoutUrl && payment.status === 'PENDING' && (
-            <a className="mt-3 inline-flex text-xs font-semibold text-[hsl(var(--primary))] underline" href={checkoutUrl} target="_blank" rel="noreferrer">
-              Reopen secure checkout
-            </a>
-          )}
+          {checkoutUrl && payment.status === 'PENDING' && <p className={`mt-3 ${note}`}>Legacy checkout is archived. This payment and its original reference are retained for review; do not pay it again.</p>}
           {allocations.length > 0 && (
             <div className="mt-4 border-t border-[hsl(var(--border))] pt-3" data-testid={`payment-allocations-${payment.paymentId}`}>
               <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Verified allocations</div>
@@ -241,7 +237,8 @@ function SubscriptionRow({
   const safeUrl = safeStudentCheckoutUrl(payment?.checkoutUrl);
   const hasPriorPayment = !!subscription.lastPaymentId || !!latestAttempt;
   const retryFailedPayment = payment?.status === 'FAILED';
-  const canStartCheckout = canCheckout
+  const legacyCheckoutAvailable = false; // No new legacy split or hosted checkout.
+  const canStartCheckout = legacyCheckoutAvailable && canCheckout
     && (!hasPriorPayment || retryFailedPayment);
 
   useEffect(() => {
@@ -285,12 +282,12 @@ function SubscriptionRow({
               <CreditCard size={14} />{checkoutPending ? 'Opening checkout...' : payment?.status === 'FAILED' ? 'Start new checkout' : 'Pay subscription'}
             </Button>
           )}
-          {canCheckout && payment?.status === 'PENDING' && safeUrl && (
+          {legacyCheckoutAvailable && canCheckout && payment?.status === 'PENDING' && safeUrl && (
             <Button variant="outline" onClick={() => window.location.assign(safeUrl)} disabled={checkoutPending} testId={`button-continue-checkout-${subscription.id}`}>
               <CreditCard size={14} />Continue checkout
             </Button>
           )}
-          {isOwner && <span className="text-xs text-[hsl(var(--muted-foreground))]">Read only</span>}
+          <span className="text-xs text-[hsl(var(--muted-foreground))]">{isOwner?'Read only · ':''}Legacy checkout archived; reviewed platform rule required</span>
         </div>
       </div>
       {(latestAttempt || subscription.lastPaymentId) && (

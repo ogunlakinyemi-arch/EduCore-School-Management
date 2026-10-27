@@ -61,9 +61,9 @@ import DriverTransportPage from '@/pages/driver-transport';
 import FamilyTransportPage from '@/pages/family-transport';
 import { EmployeeNfcPage, MyEmployeeNfcPage } from '@/pages/employee-nfc';
 import { MyStaffNfcSubscriptionPage, StaffNfcFinancePage, StaffNfcBillingRulesPage, PartnerStaffNfcCommissionsPage } from '@/pages/staff-nfc-billing';
-import { FlutterwaveSettlementsPage } from '@/pages/flutterwave-settlements';
-import { FlutterwaveSplitSimulationPage } from '@/pages/flutterwave-split-simulation';
-import { HostedPaymentsPage } from '@/pages/hosted-payments';
+import { SubscriptionPaymentRulesContainer } from '@/pages/subscription-payment-rules-container';
+import { ArchivedPaymentWorkflowPage } from '@/pages/archived-payment-workflow';
+import { StudentSubscriptionStatusPage } from '@/components/student-subscription-guard';
 import { PaymentSettlementPage } from '@/pages/payment-settlement';
 import { PayrollPage } from '@/pages/payroll';
 import { MyPayslipsPage } from '@/pages/my-payslips';
@@ -287,10 +287,12 @@ export function ProtectedRoutes() {
           <Route path="/my-nfc-subscription"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyStaffNfcSubscriptionPage /></RoleGuard></Route>
           <Route path="/staff-nfc-finance"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><StaffNfcFinancePage /></RoleGuard></Route>
           <Route path="/billing-rules"><RoleGuard isPlatformOwnerOnly><StaffNfcBillingRulesPage /></RoleGuard></Route>
+          <Route path="/subscription-payment-rules"><RoleGuard isPlatformOwnerOnly><SubscriptionPaymentRulesContainer /></RoleGuard></Route>
           <Route path="/payment-settlement"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PaymentSettlementPage /></RoleGuard></Route>
-          <Route path="/flutterwave-settlements"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><FlutterwaveSettlementsPage /></RoleGuard></Route>
-          <Route path="/hosted-payments"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><HostedPaymentsPage /></RoleGuard></Route>
-          <Route path="/flutterwave-split-simulation"><RoleGuard isPlatformOwnerOnly><FlutterwaveSplitSimulationPage /></RoleGuard></Route>
+          <Route path="/flutterwave-settlements"><ArchivedPaymentWorkflowPage /></Route>
+          <Route path="/hosted-payments"><ArchivedPaymentWorkflowPage /></Route>
+          <Route path="/student-subscription"><RoleGuard allowedRoles={['STUDENT']}><StudentSubscriptionStatusPage /></RoleGuard></Route>
+          <Route path="/flutterwave-split-simulation"><RoleGuard isPlatformOwnerOnly><ArchivedPaymentWorkflowPage /></RoleGuard></Route>
           <Route path="/payroll"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PayrollPage /></RoleGuard></Route>
           <Route path="/my-payslips"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyPayslipsPage /></RoleGuard></Route>
           <Route path="/finance-workspace"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><FinanceWorkspacePage /></RoleGuard></Route>

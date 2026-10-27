@@ -116,9 +116,12 @@ describe("API operational policy", () => {
       .rejects.toMatchObject({ statusCode: 403 });
     await expect(enforceRequestSubscription(request("/api/academic/assignments", "POST", 2),
       actor(role(), role("SCHOOL_ADMIN", 2)) as any)).resolves.toBeUndefined();
-    for (const name of ["SCHOOL_ADMIN", "ACCOUNTANT", "PARENT", "STUDENT", "PLATFORM_OWNER"]) {
+    for (const name of ["SCHOOL_ADMIN", "ACCOUNTANT", "PARENT", "PLATFORM_OWNER"]) {
       await expect(enforceRequestSubscription(request("/api/academic/assignments"),
         actor(role(name, name === "PLATFORM_OWNER" ? null : 1)) as any)).resolves.toBeUndefined();
     }
+    // Student core access now has its own independently verified payment gate.
+    await expect(enforceRequestSubscription(request("/api/academic/assignments"),
+      actor(role("STUDENT",1)) as any)).rejects.toMatchObject({eventType:"STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED"});
   });
 });

@@ -40,3 +40,18 @@ unverified build gate.
 If a bounded shared build cannot complete, report that limitation separately
 from passing source checks; do not keep regenerating unchanged outputs or claim
 that all build gates passed.
+
+## Calendar-only inputs must retain their original spelling
+
+Validate calendar-only finance inputs as strings before converting them to
+timestamps. Use explicit lexical and real-calendar validation when overflow
+dates must be rejected.
+
+**Why:** The current generator turns OpenAPI `format: date` into a coercing
+JavaScript Date validator. That can change the input type and normalize invalid
+calendar dates before a business validator sees the original value. SQL `date`
+values can also lose a day when a local-midnight Date is formatted through UTC.
+
+**How to apply:** Inspect the generated date boundary when adding date-only
+rules. Preserve the original date spelling for strict checks; obtain authoritative
+SQL calendar values as text rather than round-tripping through timestamps.

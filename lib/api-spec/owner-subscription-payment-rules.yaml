@@ -1,0 +1,268 @@
+openapi: 3.1.0
+info:
+  title: Owner Subscription Payment Rules
+  version: 0.1.0
+paths:
+  /platform/subscription-payment-rules:
+    get:
+      operationId: getOwnerSubscriptionPaymentRules
+      tags: [finance]
+      summary: Owner-only billing rules, historical audit and assistance queue
+      responses:
+        "200":
+          description: Source-backed management overview. An unavailable source fails closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSubscriptionRulesOverview" }
+        "403": { description: Active global Platform Owner required }
+        "503": { description: Management schema is not available }
+    post:
+      operationId: createOwnerSubscriptionRuleDraft
+      tags: [finance]
+      summary: Store a draft only; no native billing rule or checkout is created
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerSubscriptionRuleInput" }
+      responses:
+        "201":
+          description: Created draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSubscriptionRule" }
+        "403": { description: Owner required }
+        "409": { description: Policy validation failed }
+  /platform/subscription-payment-rules/{ruleId}:
+    parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    patch:
+      operationId: editOwnerSubscriptionRuleDraft
+      tags: [finance]
+      summary: Edit only a draft with an optimistic version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerSubscriptionRuleEdit" }
+      responses:
+        "200":
+          description: Revised draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSubscriptionRule" }
+        "403": { description: Owner required }
+        "409": { description: Stale or activated rule }
+  /platform/subscription-payment-rules/{ruleId}/preview:
+    parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: previewOwnerSubscriptionRuleActivation
+      tags: [finance]
+      summary: Read-only effective-period and policy preview
+      responses:
+        "200":
+          description: Preview does not activate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSubscriptionRulePreview" }
+        "403": { description: Owner required }
+  /platform/subscription-payment-rules/{ruleId}/activate:
+    parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: activateOwnerSubscriptionRule
+      tags: [finance]
+      summary: Explicitly activate an unchanged, reviewed staff draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerSubscriptionRuleActivationInput" }
+      responses:
+        "200":
+          description: Scheduled effective-dated native staff rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSubscriptionRule" }
+        "403": { description: Owner required }
+        "409": { description: "Unreviewed, overlapping or unsupported policy" }
+  /platform/subscription-payment-rules/{ruleId}/retire:
+    parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: retireOwnerSubscriptionRule
+      tags: [finance]
+      summary: Retire newest activated native rule without altering historical payments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerSubscriptionRuleRetirementInput" }
+      responses:
+        "200":
+          description: Retired rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSubscriptionRule" }
+        "403": { description: Owner required }
+        "409": { description: Rule cannot be safely retired }
+  /platform/subscription-payment-assistance:
+    post:
+      operationId: requestOwnerSubscriptionPaymentAssistance
+      tags: [finance]
+      summary: Log an Owner assistance request, not a payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerPaymentAssistanceInput" }
+      responses:
+        "201":
+          description: Queued request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerPaymentAssistanceResult" }
+        "403": { description: Owner required }
+        "409": { description: Duplicate unresolved request }
+  /platform/subscription-payment-assistance/{requestId}/verify-bank:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: recordOwnerSubscriptionBankVerification
+      tags: [finance]
+      summary: Attest independently examined bank credit; does not initiate payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerBankCreditConfirmation" }
+      responses:
+        "200":
+          description: Credited request. Provider initiation remains unavailable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerPaymentAssistanceResult" }
+        "403": { description: Owner required }
+        "409": { description: Mismatch or already recorded credit }
+components:
+  schemas:
+    OwnerSubscriptionRuleInput:
+      type: object
+      additionalProperties: false
+      required: [product, amountMinor, currency, billingPeriod, schoolShareMinor, effectiveAt, reason]
+      properties:
+        product: { type: string, enum: [STUDENT_PLATFORM, TEACHER_STAFF_PLATFORM, BRO_COMMISSION] }
+        amountMinor: { type: integer, minimum: 1, maximum: 100000000 }
+        currency: { type: string, enum: [NGN] }
+        billingPeriod: { type: string, enum: [ACADEMIC_TERM] }
+        schoolShareMinor: { type: integer, enum: [0] }
+        effectiveAt: { type: string, format: date-time }
+        endsAt: { type: [string, "null"], format: date-time }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    OwnerSubscriptionRuleEdit:
+      type: object
+      additionalProperties: false
+      required: [product, amountMinor, currency, billingPeriod, schoolShareMinor, effectiveAt, reason, version]
+      properties:
+        product: { type: string, enum: [STUDENT_PLATFORM, TEACHER_STAFF_PLATFORM, BRO_COMMISSION] }
+        amountMinor: { type: integer, minimum: 1, maximum: 100000000 }
+        currency: { type: string, enum: [NGN] }
+        billingPeriod: { type: string, enum: [ACADEMIC_TERM] }
+        schoolShareMinor: { type: integer, enum: [0] }
+        effectiveAt: { type: string, format: date-time }
+        endsAt: { type: [string, "null"], format: date-time }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+        version: { type: integer, minimum: 1 }
+    OwnerSubscriptionRuleActivationInput:
+      type: object
+      additionalProperties: false
+      required: [version, previewDigest]
+      properties:
+        version: { type: integer, minimum: 1 }
+        previewDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    OwnerSubscriptionRuleRetirementInput:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    OwnerSubscriptionRule:
+      type: object
+      required: [id, product, status, amountMinor, currency, billingPeriod, schoolShareMinor, effectiveAt, reason, version]
+      properties:
+        id: { type: integer }
+        product: { type: string }
+        status: { type: string }
+        amountMinor: { type: integer }
+        currency: { type: string }
+        billingPeriod: { type: string }
+        schoolShareMinor: { type: integer }
+        effectiveAt: { type: string, format: date-time }
+        endsAt: { type: [string, "null"], format: date-time }
+        reason: { type: string }
+        version: { type: integer }
+        nativeRuleId: { type: [integer, "null"] }
+    OwnerSubscriptionRulePreview:
+      type: object
+      required: [rule, activationAvailable, previewDigest]
+      properties:
+        rule: { $ref: "#/components/schemas/OwnerSubscriptionRule" }
+        activationAvailable: { type: boolean }
+        blocker: { type: [string, "null"] }
+        previewDigest: { type: string }
+    OwnerPaymentAssistanceInput:
+      type: object
+      additionalProperties: false
+      required: [schoolId, studentId, termId, amountMinor, requestNote]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        amountMinor: { type: integer, enum: [320000] }
+        requestNote: { type: string, maxLength: 500 }
+    OwnerBankCreditConfirmation:
+      type: object
+      additionalProperties: false
+      required: [bankName, bankStatementReference, creditDate, verifiedAmountMinor, independentlyChecked]
+      properties:
+        bankName: { type: string, minLength: 2, maxLength: 100 }
+        bankStatementReference: { type: string, minLength: 6, maxLength: 120 }
+        creditDate: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        verifiedAmountMinor: { type: integer, minimum: 1 }
+        independentlyChecked: { type: boolean, enum: [true] }
+    OwnerPaymentAssistanceResult:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: integer }
+        status: { type: string }
+        providerInitiationAvailable: { type: boolean }
+    OwnerSubscriptionRulesOverview:
+      type: object
+      required: [intendedStudentFeeMinor, intendedStaffFeeMinor, studentCheckoutAvailable, providerInitiationAvailable, staffRules, broRules, proposals, audit, assistance]
+      properties:
+        intendedStudentFeeMinor: { type: integer }
+        intendedStaffFeeMinor: { type: integer }
+        studentCheckoutAvailable: { type: boolean }
+        providerInitiationAvailable: { type: boolean }
+        staffRules: { type: array, items: { type: object, additionalProperties: true } }
+        broRules: { type: array, items: { type: object, additionalProperties: true } }
+        proposals: { type: array, items: { $ref: "#/components/schemas/OwnerSubscriptionRule" } }
+        audit: { type: array, items: { type: object, additionalProperties: true } }
+        assistance: { type: array, items: { type: object, additionalProperties: true } }

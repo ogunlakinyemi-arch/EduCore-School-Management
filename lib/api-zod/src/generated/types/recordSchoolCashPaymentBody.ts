@@ -25,6 +25,13 @@ export type RecordSchoolCashPaymentBody = {
      */
   notes: string;
   /**
+     * Actual cash collection date in Nigeria; omitted by legacy clients to use the recording date
+     * @minLength 10
+     * @maxLength 10
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  receivedOn?: string;
+  /**
      * @minItems 1
      * @items.minimum 1
      */

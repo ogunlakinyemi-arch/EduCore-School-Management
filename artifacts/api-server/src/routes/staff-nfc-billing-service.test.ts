@@ -252,6 +252,21 @@ describe("staff NFC immutable allocation and provider policies", () => {
       .rejects.toThrow("No effective staff NFC billing rule");
     expect(queryCount).toBe(2);
   });
+  it("does not fall back to an older rule when the newest staff rule is retired", async () => {
+    let writes=0;
+    const executor=mockExecutor(async sql=>{
+      if(sql.includes("FROM academic_terms t"))
+        return{rows:[{schoolId:20,sessionId:30,dueDate:"2026-06-30",eligible:true}]};
+      if(sql.includes("FROM staff_nfc_billing_rules"))
+        return{rows:[{id:7,version:2,priceMinor:200000,schoolShareMinor:0,
+          platformShareMinor:200000,partnerCommissionMinor:0,noPartnerPlatformShareMinor:200000,
+          currency:"NGN",effectiveAt:"2025-01-01T00:00:00Z",endsAt:"2025-01-02T00:00:00Z"}]};
+      writes+=1;return{rows:[]};
+    });
+    await expect(generateStaffNfcTermSubscriptions(executor,20,30,40,50))
+      .rejects.toThrow("No effective staff NFC billing rule");
+    expect(writes).toBe(0);
+  });
 
   it("returns unchanged empty results without writing when no active Teacher or Staff employees exist", async () => {
     let insertCount = 0;

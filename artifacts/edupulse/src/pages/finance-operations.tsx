@@ -182,7 +182,8 @@ function StudentStatementPrintDocument({
 
 function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onClose: () => void }) {
   const canOpenReceipt = hasOriginalReceipt(payment);
-  const query = useGetFeePaymentReceipt(payment.id, undefined, { query: { enabled: canOpenReceipt, queryKey: getGetFeePaymentReceiptQueryKey(payment.id) } });
+  const receiptParams = { schoolId: payment.schoolId };
+  const query = useGetFeePaymentReceipt(payment.id, receiptParams, { query: { enabled: canOpenReceipt, queryKey: getGetFeePaymentReceiptQueryKey(payment.id, receiptParams) } });
   const matchesPayment = query.data?.paymentId === payment.id
     && Number(query.data.snapshot?.invoiceId) === payment.invoiceId
     && Number(query.data.snapshot?.schoolId) === payment.schoolId
@@ -221,7 +222,7 @@ function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onC
             </div>
             <SchoolDocumentPrintButton
               preview
-              label="Print receipt"
+              label="Print / save PDF"
               testId={`button-print-receipt-${payment.id}`}
               className="mt-5"
               disabled={!branding.data || branding.isLoading || branding.isError || !documentBranding.name}
@@ -239,6 +240,8 @@ function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onC
                   <div className="school-document-field"><dt>Session / term</dt><dd>{snapshotValue('sessionId') ?? '—'} / {snapshotValue('termId') ?? '—'}</dd></div>
                   {(snapshotValue('payerName')??snapshotValue('parentName')??snapshotValue('receivedFrom'))!==null && <div className="school-document-field"><dt>Received from</dt><dd>{snapshotValue('payerName')??snapshotValue('parentName')??snapshotValue('receivedFrom')}</dd></div>}
                   <div className="school-document-field"><dt>Payment date</dt><dd>{(snapshotValue('paidAt')??snapshotValue('verifiedAt')??payment.verifiedAt) ? new Date((snapshotValue('paidAt')??snapshotValue('verifiedAt')??payment.verifiedAt)!).toLocaleDateString('en-NG') : '—'}</dd></div>
+                  {snapshotValue('receivedOn')!==null&&<div className="school-document-field"><dt>Cash collected on</dt><dd>{snapshotValue('receivedOn')}</dd></div>}
+                  {snapshotValue('actorName')!==null&&<div className="school-document-field"><dt>Authorized staff member</dt><dd>{snapshotValue('actorName')}</dd></div>}
                   {snapshotValue('actorUserId')!==null&&<div className="school-document-field"><dt>Recorded by (user ID)</dt><dd>{snapshotValue('actorUserId')}</dd></div>}
                   {snapshotValue('evidenceReference')!==null&&<div className="school-document-field"><dt>Cash reference</dt><dd>{snapshotValue('evidenceReference')}</dd></div>}
                   <div className="school-document-field"><dt>Payment reference</dt><dd>{snapshotValue('paymentReference') ?? payment.reference}</dd></div>
@@ -248,6 +251,16 @@ function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onC
                   {snapshotAmount('previousBalanceMinor') !== null && <div className="school-document-field"><dt>Balance before payment</dt><dd>{snapshotAmount('previousBalanceMinor')}</dd></div>}
                   {snapshotAmount('remainingBalanceMinor') !== null && <div className="school-document-field"><dt>Remaining balance</dt><dd>{snapshotAmount('remainingBalanceMinor')}</dd></div>}
                 </dl>
+                {Array.isArray(snapshot?.feeItems) && <table className="school-document-table">
+                  <thead><tr><th>Fee category</th><th>Charge</th><th>Allocated receipt amount</th></tr></thead>
+                  <tbody>{snapshot.feeItems.map((raw: unknown, index: number) => {
+                    const item=raw && typeof raw==='object' ? raw as Record<string, unknown> : {};
+                    return <tr key={index}><td>{typeof item.name==='string'?item.name:'Fee item'}</td>
+                      <td>{typeof item.amountMinor==='number'&&Number.isSafeInteger(item.amountMinor)?amount(item.amountMinor):'—'}</td>
+                      <td>{typeof item.receivedMinor==='number'&&Number.isSafeInteger(item.receivedMinor)?amount(item.receivedMinor):'Invoice-level payment'}</td></tr>;
+                  })}</tbody>
+                </table>}
+                {snapshotValue('allocationScope')==='INVOICE_BALANCE'&&<p className="mt-3 text-xs">This receipt credits the invoice balance. Listed charges do not imply individual categories were paid in full.</p>}
                 {['REFUNDED', 'REVERSED'].includes(payment.status) && <p className="school-document-error">Current payment status: {payment.status}. This is an internal ledger status, not confirmation of a provider payout.</p>}
               </article>
             </SchoolDocumentPrintButton>
