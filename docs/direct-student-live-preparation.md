@@ -1,5 +1,10 @@
 # Direct student LIVE preparation — not released
 
+The additive Owner lifecycle now has an end-to-end preparation workflow:
+[Direct Flutterwave LIVE Readiness](direct-student-live-release-workflow.md).
+It adds explicit reviewed decisions and a separately gated Student-rule scheduling
+path; it does not remove ordinary activation safeguards or authorize runtime release.
+
 The prepared student platform charge is **NGN 3,200 per student per academic
 term, wholly to Yetenia**. It is not the school's configurable parent-facing
 NFC Card & EduCore Subscription Fee. Staff NGN 2,000 billing and separately

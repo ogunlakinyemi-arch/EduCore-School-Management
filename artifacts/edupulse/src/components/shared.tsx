@@ -98,6 +98,7 @@ const nav: NavItem[] = [
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/subscription-payment-rules', label: 'Subscription & Payment Rules', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
+  { href: '/direct-flutterwave-live-readiness', label: 'Direct Flutterwave LIVE Readiness', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/payment-settlement?tab=schools', label: 'NFC Fee Collection Oversight', icon: ReceiptText, roles: ['PLATFORM_OWNER'] },
   { href: '/student-subscription', label: 'My Subscription', icon: WalletCards, roles: ['STUDENT'] },
   { href: '/subscription-enforcement', label: 'Term Enforcement', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
@@ -119,9 +120,9 @@ const ownerNavPaths = new Set([
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results', '/platform/attendance',
   '/communications',
-  '/subscription-payment-rules', '/payment-settlement?tab=schools',
+  '/subscription-payment-rules', '/payment-settlement?tab=schools', '/direct-flutterwave-live-readiness',
 ]);
-const ownerPaymentNavPaths = new Set(['/subscription-payment-rules', '/payment-settlement?tab=schools']);
+const ownerPaymentNavPaths = new Set(['/subscription-payment-rules', '/payment-settlement?tab=schools', '/direct-flutterwave-live-readiness']);
 
 export function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();

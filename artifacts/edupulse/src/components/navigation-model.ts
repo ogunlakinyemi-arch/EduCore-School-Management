@@ -20,7 +20,7 @@ export const adminGroups: NavGroupDef[] = [
   { id: 'academics', label: 'Academics', hrefs: ['/academics', '/academic-calendar', '/timetable', '/promotion'] },
   { id: 'attendance', label: 'Attendance', hrefs: ['/attendance', '/attendance/schedule'] },
   { id: 'assessments-results', label: 'Assessments & Results', hrefs: ['/academic-work', '/results'] },
-  { id: 'finance', label: 'Finance', hrefs: ['/finance', '/finance-workspace', '/subscriptions', '/subscription-payment-rules', '/payment-settlement?tab=schools', '/subscription-enforcement'] },
+  { id: 'finance', label: 'Finance', hrefs: ['/finance', '/finance-workspace', '/subscriptions', '/subscription-payment-rules', '/payment-settlement?tab=schools', '/direct-flutterwave-live-readiness', '/subscription-enforcement'] },
   { id: 'communication', label: 'Communication', hrefs: ['/communications', '/inbox'] },
   { id: 'transport', label: 'Transport', hrefs: ['/transport'] },
   { id: 'library', label: 'Library', hrefs: ['/library'] },

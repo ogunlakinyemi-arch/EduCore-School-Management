@@ -1,0 +1,167 @@
+paths:
+  /platform/direct-student-live/readiness:
+    get:
+      operationId: getDirectLiveReleaseReadiness
+      tags: [subscriptions]
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer}}
+        - {name: termId, in: query, required: true, schema: {type: integer}}
+        - {name: ruleId, in: query, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: Read-only, secret-free preparation. Never authorizes checkout.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectReleaseReadiness'}
+        '403': {description: Active global Owner required}
+        '503': {description: Readiness unavailable; nothing approved}
+  /platform/direct-student-live/reviews:
+    get:
+      operationId: listDirectLiveReleaseReviews
+      tags: [subscriptions]
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer}}
+        - {name: termId, in: query, required: true, schema: {type: integer}}
+        - {name: ruleId, in: query, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: Retained requests and append-only decisions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reviews]
+                properties:
+                  reviews:
+                    type: array
+                    items: {$ref: '#/components/schemas/DirectReleaseReview'}
+        '403': {description: Active global Owner required}
+    post:
+      operationId: createDirectLiveReleaseReview
+      tags: [subscriptions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DirectReleaseReviewInput'}
+      responses:
+        '201':
+          description: Persisted preparation request; no approval or payment
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectReleaseReview'}
+        '403': {description: Active global Owner required}
+        '409': {description: Stale preview or missing schema/evidence}
+  /platform/direct-student-live/reviews/{id}/decisions:
+    post:
+      operationId: decideDirectLiveReleaseReview
+      tags: [subscriptions]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DirectReleaseDecisionInput'}
+      responses:
+        '200':
+          description: Explicit audited decision; runtime switch never changed
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectReleaseReview'}
+        '403': {description: Active global Owner required}
+        '409': {description: "Missing review, stale evidence, invalid dates or blocked prerequisites"}
+components:
+  schemas:
+    DirectReleaseFacts:
+      type: object
+      additionalProperties: true
+      required: [schoolId, termId, ruleId, release, environment, policy, eligibleStudentIds, legacyCount]
+      properties:
+        schoolId: {type: integer}
+        termId: {type: integer}
+        ruleId: {type: integer}
+        release: {type: string}
+        environment: {type: string}
+        policy: {type: string}
+        merchantScope: {type: [string, 'null']}
+        callbackUrl: {type: [string, 'null']}
+        webhookUrl: {type: [string, 'null']}
+        webhookAuthentication: {type: string}
+        reportDigest: {type: [string, 'null']}
+        reportComplete: {type: boolean}
+        configurationReady: {type: boolean}
+        eligibleStudentIds: {type: array, items: {type: integer}}
+        legacyCount: {type: integer}
+    DirectReleaseCheck:
+      type: object
+      required: [code, label, status, detail]
+      properties:
+        code: {type: string}
+        label: {type: string}
+        status: {type: string}
+        detail: {type: string}
+    DirectReleaseReadiness:
+      type: object
+      required: [schoolId, termId, ruleId, facts, previewDigest, checks, approvalReady, checkoutEnabled, schemaReady]
+      properties:
+        schoolId: {type: integer}
+        termId: {type: integer}
+        ruleId: {type: integer}
+        facts: {$ref: '#/components/schemas/DirectReleaseFacts'}
+        previewDigest: {type: string}
+        checks: {type: array, items: {$ref: '#/components/schemas/DirectReleaseCheck'}}
+        approvalReady: {type: boolean}
+        checkoutEnabled: {type: boolean}
+        schemaReady: {type: boolean}
+    DirectReleaseReviewInput:
+      type: object
+      additionalProperties: false
+      required: [schoolId, termId, ruleId, previewDigest, merchantEvidenceReference, merchantEvidenceHash, noSplitConfirmed, policy, expiresAt, reason]
+      properties:
+        schoolId: {type: integer}
+        termId: {type: integer}
+        ruleId: {type: integer}
+        previewDigest: {type: string}
+        merchantEvidenceReference: {type: string}
+        merchantEvidenceHash: {type: string}
+        noSplitConfirmed: {type: boolean}
+        policy: {type: string}
+        expiresAt: {type: string, format: date-time}
+        reason: {type: string}
+    DirectReleaseDecisionInput:
+      type: object
+      additionalProperties: false
+      required: [action, evidenceDigest, reason, confirmScope]
+      properties:
+        action: {type: string, enum: [REVIEWED, APPROVED, REJECTED, EXPIRED]}
+        evidenceDigest: {type: string}
+        reason: {type: string}
+        confirmScope: {type: boolean}
+    DirectReleaseDecision:
+      type: object
+      required: [id, action, actorId, reason, createdAt]
+      properties:
+        id: {type: string}
+        action: {type: string}
+        actorId: {type: integer}
+        reason: {type: string}
+        createdAt: {type: string, format: date-time}
+    DirectReleaseReview:
+      type: object
+      required: [id, schoolId, termId, ruleId, status, facts, evidenceDigest, previewDigest, merchantEvidenceReference, merchantEvidenceHash, expiresAt, createdAt, reason, events]
+      properties:
+        id: {type: integer}
+        schoolId: {type: integer}
+        termId: {type: integer}
+        ruleId: {type: integer}
+        status: {type: string}
+        facts: {$ref: '#/components/schemas/DirectReleaseFacts'}
+        evidenceDigest: {type: string}
+        previewDigest: {type: string}
+        merchantEvidenceReference: {type: string}
+        merchantEvidenceHash: {type: string}
+        expiresAt: {type: string, format: date-time}
+        createdAt: {type: string, format: date-time}
+        reason: {type: string}
+        events: {type: array, items: {$ref: '#/components/schemas/DirectReleaseDecision'}}

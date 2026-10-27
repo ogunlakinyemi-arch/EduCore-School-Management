@@ -6207,6 +6207,12 @@ paths:
     $ref: "./direct-student-live.yaml#/paths/~1platform~1subscription-payment-assistance~1{id}~1checkout"
   /flutterwave/direct-student/callback:
     $ref: "./direct-student-live.yaml#/paths/~1flutterwave~1direct-student~1callback"
+  /platform/direct-student-live/readiness:
+    $ref: "./direct-student-live-release.yaml#/paths/~1platform~1direct-student-live~1readiness"
+  /platform/direct-student-live/reviews:
+    $ref: "./direct-student-live-release.yaml#/paths/~1platform~1direct-student-live~1reviews"
+  /platform/direct-student-live/reviews/{id}/decisions:
+    $ref: "./direct-student-live-release.yaml#/paths/~1platform~1direct-student-live~1reviews~1{id}~1decisions"
   /platform/subscription-payment-rules/{ruleId}:
     $ref: "./owner-subscription-payment-rules.yaml#/paths/~1platform~1subscription-payment-rules~1{ruleId}"
   /platform/subscription-payment-rules/{ruleId}/preview:

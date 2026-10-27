@@ -16030,6 +16030,103 @@ export interface DirectStudentAttempt {
   checkoutUrl: string | null;
 }
 
+export interface DirectReleaseFacts {
+  schoolId: number;
+  termId: number;
+  ruleId: number;
+  release: string;
+  environment: string;
+  policy: string;
+  /** @nullable */
+  merchantScope?: string | null;
+  /** @nullable */
+  callbackUrl?: string | null;
+  /** @nullable */
+  webhookUrl?: string | null;
+  webhookAuthentication?: string;
+  /** @nullable */
+  reportDigest?: string | null;
+  reportComplete?: boolean;
+  configurationReady?: boolean;
+  eligibleStudentIds: number[];
+  legacyCount: number;
+  [key: string]: unknown;
+ }
+
+export interface DirectReleaseCheck {
+  code: string;
+  label: string;
+  status: string;
+  detail: string;
+}
+
+export interface DirectReleaseReadiness {
+  schoolId: number;
+  termId: number;
+  ruleId: number;
+  facts: DirectReleaseFacts;
+  previewDigest: string;
+  checks: DirectReleaseCheck[];
+  approvalReady: boolean;
+  checkoutEnabled: boolean;
+  schemaReady: boolean;
+}
+
+export interface DirectReleaseReviewInput {
+  schoolId: number;
+  termId: number;
+  ruleId: number;
+  previewDigest: string;
+  merchantEvidenceReference: string;
+  merchantEvidenceHash: string;
+  noSplitConfirmed: boolean;
+  policy: string;
+  expiresAt: string;
+  reason: string;
+}
+
+export type DirectReleaseDecisionInputAction = typeof DirectReleaseDecisionInputAction[keyof typeof DirectReleaseDecisionInputAction];
+
+
+export const DirectReleaseDecisionInputAction = {
+  REVIEWED: 'REVIEWED',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export interface DirectReleaseDecisionInput {
+  action: DirectReleaseDecisionInputAction;
+  evidenceDigest: string;
+  reason: string;
+  confirmScope: boolean;
+}
+
+export interface DirectReleaseDecision {
+  id: string;
+  action: string;
+  actorId: number;
+  reason: string;
+  createdAt: string;
+}
+
+export interface DirectReleaseReview {
+  id: number;
+  schoolId: number;
+  termId: number;
+  ruleId: number;
+  status: string;
+  facts: DirectReleaseFacts;
+  evidenceDigest: string;
+  previewDigest: string;
+  merchantEvidenceReference: string;
+  merchantEvidenceHash: string;
+  expiresAt: string;
+  createdAt: string;
+  reason: string;
+  events: DirectReleaseDecision[];
+}
+
 export type AccountApplicationInput4b96100ApplicantType = typeof AccountApplicationInput4b96100ApplicantType[keyof typeof AccountApplicationInput4b96100ApplicantType];
 
 
@@ -27297,5 +27394,21 @@ export type RequestDirectStudentAssistance201 = {
 export type VerifyDirectStudentLiveCallbackParams = {
 tx_ref: string;
 transaction_id: string;
+};
+
+export type GetDirectLiveReleaseReadinessParams = {
+schoolId: number;
+termId: number;
+ruleId: number;
+};
+
+export type ListDirectLiveReleaseReviewsParams = {
+schoolId: number;
+termId: number;
+ruleId: number;
+};
+
+export type ListDirectLiveReleaseReviews200 = {
+  reviews: DirectReleaseReview[];
 };
 

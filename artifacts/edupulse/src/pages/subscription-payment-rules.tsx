@@ -237,7 +237,7 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
         <ul className="grid grid-cols-2 gap-2 text-sm font-semibold" data-testid="list-preserved-access">
           {['Login', 'Renewal', 'Support', 'Inbox', 'Read-only records'].map(x => <li key={x} className="rounded-lg bg-[hsl(var(--muted))] px-3 py-2">{x}</li>)}
         </ul>
-        <div className="mt-4"><Link href="/subscription-enforcement" className={linkCls} data-testid="link-enforcement"><Lock className="h-3.5 w-3.5" /> Open term enforcement</Link></div>
+        <div className="mt-4"><Link href="/subscription-enforcement" className={linkCls} data-testid="link-enforcement"><Lock className="h-3.5 w-3.5" /> Open term enforcement</Link> <Link href="/direct-flutterwave-live-readiness" className={linkCls} data-testid="link-direct-live-readiness"><Lock className="h-3.5 w-3.5" /> Direct Flutterwave LIVE readiness</Link></div>
       </Section>
     </div>
 

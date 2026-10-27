@@ -244,6 +244,10 @@ import type {
   DeviceAttendanceReceipt,
   DeviceCredentialRotation,
   DeviceSuspensionInput,
+  DirectReleaseDecisionInput,
+  DirectReleaseReadiness,
+  DirectReleaseReview,
+  DirectReleaseReviewInput,
   DirectStudentAssistanceInput,
   DirectStudentAttempt,
   DirectStudentScope,
@@ -357,6 +361,7 @@ import type {
   GetCompanyPayrollReportParams,
   GetDevelopmentPaymentDiagnostic200,
   GetDevelopmentPaymentDiagnosticParams,
+  GetDirectLiveReleaseReadinessParams,
   GetDirectStudentLiveReadiness200,
   GetDirectStudentLiveReadinessParams,
   GetDriverTransportParams,
@@ -476,6 +481,8 @@ import type {
   ListCompanyPayrollPeriodsParams,
   ListCurriculumVersionsParams,
   ListDeviceActivationOfficersParams,
+  ListDirectLiveReleaseReviews200,
+  ListDirectLiveReleaseReviewsParams,
   ListEmployeeNfcCardsParams,
   ListEmployeesParams,
   ListExistingActivationCandidatesParams,
@@ -58423,6 +58430,327 @@ export function useVerifyDirectStudentLiveCallback<TData = Awaited<ReturnType<ty
 
 
 
+
+export const getGetDirectLiveReleaseReadinessUrl = (params: GetDirectLiveReleaseReadinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/direct-student-live/readiness?${stringifiedParams}` : `/api/platform/direct-student-live/readiness`
+}
+
+export const getDirectLiveReleaseReadiness = async (params: GetDirectLiveReleaseReadinessParams, options?: Parameters<typeof customFetch>[1]): Promise<DirectReleaseReadiness> => {
+
+  return customFetch<DirectReleaseReadiness>(getGetDirectLiveReleaseReadinessUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDirectLiveReleaseReadinessQueryKey = (params?: GetDirectLiveReleaseReadinessParams,) => {
+    return [
+    `/api/platform/direct-student-live/readiness`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDirectLiveReleaseReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getDirectLiveReleaseReadiness>>, TError = ErrorType<void>>(params: GetDirectLiveReleaseReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDirectLiveReleaseReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDirectLiveReleaseReadinessQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDirectLiveReleaseReadiness>>> = ({ signal }) => getDirectLiveReleaseReadiness(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDirectLiveReleaseReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDirectLiveReleaseReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getDirectLiveReleaseReadiness>>>
+export type GetDirectLiveReleaseReadinessQueryError = ErrorType<void>
+
+
+
+export function useGetDirectLiveReleaseReadiness<TData = Awaited<ReturnType<typeof getDirectLiveReleaseReadiness>>, TError = ErrorType<void>>(
+ params: GetDirectLiveReleaseReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDirectLiveReleaseReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDirectLiveReleaseReadinessQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListDirectLiveReleaseReviewsUrl = (params: ListDirectLiveReleaseReviewsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/direct-student-live/reviews?${stringifiedParams}` : `/api/platform/direct-student-live/reviews`
+}
+
+export const listDirectLiveReleaseReviews = async (params: ListDirectLiveReleaseReviewsParams, options?: Parameters<typeof customFetch>[1]): Promise<ListDirectLiveReleaseReviews200> => {
+
+  return customFetch<ListDirectLiveReleaseReviews200>(getListDirectLiveReleaseReviewsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDirectLiveReleaseReviewsQueryKey = (params?: ListDirectLiveReleaseReviewsParams,) => {
+    return [
+    `/api/platform/direct-student-live/reviews`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDirectLiveReleaseReviewsQueryOptions = <TData = Awaited<ReturnType<typeof listDirectLiveReleaseReviews>>, TError = ErrorType<void>>(params: ListDirectLiveReleaseReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDirectLiveReleaseReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDirectLiveReleaseReviewsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDirectLiveReleaseReviews>>> = ({ signal }) => listDirectLiveReleaseReviews(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDirectLiveReleaseReviews>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDirectLiveReleaseReviewsQueryResult = NonNullable<Awaited<ReturnType<typeof listDirectLiveReleaseReviews>>>
+export type ListDirectLiveReleaseReviewsQueryError = ErrorType<void>
+
+
+
+export function useListDirectLiveReleaseReviews<TData = Awaited<ReturnType<typeof listDirectLiveReleaseReviews>>, TError = ErrorType<void>>(
+ params: ListDirectLiveReleaseReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDirectLiveReleaseReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDirectLiveReleaseReviewsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateDirectLiveReleaseReviewUrl = () => {
+
+
+
+
+  return `/api/platform/direct-student-live/reviews`
+}
+
+export const createDirectLiveReleaseReview = async (directReleaseReviewInput: DirectReleaseReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<DirectReleaseReview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DirectReleaseReview>(getCreateDirectLiveReleaseReviewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(directReleaseReviewInput)
+  }
+);}
+
+
+
+
+
+export const getCreateDirectLiveReleaseReviewMutationKey = () => ['createDirectLiveReleaseReview'] as const;
+
+export const getCreateDirectLiveReleaseReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDirectLiveReleaseReview>>, TError,CreateDirectLiveReleaseReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDirectLiveReleaseReview>>, TError,CreateDirectLiveReleaseReviewMutationVariables, TContext> => {
+
+const mutationKey = getCreateDirectLiveReleaseReviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDirectLiveReleaseReview>>, CreateDirectLiveReleaseReviewMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDirectLiveReleaseReview(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDirectLiveReleaseReviewMutationResult = NonNullable<Awaited<ReturnType<typeof createDirectLiveReleaseReview>>>
+    export type CreateDirectLiveReleaseReviewMutationBody = BodyType<DirectReleaseReviewInput>
+    export type CreateDirectLiveReleaseReviewMutationError = ErrorType<void>
+    export type CreateDirectLiveReleaseReviewMutationVariables = {data: BodyType<DirectReleaseReviewInput>}
+
+    export const useCreateDirectLiveReleaseReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDirectLiveReleaseReview>>, TError,CreateDirectLiveReleaseReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDirectLiveReleaseReview>>,
+        TError,
+        CreateDirectLiveReleaseReviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateDirectLiveReleaseReviewMutationOptions(options));
+    }
+
+export const getDecideDirectLiveReleaseReviewUrl = (id: number,) => {
+
+
+
+
+  return `/api/platform/direct-student-live/reviews/${id}/decisions`
+}
+
+export const decideDirectLiveReleaseReview = async (id: number,
+    directReleaseDecisionInput: DirectReleaseDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<DirectReleaseReview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DirectReleaseReview>(getDecideDirectLiveReleaseReviewUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(directReleaseDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideDirectLiveReleaseReviewMutationKey = () => ['decideDirectLiveReleaseReview'] as const;
+
+export const getDecideDirectLiveReleaseReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideDirectLiveReleaseReview>>, TError,DecideDirectLiveReleaseReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideDirectLiveReleaseReview>>, TError,DecideDirectLiveReleaseReviewMutationVariables, TContext> => {
+
+const mutationKey = getDecideDirectLiveReleaseReviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideDirectLiveReleaseReview>>, DecideDirectLiveReleaseReviewMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  decideDirectLiveReleaseReview(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideDirectLiveReleaseReviewMutationResult = NonNullable<Awaited<ReturnType<typeof decideDirectLiveReleaseReview>>>
+    export type DecideDirectLiveReleaseReviewMutationBody = BodyType<DirectReleaseDecisionInput>
+    export type DecideDirectLiveReleaseReviewMutationError = ErrorType<void>
+    export type DecideDirectLiveReleaseReviewMutationVariables = {id: number;data: BodyType<DirectReleaseDecisionInput>}
+
+    export const useDecideDirectLiveReleaseReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideDirectLiveReleaseReview>>, TError,DecideDirectLiveReleaseReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideDirectLiveReleaseReview>>,
+        TError,
+        DecideDirectLiveReleaseReviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideDirectLiveReleaseReviewMutationOptions(options));
+    }
 
 export const getEditOwnerSubscriptionRuleDraftUrl = (ruleId: number,) => {
 

@@ -106,3 +106,4 @@
 - [Teacher/Staff subscriptions](staff-subscription-policy.md) — NGN 2,000 platform-only; preserve history and essential access while gating unpaid staff operations.
 - [Owner subscription rule governance](owner-rule-governance.md) — intended fees require reviewed effective-dated activation; bank assistance is not a payment.
 - [Retained records and retired payments](retained-records-and-retired-payments.md) — former test rows are now retained real records; archive split/hosted workflows without cleanup.
+- [Financial approval boundaries](financial-approval-boundaries.md) — lossless canonical evidence and no resurrection of older approvals after withdrawal or expiry.

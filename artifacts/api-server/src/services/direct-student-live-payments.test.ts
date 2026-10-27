@@ -9,6 +9,8 @@ const env={
   FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:"synthetic-webhook-not-live",
   EDUCORE_FLUTTERWAVE_DIRECT_RELEASE:"STUDENT_DIRECT_3200_V1",
   EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:"https://example.invalid/api/flutterwave/direct-student/callback",
+  EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:"https://example.invalid/api/webhooks/flutterwave/direct-student",
+  EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE:"FICTIONAL_NON_SPLIT_MERCHANT",
 };
 const reference="SCV4_live_fictional_reference_123456";
 describe("direct LIVE transport safety (fake transport, no credentials or network)",()=>{
@@ -17,6 +19,11 @@ describe("direct LIVE transport safety (fake transport, no credentials or networ
       {EDUCORE_FLUTTERWAVE_DIRECT_RELEASE:undefined},{NODE_ENV:"development"},
       {EDUCORE_FLUTTERWAVE_MODE:"TEST"},{FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-TEST-FAKE"},
       {EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:undefined},
+      {EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:undefined},
+      {EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:"https://other.invalid/api/webhooks/flutterwave/direct-student"},
+      {EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE:undefined},
+      {FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:undefined,FLUTTERWAVE_WEBHOOK_VERIF_HASH:"generic-must-not-work"},
+      {FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH:"synthetic-webhook-not-live"},
       {EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:"https://example.replit.dev/api/flutterwave/direct-student/callback"},
     ]){
       const config=directLiveConfiguration({...env,...patch});

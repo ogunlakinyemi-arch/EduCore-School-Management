@@ -62,6 +62,8 @@ import FamilyTransportPage from '@/pages/family-transport';
 import { EmployeeNfcPage, MyEmployeeNfcPage } from '@/pages/employee-nfc';
 import { MyStaffNfcSubscriptionPage, StaffNfcFinancePage, StaffNfcBillingRulesPage, PartnerStaffNfcCommissionsPage } from '@/pages/staff-nfc-billing';
 import { SubscriptionPaymentRulesContainer } from '@/pages/subscription-payment-rules-container';
+import { DirectFlutterwaveLiveReadinessPage } from '@/pages/direct-flutterwave-live-readiness';
+import { hasActiveGlobalOwner } from '@/components/navigation-model';
 import { ArchivedPaymentWorkflowPage } from '@/pages/archived-payment-workflow';
 import { StudentSubscriptionStatusPage } from '@/components/student-subscription-guard';
 import { PaymentSettlementPage } from '@/pages/payment-settlement';
@@ -151,6 +153,11 @@ export function RoleGuard({
   }
 
   return <>{children}</>;
+}
+
+function OwnerOnlyGate({ children }: { children: React.ReactNode }) {
+  const { data } = useGetAuthorizedContext();
+  return hasActiveGlobalOwner(data) ? <>{children}</> : <AccessDenied />;
 }
 
 export function ProtectedRoutes() {
@@ -288,6 +295,7 @@ export function ProtectedRoutes() {
           <Route path="/staff-nfc-finance"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><StaffNfcFinancePage /></RoleGuard></Route>
           <Route path="/billing-rules"><RoleGuard isPlatformOwnerOnly><StaffNfcBillingRulesPage /></RoleGuard></Route>
           <Route path="/subscription-payment-rules"><RoleGuard isPlatformOwnerOnly><SubscriptionPaymentRulesContainer /></RoleGuard></Route>
+          <Route path="/direct-flutterwave-live-readiness"><RoleGuard isPlatformOwnerOnly><OwnerOnlyGate><DirectFlutterwaveLiveReadinessPage /></OwnerOnlyGate></RoleGuard></Route>
           <Route path="/payment-settlement"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PaymentSettlementPage /></RoleGuard></Route>
           <Route path="/flutterwave-settlements"><ArchivedPaymentWorkflowPage /></Route>
           <Route path="/hosted-payments"><ArchivedPaymentWorkflowPage /></Route>

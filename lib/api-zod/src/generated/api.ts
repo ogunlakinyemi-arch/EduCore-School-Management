@@ -29359,6 +29359,198 @@ export const VerifyDirectStudentLiveCallbackResponse = zod.object({
 })
 
 
+export const GetDirectLiveReleaseReadinessQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int(),
+  "ruleId": zod.coerce.number().int()
+})
+
+export const GetDirectLiveReleaseReadinessResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "environment": zod.string(),
+  "policy": zod.string(),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "webhookAuthentication": zod.string().optional(),
+  "reportDigest": zod.string().nullish(),
+  "reportComplete": zod.boolean().optional(),
+  "configurationReady": zod.boolean().optional(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "legacyCount": zod.number().int()
+}),
+  "previewDigest": zod.string(),
+  "checks": zod.array(zod.object({
+  "code": zod.string(),
+  "label": zod.string(),
+  "status": zod.string(),
+  "detail": zod.string()
+})),
+  "approvalReady": zod.boolean(),
+  "checkoutEnabled": zod.boolean(),
+  "schemaReady": zod.boolean()
+})
+
+
+export const ListDirectLiveReleaseReviewsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int(),
+  "ruleId": zod.coerce.number().int()
+})
+
+export const ListDirectLiveReleaseReviewsResponse = zod.object({
+  "reviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "status": zod.string(),
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "environment": zod.string(),
+  "policy": zod.string(),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "webhookAuthentication": zod.string().optional(),
+  "reportDigest": zod.string().nullish(),
+  "reportComplete": zod.boolean().optional(),
+  "configurationReady": zod.boolean().optional(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "legacyCount": zod.number().int()
+}),
+  "evidenceDigest": zod.string(),
+  "previewDigest": zod.string(),
+  "merchantEvidenceReference": zod.string(),
+  "merchantEvidenceHash": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "reason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "action": zod.string(),
+  "actorId": zod.number().int(),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+})
+
+
+export const CreateDirectLiveReleaseReviewBody = zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "previewDigest": zod.string(),
+  "merchantEvidenceReference": zod.string(),
+  "merchantEvidenceHash": zod.string(),
+  "noSplitConfirmed": zod.boolean(),
+  "policy": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "reason": zod.string()
+})
+
+export const CreateDirectLiveReleaseReviewResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "status": zod.string(),
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "environment": zod.string(),
+  "policy": zod.string(),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "webhookAuthentication": zod.string().optional(),
+  "reportDigest": zod.string().nullish(),
+  "reportComplete": zod.boolean().optional(),
+  "configurationReady": zod.boolean().optional(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "legacyCount": zod.number().int()
+}),
+  "evidenceDigest": zod.string(),
+  "previewDigest": zod.string(),
+  "merchantEvidenceReference": zod.string(),
+  "merchantEvidenceHash": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "reason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "action": zod.string(),
+  "actorId": zod.number().int(),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+export const DecideDirectLiveReleaseReviewParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DecideDirectLiveReleaseReviewBody = zod.object({
+  "action": zod.enum(['REVIEWED', 'APPROVED', 'REJECTED', 'EXPIRED']),
+  "evidenceDigest": zod.string(),
+  "reason": zod.string(),
+  "confirmScope": zod.boolean()
+})
+
+export const DecideDirectLiveReleaseReviewResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "status": zod.string(),
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "environment": zod.string(),
+  "policy": zod.string(),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "webhookAuthentication": zod.string().optional(),
+  "reportDigest": zod.string().nullish(),
+  "reportComplete": zod.boolean().optional(),
+  "configurationReady": zod.boolean().optional(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "legacyCount": zod.number().int()
+}),
+  "evidenceDigest": zod.string(),
+  "previewDigest": zod.string(),
+  "merchantEvidenceReference": zod.string(),
+  "merchantEvidenceHash": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "reason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "action": zod.string(),
+  "actorId": zod.number().int(),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
 /**
  * @summary Edit only a draft with an optimistic version
  */

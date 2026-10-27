@@ -99,8 +99,8 @@ export const directStudentWebhookRouter=Router();
 directStudentWebhookRouter.post("/",async(req,res)=>{
   res.setHeader("Cache-Control","no-store");
   try{
-    authenticateDirectStudentWebhook(req.headers);
     if(!Buffer.isBuffer(req.body))throw new DirectPaymentBlocked("RAW_WEBHOOK_REQUIRED",400);
+    authenticateDirectStudentWebhook(req.headers);
     const parsed=z.object({event:z.literal("charge.completed"),
       data:z.object({id:z.union([z.string(),z.number().int().safe()]),tx_ref:z.string()})})
       .safeParse(JSON.parse(req.body.toString("utf8")));

@@ -30,11 +30,28 @@ import { enforceRequestSubscription } from "../services/subscription-request-acc
 import { assertSubscriptionAccess } from "../services/subscription-enforcement";
 import {readNfcFeeCollectionOversight} from "../services/nfc-fee-collection-oversight";
 import {directStudentReadiness,startDirectStudentPayment,verifyDirectStudentPayment,DirectPaymentBlocked} from "../services/direct-student-live-payments";
-import directStudentPaymentsRouter from "./direct-student-live-payments";
+import directStudentPaymentsRouter,{directStudentWebhookRouter} from "./direct-student-live-payments";
+import {createDirectReleaseRouter} from "./direct-student-live-release";
+import {previewDirectRelease,createDirectReleaseReview,decideDirectReleaseReview,inspectDirectReleaseSchema} from "../services/direct-student-live-release";
+const releaseEnv:NodeJS.ProcessEnv={
+  NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",
+  FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-FAKE-NO-NETWORK",
+  FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:"synthetic-webhook-not-live",
+  EDUCORE_FLUTTERWAVE_DIRECT_RELEASE:"STUDENT_DIRECT_3200_V1",
+  EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:"https://example.invalid/api/flutterwave/direct-student/callback",
+  EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:"https://example.invalid/api/webhooks/flutterwave/direct-student",
+  EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE:"FICTIONAL_NON_SPLIT_MERCHANT",
+};
+const fictionalReport=async()=>({sourceStatus:"COMPLETE",evidenceDigest:"f".repeat(64),rows:[
+  {studentId:31,status:"NEW_OBLIGATION_AFTER_REVIEW"},{studentId:33,status:"NEW_OBLIGATION_AFTER_REVIEW"}]}) as any;
+const releaseDeps={env:releaseEnv,report:fictionalReport};
 const suite=process.env.EDUCORE_OWNER_RULES_ROOT?describe:describe.skip;
 suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
   let db:Pool,server:ReturnType<typeof app.listen>,base="";
-  const app=express();app.use(express.json());app.use(router);app.use(studentAccessRouter);app.use(nfcFeeOversightRouter);app.use(directStudentPaymentsRouter);
+  const app=express();
+  app.use("/fixture-direct-webhook",express.raw({type:"application/json"}),directStudentWebhookRouter);
+  app.use(express.json());app.use(router);app.use(studentAccessRouter);app.use(nfcFeeOversightRouter);app.use(directStudentPaymentsRouter);
+  app.use(createDirectReleaseRouter(undefined,releaseDeps));
   const path="/platform/subscription-payment-rules",queue="/platform/subscription-payment-assistance";
   const request=(url:string,method="GET",body?:unknown,headers:Record<string,string>={})=>
     fetch(base+url,{method,headers:{"content-type":"application/json",...headers},
@@ -114,6 +131,9 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     const migration=readFileSync(join(process.cwd(),"../../lib/db/drizzle/0175_owner_subscription_rule_management.sql"),"utf8");
     await db.query(migration);
     await db.query(readFileSync(join(process.cwd(),"../../lib/db/drizzle/0176_direct_student_live_preparation.sql"),"utf8"));
+    await db.query(readFileSync(join(process.cwd(),"../../lib/db/drizzle/0177_direct_student_live_release_reviews.sql"),"utf8"));
+    await db.query(`CREATE TABLE school_memberships(id serial PRIMARY KEY,user_id integer,school_id integer,role text,status text);
+      INSERT INTO school_memberships(user_id,school_id,role,status) VALUES(9,NULL,'PLATFORM_OWNER','ACTIVE')`);
     await new Promise<void>(resolve=>{server=app.listen(0,"127.0.0.1",()=>{
       const addr=server.address();assert(addr&&typeof addr==="object");
       base=`http://127.0.0.1:${addr.port}`;resolve();
@@ -124,6 +144,10 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     if(db)await db.end();
   });
   beforeEach(async()=>{
+    // These are exclusively the independently verified disposable fixture tables.
+    await db.query(`TRUNCATE student_direct_live_release_decisions,student_direct_live_review_bindings,
+      student_direct_live_release_requests,student_direct_live_events,student_direct_live_attempts,
+      student_direct_live_obligations,student_direct_live_reviews`);
     for(const table of ["fee_refunds","fee_receipts","fee_payment_line_allocations","fee_payments","fee_invoice_lines","fee_invoices",
       "student_direct_live_events","student_direct_live_attempts","student_direct_live_obligations","student_direct_live_reviews",
       "student_subscription_payments","subscriptions","school_subscription_manual_locks",
@@ -380,6 +404,173 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect(mock).not.toHaveBeenCalled();
     expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_attempts")).rows[0].n).toBe(0);
   });
+  const releaseBase="/platform/direct-student-live";
+  async function releaseRequest(){
+    const proposal=await insert(draft("STUDENT_PLATFORM"));
+    const scope={schoolId:1,termId:4,ruleId:proposal.id};
+    const preview=await (await request(`${releaseBase}/readiness?${new URLSearchParams(scope as any)}`)).json() as any;
+    const response=await request(`${releaseBase}/reviews`,"POST",{...scope,previewDigest:preview.previewDigest,
+      merchantEvidenceReference:"Fictional isolated merchant evidence",merchantEvidenceHash:"c".repeat(64),
+      noSplitConfirmed:true,policy:"NEW_ONLY_PRESERVE_LEGACY",
+      expiresAt:new Date(Date.now()+86400000).toISOString(),reason:"Fictional fixture scope, no live merchant proof"});
+    expect(response.status).toBe(201);
+    return{review:await response.json() as any,scope,preview};
+  }
+  const decide=(review:any,action:string,confirmScope=true)=>request(`${releaseBase}/reviews/${review.id}/decisions`,
+    "POST",{action,reason:"Explicit fictional decision",evidenceDigest:review.evidenceDigest,confirmScope});
+  it.each([
+    {"x-role":"SCHOOL_ADMIN"},{"x-role":"PARENT"},{"x-role":"COMPANY_ACCOUNTANT"},
+    {"x-user-status":"INACTIVE"},{"x-role-status":"INACTIVE"},{"x-school":"1"},
+  ])("denies unauthorized direct release requests without any DB access: %j",async headers=>{
+    for(const [url,method] of [[`${releaseBase}/readiness?schoolId=1&termId=4&ruleId=1`,"GET"],
+      [`${releaseBase}/reviews?schoolId=1&termId=4&ruleId=1`,"GET"],
+      [`${releaseBase}/reviews`,"POST"],[`${releaseBase}/reviews/1/decisions`,"POST"]]){
+      expect((await request(url,method,method==="GET"?undefined:{},headers as any)).status).toBe(403);
+    }
+    expect(state.connections+state.queries).toBe(0);
+  });
+  it("keeps GET readiness read-only and requires review plus explicit confirmation before rule scheduling",async()=>{
+    const {review,scope,preview}=await releaseRequest();
+    expect(preview.approvalReady).toBe(true);expect(preview.checkoutEnabled).toBe(false);
+    expect(review.status).toBe("CREATED");
+    expect((await decide(review,"APPROVED")).status).toBe(409);
+    expect((await decide(review,"REVIEWED")).status).toBe(200);
+    expect((await decide(review,"APPROVED",false)).status).toBe(409);
+    const before=(await db.query("SELECT count(*)::int AS n FROM audit_logs")).rows[0].n;
+    for(let i=0;i<2;i++)expect((await request(`${releaseBase}/readiness?${new URLSearchParams(scope as any)}`)).status).toBe(200);
+    expect((await db.query("SELECT count(*)::int AS n FROM audit_logs")).rows[0].n).toBe(before);
+    expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_reviews")).rows[0].n).toBe(0);
+    expect((await decide(review,"APPROVED")).status).toBe(200);
+    expect((await db.query("SELECT status FROM subscription_rule_proposals WHERE id=$1",[scope.ruleId])).rows[0].status).toBe("SCHEDULED");
+    expect((await db.query("SELECT action FROM student_direct_live_release_decisions ORDER BY id")).rows.map(r=>r.action))
+      .toEqual(["REVIEWED","APPROVED"]);
+    expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_review_bindings")).rows[0].n).toBe(1);
+    expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_attempts")).rows[0].n).toBe(0);
+    expect((await decide(review,"APPROVED")).status).toBe(409);
+    expect((await decide(review,"REJECTED")).status).toBe(200);
+    expect((await decide(review,"APPROVED")).status).toBe(409);
+    await expect(db.query("DELETE FROM student_direct_live_release_requests WHERE id=$1",[review.id])).rejects.toThrow(/append-only/);
+    await expect(db.query("UPDATE student_direct_live_release_decisions SET reason='rewrite history'")).rejects.toThrow(/append-only/);
+    await expect(db.query("DELETE FROM student_direct_live_review_bindings")).rejects.toThrow(/append-only/);
+    const history=await (await request(`${releaseBase}/reviews?${new URLSearchParams(scope as any)}`)).json() as any;
+    expect(history.reviews[0].status).toBe("REJECTED");
+    expect(history.reviews[0].events).toHaveLength(3);
+    expect(JSON.stringify(history)).not.toContain(releaseEnv.FLUTTERWAVE_LIVE_SECRET_KEY);
+    expect(JSON.stringify(history)).not.toContain(releaseEnv.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH);
+  });
+  it("separates approval from the runtime release switch and rejects stale merchant, rule and evidence commitments",async()=>{
+    const {review,scope}=await releaseRequest();
+    expect((await decide(review,"REVIEWED")).status).toBe(200);
+    const wrong=await decide({...review,evidenceDigest:"0".repeat(64)},"APPROVED");
+    expect(await wrong.json()).toMatchObject({error:"REVIEW_EVIDENCE_MISMATCH"});
+    const prior=releaseEnv.EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE;
+    try{
+      releaseEnv.EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE="OTHER_FICTIONAL_MERCHANT";
+      expect(await (await decide(review,"APPROVED")).json()).toMatchObject({error:"STALE_REVIEW_EVIDENCE"});
+    }finally{releaseEnv.EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE=prior;}
+    await db.query("UPDATE subscription_rule_proposals SET version=version+1 WHERE id=$1",[scope.ruleId]);
+    expect(await (await decide(review,"APPROVED")).json()).toMatchObject({error:"STALE_REVIEW_EVIDENCE"});
+    expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_reviews")).rows[0].n).toBe(0);
+    // No legacy split release marker can replace the direct runtime switch.
+    expect(await directStudentReadiness(db as any,{schoolId:1,termId:4,studentId:31},
+      {...releaseDeps,env:{...releaseEnv,EDUCORE_FLUTTERWAVE_DIRECT_RELEASE:undefined,EDUCORE_FLUTTERWAVE_RELEASE:"SCV3_V1"}}))
+      .toMatchObject({ready:false});
+  });
+  it("rejects a changed reconciliation digest and incomplete evidence, not just a matching Owner checkbox",async()=>{
+    const {review,scope}=await releaseRequest();
+    await decide(review,"REVIEWED");
+    await expect(decideDirectReleaseReview(db as any,review.id,{
+      action:"APPROVED",evidenceDigest:review.evidenceDigest,reason:"Synthetic stale report",confirmScope:true,
+    },9,{...releaseDeps,report:async()=>({...await fictionalReport(),evidenceDigest:"d".repeat(64)}) as any}))
+      .rejects.toMatchObject({code:"STALE_REVIEW_EVIDENCE"});
+    const current=await previewDirectRelease(db as any,scope,{...releaseDeps,
+      report:async()=>({...await fictionalReport(),sourceStatus:"INCOMPLETE"}) as any});
+    expect(current.approvalReady).toBe(false);
+    expect(current.checks.find(c=>c.code==="RECONCILIATION")?.status).toBe("BLOCKED");
+    const invalid=await request(`${releaseBase}/reviews`,"POST",{...scope,previewDigest:review.previewDigest,
+      merchantEvidenceReference:"short",merchantEvidenceHash:"bad",noSplitConfirmed:false});
+    expect(invalid.status).toBe(400);
+  });
+  it("fails closed when required schema/history protection is missing and never writes on inspection",async()=>{
+    const c=await db.connect();
+    try{
+      expect((await inspectDirectReleaseSchema(c)).ready).toBe(true);
+      await c.query("ALTER TABLE student_direct_live_release_decisions DISABLE TRIGGER student_direct_release_decision_history");
+      expect((await inspectDirectReleaseSchema(c)).ready).toBe(false);
+      const scope={schoolId:1,studentId:31,termId:4};
+      expect(await directStudentReadiness(db as any,scope,releaseDeps)).toMatchObject({
+        ready:false,blockers:["DIRECT_RELEASE_SCHEMA_REQUIRED"]});
+    }finally{
+      await c.query("ALTER TABLE student_direct_live_release_decisions ENABLE TRIGGER student_direct_release_decision_history");
+      c.release();
+    }
+  });
+  it("derives expiry on GET without a write; an explicit expiry decision appends history",async()=>{
+    const proposal=await insert(draft("STUDENT_PLATFORM")),scope={schoolId:1,termId:4,ruleId:proposal.id};
+    const preview=await previewDirectRelease(db as any,scope,releaseDeps);
+    const review=await createDirectReleaseReview(db as any,{...scope,previewDigest:preview.previewDigest,
+      merchantEvidenceReference:"Fictional short-lived evidence",merchantEvidenceHash:"e".repeat(64),
+      noSplitConfirmed:true,policy:"NEW_ONLY_PRESERVE_LEGACY",reason:"Fictional expiry fixture",
+      expiresAt:new Date(Date.now()+600).toISOString()},9,releaseDeps);
+    expect((await decide(review,"EXPIRED")).status).toBe(409);
+    await new Promise(resolve=>setTimeout(resolve,650));
+    const listed=await (await request(`${releaseBase}/reviews?${new URLSearchParams(scope as any)}`)).json() as any;
+    expect(listed.reviews[0].status).toBe("EXPIRED");
+    expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_release_decisions")).rows[0].n).toBe(0);
+    expect((await decide(review,"EXPIRED")).status).toBe(200);
+    expect((await decide(review,"APPROVED")).status).toBe(409);
+  });
+  it("keeps a lost checkout response permanently claimed; authenticated webhook readback alone unlocks the exact student-term",async()=>{
+    const proposal=await insert(draft("STUDENT_PLATFORM"));
+    await db.query("UPDATE subscription_rule_proposals SET status='ACTIVE',effective_at=now()-interval '1 day' WHERE id=$1",[proposal.id]);
+    const scope={schoolId:1,termId:4,ruleId:proposal.id},preview=await previewDirectRelease(db as any,scope,releaseDeps);
+    const review=await createDirectReleaseReview(db as any,{...scope,previewDigest:preview.previewDigest,
+      merchantEvidenceReference:"Fictional lost-response merchant review",merchantEvidenceHash:"a".repeat(64),
+      noSplitConfirmed:true,policy:"NEW_ONLY_PRESERVE_LEGACY",reason:"Isolated concurrency fixture",
+      expiresAt:new Date(Date.now()+86400000).toISOString()},9,releaseDeps);
+    await decideDirectReleaseReview(db as any,review.id,{action:"REVIEWED",reason:"Fictional review",
+      evidenceDigest:review.evidenceDigest,confirmScope:true},9,releaseDeps);
+    await decideDirectReleaseReview(db as any,review.id,{action:"APPROVED",reason:"Fictional approval",
+      evidenceDigest:review.evidenceDigest,confirmScope:true},9,releaseDeps);
+    const lost=vi.fn(async()=>{throw new Error("Synthetic accepted checkout then lost response");});
+    const input={schoolId:1,studentId:31,termId:4,actorId:9,email:"fictional@example.test"};
+    const results=await Promise.allSettled(["uncertain-reference-001","uncertain-reference-002"].map(idempotencyKey=>
+      startDirectStudentPayment(db as any,{...input,idempotencyKey},{...releaseDeps,fetcher:lost as any})));
+    expect(results.map(r=>r.status)).toEqual(["rejected","rejected"]);expect(lost).toHaveBeenCalledTimes(1);
+    const attempt=(await db.query("SELECT * FROM student_direct_live_attempts")).rows[0];
+    expect(attempt.state).toBe("UNKNOWN");
+    await expect(startDirectStudentPayment(db as any,{...input,idempotencyKey:"uncertain-reference-003"},
+      {...releaseDeps,fetcher:lost as any})).rejects.toMatchObject({code:"EXISTING_ATTEMPT_RECONCILIATION_REQUIRED"});
+    expect(lost).toHaveBeenCalledTimes(1);
+    const realFetch=globalThis.fetch;let verified=false,providerGets=0;
+    const spy=vi.spyOn(globalThis,"fetch").mockImplementation(async(url,init)=>{
+      const address=String(url);
+      if(address.startsWith(base+"/"))return realFetch(url,init);
+      if(address!=="https://api.flutterwave.com/v3/transactions/990/verify")throw new Error("Unexpected fixture network request blocked");
+      providerGets++;
+      return Response.json({status:"success",data:{id:990,tx_ref:attempt.reference,currency:"NGN",
+        amount:3200,charged_amount:verified?3200:0,status:verified?"successful":"pending",
+        flw_ref:"FICTIONAL-990",app_fee:55,merchant_fee:0}});
+    });
+    try{
+      for(const [key,value] of Object.entries(releaseEnv))vi.stubEnv(key,value!);
+      expect(await readStudentTermPlatformAccess(db as any,1,31)).toMatchObject({restricted:true,status:"PAYMENT_REQUIRED"});
+      const webhook={event:"charge.completed",data:{id:990,tx_ref:attempt.reference,status:"successful"}};
+      expect((await request("/fixture-direct-webhook","POST",webhook,{"verif-hash":"wrong"})).status).toBe(401);
+      expect(providerGets).toBe(0);
+      expect((await request("/fixture-direct-webhook","POST",webhook,
+        {"verif-hash":releaseEnv.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH!})).status).toBe(200);
+      expect((await db.query("SELECT state FROM student_direct_live_attempts")).rows[0].state).toBe("PENDING");
+      expect(await readStudentTermPlatformAccess(db as any,1,31)).toMatchObject({restricted:true});
+      verified=true;
+      expect((await request("/fixture-direct-webhook","POST",webhook,
+        {"verif-hash":releaseEnv.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH!})).status).toBe(200);
+      expect(await readStudentTermPlatformAccess(db as any,1,31)).toMatchObject({restricted:false,status:"VERIFIED",termId:4});
+      expect(await readStudentTermPlatformAccess(db as any,1,33)).toMatchObject({restricted:true});
+      expect(providerGets).toBe(2);
+      expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_events WHERE kind='PROVIDER_PAYMENT_VERIFIED'")).rows[0].n).toBe(1);
+    }finally{spy.mockRestore();vi.unstubAllEnvs();}
+  });
   it("uses only a reviewed direct 3200 scope, stores verified attempts once and reuses a reference without another provider POST",async()=>{
     const approvedDigest="f".repeat(64);
     const env={
@@ -388,17 +579,30 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH:"synthetic-webhook-not-live",
       EDUCORE_FLUTTERWAVE_DIRECT_RELEASE:"STUDENT_DIRECT_3200_V1",
       EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:"https://example.invalid/api/flutterwave/direct-student/callback",
+      EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:"https://example.invalid/api/webhooks/flutterwave/direct-student",
+      EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE:"FICTIONAL_NON_SPLIT_MERCHANT",
     };
     const proposal=await insert(draft("STUDENT_PLATFORM"));
-    // Only the disposable fixture simulates the *future* separately approved native
-    // student rule. The real Owner endpoint still blocks Student activation.
+    // Only the disposable fixture simulates an already effective, separately approved rule.
     await db.query("UPDATE subscription_rule_proposals SET status='ACTIVE',effective_at=now()-interval '1 day' WHERE id=$1",[proposal.id]);
-    for(const studentId of [31,33])await db.query(`INSERT INTO student_direct_live_reviews
+    // An old unbound approval, including a legacy-style inserted record, has no authority.
+    await db.query(`INSERT INTO student_direct_live_reviews
       (school_id,academic_term_id,rule_id,report_digest,merchant_scope,no_split_confirmed,approved_by,expires_at,reason)
-      VALUES(1,4,$1,$2,'FICTIONAL_NON_SPLIT_MERCHANT',true,9,now()+interval '1 day','Reviewed fictional term')`,
+      VALUES(1,4,$1,$2,'FICTIONAL_NON_SPLIT_MERCHANT',true,9,now()+interval '1 day','Unbound historical fixture review')`,
       [proposal.id,approvedDigest]);
     const report=async()=>({sourceStatus:"COMPLETE",evidenceDigest:approvedDigest,rows:[
       {studentId:31,status:"NEW_OBLIGATION_AFTER_REVIEW"},{studentId:33,status:"NEW_OBLIGATION_AFTER_REVIEW"}]}) as any;
+    expect(await directStudentReadiness(db as any,{schoolId:1,studentId:31,termId:4},{env,report}))
+      .toMatchObject({ready:false});
+    const releaseScope={schoolId:1,termId:4,ruleId:proposal.id};
+    const preview=await previewDirectRelease(db as any,releaseScope,{env,report});
+    const review=await createDirectReleaseReview(db as any,{...releaseScope,previewDigest:preview.previewDigest,
+      merchantEvidenceReference:"Fictional isolated merchant report",merchantEvidenceHash:"b".repeat(64),
+      noSplitConfirmed:true,policy:"NEW_ONLY_PRESERVE_LEGACY",expiresAt:new Date(Date.now()+86400000).toISOString(),
+      reason:"Synthetic non-split evidence, never actual merchant proof"},9,{env,report});
+    const decision={reason:"Reviewed synthetic release",evidenceDigest:review.evidenceDigest,confirmScope:true};
+    await decideDirectReleaseReview(db as any,review.id,{...decision,action:"REVIEWED"},9,{env,report});
+    await decideDirectReleaseReview(db as any,review.id,{...decision,action:"APPROVED"},9,{env,report});
     const states=new Map<string,"pending"|"failed"|"successful">([["901","pending"],["902","failed"],["903","successful"]]);
     const txReferences=new Map<string,string>();
     const calls:{url:string;body:Record<string,unknown>|null}[]=[];
@@ -458,6 +662,13 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
         creditDate:new Date().toISOString().slice(0,10),verifiedAmountMinor:320000,independentlyChecked:true});
     expect(bank.status).toBe(200);
     const bankSnapshot=(await db.query("SELECT * FROM subscription_payment_assistance_requests WHERE id=$1",[assistanceId])).rows;
+    // Simulate absent audit authority on this disposable fixture, then restore the original evidence.
+    await db.query(`UPDATE audit_logs SET event_type='FICTIONAL_MISSING_AUDIT'
+      WHERE record_id=$1 AND event_type='SUBSCRIPTION_RULE_BANK_CREDIT_VERIFIED'`,[assistanceId]);
+    await expect(startDirectStudentPayment(db as any,{...scope,studentId:33,assistanceId,idempotencyKey:"no-audit-bank-001"},deps))
+      .rejects.toMatchObject({code:"INDEPENDENT_BANK_CREDIT_REQUIRED"});
+    await db.query(`UPDATE audit_logs SET event_type='SUBSCRIPTION_RULE_BANK_CREDIT_VERIFIED'
+      WHERE record_id=$1 AND event_type='FICTIONAL_MISSING_AUDIT'`,[assistanceId]);
     const secondAttempt=await startDirectStudentPayment(db as any,second,deps);
     assert.ok(secondAttempt);
     txReferences.set("902",secondAttempt.reference);
@@ -477,5 +688,21 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     // Test-only configuration never becomes a credential in the application database or UI.
     expect(JSON.stringify((await db.query("SELECT details FROM student_direct_live_events")).rows))
       .not.toContain(env.FLUTTERWAVE_LIVE_SECRET_KEY);
+    expect(await directStudentReadiness(db as any,{schoolId:2,studentId:31,termId:4},deps)).toMatchObject({ready:false});
+    expect(await directStudentReadiness(db as any,{schoolId:1,studentId:31,termId:5},deps)).toMatchObject({ready:false});
+    expect(await directStudentReadiness(db as any,{schoolId:1,studentId:31,termId:4},{...deps,env:{...env,
+      EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:"https://other.invalid/api/flutterwave/direct-student/callback",
+      EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:"https://other.invalid/api/webhooks/flutterwave/direct-student"}}))
+      .toMatchObject({ready:false});
+    const newer=await createDirectReleaseReview(db as any,{...releaseScope,previewDigest:preview.previewDigest,
+      merchantEvidenceReference:"Newer fictional merchant report",merchantEvidenceHash:"c".repeat(64),
+      noSplitConfirmed:true,policy:"NEW_ONLY_PRESERVE_LEGACY",expiresAt:new Date(Date.now()+3600000).toISOString(),
+      reason:"Renewed synthetic approval"},9,{env,report});
+    await decideDirectReleaseReview(db as any,newer.id,{...decision,evidenceDigest:newer.evidenceDigest,action:"REVIEWED"},9,{env,report});
+    await decideDirectReleaseReview(db as any,newer.id,{...decision,evidenceDigest:newer.evidenceDigest,action:"APPROVED"},9,{env,report});
+    expect(await directStudentReadiness(db as any,{schoolId:1,studentId:31,termId:4},deps)).toMatchObject({ready:true});
+    await decideDirectReleaseReview(db as any,newer.id,{...decision,evidenceDigest:newer.evidenceDigest,action:"REJECTED"},9,{env,report});
+    expect(await directStudentReadiness(db as any,{schoolId:1,studentId:31,termId:4},deps)).toMatchObject({ready:false});
+    expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_attempts WHERE state='PAID'")).rows[0].n).toBe(2);
   });
 });

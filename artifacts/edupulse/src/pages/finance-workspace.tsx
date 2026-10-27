@@ -18,6 +18,7 @@ export function FinanceWorkspacePage() {
         ...(hasActiveGlobalOwner(data) ? [
           ['/subscription-payment-rules', 'Subscription & Payment Rules', 'Review platform subscription rules and payment assistance. Student LIVE activation remains separately gated.'],
           ['/payment-settlement?tab=schools', 'NFC Fee Collection Oversight', 'Read-only parent-to-school fee collection, with school and academic-term filters.'],
+          ['/direct-flutterwave-live-readiness', 'Direct Flutterwave LIVE Readiness', 'Read-only release checks and Owner review lifecycle. Approval never enables LIVE or takes payment.'],
         ] : []),
         ['/billing-rules', 'Staff NFC billing rules', 'Existing effective-dated staff billing rules.'],
         ['/payment-settlement', 'Payment & settlement', 'Platform configuration and school settlement oversight.'],

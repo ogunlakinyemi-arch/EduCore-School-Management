@@ -5,6 +5,7 @@ import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
 import { flutterwaveLiveWebhookVerifier } from "../lib/flutterwave-live-config";
 import { previewStudentNfcReconciliation } from "./student-nfc-reconciliation";
 import type { StudentSubscriptionSqlPool } from "../lib/student-subscription-billing";
+import {inspectDirectReleaseSchema,findApprovedDirectReview} from "./direct-student-live-release";
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 export class DirectPaymentBlocked extends Error{
   constructor(public readonly code:string,public readonly statusCode=409){super(code);}
@@ -28,23 +29,14 @@ export async function directStudentReadiness(pool:StudentSubscriptionSqlPool,sco
   const row=report.rows.find(r=>r.studentId===scope.studentId);
   if(row?.status!=="NEW_OBLIGATION_AFTER_REVIEW")
     return{ready:false as const,blockers:["LEGACY_HISTORY_OR_OBLIGATION_REQUIRES_SEPARATE_TRANSITION_APPROVAL"]};
+  const schemaClient=await pool.connect();
+  try{
+    if(!(await inspectDirectReleaseSchema(schemaClient)).ready)
+      return{ready:false as const,blockers:["DIRECT_RELEASE_SCHEMA_REQUIRED"]};
+  }finally{schemaClient.release();}
   const c=await pool.connect();
   try{
-    const review=(await c.query(`SELECT v.*,r.version AS rule_version FROM student_direct_live_reviews v
-      JOIN subscription_rule_proposals r ON r.id=v.rule_id
-      JOIN academic_terms t ON t.id=v.academic_term_id AND t.school_id=v.school_id
-      JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
-      JOIN students st ON st.id=$3 AND st.school_id=v.school_id AND lower(st.status)='active'
-      JOIN schools sc ON sc.id=v.school_id AND lower(sc.status)='active'
-      JOIN app_users approver ON approver.id=v.approved_by AND approver.status='ACTIVE'
-      WHERE v.school_id=$1 AND v.academic_term_id=$2 AND v.report_digest=$4
-        AND v.no_split_confirmed=true AND v.approved_at<=now() AND v.expires_at>now()
-        AND r.product='STUDENT_PLATFORM' AND r.status IN ('ACTIVE','SCHEDULED')
-        AND r.amount_minor=320000 AND r.school_share_minor=0 AND r.currency='NGN' AND r.billing_period='ACADEMIC_TERM'
-        AND r.effective_at<=now() AND (r.ends_at IS NULL OR r.ends_at>now())
-        AND t.is_current=true AND upper(t.status)='ACTIVE' AND ses.is_current=true AND upper(ses.status)='ACTIVE'
-        AND (now() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date
-      ORDER BY v.id DESC LIMIT 1`,[scope.schoolId,scope.termId,scope.studentId,report.evidenceDigest])).rows[0];
+    const review=await findApprovedDirectReview(c,scope,report.evidenceDigest,config);
     if(!review)return{ready:false as const,blockers:["ACTIVE_3200_RULE_AND_EXPLICIT_MATCHING_RECONCILIATION_APPROVAL_REQUIRED"]};
     return{ready:true as const,blockers:[],review};
   }finally{c.release();}
@@ -62,19 +54,22 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
     await c.query("BEGIN");
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
       [`direct-student:${input.schoolId}:${input.studentId}:${input.termId}`]);
+    await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`direct-release:${review.request_id}`]);
     // Revalidate reviewed facts after acquiring the scope lock.
-    const fresh=(await c.query(`SELECT r.id FROM subscription_rule_proposals r
-      JOIN student_direct_live_reviews v ON v.rule_id=r.id WHERE r.id=$1 AND v.id=$2
-      AND r.version=$3 AND r.status IN ('ACTIVE','SCHEDULED') AND r.effective_at<=now()
-      AND (r.ends_at IS NULL OR r.ends_at>now()) AND v.expires_at>now() FOR SHARE OF r,v`,
-      [review.rule_id,review.id,review.rule_version])).rows[0];
-    if(!fresh)block("REVIEW_CHANGED");
+    const fresh=await findApprovedDirectReview(c,input,review.report_digest,directLiveConfiguration(deps.env));
+    if(!fresh||Number(fresh.id)!==Number(review.id))block("REVIEW_CHANGED");
     if(input.assistanceId){
-      const bank=(await c.query(`SELECT * FROM subscription_payment_assistance_requests WHERE id=$1
-        AND school_id=$2 AND student_id=$3 AND academic_term_id=$4 AND status='BANK_VERIFIED'
-        AND amount_minor=320000 AND verified_amount_minor=320000 AND verified_by IS NOT NULL
-        AND verified_at IS NOT NULL AND bank_credit_date IS NOT NULL
-        AND NULLIF(trim(bank_statement_reference),'') IS NOT NULL FOR SHARE`,
+      const bank=(await c.query(`SELECT b.* FROM subscription_payment_assistance_requests b WHERE b.id=$1
+        AND b.school_id=$2 AND b.student_id=$3 AND b.academic_term_id=$4 AND b.status='BANK_VERIFIED'
+        AND b.amount_minor=320000 AND b.verified_amount_minor=320000 AND b.verified_by IS NOT NULL
+        AND b.verified_at IS NOT NULL AND b.bank_credit_date IS NOT NULL AND b.bank_credit_date<=current_date
+        AND NULLIF(trim(b.bank_name),'') IS NOT NULL AND NULLIF(trim(b.bank_statement_reference),'') IS NOT NULL
+        AND EXISTS(SELECT 1 FROM audit_logs a WHERE a.record_id=b.id AND a.actor_user_id=b.verified_by
+          AND a.role='PLATFORM_OWNER' AND a.event_type='SUBSCRIPTION_RULE_BANK_CREDIT_VERIFIED'
+          AND a.metadata->'after'->>'status'='BANK_VERIFIED'
+          AND (a.metadata->'after'->>'amountMinor')::integer=b.verified_amount_minor
+          AND a.metadata->'after'->>'bankStatementReference'=b.bank_statement_reference
+          AND (a.metadata->'after'->>'bankCreditDate')::date=b.bank_credit_date) FOR SHARE OF b`,
         [input.assistanceId,input.schoolId,input.studentId,input.termId])).rows[0];
       if(!bank)block("INDEPENDENT_BANK_CREDIT_REQUIRED");
     }
@@ -165,9 +160,10 @@ export async function verifyDirectStudentPayment(pool:StudentSubscriptionSqlPool
     await c.query("COMMIT");return view(saved);
   }catch(e){await c.query("ROLLBACK").catch(()=>undefined);throw e;}finally{c.release();}
 }
+/** V3 uses verif-hash, NOT the V4 HMAC envelope. Independent transaction GET is mandatory. */
 export function authenticateDirectStudentWebhook(headers:Record<string,unknown>,env:NodeJS.ProcessEnv=process.env){
   const expected=flutterwaveLiveWebhookVerifier(env),supplied=headers["verif-hash"];
-  if(!directLiveConfiguration(env).ready || !expected || typeof supplied!=="string"
-    || Buffer.byteLength(supplied)!==Buffer.byteLength(expected)
-    || !timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))throw new DirectPaymentBlocked("WEBHOOK_AUTHENTICATION_FAILED",401);
+  if(!directLiveConfiguration(env).ready||!expected||typeof supplied!=="string"
+    ||Buffer.byteLength(supplied)!==Buffer.byteLength(expected)
+    ||!timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))throw new DirectPaymentBlocked("WEBHOOK_AUTHENTICATION_FAILED",401);
 }
