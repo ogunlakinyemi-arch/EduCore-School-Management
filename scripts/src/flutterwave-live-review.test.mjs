@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { loadReview, reviewDrafts } from "./flutterwave-live-review.mjs";
+import { checkoutDraftOrder, loadReview, reviewDrafts } from "./flutterwave-live-review.mjs";
 
 describe("offline LIVE review is not migration or release authority", () => {
   it("verifies all eight full hashes, source inventory and disabled approval gates", () => {
@@ -57,5 +57,50 @@ describe("offline LIVE review is not migration or release authority", () => {
       assert.equal(r.status, 2);
       assert.match(r.stderr, /accepts no execution, approval or database options/);
     }
+  });
+  it("pins the minimal checkout package without onboarding or execution authority", () => {
+    const options = { checkout: true };
+    const { manifest, sources } = loadReview(undefined, options);
+    const r = reviewDrafts(manifest, sources, options);
+    assert.deepEqual(r.issues, []);
+    assert.deepEqual(manifest.stages.map(s => s.name), checkoutDraftOrder);
+    assert.equal(r.inventory.flatMap(s => s.tables).length, 18);
+    assert.equal(r.inventory.flatMap(s => s.functions).length, 6);
+    assert.equal(r.inventory.flatMap(s => s.triggers).length, 17);
+    assert.equal(r.inventory.flatMap(s => s.triggerBindings).length, 17);
+    assert.ok(r.inventory.flatMap(s => s.tables).every(n => !n.includes("onboarding")));
+    assert.equal(r.sqlConsoleExecutionVerified, false);
+    assert.equal(r.productionInstallationAuthorized, false);
+    assert.equal(r.liveActivationAuthorized, false);
+  });
+  it("fails a checkout review on a runtime rollback change, missing guard or wrong stage list", () => {
+    const options = { checkout: true };
+    const { manifest, sources } = loadReview(undefined, options);
+    sources.runtime.down += "\n-- unreviewed bytes\n";
+    sources.runtime.up = sources.runtime.up.replaceAll("live_checkout_attempt_history", "missing_guard");
+    manifest.stages.pop();
+    const r = reviewDrafts(manifest, sources, options);
+    assert.ok(r.issues.includes("INVALID_STAGE_ORDER"));
+    assert.ok(r.issues.includes("MISSING_STAGE:runtime"));
+    assert.ok(r.issues.includes("MISSING_GUARD:live_checkout_attempt_history"));
+    assert.equal(r.offlineReviewPassed, false);
+  });
+  it("checks every runtime hash and binding even with the correct five-stage list", () => {
+    const options = { checkout: true };
+    const { manifest, sources } = loadReview(undefined, options);
+    sources.runtime.down += "\n-- unreviewed bytes\n";
+    sources.runtime.up = sources.runtime.up.replace("BEFORE UPDATE OR DELETE", "AFTER DELETE");
+    const r = reviewDrafts(manifest, sources, options);
+    assert.ok(r.issues.includes("HASH_MISMATCH:runtime:up"));
+    assert.ok(r.issues.includes("HASH_MISMATCH:runtime:down"));
+    assert.ok(r.issues.includes("INCOMPLETE_TRIGGER_BINDINGS"));
+  });
+  it("runs checkout inspection in a clean environment but still rejects execution flags", () => {
+    const script = fileURLToPath(new URL("./flutterwave-live-review.mjs", import.meta.url));
+    const result = spawnSync(process.execPath, [script, "--checkout"], { env: {}, encoding: "utf8" });
+    assert.equal(result.status, 0);
+    assert.equal(JSON.parse(result.stdout).productionInstallationAuthorized, false);
+    const refused = spawnSync(process.execPath, [script, "--checkout", "--apply"], { env: {}, encoding: "utf8" });
+    assert.equal(refused.status, 2);
   });
 });

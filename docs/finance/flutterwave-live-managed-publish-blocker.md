@@ -4,6 +4,11 @@ Reviewed: 2026-10-27. **Outcome: NO-GO for LIVE activation.**
 This is a technical handoff, not a migration, approval record or claim that
 Replit Support has been contacted.
 
+For checkout/split collection without creating new school subaccounts, use the
+[minimal five-stage review package](flutterwave-live-checkout-installation.md).
+It preserves all checkout-required objects and all original SQL; it does not
+certify console execution, replace a Publish importer or authorize installation.
+
 ## Reconciled work
 
 - Existing protection task: preserve the exact protected SQL package through a

@@ -7,18 +7,21 @@ import { resolve } from "node:path";
 // process. This cannot approve, apply, restore or enable anything.
 const root = fileURLToPath(new URL("../../", import.meta.url));
 export const draftOrder = ["webhook-inbox", "finalization", "workflow", "readiness"];
+export const checkoutDraftOrder = [...draftOrder, "runtime"];
 const sha256 = text => createHash("sha256").update(text).digest("hex");
 const names = (sql, regex) => [...sql.matchAll(regex)].map(m => m[1]);
 
-export function reviewDrafts(manifest, sources) {
+export function reviewDrafts(manifest, sources, { checkout = false } = {}) {
   const issues = [];
-  if (manifest.version !== 1 || manifest.scope !== "OFFLINE_DEVELOPMENT_REVIEW_ONLY")
+  const order = checkout ? checkoutDraftOrder : draftOrder;
+  const scope = checkout ? "OFFLINE_CHECKOUT_REVIEW_ONLY" : "OFFLINE_DEVELOPMENT_REVIEW_ONLY";
+  if (manifest.version !== 1 || manifest.scope !== scope)
     issues.push("INVALID_MANIFEST_SCOPE");
-  if (JSON.stringify(manifest.stages?.map(s => s.name)) !== JSON.stringify(draftOrder))
+  if (JSON.stringify(manifest.stages?.map(s => s.name)) !== JSON.stringify(order))
     issues.push("INVALID_STAGE_ORDER");
   const created = new Set();
   const inventory = [];
-  for (const name of draftOrder) {
+  for (const name of order) {
     const stage = manifest.stages?.find(s => s.name === name);
     const source = sources[name];
     if (!stage || !source) { issues.push(`MISSING_STAGE:${name}`); continue; }
@@ -49,12 +52,15 @@ export function reviewDrafts(manifest, sources) {
       indexes: names(sql, /CREATE (?:UNIQUE )?INDEX\s+(\w+)/g),
       functions: names(sql, /CREATE FUNCTION\s+(\w+)/g),
       triggers: names(sql, /CREATE TRIGGER\s+(\w+)/g),
+      triggerBindings: [...sql.matchAll(
+        /CREATE TRIGGER\s+(\w+)\s+(BEFORE|AFTER)\s+(UPDATE OR DELETE|UPDATE|INSERT OR UPDATE)\s+ON\s+(\w+)\s+FOR EACH ROW EXECUTE FUNCTION\s+(\w+)\(\);/g,
+      )].map(([, trigger, timing, events, table, fn]) => ({ trigger, timing, events, table, function: fn })),
       namedConstraints: names(sql, /(?:ADD )?CONSTRAINT\s+(\w+)/g),
       foreignKeyDeclarations: [...sql.matchAll(/\bREFERENCES\s+/g)].length,
       checkDeclarations: [...sql.matchAll(/\bCHECK\s*\(/g)].length,
     });
   }
-  const all = draftOrder.map(n => sources[n]?.up ?? "").join("\n");
+  const all = order.map(n => sources[n]?.up ?? "").join("\n");
   for (const [parent, child] of [
     ["ADD CONSTRAINT live_review_tenant_uq", "ADD CONSTRAINT live_intent_review_scope_fk"],
     ["ADD CONSTRAINT live_intent_verified_identity_uq", "ADD CONSTRAINT live_collection_verified_identity_fk"],
@@ -70,6 +76,10 @@ export function reviewDrafts(manifest, sources) {
     "live_intent_history_guard", "live_collection_history_guard",
     "live_official_receipt_history", "live_operator_history",
   ];
+  if (checkout) requiredMarkers.push(
+    "guard_live_checkout_attempt", "live_school_config_history",
+    "live_allocation_review_history", "live_checkout_attempt_history",
+  );
   for (const marker of requiredMarkers) if (!all.includes(marker)) issues.push(`MISSING_GUARD:${marker}`);
   for (const [label, pattern] of [
     ["PAYLOAD_DEDUP", /UNIQUE\s*\(provider,\s*environment,\s*payload_sha256\)/],
@@ -79,19 +89,29 @@ export function reviewDrafts(manifest, sources) {
     ["SCHOOL", /school_minor\s*=\s*190000/],
     ["PARTNER_LIABILITY", /amount_minor\s*=\s*10000/],
   ]) if (!pattern.test(all)) issues.push(`MISSING_INVARIANT:${label}`);
-  if (created.size !== 14) issues.push("EXPECTED_14_TABLES");
+  const expectedTables = checkout ? 18 : 14;
+  if (created.size !== expectedTables) issues.push(`EXPECTED_${expectedTables}_TABLES`);
+  if (checkout) {
+    if (inventory.flatMap(s => s.functions).length !== 6) issues.push("EXPECTED_6_FUNCTIONS");
+    if (inventory.flatMap(s => s.triggers).length !== 17) issues.push("EXPECTED_17_TRIGGERS");
+    if (inventory.flatMap(s => s.triggerBindings).length !== 17) issues.push("INCOMPLETE_TRIGGER_BINDINGS");
+  }
   return {
     offlineReviewPassed: issues.length === 0, issues, inventory,
     inventoryMethod: "Static declaration scan bound to exact full SQL hashes; not a SQL execution/parser proof",
     migrationApproved: false, applicationTargetCompatibilityVerified: false,
     publishedRuntimeBindingVerified: false, backupRestoreVerified: false,
     liveActivationAuthorized: false,
+    sqlConsoleExecutionVerified: false, productionInstallationAuthorized: false,
   };
 }
 
-export function loadReview(base = root) {
-  const manifest = JSON.parse(readFileSync(resolve(base, "docs/flutterwave-live-development-review.manifest.json"), "utf8"));
-  const sources = Object.fromEntries(draftOrder.map(name => [name, Object.fromEntries(
+export function loadReview(base = root, { checkout = false } = {}) {
+  const manifestPath = checkout
+    ? "docs/finance/flutterwave-live-checkout-review.manifest.json"
+    : "docs/flutterwave-live-development-review.manifest.json";
+  const manifest = JSON.parse(readFileSync(resolve(base, manifestPath), "utf8"));
+  const sources = Object.fromEntries((checkout ? checkoutDraftOrder : draftOrder).map(name => [name, Object.fromEntries(
     ["up", "down"].map(direction => [direction, readFileSync(resolve(base,
       `lib/db/dev-reconciliation/flutterwave-live-${name}.${direction}.sql`), "utf8")]),
   )]));
@@ -99,12 +119,14 @@ export function loadReview(base = root) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.slice(2).length) {
+  const args = process.argv.slice(2);
+  const checkout = args.length === 1 && args[0] === "--checkout";
+  if (args.length && !checkout) {
     console.error("This offline reviewer accepts no execution, approval or database options.");
     process.exitCode = 2;
   } else {
-    const { manifest, sources } = loadReview();
-    const report = reviewDrafts(manifest, sources);
+    const { manifest, sources } = loadReview(root, { checkout });
+    const report = reviewDrafts(manifest, sources, { checkout });
     console.log(JSON.stringify(report, null, 2));
     process.exitCode = report.offlineReviewPassed ? 0 : 1;
   }

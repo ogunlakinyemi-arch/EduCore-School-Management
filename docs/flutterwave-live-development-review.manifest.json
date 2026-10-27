@@ -15,7 +15,7 @@
     {
       "name": "workflow",
       "upSha256": "a7e83947d2338d762a1830814d68f2be470e19866c46be84a8bccfad08d3c67a",
-      "downSha256": "047805b8591ded4276595721c2d7a3f71f267d77e0a43d37b07523a263f3f4b7"
+      "downSha256": "05a2d79bd56284ab49566243e2cf66dad417a717896ce117bc77d69752148e74"
     },
     {
       "name": "readiness",

@@ -88,6 +88,8 @@ variable. Exact constant-time `verif-hash` authentication remains in the adapter
 
 **Current managed-release blocker and supplied Support guidance:**
 [protected SQL Publish handoff](finance/flutterwave-live-managed-publish-blocker.md).
+The [minimal checkout package](finance/flutterwave-live-checkout-installation.md)
+pins the first five stages; new school-subaccount onboarding is separate.
 The sequence below is a dependency/review specification, not permission to run
 raw Production DDL. No supported importer is configured in this repository.
 
