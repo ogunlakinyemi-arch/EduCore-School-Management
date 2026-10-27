@@ -49,6 +49,10 @@ router.post("/flutterwave/live/allocation-review",requireAuthentication(),async(
 const checkout=z.object({schoolId:z.number().int().positive(),studentId:z.number().int().positive(),
   termId:z.number().int().positive(),idempotencyKey:z.string().regex(/^[A-Za-z0-9_-]{16,100}$/)}).strict();
 router.post("/flutterwave/live/checkout",requireAuthentication(),async(req,res)=>{
+  if(process.env.EDUCORE_HOSTED_PAYMENTS_ENABLED==="true"){
+    res.status(409).json({error:"New collections use Hosted Payments; original references retain their original reconciliation.",
+      code:"HOSTED_CHECKOUT_REQUIRED"});return;
+  }
   res.setHeader("Cache-Control","private, no-store");
   const parsed=checkout.safeParse(req.body);
   if(!parsed.success){res.status(400).json({error:"Invalid LIVE checkout input"});return;}

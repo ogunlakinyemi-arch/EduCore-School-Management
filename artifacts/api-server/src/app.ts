@@ -5,6 +5,8 @@ import express, {
   type Response,
 } from "express";
 import cors from "cors";
+import { hostedManualPaymentsRouter, hostedManualWebhookRouter } from "./routes/hosted-manual-payments";
+import { paymentReceiptsRouter } from "./routes/payment-receipts";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -123,6 +125,8 @@ app.use(
   rejectSimulationWebhook,
   studentSubscriptionLiveWebhookRouter,
 );
+app.use("/api/webhooks/flutterwave/hosted-manual",
+  express.raw({ type: "application/json", limit: "64kb" }), hostedManualWebhookRouter);
 app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(
@@ -138,6 +142,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", flutterwaveLiveRuntimeRouter);
+app.use("/api/hosted-payments", hostedManualPaymentsRouter);
+app.use("/api/payment-receipts", paymentReceiptsRouter);
 app.use("/api", paymentAccountProvidersRouter);
 app.use("/api", router);
 app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {

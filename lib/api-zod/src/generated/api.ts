@@ -9,6 +9,190 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Owner-only beneficiary, funding prerequisites and school payout state
+ */
+export const getHostedSchoolPayoutPathReferenceRegExp = new RegExp('^HCM1_[TL]_[a-f0-9]{32}$');
+
+
+export const GetHostedSchoolPayoutParams = zod.object({
+  "reference": zod.coerce.string().regex(getHostedSchoolPayoutPathReferenceRegExp)
+})
+
+export const GetHostedSchoolPayoutResponse = zod.object({
+  "paymentReference": zod.string(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "mode": zod.enum(['TEST', 'LIVE']),
+  "paymentStatus": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "fundingSource": zod.string(),
+  "maxFeeMinor": zod.number().int(),
+  "availableBalanceMinor": zod.number().int().nullish(),
+  "reservedMinor": zod.number().int().optional(),
+  "feeQuoteMinor": zod.number().int().nullish(),
+  "bankVerifiedAt": zod.string().nullish(),
+  "confirmationToken": zod.string().nullish(),
+  "transferReference": zod.string().nullish(),
+  "transferId": zod.string().nullish(),
+  "receiptId": zod.string().nullish(),
+  "recipient": zod.object({
+  "schoolName": zod.string().optional(),
+  "bankName": zod.string().optional(),
+  "bankCode": zod.string().optional(),
+  "accountName": zod.string().optional(),
+  "maskedAccount": zod.string().optional(),
+  "subaccountId": zod.string().nullish(),
+  "subaccountStatus": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Owner-confirm one NGN 1900 school payout with a durable unique reference
+ */
+export const payHostedSchoolPathReferenceRegExp = new RegExp('^HCM1_[TL]_[a-f0-9]{32}$');
+
+
+export const PayHostedSchoolParams = zod.object({
+  "reference": zod.coerce.string().regex(payHostedSchoolPathReferenceRegExp)
+})
+
+export const payHostedSchoolBodyConfirmationTokenRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const PayHostedSchoolBody = zod.object({
+  "confirmationToken": zod.string().regex(payHostedSchoolBodyConfirmationTokenRegExp),
+  "confirmed": zod.literal(true)
+})
+
+export const PayHostedSchoolResponse = zod.object({
+  "paymentReference": zod.string(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "mode": zod.enum(['TEST', 'LIVE']),
+  "paymentStatus": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "fundingSource": zod.string(),
+  "maxFeeMinor": zod.number().int(),
+  "availableBalanceMinor": zod.number().int().nullish(),
+  "reservedMinor": zod.number().int().optional(),
+  "feeQuoteMinor": zod.number().int().nullish(),
+  "bankVerifiedAt": zod.string().nullish(),
+  "confirmationToken": zod.string().nullish(),
+  "transferReference": zod.string().nullish(),
+  "transferId": zod.string().nullish(),
+  "receiptId": zod.string().nullish(),
+  "recipient": zod.object({
+  "schoolName": zod.string().optional(),
+  "bankName": zod.string().optional(),
+  "bankCode": zod.string().optional(),
+  "accountName": zod.string().optional(),
+  "maskedAccount": zod.string().optional(),
+  "subaccountId": zod.string().nullish(),
+  "subaccountStatus": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Read and independently verify the original transfer; never create another
+ */
+export const reconcileHostedSchoolPayoutPathReferenceRegExp = new RegExp('^HCM1_[TL]_[a-f0-9]{32}$');
+
+
+export const ReconcileHostedSchoolPayoutParams = zod.object({
+  "reference": zod.coerce.string().regex(reconcileHostedSchoolPayoutPathReferenceRegExp)
+})
+
+export const ReconcileHostedSchoolPayoutResponse = zod.object({
+  "paymentReference": zod.string(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "mode": zod.enum(['TEST', 'LIVE']),
+  "paymentStatus": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "fundingSource": zod.string(),
+  "maxFeeMinor": zod.number().int(),
+  "availableBalanceMinor": zod.number().int().nullish(),
+  "reservedMinor": zod.number().int().optional(),
+  "feeQuoteMinor": zod.number().int().nullish(),
+  "bankVerifiedAt": zod.string().nullish(),
+  "confirmationToken": zod.string().nullish(),
+  "transferReference": zod.string().nullish(),
+  "transferId": zod.string().nullish(),
+  "receiptId": zod.string().nullish(),
+  "recipient": zod.object({
+  "schoolName": zod.string().optional(),
+  "bankName": zod.string().optional(),
+  "bankCode": zod.string().optional(),
+  "accountName": zod.string().optional(),
+  "maskedAccount": zod.string().optional(),
+  "subaccountId": zod.string().nullish(),
+  "subaccountStatus": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Attach private proof after verified successful transfer without settling twice
+ */
+export const attachHostedSchoolPayoutReceiptPathReferenceRegExp = new RegExp('^HCM1_[TL]_[a-f0-9]{32}$');
+
+
+export const AttachHostedSchoolPayoutReceiptParams = zod.object({
+  "reference": zod.coerce.string().regex(attachHostedSchoolPayoutReceiptPathReferenceRegExp)
+})
+
+export const attachHostedSchoolPayoutReceiptBodySettlementDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const AttachHostedSchoolPayoutReceiptBody = zod.object({
+  "proofReceiptId": zod.string().uuid(),
+  "settlementDate": zod.string().regex(attachHostedSchoolPayoutReceiptBodySettlementDateRegExp)
+})
+
+export const AttachHostedSchoolPayoutReceiptResponse = zod.object({
+  "paymentReference": zod.string(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "mode": zod.enum(['TEST', 'LIVE']),
+  "paymentStatus": zod.string(),
+  "status": zod.string(),
+  "amountMinor": zod.number().int(),
+  "ready": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "fundingSource": zod.string(),
+  "maxFeeMinor": zod.number().int(),
+  "availableBalanceMinor": zod.number().int().nullish(),
+  "reservedMinor": zod.number().int().optional(),
+  "feeQuoteMinor": zod.number().int().nullish(),
+  "bankVerifiedAt": zod.string().nullish(),
+  "confirmationToken": zod.string().nullish(),
+  "transferReference": zod.string().nullish(),
+  "transferId": zod.string().nullish(),
+  "receiptId": zod.string().nullish(),
+  "recipient": zod.object({
+  "schoolName": zod.string().optional(),
+  "bankName": zod.string().optional(),
+  "bankCode": zod.string().optional(),
+  "accountName": zod.string().optional(),
+  "maskedAccount": zod.string().optional(),
+  "subaccountId": zod.string().nullish(),
+  "subaccountStatus": zod.string().optional()
+}).nullish()
+})
+
+
+/**
  * Current School Admin only for LIVE. Existing school accountants may read TEST mode only. Owner release controls remain separate. Never falls back to TEST from a blocked LIVE selection.
  * @summary Server-selected school billing mode and current LIVE identity/recovery
  */
@@ -9300,7 +9484,8 @@ export const SubmitManualBankTransferBody = zod.object({
   "amountMinor": zod.number().int().min(1),
   "lineIds": zod.array(zod.number().int().min(1)).min(1).max(submitManualBankTransferBodyLineIdsMax).optional(),
   "bank": zod.string().min(submitManualBankTransferBodyBankMin).max(submitManualBankTransferBodyBankMax),
-  "transferReference": zod.string().min(submitManualBankTransferBodyTransferReferenceMin).max(submitManualBankTransferBodyTransferReferenceMax),
+  "transferReference": zod.string().min(submitManualBankTransferBodyTransferReferenceMin).max(submitManualBankTransferBodyTransferReferenceMax).optional(),
+  "proofReceiptId": zod.string().uuid().optional(),
   "transferDate": zod.coerce.date(),
   "proofUrl": zod.string().max(submitManualBankTransferBodyProofUrlMax).optional()
 })

@@ -24,7 +24,8 @@ export interface BankTransferInput {
      * @minLength 2
      * @maxLength 150
      */
-  transferReference: string;
+  transferReference?: string;
+  proofReceiptId?: string;
   transferDate: Date;
   /** @maxLength 1000 */
   proofUrl?: string;

@@ -1,4 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { ReceiptFilePicker, uploadPrivateReceipt, validateReceiptFile, isReceiptSubmissionReference } from '@/components/private-receipt';
+import type { BankTransferInput } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { ArrowLeft, ArrowRight, Banknote, BookOpen, Check, CircleDollarSign, Clock3, FileText, Layers3, Plus, ReceiptText, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
@@ -438,12 +440,15 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
   const [amount, setAmount] = useState('');
   const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
   const [proofUrl, setProofUrl] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [uploadedReceipt, setUploadedReceipt] = useState<{ id: string; key: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [failure, setFailure] = useState('');
   // The request options are captured by the generated mutation hook. Resolve the key
   // during render from the exact normalized payload, not after mutateAsync is called.
   // Failed retries reuse it; a changed submission gets its own key.
   const submissionFingerprint = invoice ? JSON.stringify([
-    invoice.id, toMinor(amount), bank.trim(), reference.trim(), transferDate, proofUrl.trim(),selectedBankLineIds?.slice().sort((a,b)=>a-b)??null,
+    invoice.id, toMinor(amount), bank.trim(), reference.trim(), transferDate, proofUrl.trim(), receiptFile ? `${receiptFile.name}|${receiptFile.size}|${receiptFile.lastModified}` : null,selectedBankLineIds?.slice().sort((a,b)=>a-b)??null,
   ]) : '';
   let submissionKey = submissionFingerprint ? submissionKeys.current.get(submissionFingerprint) : undefined;
   if (submissionFingerprint && !submissionKey) {
@@ -469,13 +474,28 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
       try { if (new URL(proofUrl.trim()).protocol !== 'https:') { setFailure('Proof links must use HTTPS.'); return; } }
       catch { setFailure('Enter a valid HTTPS proof link or leave the field empty.'); return; }
     }
+    if (!reference.trim() && !receiptFile) { setFailure('Enter the bank transfer reference or attach the transfer receipt.'); return; }
+    if (receiptFile) { const bad = validateReceiptFile(receiptFile); if (bad) { setFailure(bad); return; } }
     try {
       const latest = await bankDetails.refetch();
       if (latest.isError || latest.data?.available !== true || latest.data.invoiceId !== invoice.id || latest.data.schoolId !== invoice.schoolId || !/^[0-9]{10}$/.test(latest.data.accountNumber)) {
         setFailure('This school is no longer accepting transfers for this invoice. No payment was submitted.');
         return;
       }
-      const result = await submit.mutateAsync({ invoiceId: invoice.id, data: { amountMinor, bank: bank.trim(), transferReference: reference.trim(), transferDate, ...(selectedBankLineIds?.length?{lineIds:selectedBankLineIds}:{}), ...(proofUrl.trim() ? { proofUrl: proofUrl.trim() } : {}) } });
+      let proofReceiptId: string | undefined;
+      if (receiptFile) {
+        const key = `${invoice.id}|${amountMinor}|${transferDate}|${receiptFile.name}|${receiptFile.size}|${receiptFile.lastModified}`;
+        if (uploadedReceipt?.key === key) proofReceiptId = uploadedReceipt.id;
+        else {
+          setUploading(true);
+          try {
+            const r = await uploadPrivateReceipt({ kind: 'PARENT_BANK_TRANSFER', invoiceId: invoice.id, amountMinor, purpose: `School fee invoice ${invoice.invoiceNumber}`, transferDate }, receiptFile);
+            setUploadedReceipt({ id: r.id, key }); proofReceiptId = r.id;
+          } finally { setUploading(false); }
+        }
+      }
+      // Upload alone never marks the invoice paid; the transfer stays PENDING until school verification.
+      const result = await submit.mutateAsync({ invoiceId: invoice.id, data: { amountMinor, bank: bank.trim(), ...(reference.trim() ? { transferReference: reference.trim() } : {}), ...(proofReceiptId ? { proofReceiptId } : {}), transferDate, ...(selectedBankLineIds?.length?{lineIds:selectedBankLineIds}:{}), ...(proofUrl.trim() ? { proofUrl: proofUrl.trim() } : {}) } as BankTransferInput });
       setPayment(result); setInvoice(null); setFailure('');
       submissionKeys.current.delete(submissionFingerprint);
       qc.invalidateQueries({ queryKey: getListParentFeeInvoicesQueryKey() });
@@ -491,11 +511,11 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
       <FamilyFeeBalances invoices={invoices} studentId={studentId} />
       <ParentFeeSelection studentId={studentId} invoices={invoices} onBankTransfer={(item,ids,selectedAmount)=>{
         setInvoice(item);setSelectedBankLineIds(ids);setAmount(minorInput(selectedAmount));setFailure('');
-        setBank('');setReference('');setProofUrl('');setTransferDate(new Date().toISOString().slice(0,10));
+        setBank('');setReference('');setProofUrl('');setReceiptFile(null);setUploadedReceipt(null);setTransferDate(new Date().toISOString().slice(0,10));
       }} />
       <section className="panel mt-6 overflow-hidden">
         <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">Child #{studentId}</div><h2 className="display-font mt-1 text-xl font-bold">Invoices</h2></div>
-        <FamilyInvoiceRows invoices={invoices} payment={payment} onTransfer={item => { setInvoice(item);setSelectedBankLineIds(undefined);setBank('');setReference('');setProofUrl('');setTransferDate(new Date().toISOString().slice(0,10)); setAmount(minorInput(item.outstandingMinor)); setFailure(''); }} />
+        <FamilyInvoiceRows invoices={invoices} payment={payment} onTransfer={item => { setInvoice(item);setSelectedBankLineIds(undefined);setBank('');setReference('');setProofUrl('');setReceiptFile(null);setUploadedReceipt(null);setTransferDate(new Date().toISOString().slice(0,10)); setAmount(minorInput(item.outstandingMinor)); setFailure(''); }} />
       </section>
         <FamilyPaymentHistory audience="parent" studentId={studentId} invoices={invoices} />
         <StudentNfcObligationsPanel studentId={studentId} compact familyPortal />
@@ -512,13 +532,14 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
         {selectedBankLineIds?.length&&<p className={note} data-testid="text-transfer-selected-fees">This transfer covers {selectedBankLineIds.length} selected fee {selectedBankLineIds.length===1?'line':'lines'}. Change the fee selection to change the amount.</p>}
         <Field label="Amount transferred (₦)"><input required readOnly={!!selectedBankLineIds?.length} type="number" step="0.01" min="0.01" max={minorInput(invoice.outstandingMinor)} value={amount} onChange={e => setAmount(e.target.value)} className={entry} data-testid="input-transfer-amount" /></Field>
         <Field label="Sending bank"><input required minLength={2} maxLength={100} value={bank} onChange={e => setBank(e.target.value)} className={entry} data-testid="input-transfer-bank" /></Field>
-        <Field label="Bank transfer reference"><input required minLength={2} maxLength={150} value={reference} onChange={e => setReference(e.target.value)} className={entry} data-testid="input-transfer-reference" /></Field>
+        <Field label={receiptFile ? 'Bank transfer reference (optional with receipt)' : 'Bank transfer reference'}><input required={!receiptFile} minLength={2} maxLength={150} value={reference} onChange={e => setReference(e.target.value)} className={entry} data-testid="input-transfer-reference" /></Field>
         <Field label="Transfer date"><input required type="date" max={new Date().toISOString().slice(0, 10)} value={transferDate} onChange={e => setTransferDate(e.target.value)} className={entry} data-testid="input-transfer-date" /></Field>
+        <ReceiptFilePicker file={receiptFile} onChange={f => { setReceiptFile(f); setUploadedReceipt(null); }} label="Transfer receipt (optional if you enter the bank reference)" testId="input-transfer-receipt-file" />
         <Field label="Proof link (optional)"><input type="url" maxLength={1000} placeholder="https://" value={proofUrl} onChange={e => setProofUrl(e.target.value)} className={entry} data-testid="input-transfer-proof" /></Field>
         {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
-        <Button type="submit" disabled={submit.isPending}>{submit.isPending ? 'Submitting…' : 'Submit for verification'}</Button>
+        <Button type="submit" disabled={submit.isPending || uploading}>{uploading ? 'Uploading receipt…' : submit.isPending ? 'Submitting…' : 'Submit for verification'}</Button>
       </form>}
     </Modal>}
-    {payment && <div className="fixed bottom-5 right-5 z-30 max-w-sm rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 shadow-xl" role="status" data-testid="status-transfer-submitted"><div className="flex items-center gap-2 font-bold"><Clock3 size={18} />Transfer submitted</div><p className={`mt-2 ${note}`}>Payment #{payment.id} · Reference {payment.reference} is {payment.status.toLowerCase()}. It is not a receipt and does not count as paid until verified.</p><Button variant="quiet" onClick={() => setPayment(null)} className="mt-3">Dismiss</Button></div>}
+    {payment && <div className="fixed bottom-5 right-5 z-30 max-w-sm rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 shadow-xl" role="status" data-testid="status-transfer-submitted"><div className="flex items-center gap-2 font-bold"><Clock3 size={18} />Transfer submitted</div><p className={`mt-2 ${note}`}>Payment #{payment.id} · {isReceiptSubmissionReference((payment as { transferReference?: string | null }).transferReference) ? <>Receipt submission ID {(payment as { transferReference?: string | null }).transferReference} (not a bank transaction reference)</> : <>Reference {payment.reference}</>} is {payment.status.toLowerCase()}. It is not a receipt and does not count as paid until verified.</p><Button variant="quiet" onClick={() => setPayment(null)} className="mt-3">Dismiss</Button></div>}
   </div>;
 }

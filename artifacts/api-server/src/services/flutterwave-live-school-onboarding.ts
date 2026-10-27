@@ -39,7 +39,7 @@ async function source(db:Db,schoolId:number,lock=false,requireActive=true){
   if(!r||requireActive&&String(r.school_status).toLowerCase()!=="active")fail("ACTIVE_SCHOOL_SETTLEMENT_PROFILE_REQUIRED");
   return r as Row;
 }
-function sourceHash(r:Row){
+export function sourceHash(r:Row){
   return sha([r.id,r.school_id,r.school_name,r.school_status,r.business_name,r.business_registration_number,r.settlement_contact_email,r.settlement_contact_phone,
     r.bank_name_encrypted,r.bank_code_encrypted,r.account_name_encrypted,r.account_number_encrypted,r.encryption_key_version]);
 }

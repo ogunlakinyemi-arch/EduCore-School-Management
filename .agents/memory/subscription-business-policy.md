@@ -63,6 +63,27 @@ Production migration, publishing, live keys or live transactions.
 
 ## LIVE preparation authorization
 
+## Prospective hosted collection and manual settlement
+
+On 2026-10-27 the user explicitly confirmed: “Yes, use the manual ledger.”
+New hosted payments may collect the entire NGN 5,000 into Yetenia's merchant
+account rather than automatically splitting to a school subaccount. Record NGN
+1,900 school liability and NGN 100 eligible BRO liability, leaving NGN 3,000
+platform revenue before provider fees (NGN 3,100 without an eligible BRO).
+BRO liability is not a second deduction from the NGN 3,000 allocation.
+
+**Why:** The user chose this cash-flow change after being told native Nigerian
+merchant/payout eligibility was not established and that manual school settlement
+differs from the prior automatic school split.
+
+**How to apply:** Prospective, versioned payments only. Preserve historical
+policies, attribution and receipts. Payment verification is not payout evidence;
+manual confirmations do not move funds. Preserve term-end Owner approval for BRO
+payments. This authorizes implementation, not live calls, Production financial
+writes, destructive SQL, publishing, restarts or credential/configuration changes.
+
+## Earlier integrated LIVE preparation authorization
+
 The current TEST payment repair must remain integrated in EduCore: reuse its
 database, authentication, subscription, finance and Flutterwave components.
 Do not introduce or require a separate payment service for this repair.

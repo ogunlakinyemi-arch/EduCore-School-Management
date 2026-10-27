@@ -4,6 +4,8 @@ import { assignPublishedClassFees } from "../services/fee-publication";
 import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
 import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
 import { Router, type IRouter, type Request } from "express";
+import { requireParentReceipt, receiptDownloadPath } from "../services/payment-receipts";
+import { HostedPaymentError } from "../lib/hosted-manual-policy";
 import {
   RecordSchoolCashPaymentBody,
   ApproveFeeAdjustmentParams,
@@ -306,6 +308,10 @@ async function audit(
 }
 
 function fail(res: any, error: unknown) {
+  if (error instanceof HostedPaymentError) {
+    res.status(error.statusCode).json({ error: error.message, code: error.code });
+    return;
+  }
   if (error instanceof AuthError) {
     res.status(error.statusCode).json({ error: error.message, code: error.eventType });
     return;
@@ -1119,13 +1125,25 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
     const body = parsed(SubmitManualBankTransferBody, req.body);
     const context = getUserContext(req);
     const bank = body.bank.trim();
-    const transferReference = body.transferReference.trim();
-    if (bank.length < 2 || transferReference.length < 2) {
+    let transferReference = body.transferReference?.trim() ?? "";
+    let proofUrl = body.proofUrl ?? null;
+    if (bank.length < 2 || (!body.proofReceiptId && transferReference.length < 2)) {
       throw new AuthError(400, "Bank and transfer reference must contain at least two non-whitespace characters");
     }
+    if (!body.proofReceiptId && /(?:^|\/)api\/payment-receipts\//.test(proofUrl ?? "")) {
+      throw new AuthError(400, "Private receipts must be attached using their validated receipt ID");
+    }
     const transferDate = body.transferDate.toISOString().slice(0, 10);
-    const storedIdempotencyKey = `BANK_TRANSFER:${context.user.id}:${headers["Idempotency-Key"]}`;
+    const storedIdempotencyKey = body.proofReceiptId
+      ? `BANK_RECEIPT:${context.user.id}:${body.proofReceiptId}`
+      : `BANK_TRANSFER:${context.user.id}:${headers["Idempotency-Key"]}`;
     await client.query("BEGIN");
+    if (body.proofReceiptId) {
+      const receipt = await requireParentReceipt(client, context, body.proofReceiptId, invoiceId, body.amountMinor, transferDate);
+      // Internal submission identity, NOT a claimed bank transaction reference.
+      transferReference ||= `RECEIPT_${receipt.id}`;
+      proofUrl = receiptDownloadPath(receipt.id);
+    }
     const invoice = await client.query(
       `SELECT i.* FROM fee_invoices i JOIN parents p ON p.school_id=i.school_id AND p.status='ACTIVE'
        JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
@@ -1147,7 +1165,7 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
           || existing.rows[0].transferReference !== transferReference
           || existing.rows[0].bank !== bank
           || dateOnly(existing.rows[0].transferDate) !== transferDate
-          || existing.rows[0].proofUrl !== (body.proofUrl ?? null)
+          || existing.rows[0].proofUrl !== proofUrl
           || JSON.stringify([...(existing.rows[0].selectedLineIds ?? [])].sort((a,b)=>a-b))
              !== JSON.stringify([...(body.lineIds ?? [])].sort((a,b)=>a-b))) {
         throw new AuthError(409, "Idempotency key was already used for a different transfer");
@@ -1184,9 +1202,10 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
        RETURNING ${paymentShape}`,
       [invoice.rows[0].school_id, invoiceId, invoice.rows[0].student_id, parent.rows[0].id, reference,
           storedIdempotencyKey, body.amountMinor, bank, transferReference,
-          transferDate, body.proofUrl ?? null, context.user.id,body.lineIds??null],
+          transferDate, proofUrl, context.user.id,body.lineIds??null],
     );
-    await audit(req, client, invoice.rows[0].school_id, "submitted manual bank transfer", "payment", inserted.rows[0].id);
+    await audit(req, client, invoice.rows[0].school_id, "submitted manual bank transfer", "payment", inserted.rows[0].id,
+      { proofReceiptId: body.proofReceiptId ?? null, uploadIsNotBankCredit: true });
     await enqueueFinancePaymentNotificationsSafely(
       client, Number(inserted.rows[0].id), Number(invoice.rows[0].school_id), "MANUAL_TRANSFER_SUBMITTED",
     );

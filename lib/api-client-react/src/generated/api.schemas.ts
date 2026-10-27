@@ -6493,7 +6493,8 @@ export interface BankTransferInput {
      * @minLength 2
      * @maxLength 150
      */
-  transferReference: string;
+  transferReference?: string;
+  proofReceiptId?: string;
   transferDate: string;
   /** @maxLength 1000 */
   proofUrl?: string;
@@ -13444,6 +13445,71 @@ export interface LostCardInput {
      * @maxLength 500
      */
   reason: string;
+}
+
+export interface SchoolPayoutConfirmation {
+  /** @pattern ^[a-f0-9]{64}$ */
+  confirmationToken: string;
+  confirmed: true;
+}
+
+export interface SchoolPayoutReceipt {
+  proofReceiptId: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  settlementDate: string;
+}
+
+export type SchoolPayoutPreviewMode = typeof SchoolPayoutPreviewMode[keyof typeof SchoolPayoutPreviewMode];
+
+
+export const SchoolPayoutPreviewMode = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SchoolPayoutPreviewRecipient = {
+  schoolName?: string;
+  bankName?: string;
+  bankCode?: string;
+  accountName?: string;
+  maskedAccount?: string;
+  /** @nullable */
+  subaccountId?: string | null;
+  subaccountStatus?: string;
+} | null;
+
+export interface SchoolPayoutPreview {
+  paymentReference: string;
+  schoolId: number;
+  schoolName: string;
+  mode: SchoolPayoutPreviewMode;
+  paymentStatus: string;
+  status: string;
+  amountMinor: number;
+  ready: boolean;
+  blockers: string[];
+  fundingSource: string;
+  maxFeeMinor: number;
+  /** @nullable */
+  availableBalanceMinor?: number | null;
+  reservedMinor?: number;
+  /** @nullable */
+  feeQuoteMinor?: number | null;
+  /** @nullable */
+  bankVerifiedAt?: string | null;
+  /** @nullable */
+  confirmationToken?: string | null;
+  /** @nullable */
+  transferReference?: string | null;
+  /** @nullable */
+  transferId?: string | null;
+  /** @nullable */
+  receiptId?: string | null;
+  /** @nullable */
+  recipient?: SchoolPayoutPreviewRecipient;
 }
 
 export type SchoolBillingContextMode = typeof SchoolBillingContextMode[keyof typeof SchoolBillingContextMode];
@@ -21077,7 +21143,8 @@ export interface BankTransferInput4b96100 {
      * @minLength 2
      * @maxLength 150
      */
-  transferReference: string;
+  transferReference?: string;
+  proofReceiptId?: string;
   transferDate: string;
   /** @maxLength 1000 */
   proofUrl?: string;

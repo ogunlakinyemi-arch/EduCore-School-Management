@@ -1146,6 +1146,11 @@ router.post("/subscriptions", async (req, res) => {
 });
 
 router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
+  if (process.env.EDUCORE_HOSTED_PAYMENTS_ENABLED === "true") {
+    res.status(409).json({ error: "New collections use Hosted Payments. Existing payment verification remains available.",
+      code: "HOSTED_CHECKOUT_REQUIRED" });
+    return;
+  }
   try {
     if(req.body && Object.keys(req.body).length>0) throw new AuthError(400,"The system fixes the NFC amount, provider, receiving account and allocations");
     const subscriptionId = subscriptionPaymentId(req.params.subscriptionId, "subscriptionId");

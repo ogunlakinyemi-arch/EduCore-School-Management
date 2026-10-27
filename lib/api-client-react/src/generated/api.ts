@@ -752,6 +752,9 @@ import type {
   SchoolLogoUploadRequest,
   SchoolLogoUploadResponse,
   SchoolMembershipInput,
+  SchoolPayoutConfirmation,
+  SchoolPayoutPreview,
+  SchoolPayoutReceipt,
   SchoolSettlementInput,
   SchoolSettlementReviewInput,
   SchoolSettlementSummary,
@@ -948,6 +951,335 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetHostedSchoolPayoutUrl = (reference: string,) => {
+
+
+
+
+  return `/api/hosted-payments/orders/${reference}/school-payout`
+}
+
+/**
+ * @summary Owner-only beneficiary, funding prerequisites and school payout state
+ */
+export const getHostedSchoolPayout = async (reference: string, options?: Parameters<typeof customFetch>[1]): Promise<SchoolPayoutPreview> => {
+
+  return customFetch<SchoolPayoutPreview>(getGetHostedSchoolPayoutUrl(reference),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHostedSchoolPayoutQueryKey = (reference: string,) => {
+    return [
+    `/api/hosted-payments/orders/${reference}/school-payout`
+    ] as const;
+    }
+
+
+export const getGetHostedSchoolPayoutQueryOptions = <TData = Awaited<ReturnType<typeof getHostedSchoolPayout>>, TError = ErrorType<unknown>>(reference: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHostedSchoolPayout>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHostedSchoolPayoutQueryKey(reference);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHostedSchoolPayout>>> = ({ signal }) => getHostedSchoolPayout(reference, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: reference !== null && reference !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHostedSchoolPayout>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHostedSchoolPayoutQueryResult = NonNullable<Awaited<ReturnType<typeof getHostedSchoolPayout>>>
+export type GetHostedSchoolPayoutQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Owner-only beneficiary, funding prerequisites and school payout state
+ */
+
+export function useGetHostedSchoolPayout<TData = Awaited<ReturnType<typeof getHostedSchoolPayout>>, TError = ErrorType<unknown>>(
+ reference: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHostedSchoolPayout>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHostedSchoolPayoutQueryOptions(reference,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPayHostedSchoolUrl = (reference: string,) => {
+
+
+
+
+  return `/api/hosted-payments/orders/${reference}/school-payout`
+}
+
+/**
+ * @summary Owner-confirm one NGN 1900 school payout with a durable unique reference
+ */
+export const payHostedSchool = async (reference: string,
+    schoolPayoutConfirmation: SchoolPayoutConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<SchoolPayoutPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolPayoutPreview>(getPayHostedSchoolUrl(reference),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolPayoutConfirmation)
+  }
+);}
+
+
+
+
+
+export const getPayHostedSchoolMutationKey = () => ['payHostedSchool'] as const;
+
+export const getPayHostedSchoolMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof payHostedSchool>>, TError,PayHostedSchoolMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof payHostedSchool>>, TError,PayHostedSchoolMutationVariables, TContext> => {
+
+const mutationKey = getPayHostedSchoolMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof payHostedSchool>>, PayHostedSchoolMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  payHostedSchool(reference,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PayHostedSchoolMutationResult = NonNullable<Awaited<ReturnType<typeof payHostedSchool>>>
+    export type PayHostedSchoolMutationBody = BodyType<SchoolPayoutConfirmation>
+    export type PayHostedSchoolMutationError = ErrorType<unknown>
+    export type PayHostedSchoolMutationVariables = {reference: string;data: BodyType<SchoolPayoutConfirmation>}
+
+    /**
+ * @summary Owner-confirm one NGN 1900 school payout with a durable unique reference
+ */
+export const usePayHostedSchool = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof payHostedSchool>>, TError,PayHostedSchoolMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof payHostedSchool>>,
+        TError,
+        PayHostedSchoolMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPayHostedSchoolMutationOptions(options));
+    }
+
+export const getReconcileHostedSchoolPayoutUrl = (reference: string,) => {
+
+
+
+
+  return `/api/hosted-payments/orders/${reference}/school-payout/reconcile`
+}
+
+/**
+ * @summary Read and independently verify the original transfer; never create another
+ */
+export const reconcileHostedSchoolPayout = async (reference: string, options?: Parameters<typeof customFetch>[1]): Promise<SchoolPayoutPreview> => {
+
+  return customFetch<SchoolPayoutPreview>(getReconcileHostedSchoolPayoutUrl(reference),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileHostedSchoolPayoutMutationKey = () => ['reconcileHostedSchoolPayout'] as const;
+
+export const getReconcileHostedSchoolPayoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileHostedSchoolPayout>>, TError,ReconcileHostedSchoolPayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileHostedSchoolPayout>>, TError,ReconcileHostedSchoolPayoutMutationVariables, TContext> => {
+
+const mutationKey = getReconcileHostedSchoolPayoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileHostedSchoolPayout>>, ReconcileHostedSchoolPayoutMutationVariables> = (props) => {
+          const {reference} = props ?? {};
+
+          return  reconcileHostedSchoolPayout(reference,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileHostedSchoolPayoutMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileHostedSchoolPayout>>>
+
+    export type ReconcileHostedSchoolPayoutMutationError = ErrorType<unknown>
+    export type ReconcileHostedSchoolPayoutMutationVariables = {reference: string}
+
+    /**
+ * @summary Read and independently verify the original transfer; never create another
+ */
+export const useReconcileHostedSchoolPayout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileHostedSchoolPayout>>, TError,ReconcileHostedSchoolPayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileHostedSchoolPayout>>,
+        TError,
+        ReconcileHostedSchoolPayoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileHostedSchoolPayoutMutationOptions(options));
+    }
+
+export const getAttachHostedSchoolPayoutReceiptUrl = (reference: string,) => {
+
+
+
+
+  return `/api/hosted-payments/orders/${reference}/school-payout/receipt`
+}
+
+/**
+ * @summary Attach private proof after verified successful transfer without settling twice
+ */
+export const attachHostedSchoolPayoutReceipt = async (reference: string,
+    schoolPayoutReceipt: SchoolPayoutReceipt, options?: Parameters<typeof customFetch>[1]): Promise<SchoolPayoutPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolPayoutPreview>(getAttachHostedSchoolPayoutReceiptUrl(reference),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolPayoutReceipt)
+  }
+);}
+
+
+
+
+
+export const getAttachHostedSchoolPayoutReceiptMutationKey = () => ['attachHostedSchoolPayoutReceipt'] as const;
+
+export const getAttachHostedSchoolPayoutReceiptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachHostedSchoolPayoutReceipt>>, TError,AttachHostedSchoolPayoutReceiptMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof attachHostedSchoolPayoutReceipt>>, TError,AttachHostedSchoolPayoutReceiptMutationVariables, TContext> => {
+
+const mutationKey = getAttachHostedSchoolPayoutReceiptMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof attachHostedSchoolPayoutReceipt>>, AttachHostedSchoolPayoutReceiptMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  attachHostedSchoolPayoutReceipt(reference,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AttachHostedSchoolPayoutReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof attachHostedSchoolPayoutReceipt>>>
+    export type AttachHostedSchoolPayoutReceiptMutationBody = BodyType<SchoolPayoutReceipt>
+    export type AttachHostedSchoolPayoutReceiptMutationError = ErrorType<unknown>
+    export type AttachHostedSchoolPayoutReceiptMutationVariables = {reference: string;data: BodyType<SchoolPayoutReceipt>}
+
+    /**
+ * @summary Attach private proof after verified successful transfer without settling twice
+ */
+export const useAttachHostedSchoolPayoutReceipt = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachHostedSchoolPayoutReceipt>>, TError,AttachHostedSchoolPayoutReceiptMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof attachHostedSchoolPayoutReceipt>>,
+        TError,
+        AttachHostedSchoolPayoutReceiptMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAttachHostedSchoolPayoutReceiptMutationOptions(options));
+    }
 
 export const getGetSchoolBillingContextUrl = (params: GetSchoolBillingContextParams,) => {
   const normalizedParams = new URLSearchParams();

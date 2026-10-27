@@ -47,3 +47,5 @@ export * from "./flutterwave-splits";
 export * from "./partner-payout-requests";
 export * from "./deferred-partner-commissions";
 export * from "./partner-account-reapplications";
+export * from "./hosted-manual-payments";
+export * from "./payment-receipts";

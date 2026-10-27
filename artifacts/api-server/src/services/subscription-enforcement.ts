@@ -5,6 +5,7 @@ import { STUDENT_SUBSCRIPTION_GROSS_MINOR } from "../lib/student-subscription-bi
 import { queueCommunicationNotification, type CommunicationQueryClient } from "./communication-service";
 import { subscriptionPolicy, type SubscriptionStudent } from "./subscription-enforcement-policy";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
+import { hostedLiveSelected, readHostedSubscriptionCoverage } from "./hosted-subscription-coverage";
 import { assertManualSchoolUnlocked, readManualSchoolState, readSubscriptionScopeCounts } from "./school-subscription-lock";
 import {
   assertLiveApplicationContext,readLiveSchoolSubscriptionStudents,releasedLiveApplicationContext,
@@ -35,7 +36,9 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
   // Ambiguous or missing calendars are NOT evidence of nonpayment.
   if (calendar.rows.length !== 1) return null;
   const term = calendar.rows[0];
-  const students = live ? await readLiveSchoolSubscriptionStudents(db,schoolId,term.termId,live)
+  const hostedLive = hostedLiveSelected();
+  const students = hostedLive ? await readHostedSubscriptionCoverage(db,schoolId,term.termId)
+    : live ? await readLiveSchoolSubscriptionStudents(db,schoolId,term.termId,live)
     : await db.query<SubscriptionStudent & { amountMinor: number }>(
     `SELECT st.id AS "studentId",
        EXISTS (
@@ -72,7 +75,7 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
   if (!policy.inGracePeriod && students.rows.some(s => s.unknown)) {
     // Shared enforcement history has no LIVE discriminator. Never inherit TEST
     // restrictions into an explicitly LIVE read; retain LIVE uncertain rows.
-    const known = live ? {rows:[{ids:students.rows.filter(s=>s.unknown).map(s=>s.studentId)}]} : await db.query<{ ids: number[] }>(
+    const known = live || hostedLive ? {rows:[{ids:students.rows.filter(s=>s.unknown).map(s=>s.studentId)}]} : await db.query<{ ids: number[] }>(
       "SELECT restricted_student_ids AS ids FROM school_subscription_enforcement WHERE school_id=$1 AND academic_term_id=$2",
       [schoolId, term.termId],
     );
@@ -100,7 +103,7 @@ export async function assertSubscriptionAccess(schoolId: number, studentId?: num
   let snapshot: EnforcementSnapshot;
   try { snapshot = await readSchoolSubscription(db, schoolId,live); }
   catch (error) {
-    if(live)throw new AuthError(503,"LIVE subscription access cannot be confirmed; no shared financial fallback is permitted");
+    if(live || hostedLiveSelected())throw new AuthError(503,"LIVE subscription access cannot be confirmed; no shared financial fallback is permitted");
     // Preserve a previously confirmed current-term restriction, without
     // inventing a new restriction from an infrastructure failure.
     logger.error({ schoolId, error }, "Subscription eligibility unavailable; access unchanged");

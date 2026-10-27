@@ -34,6 +34,12 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /hosted-payments/orders/{reference}/school-payout:
+    $ref: './school-payouts.yaml#/paths/~1school-payout'
+  /hosted-payments/orders/{reference}/school-payout/reconcile:
+    $ref: './school-payouts.yaml#/paths/~1school-payout~1reconcile'
+  /hosted-payments/orders/{reference}/school-payout/receipt:
+    $ref: './school-payouts.yaml#/paths/~1school-payout~1receipt'
   /flutterwave/live/billing-context:
     $ref: "./flutterwave-school-billing.yaml#/context"
   /flutterwave/live/checkout:
@@ -9382,7 +9388,7 @@ components:
           additionalProperties: true
     BankTransferInput:
       type: object
-      required: [amountMinor, bank, transferReference, transferDate]
+      required: [amountMinor, bank, transferDate]
       properties:
         amountMinor: { type: integer, minimum: 1 }
         lineIds:
@@ -9392,6 +9398,7 @@ components:
           items: { type: integer, minimum: 1 }
         bank: { type: string, minLength: 2, maxLength: 100 }
         transferReference: { type: string, minLength: 2, maxLength: 150 }
+        proofReceiptId: { type: string, format: uuid }
         transferDate: { type: string, format: date }
         proofUrl: { type: string, maxLength: 1000 }
     PaymentRejectionInput:

@@ -1,0 +1,137 @@
+openapi: 3.1.0
+info:
+  title: School payouts
+  version: 1.0.0
+paths:
+  /school-payout:
+    parameters:
+      - $ref: '#/components/parameters/PaymentReference'
+    get:
+      operationId: getHostedSchoolPayout
+      tags: [finance]
+      summary: Owner-only beneficiary, funding prerequisites and school payout state
+      responses:
+        '200':
+          description: Readiness is not transfer or settlement evidence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPayoutPreview'
+    post:
+      operationId: payHostedSchool
+      tags: [finance]
+      summary: Owner-confirm one NGN 1900 school payout with a durable unique reference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolPayoutConfirmation'
+      responses:
+        '200':
+          description: Reserved or processing is not settled; replay never resends
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPayoutPreview'
+  /school-payout/reconcile:
+    parameters:
+      - $ref: '#/components/parameters/PaymentReference'
+    post:
+      operationId: reconcileHostedSchoolPayout
+      tags: [finance]
+      summary: Read and independently verify the original transfer; never create another
+      responses:
+        '200':
+          description: Saved transfer status and prerequisites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPayoutPreview'
+  /school-payout/receipt:
+    parameters:
+      - $ref: '#/components/parameters/PaymentReference'
+    post:
+      operationId: attachHostedSchoolPayoutReceipt
+      tags: [finance]
+      summary: Attach private proof after verified successful transfer without settling twice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolPayoutReceipt'
+      responses:
+        '200':
+          description: Receipt linked to existing successful transfer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPayoutPreview'
+components:
+  parameters:
+    PaymentReference:
+      name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^HCM1_[TL]_[a-f0-9]{32}$'
+  schemas:
+    SchoolPayoutConfirmation:
+      type: object
+      additionalProperties: false
+      required: [confirmationToken, confirmed]
+      properties:
+        confirmationToken:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        confirmed:
+          type: boolean
+          enum: [true]
+    SchoolPayoutReceipt:
+      type: object
+      additionalProperties: false
+      required: [proofReceiptId, settlementDate]
+      properties:
+        proofReceiptId:
+          type: string
+          format: uuid
+        settlementDate:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+    SchoolPayoutPreview:
+      type: object
+      required: [paymentReference, schoolId, schoolName, mode, paymentStatus, status, amountMinor, ready, blockers, fundingSource, maxFeeMinor]
+      properties:
+        paymentReference: { type: string }
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        mode: { type: string, enum: [TEST, LIVE] }
+        paymentStatus: { type: string }
+        status: { type: string }
+        amountMinor: { type: integer }
+        ready: { type: boolean }
+        blockers:
+          type: array
+          items: { type: string }
+        fundingSource: { type: string }
+        maxFeeMinor: { type: integer }
+        availableBalanceMinor: { type: [integer, 'null'] }
+        reservedMinor: { type: integer }
+        feeQuoteMinor: { type: [integer, 'null'] }
+        bankVerifiedAt: { type: [string, 'null'] }
+        confirmationToken: { type: [string, 'null'] }
+        transferReference: { type: [string, 'null'] }
+        transferId: { type: [string, 'null'] }
+        receiptId: { type: [string, 'null'] }
+        recipient:
+          type: [object, 'null']
+          properties:
+            schoolName: { type: string }
+            bankName: { type: string }
+            bankCode: { type: string }
+            accountName: { type: string }
+            maskedAccount: { type: string }
+            subaccountId: { type: [string, 'null'] }
+            subaccountStatus: { type: string }

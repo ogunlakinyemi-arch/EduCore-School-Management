@@ -96,6 +96,7 @@ const nav: NavItem[] = [
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/flutterwave-settlements', label: 'Split Settlements', icon: CircleDollarSign, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/hosted-payments', label: 'Hosted Payments', icon: CircleDollarSign, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/subscription-enforcement', label: 'Term Enforcement', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
   { href: '/card-replacements', label: 'Card Replacements', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'PARENT', 'STUDENT'] },
@@ -111,7 +112,7 @@ const nav: NavItem[] = [
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/records', '/students', '/company-employees', '/users', '/partners', '/account-applications',
-  '/devices', '/subscriptions', '/flutterwave-settlements', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
+  '/devices', '/subscriptions', '/flutterwave-settlements', '/hosted-payments', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results', '/platform/attendance',
   '/communications',
