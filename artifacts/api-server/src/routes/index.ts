@@ -5,7 +5,6 @@ import telegramRouter from "./telegram";
 import flutterwaveSplitsRouter from "./flutterwave-splits";
 import localSplitSimulationRouter from "./local-split-simulation";
 import { rejectOperationalSimulation } from "../middlewares/local-split-simulation";
-import healthRouter from "./health";
 import pilotReadinessRouter from "./pilot-readiness";
 import authRouter from "./auth";
 import accountApplicationsRouter from "./account-applications";
@@ -81,7 +80,6 @@ router.use(createLiveReadinessRouter({pool:liveReadinessPool}));
 router.use(localSplitSimulationRouter);
 router.use(flutterwaveSplitsRouter);
 
-router.use(healthRouter);
 router.use(pilotReadinessRouter);
 router.use(nfcPaymentLinksRouter);
 router.use(bootstrapRouter);

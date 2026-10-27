@@ -13572,7 +13572,38 @@ export interface PilotCalendar {
   checklist: string[];
 }
 
+export type RuntimeDatabaseIdentityFingerprintAlgorithm = typeof RuntimeDatabaseIdentityFingerprintAlgorithm[keyof typeof RuntimeDatabaseIdentityFingerprintAlgorithm];
+
+
+export const RuntimeDatabaseIdentityFingerprintAlgorithm = {
+  RESOLVED_PG_HOST_PORT_DATABASE_SHA256_96_V1: 'RESOLVED_PG_HOST_PORT_DATABASE_SHA256_96_V1',
+} as const;
+
+export type RuntimeDatabaseIdentityServingRevisionSource = typeof RuntimeDatabaseIdentityServingRevisionSource[keyof typeof RuntimeDatabaseIdentityServingRevisionSource];
+
+
+export const RuntimeDatabaseIdentityServingRevisionSource = {
+  K_REVISION: 'K_REVISION',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface RuntimeDatabaseIdentity {
+  /**
+     * @nullable
+     * @pattern ^[a-f0-9]{24}$
+     */
+  configurationTargetFingerprint: string | null;
+  fingerprintAlgorithm: RuntimeDatabaseIdentityFingerprintAlgorithm;
+  /** @nullable */
+  platformDatabaseResourceId: null;
+  /** @nullable */
+  servingRevision: string | null;
+  servingRevisionSource: RuntimeDatabaseIdentityServingRevisionSource;
+  targetBindingVerified: false;
+}
+
 export interface PilotReadiness {
+  runtimeDatabase?: RuntimeDatabaseIdentity;
   checkedAt: string;
   productionChangeAllowed: false;
   targetBindingVerified: false;

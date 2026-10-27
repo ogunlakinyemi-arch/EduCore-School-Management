@@ -64,6 +64,20 @@ try{
   // Applies DDL only to the brand-new fictional cluster, never to Development/Production.
   await pool.query(readFileSync(join(root,"lib/db/drizzle/0176_direct_student_live_preparation.sql"),"utf8"));
   await pool.query(readFileSync(join(root,"lib/db/drizzle/0178_independent_bro_term_commissions.sql"),"utf8"));
+  await check("read-only catalog preflight reports partial fixture gaps without certifying a target",async()=>{
+    const sql=readFileSync(join(root,"docs/direct-release-schema-preflight.sql"),"utf8");
+    assert.doesNotMatch(sql,/^\s*(?:INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|TRUNCATE|DO|CALL|BEGIN|COMMIT|SET)\b/im);
+    const report=(await pool.query(sql)).rows[0];
+    assert.equal(report.endpoint_is_replica,false);
+    assert.equal(report.required_tables.length,10);
+    const tables=new Map(report.required_tables.map(t=>[t.table,t]));
+    assert.equal(tables.get("student_direct_live_reviews").exists,true);
+    assert.equal(tables.get("student_direct_live_release_requests").exists,false);
+    assert.equal(tables.get("student_direct_live_review_bindings").exists,false);
+    assert.equal(tables.get("bro_term_commission_entitlements").exists,true);
+    assert.equal(report.staff_rule_ends_at_present,false);
+    assert.equal(report.required_functions.length,4);
+  });
   const output=join(scratch,"bro.mjs");
   await build({entryPoints:[join(root,"artifacts/api-server/src/services/bro-commission-policy.ts")],
     bundle:true,platform:"node",format:"esm",outfile:output,logLevel:"silent"});

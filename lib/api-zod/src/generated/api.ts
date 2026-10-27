@@ -20,7 +20,18 @@ export const GetDatabaseReadinessResponse = zod.object({
 /**
  * @summary Owner-only read-only school calendar checklist and database diagnostics
  */
+export const getPilotReadinessResponseRuntimeDatabaseConfigurationTargetFingerprintRegExp = new RegExp('^[a-f0-9]{24}$');
+
+
 export const GetPilotReadinessResponse = zod.object({
+  "runtimeDatabase": zod.object({
+  "configurationTargetFingerprint": zod.string().regex(getPilotReadinessResponseRuntimeDatabaseConfigurationTargetFingerprintRegExp).nullable(),
+  "fingerprintAlgorithm": zod.enum(['RESOLVED_PG_HOST_PORT_DATABASE_SHA256_96_V1']),
+  "platformDatabaseResourceId": zod.null(),
+  "servingRevision": zod.string().nullable(),
+  "servingRevisionSource": zod.enum(['K_REVISION', 'UNAVAILABLE']),
+  "targetBindingVerified": zod.literal(false)
+}).optional(),
   "checkedAt": zod.string(),
   "productionChangeAllowed": zod.literal(false),
   "targetBindingVerified": zod.literal(false),

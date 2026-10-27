@@ -31,8 +31,16 @@ import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 import { rejectSimulationWebhook } from "./middlewares/local-split-simulation";
 import terminalEventsRouter from "./routes/terminal-events";
+import healthRouter from "./routes/health";
+import {pool} from "@workspace/db";
+import {runtimeDatabaseIdentity} from "./services/runtime-database-identity";
 
 const app: Express = express();
+// Allowlisted configuration identity only: no connection strings, credentials,
+// resolved hostnames, database/user names or inferred platform resource IDs.
+logger.info({eventType:"DATABASE_RUNTIME_IDENTITY",
+  runtimeDatabase:runtimeDatabaseIdentity(pool.targetDiagnostic)},
+  "Database runtime configuration identity; resource binding is not certified");
 
 const trustedCorsOriginsEnv = "CORS_ALLOWED_ORIGINS";
 const safeErrorCodes = new Set([
@@ -95,6 +103,10 @@ app.use(
     },
   }),
 );
+// These two GET/HEAD routes must terminate before ANY identity/payment/device
+// routers. Do not move general API routes here or exempt them from authorization.
+app.use(["/api/healthz","/api/readyz"],cors({credentials:true,origin:corsOrigin}));
+app.use("/api",healthRouter);
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use("/api", terminalEventsRouter);
 app.use("/api", ownerUidIngestionRouter);

@@ -27,6 +27,10 @@ Read-only observations:
 
 ## Before any Production restart, migration, configuration change or publish
 
+See `docs/publication-target-preflight-and-rollback.md` for the specific
+0175–0178 object inventory, read-only catalog SQL, existing fixture commands,
+runtime identity limits, transaction-wrapper warning and rollback stop gates.
+
 1. Reuse existing operator correspondence and resource evidence. Establish
    exact deployed revision, serving primary resource/configuration fingerprint,
    current accessible resource-bound recovery point, isolated restore evidence

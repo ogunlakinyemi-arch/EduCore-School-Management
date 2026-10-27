@@ -53,6 +53,8 @@ components:
       type: object
       required: [checkedAt, productionChangeAllowed, targetBindingVerified, recoveryVerified, calendars, blockers]
       properties:
+        runtimeDatabase:
+          $ref: "#/components/schemas/RuntimeDatabaseIdentity"
         checkedAt: { type: string }
         productionChangeAllowed: { type: boolean, enum: [false] }
         targetBindingVerified: { type: boolean, enum: [false] }
@@ -61,3 +63,13 @@ components:
           type: array
           items: { $ref: "#/components/schemas/PilotCalendar" }
         blockers: { type: array, items: { type: string } }
+    RuntimeDatabaseIdentity:
+      type: object
+      required: [configurationTargetFingerprint, fingerprintAlgorithm, platformDatabaseResourceId, servingRevision, servingRevisionSource, targetBindingVerified]
+      properties:
+        configurationTargetFingerprint: { type: [string, "null"], pattern: "^[a-f0-9]{24}$" }
+        fingerprintAlgorithm: { type: string, enum: [RESOLVED_PG_HOST_PORT_DATABASE_SHA256_96_V1] }
+        platformDatabaseResourceId: { type: "null" }
+        servingRevision: { type: [string, "null"] }
+        servingRevisionSource: { type: string, enum: [K_REVISION, UNAVAILABLE] }
+        targetBindingVerified: { type: boolean, enum: [false] }

@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PilotCalendar } from './pilotCalendar';
+import type { RuntimeDatabaseIdentity } from './runtimeDatabaseIdentity';
 
 export interface PilotReadiness {
+  runtimeDatabase?: RuntimeDatabaseIdentity;
   checkedAt: string;
   productionChangeAllowed: false;
   targetBindingVerified: false;
