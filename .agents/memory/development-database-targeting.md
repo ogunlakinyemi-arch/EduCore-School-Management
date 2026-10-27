@@ -27,6 +27,12 @@ Replit-native Development checkpoint recovery is a separate valid recovery path 
 
 **How to apply:** Confirm the selected checkpoint's timestamp, suitability and project/Development binding separately. Never execute rollback merely to inspect recovery: it reverts both files and the Development database. Do not substitute a plain Git commit for database-inclusive checkpoint evidence or ask the user to re-establish the already confirmed facility.
 
+When the user identifies the exact Agent checkpoint title alongside its database-inclusive rollback dialog, correlate that named checkpoint with its recorded commit time rather than repeatedly requesting the timestamp. Git metadata alone remains insufficient recovery evidence.
+
+**Why:** The checkpoint title supplied by the user allowed the recent recorded time to be resolved while the database-inclusive recovery assertion came separately from the Replit dialog.
+
+**How to apply:** Keep the two sources distinct in the report: user-provided database recovery availability and recorded checkpoint timing. Do not claim an independent snapshot inventory or completed restore drill.
+
 Fixtures must also satisfy the actual lifecycle and retained historical tenant scope, not merely the visible current status and school.
 
 **Why:** Raw fixture inserts appeared unassigned in the UI but were not in the prepared lifecycle state. A device passed current authorization yet could not record an event because its historical school binding was absent. These were fixture errors, not permission defects.

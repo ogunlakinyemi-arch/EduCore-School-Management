@@ -18,10 +18,22 @@ contract, and leave dashboard-backed secret provisioning and LIVE binding for
 separate authorization. Never copy an existing private verifier to invent the
 missing independent TEST configuration.
 
-The V3 and general Flutterwave webhook pages reviewed on 2026-10-19 both document
+The V3 and general Flutterwave webhook pages rechecked on 2026-10-27 both document
 constant-time verification of the shared `verif-hash`. That documentation is not
 proof of the actual merchant dashboard's selected version or matching private
 configuration; recheck current provider documentation before changing schemes.
+
+Do not report missing V4-style HMAC as a defect in the V3 direct-payment transport.
+The documented `verif-hash` contract and independently verified transaction facts
+are distinct checks; a generic request for signed webhooks does not establish a
+different merchant API version.
+
+**Why:** Current public V3 and general documentation both explicitly describe
+the shared header comparison, despite calling the section signature verification.
+
+**How to apply:** Confirm the versioned merchant contract and secret binding,
+use constant-time comparison, and retain mandatory independent verification of
+transaction status, amount, currency and reference.
 
 V3 refund notifications can use a standalone body without the usual event/data
 envelope. A documented refund `completed` status means initiated/pending
