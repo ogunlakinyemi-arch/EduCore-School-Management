@@ -7,6 +7,7 @@ import { previewStudentNfcReconciliation } from "./student-nfc-reconciliation";
 import type { StudentSubscriptionSqlPool } from "../lib/student-subscription-billing";
 import {inspectDirectReleaseSchema,findApprovedDirectReview} from "./direct-student-live-release";
 import {initialStudentFreePeriod,readStudentRollout} from "./student-platform-rollout";
+import {appendFinancialHistory,requireFinancialActor,transitionDirectAttempt} from "./financial-history-writes";
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 export class DirectPaymentBlocked extends Error{
   constructor(public readonly code:string,public readonly statusCode=409){super(code);}
@@ -18,8 +19,7 @@ type Dependencies={env?:NodeJS.ProcessEnv;fetcher?:typeof fetch;report?:typeof p
 const view=(a:any)=>({id:Number(a.id),reference:a.reference,state:a.state,
   checkoutUrl:a.state==="READY"?a.checkout_url:null});
 async function event(c:Db,id:number,kind:string,actorId:number|null,details:object={}){
-  await c.query(`INSERT INTO student_direct_live_events(attempt_id,kind,actor_user_id,details)
-    VALUES($1,$2,$3,$4::jsonb)`,[id,kind,actorId,JSON.stringify(details)]);
+  await appendFinancialHistory(c,"event",[id,kind,actorId,JSON.stringify(details)]);
 }
 /** No provider access, conversion or writes. Fresh evidence is checked before each new POST. */
 export async function directStudentReadiness(pool:StudentSubscriptionSqlPool,scope:Scope,deps:Dependencies={}){
@@ -56,6 +56,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
   let c=await pool.connect(),attempt:any;
   try{
     await c.query("BEGIN");
+    await requireFinancialActor(c,input.actorId,input.assistanceId?undefined:input.schoolId);
     if(!(await readStudentRollout(c,input.schoolId,input.termId)).chargeable)block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
       [`direct-student:${input.schoolId}:${input.studentId}:${input.termId}`]);
@@ -78,9 +79,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
         [input.assistanceId,input.schoolId,input.studentId,input.termId])).rows[0];
       if(!bank)block("INDEPENDENT_BANK_CREDIT_REQUIRED");
     }
-    await c.query(`INSERT INTO student_direct_live_obligations(school_id,student_id,academic_term_id,
-      rule_id,review_id,merchant_scope,assistance_request_id,created_by)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(school_id,student_id,academic_term_id) DO NOTHING`,
+    await appendFinancialHistory(c,"obligation",
       [input.schoolId,input.studentId,input.termId,review.rule_id,review.id,review.merchant_scope,input.assistanceId??null,input.actorId]);
     const obligation=(await c.query(`SELECT * FROM student_direct_live_obligations
       WHERE school_id=$1 AND student_id=$2 AND academic_term_id=$3 FOR UPDATE`,
@@ -95,8 +94,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
       if(["READY","PAID","FAILED"].includes(prior.state))return view(prior);
       block("EXISTING_ATTEMPT_RECONCILIATION_REQUIRED");
     }
-    attempt=(await c.query(`INSERT INTO student_direct_live_attempts(obligation_id,reference,idempotency_key,state,created_by)
-      VALUES($1,$2,$3,'RESERVED',$4) RETURNING *`,
+    attempt=(await appendFinancialHistory(c,"attempt",
       [obligation.id,`SCV4_live_${randomUUID().replaceAll("-","")}`,input.idempotencyKey,input.actorId])).rows[0];
     await event(c,attempt.id,"CHECKOUT_RESERVED",input.actorId,{assistanceId:input.assistanceId??null,...directAllocation});
     await c.query("COMMIT");
@@ -107,9 +105,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
     c=await pool.connect();
     try{
       await c.query("BEGIN");
-      const saved=(await c.query(`UPDATE student_direct_live_attempts SET state='READY',checkout_url=$2
-        WHERE id=$1 AND state='RESERVED' RETURNING *`,[attempt.id,url])).rows[0];
-      if(!saved)block("EXISTING_ATTEMPT_RECONCILIATION_REQUIRED");
+      const saved=await transitionDirectAttempt(c,Number(attempt.id),{state:"READY",checkoutUrl:url});
       await event(c,attempt.id,"CHECKOUT_READY",input.actorId);
       await c.query("COMMIT");return view(saved);
     }catch(e){await c.query("ROLLBACK").catch(()=>undefined);throw e;}finally{c.release();}
@@ -117,9 +113,12 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
     c=await pool.connect();
     try{
       await c.query("BEGIN");
-      const changed=(await c.query(`UPDATE student_direct_live_attempts SET state='UNKNOWN'
-        WHERE id=$1 AND state='RESERVED' RETURNING id`,[attempt.id])).rows[0];
-      if(changed)await event(c,attempt.id,"CHECKOUT_RESPONSE_UNCERTAIN",input.actorId);
+      const current=(await c.query("SELECT * FROM student_direct_live_attempts WHERE id=$1 FOR UPDATE",[attempt.id])).rows[0];
+      // A concurrent callback may already have finalized this attempt.
+      if(current?.state==="RESERVED"){
+        await transitionDirectAttempt(c,Number(attempt.id),{state:"UNKNOWN"});
+        await event(c,attempt.id,"CHECKOUT_RESPONSE_UNCERTAIN",input.actorId);
+      }
       await c.query("COMMIT");
     }catch(e){await c.query("ROLLBACK").catch(()=>undefined);throw e;}finally{c.release();}
     block("EXISTING_ATTEMPT_RECONCILIATION_REQUIRED");
@@ -132,6 +131,9 @@ export async function verifyDirectStudentPayment(pool:StudentSubscriptionSqlPool
   if(!/^SCV4_live_[A-Za-z0-9_-]{8,80}$/.test(input.reference))block("INVALID_REFERENCE");
   let c=await pool.connect();
   try{
+    // Verification also mutates protected history. Never bypass the schema gate
+    // through a public callback/webhook while checkout itself is fail-closed.
+    if(!(await inspectDirectReleaseSchema(c)).ready)block("DIRECT_RELEASE_SCHEMA_REQUIRED");
     const attempt=(await c.query("SELECT id FROM student_direct_live_attempts WHERE reference=$1",[input.reference])).rows[0];
     if(!attempt)block("UNKNOWN_REFERENCE");
   }finally{c.release();}
@@ -150,16 +152,13 @@ export async function verifyDirectStudentPayment(pool:StudentSubscriptionSqlPool
     }
     if(facts.status==="pending"){
       if(a.state==="PENDING"){await c.query("COMMIT");return view(a);}
-      const pending=(await c.query(`UPDATE student_direct_live_attempts SET state='PENDING',provider_transaction_id=$2
-        WHERE id=$1 AND state IN ('READY','UNKNOWN','RESERVED') RETURNING *`,[a.id,facts.transactionId])).rows[0];
-      if(!pending)block("VERIFIED_TRANSACTION_CONFLICT");
+      const pending=await transitionDirectAttempt(c,Number(a.id),{state:"PENDING",transactionId:facts.transactionId});
       await event(c,a.id,"PROVIDER_PENDING_OBSERVED",input.actorId,{transactionId:facts.transactionId});
       await c.query("COMMIT");return view(pending);
     }
-    const saved=(await c.query(`UPDATE student_direct_live_attempts SET state=$2,provider_transaction_id=$3,
-      provider_reference=$4,provider_fee_minor=$5,additional_fee_minor=$6,verified_at=now()
-      WHERE id=$1 RETURNING *`,[a.id,facts.status==="successful"?"PAID":"FAILED",facts.transactionId,
-      facts.providerReference,facts.providerFeeMinor,facts.additionalFeeMinor])).rows[0];
+    const saved=await transitionDirectAttempt(c,Number(a.id),{state:facts.status==="successful"?"PAID":"FAILED",
+      transactionId:facts.transactionId,providerReference:facts.providerReference,
+      providerFeeMinor:facts.providerFeeMinor,additionalFeeMinor:facts.additionalFeeMinor});
     await event(c,a.id,facts.status==="successful"?"PROVIDER_PAYMENT_VERIFIED":"PROVIDER_FAILURE_VERIFIED",input.actorId,
       {transactionId:facts.transactionId,providerFeeMinor:facts.providerFeeMinor,additionalFeeMinor:facts.additionalFeeMinor});
     await c.query("COMMIT");return view(saved);

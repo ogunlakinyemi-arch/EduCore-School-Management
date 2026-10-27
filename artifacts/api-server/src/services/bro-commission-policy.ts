@@ -1,6 +1,7 @@
 /** Independent BRO expense. Never changes a collection, split, legacy ledger or payout. */
 import {lagosDate,readStudentRollout} from "./student-platform-rollout";
 import {inspectFinancialGuards} from "./financial-guard-schema";
+import {appendFinancialHistory,requireFinancialActor} from "./financial-history-writes";
 export const BRO_TERM_RATE_MINOR = 15_000;
 export type BroSql = {query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
 type Pool = BroSql & {connect:()=>Promise<BroSql & {release:()=>void}>};
@@ -52,6 +53,7 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
   const c=await pool.connect();
   try{
     await c.query("BEGIN");
+    await requireFinancialActor(c,actor.id);
     await c.query("SET LOCAL lock_timeout='2s'");
     // Same policy lock as approval/retirement, plus one global student/term earning key.
     await c.query("SELECT pg_advisory_xact_lock(310031,1)");
@@ -65,6 +67,7 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
       await c.query("COMMIT");return {id:Number(prior.id),amountMinor:Number(prior.amount_minor),existing:true};
     }
     const evidence=(await c.query(`SELECT o.id AS obligation_id,a.id AS attempt_id,a.verified_at AS paid_at,
+      a.verified_at::text AS paid_at_exact,
       (t.start_date::timestamp AT TIME ZONE 'Africa/Lagos') AS term_start,
       t.end_date AS term_end,at.id AS attribution_id,at.partner_profile_id,
       EXISTS(SELECT 1 FROM commission_ledger l LEFT JOIN student_subscription_payments lp ON lp.id=l.payment_id
@@ -109,13 +112,9 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
       termStart:new Date(e.term_start).toISOString(),paidAt:new Date(e.paid_at).toISOString(),
       verified:true,studentEligible:true,attributionEligible:true,legacyExists:e.legacy_exists===true});
     if(amount===null)throw new BroCommissionBlocked("Term is ineligible, already earned historically, or outside the approved ₦150 policy.");
-    const row=(await c.query(`INSERT INTO bro_term_commission_entitlements
-      (school_id,student_id,academic_term_id,partner_profile_id,attribution_id,policy_id,
-       direct_obligation_id,direct_attempt_id,amount_minor,earned_at,evidence,created_by)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12)
-      ON CONFLICT ON CONSTRAINT bro_term_commission_scope_uq DO NOTHING RETURNING *`,
+    const row=(await appendFinancialHistory(c,"bro",
       [scope.schoolId,scope.studentId,scope.termId,e.partner_profile_id,e.attribution_id,raw.id,
-        e.obligation_id,e.attempt_id,amount,e.paid_at,JSON.stringify({policyId:Number(raw.id),version:raw.version,
+        e.obligation_id,e.attempt_id,amount,e.paid_at_exact,JSON.stringify({policyId:Number(raw.id),version:raw.version,
           amountMinor:amount,effectiveAt:raw.effective_at,endsAt:raw.ends_at,termStart:e.term_start,
           funding:"SEPARATE_PLATFORM_EXPENSE",studentCollectionMinor:320000,collectionBroShareMinor:0,
           rolloutPolicyApprovedOn:rollout.policy.approvedOn,launchTermId:rollout.launchTermId,

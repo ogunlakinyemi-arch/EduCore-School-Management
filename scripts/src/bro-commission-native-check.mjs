@@ -32,7 +32,8 @@ try{
   const identity=(await pool.query("SELECT current_database() AS db,inet_server_addr() AS ip,current_setting('data_directory') AS data")).rows[0];
   assert.equal(identity.db,"postgres");assert.equal(identity.ip,null);assert.equal(realpathSync(identity.data),realpathSync(data));
   await pool.query(`
-    CREATE TABLE app_users(id integer PRIMARY KEY);
+    CREATE TABLE app_users(id integer PRIMARY KEY,status text DEFAULT 'ACTIVE');
+    CREATE TABLE school_memberships(user_id integer,school_id integer,role text,status text);
     CREATE TABLE schools(id integer PRIMARY KEY);
     CREATE TABLE students(id integer PRIMARY KEY,school_id integer,status text,admission_status text);
     CREATE TABLE academic_sessions(id integer PRIMARY KEY,school_id integer,status text);
@@ -49,7 +50,9 @@ try{
     CREATE TABLE student_subscription_payments(id integer PRIMARY KEY,academic_term_id integer);
     CREATE TABLE commission_ledger(id serial PRIMARY KEY,school_id integer,student_id integer,payment_id integer,
       academic_session_id integer,term text,rate numeric,amount numeric,status text);
-    INSERT INTO app_users VALUES(9); INSERT INTO schools VALUES(1),(2);
+    INSERT INTO app_users(id) VALUES(9);
+    INSERT INTO school_memberships VALUES(9,NULL,'PLATFORM_OWNER','ACTIVE');
+    INSERT INTO schools VALUES(1),(2);
     INSERT INTO academic_sessions VALUES(11,1,'ACTIVE');
     INSERT INTO academic_terms(id,school_id,academic_session_id,start_date,end_date,name)
       VALUES(100,1,11,'2027-01-18','2027-04-01','Second Term');
@@ -105,7 +108,7 @@ try{
     const attempt=(await pool.query(`INSERT INTO student_direct_live_attempts
       (obligation_id,reference,idempotency_key,state,provider_transaction_id,provider_reference,
         provider_fee_minor,additional_fee_minor,verified_at,created_by)
-      VALUES($1,$2,$3,'PAID',$4,'fictional-provider',0,0,'2027-01-20T09:00Z',9) RETURNING id`,
+      VALUES($1,$2,$3,'PAID',$4,'fictional-provider',0,0,'2027-01-20T09:00:00.123456Z',9) RETURNING id`,
       [obligation.id,`SCV4_live_FICTIONAL${studentId}`,`fictional-key-${studentId}`,String(studentId)])).rows[0];
     await pool.query(`INSERT INTO student_direct_live_events(attempt_id,kind,details)
       VALUES($1,'PROVIDER_PAYMENT_VERIFIED',$2::jsonb)`,[attempt.id,JSON.stringify({transactionId:String(studentId)})]);
@@ -122,6 +125,18 @@ try{
     assert.equal((await accrueBroCommission(pool,scope,actor)).existing,true);
     assert.deepEqual((await pool.query("SELECT amount_minor,school_share_minor,bro_share_minor FROM student_direct_live_obligations WHERE student_id=31")).rows[0],
       {amount_minor:320000,school_share_minor:0,bro_share_minor:0});
+    assert.equal((await pool.query(`SELECT e.earned_at=a.verified_at AS exact,
+      extract(microseconds FROM e.earned_at)::integer AS micros
+      FROM bro_term_commission_entitlements e JOIN student_direct_live_attempts a ON a.id=e.direct_attempt_id
+      WHERE e.student_id=31`)).rows[0].micros,123456);
+    assert.equal((await pool.query(`SELECT e.earned_at=a.verified_at AS exact
+      FROM bro_term_commission_entitlements e JOIN student_direct_live_attempts a ON a.id=e.direct_attempt_id
+      WHERE e.student_id=31`)).rows[0].exact,true);
+  });
+  await check("unauthorized internal accrual caller cannot write or return an earning",async()=>{
+    const before=(await pool.query("SELECT count(*)::int AS n FROM bro_term_commission_entitlements")).rows[0].n;
+    await assert.rejects(accrueBroCommission(pool,scope,{...actor,id:999}),/FINANCIAL_ACTOR_NOT_AUTHORIZED/);
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM bro_term_commission_entitlements")).rows[0].n,before);
   });
   await check("historical paid 100 is preserved and cannot earn again",async()=>{
     const s=await evidence(32,5);

@@ -4,6 +4,7 @@ import type {StudentSubscriptionSqlPool} from "../lib/student-subscription-billi
 import {directLiveConfiguration,DIRECT_STUDENT_RELEASE} from "../lib/flutterwave-direct-live-config";
 import {previewStudentNfcReconciliation} from "./student-nfc-reconciliation";
 import {inspectFinancialGuards} from "./financial-guard-schema";
+import {appendFinancialHistory,requireFinancialActor} from "./financial-history-writes";
 
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 export class DirectReleaseError extends Error{
@@ -198,11 +199,8 @@ export async function createDirectReleaseReview(pool:StudentSubscriptionSqlPool,
     hash:input.merchantEvidenceHash,expiresAt:new Date(expiry).toISOString(),reason:input.reason});
   const c=await pool.connect();try{
     await c.query("BEGIN");
-    const row=(await c.query(`INSERT INTO student_direct_live_release_requests
-      (school_id,academic_term_id,rule_id,snapshot,facts_digest,evidence_digest,merchant_evidence_reference,
-       merchant_evidence_hash,policy,no_split_confirmed,expires_at,created_by,reason)
-      VALUES($1,$2,$3,$4::jsonb,$5,$6,$7,$8,$9,true,$10,$11,$12)
-      ON CONFLICT(evidence_digest) DO NOTHING RETURNING id`,
+    await requireFinancialActor(c,actorId);
+    const row=(await appendFinancialHistory(c,"reviewRequest",
       [input.schoolId,input.termId,input.ruleId,JSON.stringify(preview.facts),preview.previewDigest,evidenceDigest,
         input.merchantEvidenceReference,input.merchantEvidenceHash,input.policy,input.expiresAt,actorId,input.reason])).rows[0]
       ??(await c.query("SELECT id FROM student_direct_live_release_requests WHERE evidence_digest=$1",[evidenceDigest])).rows[0];
@@ -223,6 +221,7 @@ export async function decideDirectReleaseReview(pool:StudentSubscriptionSqlPool,
   const c=await pool.connect();
   try{
     await c.query("BEGIN");
+    await requireFinancialActor(c,actorId);
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`direct-release:${id}`]);
     const v=await load(c,id),scope={schoolId:v.row.school_id,termId:v.row.academic_term_id,ruleId:Number(v.row.rule_id)};
     if(v.row.evidence_digest!==input.evidenceDigest)fail("REVIEW_EVIDENCE_MISMATCH");
@@ -257,17 +256,13 @@ export async function decideDirectReleaseReview(pool:StudentSubscriptionSqlPool,
             await c.query(`UPDATE subscription_rule_proposals SET status='SCHEDULED',updated_by=$2,
               updated_at=now(),activated_at=now() WHERE id=$1`,[r.id,actorId]);
           }
-          const approved=(await c.query(`INSERT INTO student_direct_live_reviews
-            (school_id,academic_term_id,rule_id,report_digest,merchant_scope,no_split_confirmed,approved_by,expires_at,reason)
-            VALUES($1,$2,$3,$4,$5,true,$6,$7,$8) RETURNING id`,
+          const approved=(await appendFinancialHistory(c,"review",
             [scope.schoolId,scope.termId,scope.ruleId,fresh.facts.reportDigest,fresh.facts.merchantScope,actorId,v.row.expires_at,input.reason])).rows[0];
-          await c.query(`INSERT INTO student_direct_live_review_bindings(review_id,request_id,rule_version,release,environment)
-            VALUES($1,$2,$3,$4,'LIVE')`,[approved.id,id,r.version,DIRECT_STUDENT_RELEASE]);
+          await appendFinancialHistory(c,"binding",[approved.id,id,r.version,DIRECT_STUDENT_RELEASE]);
         }
       }
     }
-    await c.query(`INSERT INTO student_direct_live_release_decisions(request_id,action,actor_user_id,reason)
-      VALUES($1,$2,$3,$4)`,[id,input.action,actorId,input.reason]);
+    await appendFinancialHistory(c,"decision",[id,input.action,actorId,input.reason]);
     await reviewAudit(c,id,actorId,input.action,input.reason);
     const result=dto(await load(c,id));await c.query("COMMIT");return result;
   }catch(e){await c.query("ROLLBACK");throw e;}finally{c.release();}

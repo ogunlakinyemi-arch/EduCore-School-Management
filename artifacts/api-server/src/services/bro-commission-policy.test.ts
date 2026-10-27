@@ -31,13 +31,15 @@ function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved
   const policyRow={id:1,status:"SCHEDULED",amount_minor:15000,effective_at:policy.effectiveAt,ends_at:null,
     version:2,approved:options.approved??true};
   const query=vi.fn(async(sql:string,args?:unknown[])=>{
+    if(sql.includes("AS financial_actor_authorized"))return{rows:[{financial_actor_authorized:true}]};
+    if(sql.includes("AS financial_bro_scope_valid"))return{rows:[{financial_bro_scope_valid:true}]};
     if(sql.includes("FROM pg_proc"))return{rows:catalog.functions};
     if(sql.includes("FROM pg_trigger tg"))return{rows:catalog.triggers};
     if(sql.includes('t.school_id AS "schoolId"'))return{rows:[{id:4,schoolId:1,name:"Second Term",
       startDate:"2027-01-05",endDate:"2027-04-01",isCurrent:true,status:"ACTIVE",sessionStatus:"ACTIVE"}]};
     if(sql.includes("to_regclass"))return{rows:[{ready:options.ready??true}]};
     if(sql.includes("SELECT * FROM bro_term_commission_entitlements"))return{rows:saved?[saved]:[]};
-    if(sql.includes("SELECT o.id AS obligation_id"))return{rows:[{obligation_id:7,attempt_id:8,paid_at:eligible.paidAt,
+    if(sql.includes("SELECT o.id AS obligation_id"))return{rows:[{obligation_id:7,attempt_id:8,paid_at:eligible.paidAt,paid_at_exact:eligible.paidAt,
       term_start:options.termStart??eligible.termStart,attribution_id:3,partner_profile_id:4,legacy_exists:options.legacy??false}]};
     if(sql.includes("SELECT p.*"))return{rows:[policyRow]};
     if(sql.includes("INSERT INTO bro_term_commission_entitlements")){
@@ -99,5 +101,14 @@ describe("append-only BRO processing (mocked SQL, no app database)",()=>{
     await expect(accrueBroCommission(db.pool,scope,actor)).rejects.toThrow("fixture audit failure");
     expect(db.query).toHaveBeenCalledWith("ROLLBACK");
     expect(db.query.mock.calls.filter(([q])=>q==="COMMIT")).toHaveLength(0);
+  });
+  it.each(["financial_actor_authorized","financial_bro_scope_valid"])("rolls back if %s is denied at the centralized boundary",async marker=>{
+    const db=database(),base=db.query.getMockImplementation()!;
+    db.query.mockImplementation((sql,args)=>sql.includes(`AS ${marker}`)
+      ?Promise.resolve({rows:[{[marker]:false}]}):base(sql,args));
+    await expect(accrueBroCommission(db.pool,scope,actor)).rejects.toThrow();
+    expect(db.saved).toBeNull();expect(db.audits).toHaveLength(0);
+    expect(db.query).toHaveBeenCalledWith("ROLLBACK");
+    expect(db.query.mock.calls.some(([sql])=>sql==="COMMIT")).toBe(false);
   });
 });

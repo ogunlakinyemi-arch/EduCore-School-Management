@@ -1,7 +1,7 @@
 import {describe,expect,it,vi} from "vitest";
 import {FlutterwaveLiveTransport} from "../lib/flutterwave-live-transport";
 import {directLiveConfiguration} from "../lib/flutterwave-direct-live-config";
-import {authenticateDirectStudentWebhook,directAllocation,directStudentReadiness} from "./direct-student-live-payments";
+import {authenticateDirectStudentWebhook,directAllocation,directStudentReadiness,verifyDirectStudentPayment} from "./direct-student-live-payments";
 
 const env={
   NODE_ENV:"production",EDUCORE_FLUTTERWAVE_MODE:"LIVE",
@@ -14,6 +14,17 @@ const env={
 };
 const reference="SCV4_live_fictional_reference_123456";
 describe("direct LIVE transport safety (fake transport, no credentials or network)",()=>{
+  it("blocks public finalization before provider access when direct history guards are unavailable",async()=>{
+    const query=vi.fn(async()=>({rows:[]})),release=vi.fn(),fetcher=vi.fn();
+    await expect(verifyDirectStudentPayment({connect:async()=>({query,release})} as any,
+      {reference,transactionId:"901",actorId:null},{env,fetcher:fetcher as any}))
+      .rejects.toMatchObject({code:"DIRECT_RELEASE_SCHEMA_REQUIRED"});
+    expect(fetcher).not.toHaveBeenCalled();
+    // Catalog SELECTs contain the literal privilege name 'INSERT'; inspect the
+    // statement verb rather than treating that literal as a mutation.
+    expect(query.mock.calls.every(([sql]:any)=>/^\s*SELECT\b/.test(sql))).toBe(true);
+    expect(release).toHaveBeenCalledOnce();
+  });
   it("requires a distinct release, LIVE-only server credential, production context and explicit callback",()=>{
     for(const patch of [
       {EDUCORE_FLUTTERWAVE_DIRECT_RELEASE:undefined},{NODE_ENV:"development"},

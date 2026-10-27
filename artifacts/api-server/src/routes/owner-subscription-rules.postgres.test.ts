@@ -30,7 +30,8 @@ import { enforceRequestSubscription } from "../services/subscription-request-acc
 import { assertSubscriptionAccess } from "../services/subscription-enforcement";
 import {readNfcFeeCollectionOversight} from "../services/nfc-fee-collection-oversight";
 import {directStudentReadiness,startDirectStudentPayment,verifyDirectStudentPayment,DirectPaymentBlocked} from "../services/direct-student-live-payments";
-import directStudentPaymentsRouter,{directStudentWebhookRouter} from "./direct-student-live-payments";
+import directStudentPaymentsRouter,{directStudentWebhookRouter,directStudentPublicRouter} from "./direct-student-live-payments";
+import {appendFinancialHistory,requireFinancialActor,transitionDirectAttempt} from "../services/financial-history-writes";
 import {createDirectReleaseRouter} from "./direct-student-live-release";
 import {previewDirectRelease,createDirectReleaseReview,decideDirectReleaseReview,inspectDirectReleaseSchema} from "../services/direct-student-live-release";
 const releaseEnv:NodeJS.ProcessEnv={
@@ -68,6 +69,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
   const originalFetch=globalThis.fetch;
   const app=express();
   app.use("/fixture-direct-webhook",express.raw({type:"application/json"}),directStudentWebhookRouter);
+  app.use(directStudentPublicRouter);
   app.use(express.json());app.use(router);app.use(studentAccessRouter);app.use(nfcFeeOversightRouter);app.use(directStudentPaymentsRouter);
   app.use(createDirectReleaseRouter(undefined,releaseDeps));
   const path="/platform/subscription-payment-rules",queue="/platform/subscription-payment-assistance";
@@ -204,6 +206,66 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     const b=await request(path,"POST",draft(),{"x-role":role});
     const c=await request(queue,"POST",{schoolId:1,studentId:31,termId:4,amountMinor:320000,requestNote:"Fictional request"},{"x-role":role});
     expect([a.status,b.status,c.status]).toEqual([403,403,403]);expect(state.connections+state.queries).toBe(0);
+  });
+  async function boundaryAttempt(){
+    const rule=await insert(draft("STUDENT_PLATFORM"));
+    const review=(await db.query(`INSERT INTO student_direct_live_reviews
+      (school_id,academic_term_id,rule_id,report_digest,merchant_scope,no_split_confirmed,approved_by,expires_at,reason)
+      VALUES(1,4,$1,$2,'FICTIONAL',true,9,now()+interval '1 day','Boundary fixture') RETURNING id`,
+      [rule.id,"a".repeat(64)])).rows[0];
+    const obligation=(await db.query(`INSERT INTO student_direct_live_obligations
+      (school_id,student_id,academic_term_id,rule_id,review_id,merchant_scope,created_by)
+      VALUES(1,31,4,$1,$2,'FICTIONAL',9) RETURNING id`,[rule.id,review.id])).rows[0];
+    return(await appendFinancialHistory(db as any,"attempt",
+      [obligation.id,"SCV4_live_boundary_fictional_001","boundary-idempotency-key",9])).rows[0];
+  }
+  it("serializes competing finalizations and never updates the terminal winner",async()=>{
+    const a=await boundaryAttempt();
+    const finish=async(transactionId:string)=>{
+      const c=await db.connect();
+      try{
+        await c.query("BEGIN");
+        const result=await transitionDirectAttempt(c as any,Number(a.id),{state:"PAID",transactionId,
+          providerReference:`fictional-${transactionId}`,providerFeeMinor:5500,additionalFeeMinor:0});
+        await appendFinancialHistory(c as any,"event",[a.id,"PROVIDER_PAYMENT_VERIFIED",null,
+          JSON.stringify({transactionId})]);
+        await c.query("COMMIT");return result;
+      }catch(e){await c.query("ROLLBACK");throw e;}finally{c.release();}
+    };
+    const result=await Promise.allSettled([finish("9001"),finish("9002")]);
+    expect(result.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+    expect(result.filter(r=>r.status==="rejected")).toHaveLength(1);
+    const before=(await db.query("SELECT * FROM student_direct_live_attempts WHERE id=$1",[a.id])).rows[0];
+    expect(before.state).toBe("PAID");
+    expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_events WHERE attempt_id=$1",[a.id])).rows[0].n).toBe(1);
+    await expect(finish(before.provider_transaction_id)).rejects.toThrow("TRANSITION_FORBIDDEN");
+    expect((await db.query("SELECT * FROM student_direct_live_attempts WHERE id=$1",[a.id])).rows[0]).toEqual(before);
+  });
+  it("rolls back a real attempt transition when its event write fails",async()=>{
+    const a=await boundaryAttempt(),before=structuredClone(a),c=await db.connect();
+    try{
+      await c.query("BEGIN");
+      await transitionDirectAttempt(c as any,Number(a.id),{state:"UNKNOWN"});
+      // Actual FK failure in PostgreSQL, not a mock transaction.
+      await expect(appendFinancialHistory(c as any,"event",[-999,"CHECKOUT_RESPONSE_UNCERTAIN",null,"{}"]))
+        .rejects.toMatchObject({code:"23503"});
+      await c.query("ROLLBACK");
+      expect((await db.query("SELECT * FROM student_direct_live_attempts WHERE id=$1",[a.id])).rows[0]).toEqual(before);
+    }finally{await c.query("ROLLBACK");c.release();}
+  });
+  it("rejects unauthorized internal write callers using current database authority",async()=>{
+    const c=await db.connect();
+    try{
+      await c.query("BEGIN");
+      await expect(requireFinancialActor(c as any,9,1)).rejects.toThrow("NOT_AUTHORIZED");
+      await expect(requireFinancialActor(c as any,999)).rejects.toThrow("NOT_AUTHORIZED");
+      await c.query("UPDATE school_memberships SET status='INACTIVE' WHERE user_id=9");
+      await expect(requireFinancialActor(c as any,9)).rejects.toThrow("NOT_AUTHORIZED");
+      await expect(decideDirectReleaseReview(db as any,999,{action:"APPROVED",
+        reason:"Unauthorized fixture",evidenceDigest:"a".repeat(64),confirmScope:true},999,releaseDeps))
+        .rejects.toThrow("NOT_AUTHORIZED");
+      await c.query("ROLLBACK");
+    }finally{await c.query("ROLLBACK");c.release();}
   });
   it("rejects inactive identities and school-scoped Owner assignments before reading",async()=>{
     for(const headers of [{"x-user-status":"INACTIVE"},{"x-role-status":"INACTIVE"},{"x-school":"1"}] as Record<string,string>[]){
@@ -631,7 +693,10 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     await decideDirectReleaseReview(db as any,review.id,{action:"APPROVED",reason:"Fictional approval",
       evidenceDigest:review.evidenceDigest,confirmScope:true},9,releaseDeps);
     const lost=vi.fn(async()=>{throw new Error("Synthetic accepted checkout then lost response");});
-    const input={schoolId:1,studentId:31,termId:4,actorId:9,email:"fictional@example.test"};
+    await db.query(`INSERT INTO app_users VALUES(10,'Fictional','School Admin','ACTIVE') ON CONFLICT DO NOTHING;
+      INSERT INTO school_memberships(user_id,school_id,role,status)
+      SELECT 10,1,'SCHOOL_ADMIN','ACTIVE' WHERE NOT EXISTS(SELECT 1 FROM school_memberships WHERE user_id=10)`);
+    const input={schoolId:1,studentId:31,termId:4,actorId:10,email:"fictional@example.test"};
     const results=await Promise.allSettled(["uncertain-reference-001","uncertain-reference-002"].map(idempotencyKey=>
       startDirectStudentPayment(db as any,{...input,idempotencyKey},{...releaseDeps,fetcher:lost as any})));
     expect(results.map(r=>r.status)).toEqual(["rejected","rejected"]);expect(lost).toHaveBeenCalledTimes(1);
@@ -661,11 +726,14 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       expect((await db.query("SELECT state FROM student_direct_live_attempts")).rows[0].state).toBe("PENDING");
       expect(await readStudentTermPlatformAccess(db as any,1,31)).toMatchObject({restricted:true});
       verified=true;
-      expect((await request("/fixture-direct-webhook","POST",webhook,
-        {"verif-hash":releaseEnv.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH!})).status).toBe(200);
+      const finalizers=await Promise.all([
+        request("/fixture-direct-webhook","POST",webhook,{"verif-hash":releaseEnv.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH!}),
+        request(`/flutterwave/direct-student/callback?tx_ref=${attempt.reference}&transaction_id=990`),
+      ]);
+      expect(finalizers.map(r=>r.status)).toEqual([200,200]);
       expect(await readStudentTermPlatformAccess(db as any,1,31)).toMatchObject({restricted:false,status:"VERIFIED",termId:4});
       expect(await readStudentTermPlatformAccess(db as any,1,33)).toMatchObject({restricted:true});
-      expect(providerGets).toBe(2);
+      expect(providerGets).toBe(3);
       expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_events WHERE kind='PROVIDER_PAYMENT_VERIFIED'")).rows[0].n).toBe(1);
     }finally{spy.mockRestore();vi.unstubAllEnvs();}
   });
@@ -742,7 +810,13 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       return Response.json({status:"success",data:{link:"https://checkout.flutterwave.com/v3/hosted/pay/fictional-123"}});
     });
     const deps={env,report:report as any,fetcher:fetcher as unknown as typeof fetch};
-    const scope={schoolId:1,studentId:31,termId:4,actorId:9,email:"fixture@example.test"};
+    await db.query(`INSERT INTO app_users VALUES(10,'Fictional','School Admin','ACTIVE') ON CONFLICT DO NOTHING;
+      INSERT INTO school_memberships(user_id,school_id,role,status)
+      SELECT 10,1,'SCHOOL_ADMIN','ACTIVE' WHERE NOT EXISTS(SELECT 1 FROM school_memberships WHERE user_id=10)`);
+    const scope={schoolId:1,studentId:31,termId:4,actorId:10,email:"fixture@example.test"};
+    await expect(startDirectStudentPayment(db as any,{...scope,actorId:9,idempotencyKey:"owner-not-school-001"},deps))
+      .rejects.toThrow("FINANCIAL_ACTOR_NOT_AUTHORIZED");
+    expect(calls).toHaveLength(0);
     const first=await startDirectStudentPayment(db as any,{...scope,idempotencyKey:"fictional-checkout-001"},deps);
     assert.ok(first);
     txReferences.set("901",first.reference);
@@ -774,7 +848,9 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       {studentId:33,termId:4,requestNote:"Fictional Owner assistance"},{"x-role":"SCHOOL_ADMIN"});
     expect(assist.status).toBe(201);
     const {id:assistanceId}=await assist.json() as {id:number};
-    const second={...scope,studentId:33,idempotencyKey:"fictional-assisted-001",assistanceId};
+    const second={...scope,actorId:9,studentId:33,idempotencyKey:"fictional-assisted-001",assistanceId};
+    await expect(startDirectStudentPayment(db as any,{...second,actorId:10},deps))
+      .rejects.toThrow("FINANCIAL_ACTOR_NOT_AUTHORIZED");
     await expect(startDirectStudentPayment(db as any,second,deps))
       .rejects.toMatchObject({code:"INDEPENDENT_BANK_CREDIT_REQUIRED"});
     const bank=await request(`${queue}/${assistanceId}/verify-bank`,"POST",
@@ -785,7 +861,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     // Simulate absent audit authority on this disposable fixture, then restore the original evidence.
     await db.query(`UPDATE audit_logs SET event_type='FICTIONAL_MISSING_AUDIT'
       WHERE record_id=$1 AND event_type='SUBSCRIPTION_RULE_BANK_CREDIT_VERIFIED'`,[assistanceId]);
-    await expect(startDirectStudentPayment(db as any,{...scope,studentId:33,assistanceId,idempotencyKey:"no-audit-bank-001"},deps))
+    await expect(startDirectStudentPayment(db as any,{...scope,actorId:9,studentId:33,assistanceId,idempotencyKey:"no-audit-bank-001"},deps))
       .rejects.toMatchObject({code:"INDEPENDENT_BANK_CREDIT_REQUIRED"});
     await db.query(`UPDATE audit_logs SET event_type='SUBSCRIPTION_RULE_BANK_CREDIT_VERIFIED'
       WHERE record_id=$1 AND event_type='FICTIONAL_MISSING_AUDIT'`,[assistanceId]);
