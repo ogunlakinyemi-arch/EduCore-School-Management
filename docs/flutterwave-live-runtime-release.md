@@ -22,36 +22,34 @@ financial history is neither converted nor updated.
 
 ## Preconditions for a later, explicitly approved release
 
-No setting below was changed by this implementation.
+Current configuration is defined in [the payment-mode guide](flutterwave-payment-mode.md).
+The earlier shared-verifier/scope-flag instructions are superseded.
 
 Secure configuration:
 
-- `FLUTTERWAVE_LIVE_SECRET_KEY`: real LIVE V3 merchant secret.
-- **Established webhook name: `FLUTTERWAVE_WEBHOOK_VERIF_HASH`.** Presence-only
-  inspection on 2026-10-24 confirmed this name exists and
-  `FLUTTERWAVE_WEBHOOK_SECRET_HASH` does not. Do not rename, create or copy
-  either secret merely to match the latter spelling. The established variable
-  supplies LIVE authentication **only** with explicit
-  `EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT=LIVE`.
-- Optional `FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH` is supported but not required;
-  its name is currently absent and no new secret is created. It still requires
-  explicit LIVE binding. If both LIVE-capable names are supplied with different
-  values, configuration fails closed instead of silently choosing one.
-- `FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH`: a distinct, valid dedicated TEST hash,
-  matching the TEST dashboard. Preserve existing TEST authentication; never copy
-  or expose values in chat, logs, documentation or review payloads.
+- `FLUTTERWAVE_LIVE_SECRET_KEY`: dedicated LIVE V3 merchant secret.
+- `FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH`: required dedicated LIVE verifier,
+  matching the LIVE dashboard. No shared/generic/TEST fallback is permitted.
+- TEST credentials are not a prerequisite for LIVE. If a dedicated TEST verifier
+  exists, it must remain distinct from LIVE. Never copy or expose verifier values.
 
 Production-only runtime selection:
 
 - `NODE_ENV=production`
 - `EDUCORE_FLUTTERWAVE_MODE=LIVE`
-- `EDUCORE_FLUTTERWAVE_LIVE_ENABLED=true`
-- `EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT=LIVE`
 - `EDUCORE_FLUTTERWAVE_RELEASE=SCV3_V1`
 - `EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE`: reviewed stable merchant scope.
 - `PUBLIC_APP_URL`: explicit reviewed HTTPS application base, without credentials,
   query strings, fragments, development hosts or localhost. This runtime does
   **not** infer a production callback from a request Host header.
+- `FLUTTERWAVE_LIVE_WEBHOOK_URL`: exactly
+  `<PUBLIC_APP_URL>/api/webhooks/flutterwave/live/student-subscription`, recording
+  the reviewed LIVE dashboard registration expectation, not independently
+  proving dashboard registration.
+
+`EDUCORE_FLUTTERWAVE_MODE` is the sole mode selector. The obsolete
+`EDUCORE_FLUTTERWAVE_LIVE_ENABLED` and
+`EDUCORE_FLUTTERWAVE_WEBHOOK_ENVIRONMENT` flags are ignored.
 
 All of those plus a separately approved target release manifest are required
 before outbound HTTP. A missing table, absent manifest, wrong merchant scope or
@@ -70,28 +68,28 @@ fallback. The global LIVE/TEST mode selector remains exclusive as before;
 separate verifier support does not promise simultaneous TEST checkout in LIVE
 mode. Development retains TEST mode.
 
-### Preserve TEST operation while separating dashboard secrets
+### Exclusive modes and separate dashboard secrets
 
-| Runtime configuration | TEST verifier | LIVE verifier |
+| Selected mode | TEST verifier | LIVE verifier |
 | --- | --- | --- |
-| Scope unset or `TEST`, no dedicated TEST hash | Established shared verifier, for existing TEST compatibility | Disabled |
-| Scope unset or `TEST`, dedicated TEST hash supplied | Dedicated TEST hash only; malformed dedicated values never fall back | Disabled |
-| Scope `LIVE`, valid distinct dedicated TEST hash | Dedicated TEST hash only | Established LIVE-bound verifier, or non-conflicting optional dedicated LIVE name |
-| Scope `LIVE`, missing/identical TEST hash | TEST authentication blocked; operational LIVE release also blocked | No operational release |
-| Invalid scope or conflicting LIVE names | Invalid scope blocks TEST; conflicting LIVE names block LIVE | Disabled |
+| Unset or `TEST` | Dedicated TEST verifier, or retained legacy TEST verifier when no dedicated one is configured; no LIVE reuse | Disabled |
+| `LIVE` | Disabled | Dedicated LIVE verifier only |
+| Invalid, blank or padded value | Disabled | Disabled |
 
-The safe later configuration sequence is: obtain the TEST dashboard's own hash,
-save it securely as `FLUTTERWAVE_TEST_WEBHOOK_VERIF_HASH` and confirm matching
-TEST verification, then authorize any LIVE dashboard/runtime binding separately.
-Never copy the existing shared hash into a new variable without dashboard
-evidence; absence of that evidence is an external blocker, not a code fallback.
-No secret value or scope setting was changed during implementation.
+Complete/reconcile outstanding TEST attempts before switching modes. Configuration
+selection cannot bypass the release manifest, verified school authority or
+independent transaction verification.
 
 Both authenticated and guest TEST payment-link checkout checks use this selector;
 a dedicated-TEST-only configuration no longer incorrectly requires the shared
 variable. Exact constant-time `verif-hash` authentication remains in the adapters.
 
 ## Migration review — no automatic application
+
+**Current managed-release blocker and unsent support request:**
+[protected SQL Publish handoff](finance/flutterwave-live-managed-publish-blocker.md).
+The sequence below is a dependency/review specification, not permission to run
+raw Production DDL. No supported importer is configured in this repository.
 
 Existing reviewed drafts must be installed in dependency order on an explicitly
 verified target, with backup and separate migration authorization:
@@ -101,6 +99,8 @@ verified target, with backup and separate migration authorization:
 3. `flutterwave-live-workflow.up.sql`
 4. `flutterwave-live-readiness.up.sql`
 5. **New:** `flutterwave-live-runtime.up.sql`
+6. `flutterwave-live-school-onboarding.up.sql` — separate onboarding capability;
+   included in the six-file review package, not a grant of checkout approval.
 
 All are under `lib/db/dev-reconciliation/`. The new draft does not seed an
 enabled release. It adds the target release manifest, append-only per-school

@@ -3,6 +3,16 @@
 Date: 2026-10-26. This supersedes the two rollback findings in
 `bobadex-verification-production-draft-review.md`, not its historical file hashes.
 
+## Current managed-release gate — 2026-10-27
+
+See [the protected SQL Publish handoff](flutterwave-live-managed-publish-blocker.md).
+The historical operator/manual-session instructions below do **not** establish a
+supported managed-Publish installation path or authorize raw Production DDL.
+Treat their file order, checksums and preservation checks as review requirements.
+Do not execute or stage this package until Replit supplies a supported procedure
+preserving all functions, triggers, ownership and permissions through Publish.
+No SQL file, rollback companion or package checksum is changed by this notice.
+
 ## Status
 
 **Draft-code safety fixes and source-derived rehearsal: PASS.**

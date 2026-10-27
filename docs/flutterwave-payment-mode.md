@@ -1,5 +1,10 @@
 # Integrated Flutterwave payment mode
 
+Current managed-schema release blocker, exact technical evidence and an unsent
+support request are recorded in
+[the protected SQL Publish handoff](finance/flutterwave-live-managed-publish-blocker.md).
+Configuration selection alone is not LIVE activation.
+
 The sole mode selector is the server-side, non-secret setting:
 
 ```text
