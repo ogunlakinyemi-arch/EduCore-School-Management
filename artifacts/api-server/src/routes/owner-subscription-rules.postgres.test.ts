@@ -881,6 +881,9 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     await expect(startDirectStudentPayment(db as any,{...scope,actorId:9,idempotencyKey:"owner-not-school-001"},deps))
       .rejects.toThrow("FINANCIAL_ACTOR_NOT_AUTHORIZED");
     expect(calls).toHaveLength(0);
+    await expect(verifyDirectStudentPayment(db as any,{reference:"SCV4_live_unknown_reference_001",
+      transactionId:"901",actorId:null},deps)).rejects.toMatchObject({code:"UNKNOWN_REFERENCE"});
+    expect(calls).toHaveLength(0);
     const first=await startDirectStudentPayment(db as any,{...scope,idempotencyKey:"fictional-checkout-001"},deps);
     assert.ok(first);
     txReferences.set("901",first.reference);
@@ -897,9 +900,35 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect(pending.state).toBe("PENDING");
     await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     states.set("901","successful");
-    const paid=await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps);
+    // Observe BOTH independent verifiers waiting on the real attempt row, then
+    // release it. Concurrent delivery must commit one terminal result/event.
+    const held=await db.connect();
+    let concurrent:Promise<any[]>|undefined;
+    try{
+      await held.query("BEGIN");
+      await held.query("SELECT id FROM student_direct_live_attempts WHERE reference=$1 FOR UPDATE",[first.reference]);
+      concurrent=Promise.all([1,2].map(()=>verifyDirectStudentPayment(db as any,
+        {reference:first.reference,transactionId:"901",actorId:null},deps)));
+      void concurrent.catch(()=>undefined);
+      let blocked=0;
+      const deadline=process.hrtime.bigint()+5_000_000_000n;
+      while(blocked<2 && process.hrtime.bigint()<deadline){
+        blocked=Number((await db.query(`SELECT count(*) AS n FROM pg_stat_activity
+          WHERE datname=current_database() AND state='active' AND wait_event_type='Lock'
+            AND query LIKE '%SELECT * FROM student_direct_live_attempts WHERE reference=%FOR UPDATE%'`)).rows[0].n);
+      }
+      expect(blocked).toBe(2);
+      expect((await db.query("SELECT state FROM student_direct_live_attempts WHERE reference=$1",[first.reference])).rows[0].state)
+        .toBe("PENDING");
+    }finally{
+      await held.query("ROLLBACK");held.release();
+    }
+    const [paid,replayed]=await concurrent!;
+    expect(replayed.state).toBe("PAID");
     expect(paid.state).toBe("PAID");
     await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).resolves.toBeUndefined();
+    await expect(assertVerifiedStudentNfcPayment(db as any,2,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
+    await expect(assertVerifiedStudentNfcPayment(db as any,1,33)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     expect((await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps)).state).toBe("PAID");
     await expect(verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"902",actorId:null},deps))
       .rejects.toMatchObject({code:"VERIFIED_TRANSACTION_CONFLICT"});

@@ -46,6 +46,8 @@ PUBLIC_APP_URL = "https://educore.yetenia.com"
 EDUCORE_FLUTTERWAVE_MODE = "LIVE"
 EDUCORE_FLUTTERWAVE_RELEASE = "SCV3_V1"
 FLUTTERWAVE_LIVE_WEBHOOK_URL = "https://educore.yetenia.com/api/webhooks/flutterwave/live/student-subscription"
+EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL = "https://educore.yetenia.com/api/flutterwave/direct-student/callback"
+EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL = "https://educore.yetenia.com/api/webhooks/flutterwave/direct-student"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-2357c139-bab2-4688-9e2e-9a940e1cb1cc"
