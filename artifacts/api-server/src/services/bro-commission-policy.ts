@@ -66,6 +66,9 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
       if(Number(prior.school_id)!==scope.schoolId)throw new BroCommissionBlocked("Existing earning belongs to another school.");
       await c.query("COMMIT");return {id:Number(prior.id),amountMinor:Number(prior.amount_minor),existing:true};
     }
+    // A new earning also requires immutable direct-payment source evidence.
+    if(!(await inspectFinancialGuards(c,"direct")).ready)
+      throw new BroCommissionBlocked("Direct payment history guards are required before new BRO accrual.");
     const evidence=(await c.query(`SELECT o.id AS obligation_id,a.id AS attempt_id,a.verified_at AS paid_at,
       a.verified_at::text AS paid_at_exact,
       (t.start_date::timestamp AT TIME ZONE 'Africa/Lagos') AS term_start,

@@ -222,6 +222,7 @@ export async function decideDirectReleaseReview(pool:StudentSubscriptionSqlPool,
   try{
     await c.query("BEGIN");
     await requireFinancialActor(c,actorId);
+    if(!(await inspectDirectReleaseSchema(c)).ready)fail("DIRECT_RELEASE_SCHEMA_REQUIRED");
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`direct-release:${id}`]);
     const v=await load(c,id),scope={schoolId:v.row.school_id,termId:v.row.academic_term_id,ruleId:Number(v.row.rule_id)};
     if(v.row.evidence_digest!==input.evidenceDigest)fail("REVIEW_EVIDENCE_MISMATCH");

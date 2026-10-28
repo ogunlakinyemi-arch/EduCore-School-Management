@@ -24,8 +24,10 @@ describe("prospective independent BRO policy",()=>{
     expect(broEntitlementAmount(policy,{...eligible,paidAt:"2027-01-03T23:00:00Z"})).toBeNull();
   });
 });
-function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved?:boolean;termStart?:string}={}){
+function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved?:boolean;termStart?:string;missingGuard?:string}={}){
   const catalog=financialGuardCatalogFixture();
+  catalog.functions=catalog.functions.filter(f=>f.proname!==options.missingGuard);
+  catalog.triggers=catalog.triggers.filter(t=>t.tgname!==options.missingGuard);
   let saved=options.oldEntry??null;
   const audits:any[]=[];
   const policyRow={id:1,status:"SCHEDULED",amount_minor:15000,effective_at:policy.effectiveAt,ends_at:null,
@@ -90,6 +92,24 @@ describe("append-only BRO processing (mocked SQL, no app database)",()=>{
     await expect(accrueBroCommission(db.pool,scope,actor)).rejects.toThrow("recovery clearance");
     expect(db.saved).toBeNull();
     expect(db.query.mock.calls.map(([q])=>q).join("\n")).not.toMatch(/CREATE|ALTER|INSERT|UPDATE|DELETE/);
+  });
+  it.each(["guard_student_direct_history","guard_student_direct_attempt",
+    "student_direct_obligation_history","student_direct_attempt_history","student_direct_event_history"])(
+    "blocks new accrual with intact BRO guards but missing %s",async missingGuard=>{
+      const db=database({missingGuard});
+      expect(await broCommissionSnapshot(db.pool)).toEqual({available:true,entries:[]});
+      await expect(accrueBroCommission(db.pool,scope,actor)).rejects.toThrow("Direct payment history guards");
+      expect(db.saved).toBeNull();expect(db.audits).toHaveLength(0);
+      const sql=db.query.mock.calls.map(([q])=>q);
+      expect(sql).toContain("ROLLBACK");expect(sql).not.toContain("COMMIT");
+      expect(sql.some(q=>q.includes("SELECT o.id AS obligation_id"))).toBe(false);
+      expect(sql.some(q=>/^\s*(?:INSERT|UPDATE|DELETE)\b/.test(q))).toBe(false);
+    });
+  it("preserves readback of a frozen earning when direct guards are missing",async()=>{
+    const old={id:10,school_id:1,amount_minor:15000};
+    const db=database({oldEntry:old,missingGuard:"guard_student_direct_attempt"});
+    expect(await accrueBroCommission(db.pool,scope,actor)).toEqual({id:10,amountMinor:15000,existing:true});
+    expect(db.saved).toEqual(old);expect(db.audits).toHaveLength(0);
   });
   it("rolls back the earning if its audit cannot be recorded",async()=>{
     const db=database();

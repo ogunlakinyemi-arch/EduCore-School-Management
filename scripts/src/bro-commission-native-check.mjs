@@ -81,6 +81,7 @@ try{
     assert.equal(report.staff_rule_ends_at_present,false);
     assert.equal(report.required_functions.length,4);
   });
+  await pool.query(readFileSync(join(root,"lib/db/drizzle/0177_direct_student_live_release_reviews.sql"),"utf8"));
   const output=join(scratch,"bro.mjs");
   await build({entryPoints:[join(root,"artifacts/api-server/src/services/bro-commission-policy.ts")],
     bundle:true,platform:"node",format:"esm",outfile:output,logLevel:"silent"});
@@ -115,6 +116,23 @@ try{
     return{schoolId:1,studentId,termId};
   }
   const scope=await evidence(31,4);
+  for(const defect of [
+    "ALTER TABLE student_direct_live_attempts DISABLE TRIGGER student_direct_attempt_history",
+    "DROP FUNCTION guard_student_direct_history() CASCADE",
+  ])await check(`new accrual fails closed with BRO guards intact: ${defect}`,async()=>{
+    const c=await pool.connect();
+    try{
+      await c.query("BEGIN");
+      await c.query(defect);
+      assert.equal(await broStorageReady(c),true);
+      const local={connect:async()=>({release:()=>{},query:(sql,args)=>c.query(
+        sql.replace(/\bnow\(\)/gi,"'2027-03-01T12:00Z'::timestamptz"),args)})};
+      await assert.rejects(actualAccrue(local,scope,actor),/Direct payment history guards/);
+      // Accrual's ROLLBACK restores the fixture's transactional guard change too.
+      assert.equal((await pool.query("SELECT count(*)::int AS n FROM bro_term_commission_entitlements")).rows[0].n,0);
+      assert.equal((await pool.query("SELECT count(*)::int AS n FROM audit_logs WHERE event_type='BRO_COMMISSION_EARNED'")).rows[0].n,0);
+    }finally{await c.query("ROLLBACK");c.release();}
+  });
   await check("eight concurrent calls create one 150 liability and one audit",async()=>{
     const results=await Promise.all(Array.from({length:8},()=>accrueBroCommission(pool,scope,actor)));
     assert.equal(results.filter(r=>!r.existing).length,1);

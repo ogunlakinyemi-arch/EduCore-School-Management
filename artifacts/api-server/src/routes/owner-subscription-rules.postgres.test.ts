@@ -664,6 +664,69 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       c.release();
     }
   });
+  it.each([
+    {action:"REJECTED" as const,missing:false},{action:"REJECTED" as const,missing:true},
+    {action:"EXPIRED" as const,missing:false},{action:"EXPIRED" as const,missing:true},
+  ])("blocks $action with a missing/disabled decision guard (missing=$missing)",async({action,missing})=>{
+    const {review}=await releaseRequest();
+    if(action==="EXPIRED")await setFixtureTime(new Date(Date.parse(review.expiresAt)+1).toISOString());
+    const before=(await db.query("SELECT * FROM audit_logs ORDER BY id")).rows;
+    const c=await db.connect();
+    try{
+      expect((await inspectDirectReleaseSchema(c)).ready).toBe(true);
+      await c.query(missing
+        ?"DROP TRIGGER student_direct_release_decision_history ON student_direct_live_release_decisions"
+        :"ALTER TABLE student_direct_live_release_decisions DISABLE TRIGGER student_direct_release_decision_history");
+      await expect(decideDirectReleaseReview(db as any,review.id,{
+        action,reason:"Fixture must fail closed",evidenceDigest:review.evidenceDigest,confirmScope:true,
+      },9,releaseDeps)).rejects.toMatchObject({code:"DIRECT_RELEASE_SCHEMA_REQUIRED"});
+      expect((await db.query("SELECT * FROM student_direct_live_release_decisions")).rows).toEqual([]);
+      expect((await db.query("SELECT * FROM audit_logs ORDER BY id")).rows).toEqual(before);
+    }finally{
+      await c.query(missing
+        ?`CREATE TRIGGER student_direct_release_decision_history BEFORE UPDATE OR DELETE
+          ON student_direct_live_release_decisions FOR EACH ROW EXECUTE FUNCTION guard_student_direct_history()`
+        :"ALTER TABLE student_direct_live_release_decisions ENABLE TRIGGER student_direct_release_decision_history");
+      c.release();
+    }
+    // With the exact guard restored, the same otherwise-valid decision succeeds.
+    expect((await decide(review,action)).status).toBe(200);
+  });
+  it("blocks callback and webhook for one missing procedural object with the remaining schema valid",async()=>{
+    const attempt=await boundaryAttempt(),c=await db.connect();
+    const realFetch=globalThis.fetch,provider=vi.fn();
+    const spy=vi.spyOn(globalThis,"fetch").mockImplementation(async(url,init)=>{
+      if(String(url).startsWith(base+"/"))return realFetch(url,init);
+      provider();
+      throw new Error("External provider access is forbidden in missing-guard test");
+    });
+    try{
+      for(const [key,value] of Object.entries(releaseEnv))vi.stubEnv(key,value!);
+      expect((await inspectDirectReleaseSchema(c)).ready).toBe(true);
+      await c.query("DROP TRIGGER student_direct_event_history ON student_direct_live_events");
+      expect(await inspectDirectReleaseSchema(c)).toEqual({
+        ready:false,issues:["GUARD_TRIGGER_DEFINITION:student_direct_event_history"],
+      });
+      const before=(await db.query("SELECT * FROM student_direct_live_attempts ORDER BY id")).rows;
+      const events=(await db.query("SELECT * FROM student_direct_live_events ORDER BY id")).rows;
+      for(const response of [
+        await request(`/flutterwave/direct-student/callback?tx_ref=${attempt.reference}&transaction_id=990`),
+        await request("/fixture-direct-webhook","POST",
+          {event:"charge.completed",data:{id:990,tx_ref:attempt.reference}},
+          {"verif-hash":releaseEnv.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH!}),
+      ]){
+        expect(response.status).toBe(409);
+        expect(await response.json()).toEqual({error:"DIRECT_RELEASE_SCHEMA_REQUIRED"});
+      }
+      expect(provider).not.toHaveBeenCalled();
+      expect((await db.query("SELECT * FROM student_direct_live_attempts ORDER BY id")).rows).toEqual(before);
+      expect((await db.query("SELECT * FROM student_direct_live_events ORDER BY id")).rows).toEqual(events);
+    }finally{
+      await c.query(`CREATE TRIGGER student_direct_event_history BEFORE UPDATE OR DELETE
+        ON student_direct_live_events FOR EACH ROW EXECUTE FUNCTION guard_student_direct_history()`);
+      c.release();spy.mockRestore();vi.unstubAllEnvs();
+    }
+  });
   it("derives expiry on GET without a write; an explicit expiry decision appends history",async()=>{
     const proposal=await insert(draft("STUDENT_PLATFORM")),scope={schoolId:1,termId:4,ruleId:proposal.id};
     const preview=await previewDirectRelease(db as any,scope,releaseDeps);
