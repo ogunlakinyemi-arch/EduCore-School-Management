@@ -28,3 +28,14 @@ contacting Support again or repeating prior investigations.
 **How to apply:** Keep the known procedural-delivery blocker explicit, preserve
 every readiness gate, and only attempt authenticated visual checks when a valid
 authorized session is already available. Do not invent operational evidence.
+
+Customer-controlled PostgreSQL is authorized for feasibility assessment only,
+not provisioning, data copying, credential changes or migration execution.
+
+**Why:** On 28 October 2026 the Owner explicitly approved a narrowly scoped
+hosting feasibility review while preserving the financial model and all gates.
+
+**How to apply:** Treat any future provider/account/budget, private source export,
+rehearsal, Production cutover and source retirement as separate approval
+boundaries. A technically plausible alternative does not close current
+Production readiness or authorize LIVE.

@@ -18,6 +18,7 @@ import {PaymentReadinessGuidance} from "@/components/payment-readiness-guidance"
 
 export const POLICY = 'NEW_ONLY_PRESERVE_LEGACY';
 export const PLATFORM_AMOUNT_MINOR = 320000;
+const SCHEMA_NOT_VERIFIED = 'Required review schema, permissions or history guards have not passed verification.';
 const ELIGIBLE_RULE_STATUSES = ['DRAFT', 'SCHEDULED', 'ACTIVE'];
 const OK = new Set(['READY', 'PASS', 'PASSED', 'OK', 'COMPLETE']);
 /** Checks that are expected to remain open at approval time; they gate the separate operational switch. */
@@ -33,7 +34,7 @@ export const isEligibleProposal = (p: Proposal) => p.product === 'STUDENT_PLATFO
 export function approvalBlockers(r: DirectReleaseReadiness | undefined): string[] {
   if (!r) return ['Readiness has not loaded.'];
   const out = r.checks.filter(c => !APPROVAL_EXEMPT.has(c.code) && !OK.has(String(c.status).toUpperCase())).map(c => `${c.label}: ${c.detail}`);
-  if (!r.schemaReady) out.unshift('Release review storage is not ready. No review can be created.');
+  if (!r.schemaReady) out.unshift(`${SCHEMA_NOT_VERIFIED} No review can be created.`);
   if (!r.approvalReady) out.push('Server reports approval is not ready for this scope.');
   return out;
 }
@@ -224,7 +225,7 @@ function CreateReview({ scope, readiness, disabled, onSettled }: { scope: Scope;
   return <section className="panel p-5" data-testid="section-create-review">
     <div className="eyebrow mb-1">03 · Create release review</div>
     <p className={cx(note, 'mb-3')}>Binds merchant evidence to preview digest <span className="font-mono">{short(readiness.previewDigest)}</span>. Creating a review does not approve, schedule or enable anything.</p>
-    {!readiness.schemaReady && <p className="mb-3 rounded-lg bg-rose-50 p-2 text-sm text-rose-900" data-testid="text-schema-blocked">Review storage is missing. Creation is blocked.</p>}
+    {!readiness.schemaReady && <p className="mb-3 rounded-lg bg-rose-50 p-2 text-sm text-rose-900" data-testid="text-schema-blocked">{SCHEMA_NOT_VERIFIED} Creation is blocked.</p>}
     {disabled && <p className="mb-3 rounded-lg bg-amber-50 p-2 text-sm text-amber-900" data-testid="text-open-review">An open review already exists for this scope. Decide it below first.</p>}
     <div className="grid gap-3 md:grid-cols-2">
       <input className={entry} placeholder="Merchant evidence reference (8-300 chars)" maxLength={300} value={ref} onChange={e => setRef(e.target.value)} data-testid="input-evidence-ref" />

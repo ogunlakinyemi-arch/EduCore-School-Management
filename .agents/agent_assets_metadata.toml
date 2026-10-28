@@ -812,3 +812,17 @@ mtime_ms = 1793010505317
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/7f3aa51c-cad3-4da4-92f3-53681ca276e0/b3d598cf-d083-472a-a374-816772d3c5d1"
 storage_version_token = "1793010545061206"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "eEscixLUnaongm_tKaWY1"
+uri = "file://docs/customer-controlled-postgresql-feasibility-2026-10-28.md"
+type = "text"
+title = "EduCore PostgreSQL hosting feasibility review"
+description = "Conditional feasibility decision, evidence gaps, migration ordering, permissions, recovery, cost categories and required Owner approvals. No hosting or migration was performed."
+logical_id = "a67247b4-1630-43d8-9a65-99452c955144"
+content_hash = "sha256:3592d8af731183a8df0b4c490f1badade8acad93f8584092d9882ead10e001d0"
+size = 23749
+mtime_ms = 1793177201278
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/a67247b4-1630-43d8-9a65-99452c955144/3775b928-83ab-4618-8c0a-9ef0c56ddc18"
+storage_version_token = "1793177211883434"
+content_type = "text/markdown"

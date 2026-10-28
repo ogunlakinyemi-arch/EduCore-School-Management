@@ -165,10 +165,20 @@ describe('Direct Flutterwave LIVE readiness', () => {
     const vars = f.createMutate.mock.calls[0][0].data;
     expect(vars).toMatchObject({ schoolId: 1, termId: 4, ruleId: 11, previewDigest: 'pd-abc', noSplitConfirmed: true, policy: 'NEW_ONLY_PRESERVE_LEGACY' });
   });
-  it('blocks creation when schema is missing', () => {
-    f.readiness = readyR({ schemaReady: false }); mount(); selectScope();
-    expect(screen.getByTestId('text-schema-blocked')).toBeTruthy();
+  it.each([
+    'GUARD_FUNCTION_DEFINITION:guard_student_direct_history',
+    'TABLE_COLUMNS_OR_PRIVILEGES:student_direct_live_reviews',
+  ])('describes failed schema verification without inventing missing storage: %s', (issue) => {
+    f.readiness = readyR({ schemaReady: false, approvalReady: false,
+      checks: [{ ...check('SCHEMA', 'BLOCKED'), detail: issue }] }); mount(); selectScope();
+    const diagnostic = screen.getByTestId('text-schema-blocked').textContent;
+    expect(diagnostic).toContain('schema, permissions or history guards have not passed verification');
+    expect(diagnostic).not.toContain('storage is missing');
+    expect(screen.getByTestId('list-blockers').textContent).toContain(issue);
     expect((screen.getByTestId('button-create-review') as HTMLButtonElement).disabled).toBe(true);
+    expect(f.createMutate).not.toHaveBeenCalled();
+    expect(f.decideMutate).not.toHaveBeenCalled();
+    expect(f.checkout).not.toHaveBeenCalled();
   });
   it('requires REVIEWED state, final screen and explicit confirmation to approve', () => {
     f.reviews = [review('REVIEWED')]; mount(); selectScope();
