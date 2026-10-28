@@ -5,6 +5,7 @@ import { Landmark } from 'lucide-react';
 import {
   useGetAuthorizedContext, useGetPlatformPaymentSettlement, useUpdatePlatformPaymentSettlement,
   useListPlatformSettlementHistory,
+  useVerifyOwnerReceivingAccount,
    getGetPlatformPaymentSettlementQueryKey, getListPlatformSettlementHistoryQueryKey,
 } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, date } from '@/components/shared';
@@ -74,10 +75,23 @@ function OwnerSettlement() {
   const hp = { limit: 50 };
   const hist = useListPlatformSettlementHistory(hp, { query: { enabled: tab === 'history', queryKey: getListPlatformSettlementHistoryQueryKey(hp), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
   const update = useUpdatePlatformPaymentSettlement();
+  const verify = useVerifyOwnerReceivingAccount();
+  const verifyAccount = async () => {
+    setFail(''); setMsg('');
+    try {
+      const result = await verify.mutateAsync();
+      qc.setQueryData(getGetPlatformPaymentSettlementQueryKey(), result);
+      setMsg('Beneficiary details verified against the official company name using LIVE account resolution. This is not proof of a transfer, receipt or Flutterwave settlement.');
+    } catch (e) {
+      setFail(errMsg(e));
+    } finally {
+      invalidateAll(qc);
+    }
+  };
   const save = async (d: FormState) => {
     try {
       await update.mutateAsync({ data: { businessName: d.businessName.trim(), businessRegistrationNumber: d.businessRegistrationNumber.trim() || null, settlementContactEmail: d.settlementContactEmail.trim() || undefined, settlementContactPhone: d.settlementContactPhone.trim() || null, bankName: d.bankName.trim(), bankCode: d.bankCode, accountName: d.accountName.trim(), accountNumber: d.accountNumber, currency: 'NGN' } });
-      setEditing(false); setFail(''); setMsg('Owner-provided assistance bank details saved. Account verification has not been started. No supported company verification action is currently available; unverified transfer instructions remain hidden from schools.'); invalidateAll(qc);
+      setEditing(false); setFail(''); setMsg('Owner-provided assistance bank details saved, not verified. Use Verify account details explicitly; unverified transfer instructions remain hidden from schools.'); invalidateAll(qc);
     } catch (e) { setFail(errMsg(e)); }
   };
   return <div>
@@ -87,10 +101,11 @@ function OwnerSettlement() {
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><Tabs tabs={[['company', 'Company profile'], ['schools', 'NFC fee collection'], ['history', 'All settlement history']] as const} value={tab} onChange={setTab} />
       <Freshness updatedAt={company.dataUpdatedAt} fetching={company.isFetching} onRefresh={() => { company.refetch(); if (tab === 'history') hist.refetch(); }} /></div>
     {tab === 'company' && (company.isLoading ? <SkeletonPage /> : company.isError || !company.data ? <ErrorState retry={() => company.refetch()} /> :
-      <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">Owner receiving account · subscription assistance</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-company-settlement">{company.data.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
-        {company.data.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="Assistance receiving account not configured" description="Owner-provided receiving details are for optional school subscription assistance only. Unverified transfer details are not shown to schools; no company verification action is currently available." /> : <ProfileView p={company.data} />}
-        {company.data.status === 'PENDING_VERIFICATION' && <>
-          <p className={`${note} mt-4`} role="status" data-testid="company-verification-guidance">Company account verification has not been started. No supported company verification action is currently available; saving or refreshing will not verify this account. These are Owner-provided assistance details, not an account awaiting Flutterwave merchant settlement approval. It remains PENDING and must not be used as verified transfer instructions. Schools cannot view these unverified transfer details and should contact the Platform Owner before any transfer. Beneficiary/account verification would not itself prove actual settlement, money movement or receipt of a school transfer.</p>
+      <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">Owner receiving account · subscription assistance</h2><Button disabled={verify.isPending} onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-company-settlement">{company.data.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
+        {company.data.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="Assistance receiving account not configured" description="Save the official company receiving account, then explicitly verify its details. Unverified transfer details are not shown to schools." /> : <ProfileView p={company.data} />}
+        {['PENDING_VERIFICATION', 'ACTION_REQUIRED'].includes(company.data.status) && <>
+          <p className={`${note} mt-4`} role="status" data-testid="company-verification-guidance">Saving or refreshing will not verify this account. Verify account details checks the saved bank number and beneficiary against YETENIA TECHNOLOGIES LIMITED using LIVE Flutterwave account resolution. Only case, spacing, punctuation separators and a final LTD abbreviation are accepted; approximate or personal-name matches are rejected. Sandbox and Development results cannot verify the account. Schools cannot view unverified details and should contact the Platform Owner. Beneficiary resolution does not prove money movement, receipt of a school transfer or merchant settlement.</p>
+          <Button disabled={verify.isPending || update.isPending || editing} onClick={verifyAccount} testId="button-verify-owner-account">{verify.isPending ? 'Verifying…' : 'Verify account details'}</Button>
           <SettlementRemovalReviewControl />
         </>}</section>)}
     {tab === 'schools' && <NfcFeeCollectionOversight />}

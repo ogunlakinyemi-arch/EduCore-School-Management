@@ -12,7 +12,7 @@ const s = vi.hoisted(() => {
   const profile = { fullName: 'Unit Partner', isOwner: true };
   return {
     owner: true, schoolId: 7, emp, settlement, payout, profile,
-    save: vi.fn(), partnerSave: vi.fn(),
+    save: vi.fn(), partnerSave: vi.fn(), verify: vi.fn(), refresh: vi.fn(),
     catalogue: undefined as any,
   };
 });
@@ -32,7 +32,8 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
     ...actual,
     useGetPaymentAccountProviders: () => q(s.catalogue),
     useGetAuthorizedContext: () => s.owner ? ctxOwner : ctxAdmin,
-    useGetPlatformPaymentSettlement: () => setQ, useUpdatePlatformPaymentSettlement: mut,
+    useGetPlatformPaymentSettlement: () => ({...setQ, refetch:s.refresh}), useUpdatePlatformPaymentSettlement: mut,
+    useVerifyOwnerReceivingAccount: () => ({isPending:false,mutateAsync:s.verify}),
     useListPlatformSchoolSettlements: () => q([]), useListPlatformSettlementHistory: () => q([]), useGetPlatformSchoolSettlement: () => q(undefined),
     useGetSchoolPaymentSettlement: () => setQ, useUpdateSchoolPaymentSettlement: mut, useListSchoolSettlementHistory: () => q([]),
     useListCompanyPayrollEmployees: () => empQ, useListCompanyPayrollPeriods: () => perQ, useUpsertCompanyPayrollEmployee: mut,
@@ -67,6 +68,7 @@ const pick = async (text: string) => {
 const submit = async (form: Element) => { await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); }); await settle(); };
 
 beforeEach(() => {
+  s.settlement.status='VERIFIED';s.verify.mockReset();s.refresh.mockReset();
   s.owner = true; s.schoolId = 7; s.catalogue = catalogue(); s.save.mockReset().mockResolvedValue({}); s.partnerSave.mockReset();
   vi.stubGlobal('fetch', vi.fn(() => { throw new Error('No network'); }));
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -87,9 +89,10 @@ describe.each(flows)('$name save payload', f => {
     expect(s.save).toHaveBeenCalledTimes(1);
     expect(f.data()).toMatchObject({ bankName: 'Fictional Beta Microfinance Bank', bankCode: '90002' });
     if(f.name === 'Owner company settlement'){
-      expect(host.textContent).toContain('Owner-provided assistance bank details saved. Account verification has not been started.');
+      expect(s.verify).not.toHaveBeenCalled();
+      expect(host.textContent).toContain('Owner-provided assistance bank details saved, not verified.');
       expect(host.textContent).toContain('unverified transfer instructions remain hidden from schools');
-      expect(host.textContent).toContain('No supported company verification action is currently available');
+      expect(host.textContent).toContain('Use Verify account details explicitly');
       expect(host.textContent).not.toContain('saved for provider verification');
       for(const key of ['status','verificationStatus','verifiedAt','verifiedBy'])
         expect(f.data()).not.toHaveProperty(key);
@@ -117,6 +120,30 @@ describe.each(flows)('$name save payload', f => {
     expect(document.body.querySelector('[role="option"]')).toBeNull();
     await submit(form);
     expect(s.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('Owner explicit receiving-account verification control',()=>{
+  it('only invokes resolution on the explicit action, then displays its result and updates the cache',async()=>{
+    s.settlement.status='PENDING_VERIFICATION';
+    s.verify.mockResolvedValue({...s.settlement,status:'VERIFIED'});
+    await render(<PaymentSettlementPage/>);
+    expect(s.verify).not.toHaveBeenCalled();
+    await click(node('button-verify-owner-account'));
+    expect(s.verify).toHaveBeenCalledOnce();
+    expect(s.verify.mock.calls[0]).toEqual([]);
+    expect(host.textContent).toContain('Beneficiary details verified against the official company name');
+    expect(host.textContent).toContain('not proof of a transfer');
+    expect(client.getQueryData(['/api/platform/finance/payment-settlement'])).toMatchObject({status:'VERIFIED'});
+    expect(s.save).not.toHaveBeenCalled();
+  });
+  it('shows the safe failure and leaves the account pending after a failed explicit action',async()=>{
+    s.settlement.status='PENDING_VERIFICATION';
+    s.verify.mockRejectedValue(new Error('Account remains unverified. LIVE resolution unavailable.'));
+    await render(<PaymentSettlementPage/>);await click(node('button-verify-owner-account'));
+    expect(host.textContent).toContain('Account remains unverified. LIVE resolution unavailable.');
+    expect(host.textContent).not.toContain('Beneficiary details verified');
+    expect(s.settlement.status).toBe('PENDING_VERIFICATION');expect(s.save).not.toHaveBeenCalled();
   });
 });
 

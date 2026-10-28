@@ -4,6 +4,7 @@ import * as PayrollContract from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import { developmentFlutterwaveCollectionStatus } from "../lib/flutterwave-development-config";
 import { bankAccountResolutionConfigured } from "../lib/flutterwave-payroll-v3";
+import { liveOwnerResolutionConfigured, officialOwnerAccountName, OWNER_RECEIVING_ACCOUNT_POLICY } from "../lib/owner-receiving-account-policy";
 import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
 import {
   assertRemovalEnvironment,
@@ -783,6 +784,26 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
   );
 }));
 
+router.post("/platform/finance/payment-settlement/verify-account", run(async (req, res) => {
+  const context = requirePlatformOwner(req);
+  if (req.body && Object.keys(req.body).length) {
+    throw new AuthError(400, "Verification uses only the saved company account. Do not send bank details or status.");
+  }
+  if (!liveOwnerResolutionConfigured()) {
+    throw new AuthError(409, "Account remains unverified. Use the LIVE runtime with a dedicated LIVE credential for beneficiary resolution; sandbox or Development results are not accepted. No payment activation is required.", "OWNER_ACCOUNT_LIVE_REQUIRED");
+  }
+  const rows = poolRows(await pool.query(
+    "SELECT * FROM settlement_payroll_profiles WHERE scope='YEMAIT_COMPANY' AND school_id IS NULL LIMIT 2",
+  ));
+  if (rows.length !== 1) throw new AuthError(409, "Save one company receiving account before explicitly verifying it.");
+  const row = await verifySettlementBankAccount({
+    row: rows[0], scope: "YEMAIT_COMPANY", actor: context.user, actorRole: "PLATFORM_OWNER",
+  });
+  res.setHeader("Cache-Control", "private, no-store");
+  return respond(res, PayrollContract.UpdatePlatformPaymentSettlementResponse,
+    settlementProfileProjection(row, "YEMAIT_COMPANY"));
+}));
+
 async function schoolSettlementProjection(schoolId: number, includeOwnerDiagnostics = true) {
   const result = await pool.query(
     `SELECT s.id AS oversight_school_id,s.name AS school_name,p.*
@@ -844,6 +865,10 @@ async function verifySettlementBankAccount(input: {
   actorRole: string;
   accountResolutionIdempotencyKey?: string;
 }) {
+  const company = input.scope === "YEMAIT_COMPANY";
+  if (company && (typeof input.row.bank_code_encrypted !== "string" || !input.row.bank_code_encrypted)) {
+    throw new AuthError(400, "Account remains unverified. Select a supported bank and save its bank code before verifying.");
+  }
   const encryptionContext = input.scope === "SCHOOL"
     ? {
         bankName: SCHOOL_SETTLEMENT_AD(input.schoolId as number, "bankName"),
@@ -861,12 +886,21 @@ async function verifySettlementBankAccount(input: {
   if (!["PENDING_VERIFICATION", "ACTION_REQUIRED"].includes(String(input.row.verification_status))) {
     throw new AuthError(409, "Only a pending or action-required bank account can be checked. Reload the settlement profile.");
   }
+  if (company) {
+    if (!/^[0-9]{10}$/.test(bank.accountNumber) || !/^[0-9]{3,12}$/.test(bank.bankCode)) {
+      throw new AuthError(400, "Account remains unverified. Select a supported bank and save a valid 10-digit Nigerian account number.");
+    }
+    await requireVerifiedPaymentAccountProvider(bank);
+    if (!officialOwnerAccountName(bank.accountName) || !officialOwnerAccountName(input.row.business_name)) {
+      throw new AuthError(409, "Account remains unverified. Save the official YETENIA TECHNOLOGIES LIMITED company and account name; only the final LTD abbreviation is also accepted.", "OWNER_ACCOUNT_NAME_MISMATCH");
+    }
+  }
   const resolved = await flw.resolveNigerianAccount({
     bankCode: bank.bankCode,
     accountNumber: bank.accountNumber,
-  });
-  const matchedName = normalizeResolvedAccountName(bank.accountName) ===
-    normalizeResolvedAccountName(resolved.resolvedAccountName);
+  }, company ? { requireOwnerLive: true } : undefined);
+  const matchedName = company ? officialOwnerAccountName(resolved.resolvedAccountName)
+    : normalizeResolvedAccountName(bank.accountName) === normalizeResolvedAccountName(resolved.resolvedAccountName);
   const matchedNumber = String(resolved.resolvedAccountNumber).replace(/\D/g, "") === bank.accountNumber;
   if (!matchedName || !matchedNumber) {
     await withTransaction(async (client) => {
@@ -981,6 +1015,7 @@ async function verifySettlementBankAccount(input: {
         accountNameMatched: true,
         subaccountCreated: false,
         settlementPerformed: false,
+        ...(company ? { receivingAccountPolicy: OWNER_RECEIVING_ACCOUNT_POLICY, resolutionEnvironment: "LIVE" } : {}),
         ...(input.accountResolutionIdempotencyKey
           ? { verificationKeyDigest: payrollIdempotencyDigest(input.accountResolutionIdempotencyKey) }
           : {}),

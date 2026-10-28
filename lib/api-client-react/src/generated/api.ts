@@ -46186,6 +46186,80 @@ export const useUpdatePlatformPaymentSettlement = <TError = ErrorType<PayrollErr
       return useMutation(getUpdatePlatformPaymentSettlementMutationOptions(options));
     }
 
+export const getVerifyOwnerReceivingAccountUrl = () => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement/verify-account`
+}
+
+/**
+ * @summary Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+ */
+export const verifyOwnerReceivingAccount = async ( options?: Parameters<typeof customFetch>[1]): Promise<PaymentSettlementProfile> => {
+
+  return customFetch<PaymentSettlementProfile>(getVerifyOwnerReceivingAccountUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyOwnerReceivingAccountMutationKey = () => ['verifyOwnerReceivingAccount'] as const;
+
+export const getVerifyOwnerReceivingAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, TError,void, TContext> => {
+
+const mutationKey = getVerifyOwnerReceivingAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, void> = () => {
+
+
+          return  verifyOwnerReceivingAccount(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyOwnerReceivingAccountMutationResult = NonNullable<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>>
+
+    export type VerifyOwnerReceivingAccountMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+ */
+export const useVerifyOwnerReceivingAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getVerifyOwnerReceivingAccountMutationOptions(options));
+    }
+
 export const getReviewCompanySettlementRemovalUrl = () => {
 
 

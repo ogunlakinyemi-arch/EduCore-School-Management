@@ -132,6 +132,171 @@ async function request(
   });
 }
 
+describe("Owner receiving-account explicit verification", () => {
+  const owner = { "x-test-owner": "true" };
+  const path = "/platform/finance/payment-settlement/verify-account";
+  const name = "YETENIA TECHNOLOGIES LIMITED";
+  const number = "0123456789";
+  let row: Record<string, unknown>;
+  let resolution: ReturnType<typeof vi.spyOn>;
+  let catalogue: ReturnType<typeof vi.spyOn>;
+  let tx: Array<{ sql: string; values: unknown[] }>;
+  beforeEach(() => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("EDUCORE_FLUTTERWAVE_MODE", "LIVE");
+    vi.stubEnv("FLUTTERWAVE_LIVE_SECRET_KEY", "FLWSECK-synthetic-owner-lookup-only");
+    const encrypt = (field: string, value: string) =>
+      encryptPayrollBankValue(value, `settlement:yemait-company:${field}`);
+    row = {
+      id: 17, scope: "YEMAIT_COMPANY", school_id: null, business_name: name,
+      bank_name_encrypted: encrypt("bankName", "Fictional Bank").ciphertext,
+      bank_code_encrypted: encrypt("bankCode", "099").ciphertext,
+      account_name_encrypted: encrypt("accountName", name).ciphertext,
+      account_number_encrypted: encrypt("accountNumber", number).ciphertext,
+      encryption_key_version: encrypt("bankName", "Fictional Bank").keyVersion,
+      account_last4: "6789", currency: "NGN", provider: "FLUTTERWAVE",
+      verification_status: "PENDING_VERIFICATION", updated_at: new Date(),
+    };
+    resolution = vi.spyOn(FlutterwavePayrollV3Client.prototype, "resolveNigerianAccount")
+      .mockResolvedValue({ resolvedAccountNumber: number, resolvedAccountName: "Yetenia Technologies Ltd." });
+    catalogue = vi.spyOn(FlutterwavePayrollV3Client.prototype, "listNigerianBanks")
+      .mockResolvedValue({ environment: "LIVE", banks: [{ id: 9, code: "099", name: "Fictional Bank" }] });
+    db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      db.queries.push({ sql, values });
+      return { rows: [row], rowCount: 1 };
+    });
+    tx = [];
+    db.connect.mockResolvedValue({
+      query: vi.fn(async (sql: string, values: unknown[] = []) => {
+        tx.push({ sql, values });
+        if (sql.includes("UPDATE settlement_payroll_profiles")) {
+          row = { ...row, verification_status: sql.includes("'VERIFIED'") ? "VERIFIED" : "ACTION_REQUIRED" };
+          return { rows: [row], rowCount: 1 };
+        }
+        if (sql.includes("INSERT INTO settlement_payroll_profiles")) {
+          row = { ...row, verification_status: "PENDING_VERIFICATION" };
+          return { rows: [row], rowCount: 1 };
+        }
+        return { rows: [], rowCount: 0 };
+      }),
+      release: vi.fn(),
+    });
+  });
+  afterEach(() => { resolution.mockRestore(); catalogue.mockRestore(); });
+  const post = (headers = owner) => request(path, headers, { method: "POST" });
+  const noVerification = () => {
+    expect(tx.some(q => q.sql.includes("SET verification_status='VERIFIED'"))).toBe(false);
+    expect(tx.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(false);
+  };
+  it("verifies matching LIVE details only, with policy audit and masked output", async () => {
+    const r = await post(), text = await r.text();
+    expect(r.status).toBe(200);
+    expect(JSON.parse(text).status).toBe("VERIFIED");
+    expect(text).not.toContain(number);
+    expect(text).not.toContain("FLWSECK-");
+    expect(resolution).toHaveBeenCalledWith({ bankCode: "099", accountNumber: number }, { requireOwnerLive: true });
+    const audit = tx.find(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"));
+    expect(audit?.values.at(-1)).toContain('"receivingAccountPolicy":"YETENIA_BENEFICIARY_LIVE_V1"');
+    expect(audit?.values.at(-1)).toContain('"resolutionEnvironment":"LIVE"');
+    expect(JSON.stringify(tx)).not.toContain(number);
+    expect(tx.every(q => !/student_|transfer_attempt|subaccount/i.test(q.sql))).toBe(true);
+  });
+  it.each(["YETENIA TECHNOLOGY LIMITED", "Other Person", "YETENIA TECHNOLOGIES LIMITED EXTRA"])(
+    "does not verify a mismatched provider name %s", async returnedName => {
+      resolution.mockResolvedValue({ resolvedAccountNumber: number, resolvedAccountName: returnedName });
+      expect((await post()).status).toBe(409);
+      expect(row.verification_status).toBe("ACTION_REQUIRED");
+      noVerification();
+    },
+  );
+  it("does not verify a different returned account number", async () => {
+    resolution.mockResolvedValue({ resolvedAccountNumber: "9999999999", resolvedAccountName: name });
+    expect((await post()).status).toBe(409); noVerification();
+  });
+  it.each(["", "unsupported"])("rejects missing/invalid bank code %j before resolution", async code => {
+    row.bank_code_encrypted = code ? encryptPayrollBankValue(code, "settlement:yemait-company:bankCode").ciphertext : null;
+    expect((await post()).status).toBe(400);
+    expect(resolution).not.toHaveBeenCalled(); noVerification();
+  });
+  it("rejects an unsupported current bank mapping", async () => {
+    catalogue.mockResolvedValue({ environment: "LIVE", banks: [{ id: 10, code: "098", name: "Other Bank" }] });
+    expect((await post()).status).toBe(400); expect(resolution).not.toHaveBeenCalled(); noVerification();
+  });
+  it("rejects a malformed saved account number before provider access", async () => {
+    row.account_number_encrypted = encryptPayrollBankValue("invalid", "settlement:yemait-company:accountNumber").ciphertext;
+    expect((await post()).status).toBe(400); expect(resolution).not.toHaveBeenCalled(); noVerification();
+  });
+  it("rejects a non-official saved company/account name without contacting resolution", async () => {
+    row.business_name = "Other Business";
+    expect((await post()).status).toBe(409);
+    expect(resolution).not.toHaveBeenCalled(); noVerification();
+  });
+  it("does not verify when the saved account changes during resolution", async () => {
+    db.connect.mockResolvedValue({ query: vi.fn(async (sql: string, values: unknown[] = []) => {
+      tx.push({ sql, values }); return { rows: [], rowCount: 0 };
+    }), release: vi.fn() });
+    const r = await post();
+    expect(r.status).toBe(409);
+    expect(tx.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(false);
+    const update = tx.find(q => q.sql.includes("UPDATE settlement_payroll_profiles"));
+    expect(update?.sql).toContain("account_number_encrypted=$8");
+    expect(row.verification_status).toBe("PENDING_VERIFICATION");
+  });
+  it.each([["INVALID_BANK_OR_ACCOUNT", "ACCOUNT_NOT_RESOLVED", 400],
+    ["PROVIDER_OUTAGE", "UNCLASSIFIED", 503], ["UNEXPECTED_PROVIDER_RESPONSE", "RESOLVED_DETAILS_DID_NOT_MATCH", 200]] as const)(
+    "keeps pending on sanitized provider failure %s", async (category, reason, providerHttpStatus) => {
+      const error = new FlutterwaveProviderResponseError("private raw response", { category, reason, providerHttpStatus });
+      error.operation = "ACCOUNT_RESOLUTION"; resolution.mockRejectedValue(error);
+      const r = await post(), text = await r.text();
+      expect(r.status).toBe(503); expect(text).toContain("unverified");
+      expect(text).not.toContain("private raw response");
+      expect(row.verification_status).toBe("PENDING_VERIFICATION"); noVerification();
+    },
+  );
+  it("keeps pending on an ambiguous timeout", async () => {
+    const error = new FlutterwaveProviderUncertainError({ category: "PROVIDER_TIMEOUT", reason: "UNCLASSIFIED", providerHttpStatus: null });
+    error.operation = "ACCOUNT_RESOLUTION"; resolution.mockRejectedValue(error);
+    expect((await post()).status).toBe(503); noVerification();
+  });
+  it.each([
+    { NODE_ENV: "development" }, { EDUCORE_FLUTTERWAVE_MODE: "TEST" },
+    { FLUTTERWAVE_LIVE_SECRET_KEY: "FLWSECK-TEST-sandbox-only" }, { FLUTTERWAVE_LIVE_SECRET_KEY: "" },
+  ])("blocks non-LIVE configuration %j before any provider or database access", async change => {
+    for (const [key, value] of Object.entries(change)) vi.stubEnv(key, value);
+    expect((await post()).status).toBe(409);
+    expect(resolution).not.toHaveBeenCalled(); expect(db.query).not.toHaveBeenCalled(); noVerification();
+  });
+  it.each(["SCHOOL_ADMIN", "ACCOUNTANT", "PARTNER", "TEACHER", "PARENT", "STAFF"])(
+    "denies %s before bank access", async role => {
+      expect((await request(path, { "x-test-role": role }, { method: "POST" })).status).toBe(403);
+      expect(db.query).not.toHaveBeenCalled(); expect(resolution).not.toHaveBeenCalled();
+    },
+  );
+  it("denies an inactive Owner membership", async () => {
+    expect((await request(path, { ...owner, "x-test-owner-status": "INACTIVE" }, { method: "POST" })).status).toBe(403);
+    expect(resolution).not.toHaveBeenCalled(); expect(db.query).not.toHaveBeenCalled();
+  });
+  it("does not verify on save or repeated refresh", async () => {
+    const r = await request("/platform/finance/payment-settlement", owner, { method: "PUT", body: JSON.stringify({
+      businessName: name, bankName: "Fictional Bank", bankCode: "099", accountName: name, accountNumber: number, currency: "NGN",
+    }) });
+    expect(r.status).toBe(200);
+    expect((await r.json() as any).status).toBe("PENDING_VERIFICATION");
+    for (let i = 0; i < 2; i++) {
+      const read = await request("/platform/finance/payment-settlement", owner);
+      expect(read.status).toBe(200); expect((await read.json() as any).status).toBe("PENDING_VERIFICATION");
+    }
+    expect(resolution).not.toHaveBeenCalled(); noVerification();
+  });
+  it("rejects client claims and does not repeat resolution after success", async () => {
+    expect((await request(path, owner, { method: "POST", body: JSON.stringify({ status: "VERIFIED" }) })).status).toBe(400);
+    expect(resolution).not.toHaveBeenCalled();
+    expect((await post()).status).toBe(200);
+    expect((await post()).status).toBe(409);
+    expect(resolution).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("contract-first employee payslip reads", () => {
   it("serves an empty list at the generated client's endpoint", async () => {
     const response = await request("/me/payroll/payslips", { "x-test-role": "TEACHER" });

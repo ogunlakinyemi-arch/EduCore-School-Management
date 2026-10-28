@@ -22,6 +22,7 @@ vi.mock('@workspace/api-client-react',async original=>{
       accountName:'FICTIONAL OWNER RECIPIENT',accountLast4:'0001',capability:{mode:'MOCK'},
     });},
     useUpdatePlatformPaymentSettlement:()=>({isPending:false,mutateAsync:s.companyUpdate}),
+    useVerifyOwnerReceivingAccount:()=>({isPending:false,mutateAsync:vi.fn()}),
     useListPlatformSettlementHistory:(...args:unknown[])=>{s.history(...args);return q([]);},
   };
 });
@@ -37,18 +38,18 @@ beforeEach(()=>{
   for(const spy of [s.schoolRead,s.schoolUpdate,s.schoolHistory,s.companyRead,s.companyUpdate,s.history])spy.mockClear();
 });
 describe('retired School Admin settlement workflow',()=>{
-  it('explains the pending company verification dead end without changing status or offering self-approval',()=>{
+  it('offers explicit beneficiary verification without changing status on render or refresh',()=>{
     s.owner=true;s.companyStatus='PENDING_VERIFICATION';
     const html=render(<PaymentSettlementPage/>);
     expect(html).toContain('company-verification-guidance');
-    expect(html).toContain('Company account verification has not been started');
-    expect(html).toContain('No supported company verification action is currently available');
-    expect(html).toContain('It remains PENDING and must not be used as verified transfer instructions');
+    expect(html).toContain('Verify account details');
+    expect(html).toContain('Saving or refreshing will not verify this account');
+    expect(html).toContain('Sandbox and Development results cannot verify the account');
     expect(html).toContain('solely for optional school subscription bank-transfer assistance');
     expect(html).toContain('₦3,200 per student per academic term');
-    expect(html).toContain('Schools cannot view these unverified transfer details');
+    expect(html).toContain('Schools cannot view unverified details');
     expect(html).not.toContain('banner-provider-mode');
-    expect(html).toContain('would not itself prove actual settlement');
+    expect(html).toContain('Beneficiary resolution does not prove money movement');
     expect(html).not.toContain('Live settlement verified: no');
     expect(html).not.toContain('saved for provider verification');
     expect(html).not.toMatch(/<button[^>]*>[^<]*(Verify|Approve) company/i);

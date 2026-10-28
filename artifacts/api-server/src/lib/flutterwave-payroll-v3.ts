@@ -1,3 +1,4 @@
+import { liveOwnerResolutionConfigured } from "./owner-receiving-account-policy";
 import { AuthError } from "../middlewares/auth";
 import { developmentFlutterwaveCredential, dedicatedFlutterwaveTestCredential } from "./flutterwave-development-config";
 import { bankDirectoryDiagnostic } from "./bank-directory-diagnostic";
@@ -385,7 +386,12 @@ export class FlutterwavePayrollV3Client {
   async resolveNigerianAccount(input: {
     bankCode: string;
     accountNumber: string;
-  }): Promise<BankResolution> {
+  }, options: { requireOwnerLive?: boolean } = {}): Promise<BankResolution> {
+    if (options.requireOwnerLive && !liveOwnerResolutionConfigured(this.env)) {
+      throw new FlutterwavePayrollUnavailableError(
+        "Owner receiving-account verification requires the LIVE environment and a dedicated LIVE credential. Sandbox results cannot verify this account.",
+      );
+    }
     const capability = this.capability();
     const developmentKey = this.env.NODE_ENV === "production"
       ? bankAccountResolutionConfigured(this.env) ? this.env.FLUTTERWAVE_LIVE_SECRET_KEY : undefined
@@ -413,11 +419,16 @@ export class FlutterwavePayrollV3Client {
       throw error;
     }
     const resolved = record(body.data);
+    // Owner-only normalization accepts display spaces/hyphens, never strips
+    // arbitrary characters, coerces numeric responses or loses leading zeros.
+    const resolvedNumber = options.requireOwnerLive && typeof resolved?.account_number === "string"
+      && /^[0-9 -]+$/.test(resolved.account_number)
+      ? resolved.account_number.replace(/[ -]/g, "") : resolved?.account_number;
     if (
       body.status !== "success" ||
       typeof resolved?.account_number !== "string" ||
       typeof resolved.account_name !== "string" ||
-      resolved.account_number !== input.accountNumber ||
+      resolvedNumber !== input.accountNumber ||
       resolved.account_name.trim().length < 2
     ) {
       const mismatch = new FlutterwaveProviderResponseError(
@@ -432,7 +443,7 @@ export class FlutterwavePayrollV3Client {
       throw mismatch;
     }
     return {
-      resolvedAccountNumber: resolved.account_number,
+      resolvedAccountNumber: resolvedNumber as string,
       resolvedAccountName: resolved.account_name.trim(),
     };
   }

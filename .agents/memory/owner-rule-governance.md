@@ -60,6 +60,21 @@ contact-the-Owner guidance; do not infer LIVE readiness, verify an account,
 or credit a subscription from this record or from the Owner's report that
 Flutterwave settlement has already been configured.
 
+The Owner authorized an explicit beneficiary-resolution action for the saved
+assistance account, not manual self-approval. Sandbox identity evidence must not
+authorize real-world school disclosure, even though resolution itself moves no
+money. Require the official YETENIA TECHNOLOGIES LIMITED beneficiary, not merely
+a name the Owner typed.
+
+**Why:** This account is for schools to rely on for optional assistance; a
+successful test fixture or an arbitrary matching personal account would create
+false confidence without proving the intended company beneficiary.
+
+**How to apply:** Keep Save/Refresh separate from explicit LIVE-appropriate
+resolution. Treat old status labels without the required verification provenance
+as insufficient for disclosure, without rewriting retained history. Do not
+substitute payout or merchant-settlement configuration for beneficiary evidence.
+
 ## Definitive subscription and NFC payment rule
 
 Only successful, independently server-verified Flutterwave checkout through an

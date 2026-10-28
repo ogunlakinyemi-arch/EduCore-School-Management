@@ -88,6 +88,21 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PayrollError" }
+  /platform/finance/payment-settlement/verify-account:
+    post:
+      operationId: verifyOwnerReceivingAccount
+      tags: [finance]
+      summary: Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+      responses:
+        "200":
+          description: Matching LIVE account resolution; masked saved profile, never money-movement evidence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentSettlementProfile" }
+        "400": { description: Invalid account or missing/unsupported bank mapping }
+        "403": { description: Active global Platform Owner required }
+        "409": { description: "LIVE guard, name/account mismatch, unavailable profile or concurrent edit" }
+        "503": { description: Resolution unavailable or ambiguous; account remains unverified }
   /platform/finance/payment-settlement/schools:
     get:
       operationId: listPlatformSchoolSettlements

@@ -18,7 +18,8 @@ vi.mock("../lib/payroll-bank-encryption",async original=>({
 }));
 import router from "./direct-student-live-payments";
 let server:Server,base:string;
-const verified=()=>({business_name:"Fictional Owner Business",currency:"NGN",verification_status:"VERIFIED",
+const verified=()=>({business_name:"YETENIA TECHNOLOGIES LIMITED",currency:"NGN",verification_status:"VERIFIED",
+  receiving_policy_verified:true,
   verified_at:"2026-01-01T00:00:00Z",verified_by:7,encryption_key_version:"fixture",
   bank_name_encrypted:"cipher-bank",account_name_encrypted:"cipher-name",account_number_encrypted:"cipher-number",
   account_last4:"0001",provider_subaccount_id:"PRIVATE-NOT-RETURNED"});
@@ -40,7 +41,7 @@ beforeEach(()=>{
   });
   f.connect.mockReset().mockResolvedValue({query:f.query,release:vi.fn()});
   f.decrypt.mockReset().mockImplementation((cipher:string)=>({
-    "cipher-bank":"Fictional Bank","cipher-name":"Fictional Business Account","cipher-number":"0000000001",
+    "cipher-bank":"Fictional Bank","cipher-name":"YETENIA TECHNOLOGIES LIMITED","cipher-number":"0000000001",
   } as Record<string,string>)[cipher]);
 });
 const get=(school=1,query="studentId=31&termId=4")=>fetch(`${base}/schools/${school}/platform-subscriptions/transfer-instructions?${query}`);
@@ -71,7 +72,7 @@ describe("private Owner transfer instructions; fictional DB/crypto only",()=>{
     expect(d).toMatchObject({available:false,bank:null,amountMinor:320000,transferReference:"YETENIA-S1-T4-ST31",ownerConfigurationPath:null});
     expect(d).toMatchObject({message:expect.stringContaining("Do not transfer")});expect(f.decrypt).not.toHaveBeenCalled();
     for(const text of ["optional ₦3,200/student/term subscription assistance","contact the Platform Owner",
-      "No supported company verification action","Flutterwave merchant settlement configuration is separate"])
+      "explicitly verify the saved receiving account","Flutterwave merchant settlement configuration is separate"])
       expect(d).toMatchObject({message:expect.stringContaining(text)});
   });
   it("offers the existing configuration path only to a current global Owner",async()=>{
@@ -79,7 +80,8 @@ describe("private Owner transfer instructions; fictional DB/crypto only",()=>{
     expect(await (await get()).json()).toMatchObject({available:false,ownerConfigurationPath:"/payment-settlement"});
   });
   it.each([{verification_status:"PENDING_VERIFICATION"},{verification_status:"ACTION_REQUIRED"},
-    {verified_at:null},{verified_by:null},{currency:"USD"},{business_name:""}])(
+    {verified_at:null},{verified_by:null},{currency:"USD"},{business_name:""},
+    {receiving_policy_verified:false},{business_name:"Other Business"}])(
     "does not expose unverified/incomplete profile %j",async change=>{
       f.profile={...verified(),...change};
       expect(await (await get()).json()).toMatchObject({available:false,bank:null});
@@ -89,7 +91,7 @@ describe("private Owner transfer instructions; fictional DB/crypto only",()=>{
     f.profile=verified();
     const d=await (await get()).json();
     expect(d).toMatchObject({available:true,amountMinor:320000,currency:"NGN",bank:{
-      businessName:"Fictional Owner Business",bankName:"Fictional Bank",accountName:"Fictional Business Account",accountNumber:"0000000001",
+      businessName:"YETENIA TECHNOLOGIES LIMITED",bankName:"Fictional Bank",accountName:"YETENIA TECHNOLOGIES LIMITED",accountNumber:"0000000001",
     }});
     expect(f.decrypt).toHaveBeenCalledWith("cipher-number","fixture","settlement:yemait-company:accountNumber");
     expect(JSON.stringify(d)).not.toMatch(/cipher-|PRIVATE-NOT-RETURNED|verified_by|BANK_VERIFIED|PAID/);

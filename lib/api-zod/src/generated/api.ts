@@ -20088,6 +20088,52 @@ export const UpdatePlatformPaymentSettlementResponse = zod.object({
 
 
 /**
+ * @summary Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+ */
+export const verifyOwnerReceivingAccountResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
+
+
+export const VerifyOwnerReceivingAccountResponse = zod.object({
+  "scope": zod.enum(['YEMAIT_COMPANY']),
+  "businessName": zod.string(),
+  "businessRegistrationNumber": zod.string().nullish(),
+  "settlementContactEmail": zod.string().nullish(),
+  "settlementContactPhone": zod.string().nullish(),
+  "bankName": zod.string().nullable(),
+  "bankCode": zod.string().nullish(),
+  "accountName": zod.string().nullable(),
+  "accountLast4": zod.string().regex(verifyOwnerReceivingAccountResponseAccountLast4RegExp).nullable(),
+  "currency": zod.enum(['NGN']),
+  "status": zod.enum(['NOT_CONFIGURED', 'PENDING_VERIFICATION', 'VERIFIED', 'ACTION_REQUIRED']),
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "providerBusinessId": zod.string().nullish(),
+  "providerSubaccountId": zod.string().nullish(),
+  "capability": zod.object({
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "mode": zod.enum(['TEST', 'LIVE', 'MOCK', 'NOT_CONFIGURED']),
+  "credentialsConfigured": zod.boolean(),
+  "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
+  "bankSubaccountsSupported": zod.boolean(),
+  "liveSettlementVerified": zod.literal(false),
+  "collection": zod.object({
+  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
+  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
+  "credentialsConfigured": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "checkoutConfigured": zod.boolean(),
+  "assistedCheckoutConfigured": zod.boolean(),
+  "checkoutVerified": zod.literal(false),
+  "automaticSplitSettlementEnabled": zod.literal(false),
+  "automaticSplitSettlementVerified": zod.literal(false),
+  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
+  "bankAccountVerificationConfigured": zod.boolean()
+}).optional()
+}),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary Development-only metadata review before a separately authorized Company profile removal
  */
 export const ReviewCompanySettlementRemovalResponse = zod.object({
