@@ -172,7 +172,11 @@ describe('Manual payout settlement', () => {
     expect(state.update.mock.calls[0][0]).toEqual({ payoutId: 9, data: { status: 'PAID', paymentReference: 'TRF-551', confirmExternalTransfer: true } });
   });
   it('does not offer mark paid for already paid payouts', async () => {
-    state.payouts = [payout({ status: 'PAID', paymentReference: 'X', paidBy: 1 })]; await render();
+    state.payouts = [payout({ status: 'PAID', paymentReference: 'X', paidBy: 1, paidAt: '2025-02-03T12:30:00.000Z' })]; await render();
     expect(q('button-mark-paid-9')).toBeNull();
+    expect(element.textContent).toContain('Recorded by user #1');
+    expect(q('text-payout-paid-at-9')?.getAttribute('datetime')).toBe('2025-02-03T12:30:00.000Z');
+    expect(q('text-payout-paid-at-9')?.textContent).toContain('13:30');
+    expect(q('text-payout-paid-at-9')?.textContent).toContain('WAT');
   });
 });

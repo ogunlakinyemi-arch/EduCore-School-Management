@@ -19,7 +19,8 @@ function errMsg(e: unknown) {
 /**
  * Automatic, server-matched BRO bank verification. Only a fresh lookup response for the exact
  * current bank + number + registered BRO name can be saved. The server performs the
- * name comparison; the client only checks the response shape, last4, token and expiry.
+ * authoritative comparison; the client also checks conservative name equality,
+ * response shape, last4, token and expiry before enabling Save.
  */
 export function PartnerBankAccountForm({ current, fullName, saving, onSave }: {
   current: Masked; fullName: string; saving: boolean; onSave: (data: PartnerPayoutInformationInput) => void;

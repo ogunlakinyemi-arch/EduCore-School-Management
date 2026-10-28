@@ -138,6 +138,9 @@ function Dashboard() {
       </div>
     </div>
   );
+  if (dashboard.isError || !dashboard.data) return <ErrorState
+    message="BRO commission balances could not be loaded. No payout availability can be confirmed."
+    retry={() => { void dashboard.refetch(); }} />;
 
   const data = dashboard.data;
   const canManageSchools = canManagePartnerSchools(profile.data);
@@ -169,7 +172,7 @@ function Dashboard() {
             ₦{data?.outstandingCommission?.toLocaleString() || 0}
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">
-            <Banknote size={14} /> Available for next payout
+            <Banknote size={14} /> Includes reserved and pending-approval earnings
           </div>
         </div>}
 
@@ -183,6 +186,22 @@ function Dashboard() {
           </div>
         </div>}
       </div>
+
+      {canViewFinance && <section className="panel mb-8 p-6" data-testid="section-bro-payout-balances">
+        <div className="eyebrow">Commission payout balance</div>
+        <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {([
+            ['Available for payout', data.payableCommission],
+            ['Already paid', data.paidCommission],
+            ['Reserved in payouts', data.reservedCommission],
+            ['Pending approval / held', data.pendingApprovalCommission],
+          ] as const).map(([label, value]) => <div key={label}>
+            <dt className="text-xs text-[hsl(var(--muted-foreground))]">{label}</dt>
+            <dd className="mt-1 font-mono text-xl font-bold">NGN {(value ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+          </div>)}
+        </dl>
+        <p className="mt-4 text-xs text-[hsl(var(--muted-foreground))]">The Owner uses the same available balance. Only payable, unreserved earnings can enter a payout. EduCore does not transfer money; payment is recorded after an externally completed bank transfer.</p>
+      </section>}
 
       {canViewFinance && <section className="panel mb-8 p-6" data-testid="section-deferred-commissions">
         <div className="eyebrow">Term-based commissions (new policy)</div>

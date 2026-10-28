@@ -936,7 +936,10 @@ export function PayoutsOverview() {
                   <td className="p-4"><div className="font-bold">{payout.partnerName || 'Unknown BRO'}</div><div className="font-mono text-xs text-[hsl(var(--muted-foreground))]">#{payout.partnerId}</div></td>
                   <td className="p-4 font-bold font-mono text-[hsl(var(--foreground))]">{payout.currency} {exactAmount(payout.amount)}</td>
                   <td className="p-4 text-xs">{payout.bankDetails ? <>{payout.bankDetails.bankName}<div className="font-mono text-[hsl(var(--muted-foreground))]">{payout.bankDetails.maskedAccountNumber}</div></> : <span className="text-[hsl(var(--muted-foreground))]">{payout.bankDetailsAvailable ? 'Available' : 'None'}</span>}</td>
-                  <td className="p-4"><StatusPill value={payout.status} />{payout.paidBy != null && <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Recorded by user #{payout.paidBy}</div>}</td>
+                  <td className="p-4"><StatusPill value={payout.status} />
+                    {payout.paidBy != null && <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Recorded by user #{payout.paidBy}</div>}
+                    {payout.paidAt && <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Paid on <time dateTime={payout.paidAt} data-testid={`text-payout-paid-at-${payout.id}`}>{new Date(payout.paidAt).toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'medium', timeStyle: 'short' })} WAT</time></div>}
+                  </td>
                   <td className="p-4 text-[hsl(var(--muted-foreground))] font-mono text-xs">{payout.paymentReference || '—'}</td>
                   <td className="p-4">
                     <div className="flex justify-end gap-2">
