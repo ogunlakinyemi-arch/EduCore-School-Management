@@ -70,6 +70,9 @@ describe("private Owner transfer instructions; fictional DB/crypto only",()=>{
     expect(r.headers.get("cache-control")).toBe("private, no-store");
     expect(d).toMatchObject({available:false,bank:null,amountMinor:320000,transferReference:"YETENIA-S1-T4-ST31",ownerConfigurationPath:null});
     expect(d).toMatchObject({message:expect.stringContaining("Do not transfer")});expect(f.decrypt).not.toHaveBeenCalled();
+    for(const text of ["optional ₦3,200/student/term subscription assistance","contact the Platform Owner",
+      "No supported company verification action","Flutterwave merchant settlement configuration is separate"])
+      expect(d).toMatchObject({message:expect.stringContaining(text)});
   });
   it("offers the existing configuration path only to a current global Owner",async()=>{
     f.role="PLATFORM_OWNER";f.currentOwner=true;

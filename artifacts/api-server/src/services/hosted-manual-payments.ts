@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import {rejectLegacySplitInitiation} from "./retired-payment-workflows";
 import type { StudentSubscriptionSqlPool } from "../lib/student-subscription-billing";
 import { FlutterwaveHostedAdapter, type HostedCheckoutAdapter } from "../lib/hosted-checkout-adapter";
 import { HOSTED_POLICY, HostedPaymentError, hostedAmounts, hostedConfiguration } from "../lib/hosted-manual-policy";
@@ -57,6 +58,7 @@ export class HostedManualPayments {
       requireHostedRead(actor, Number(o.school_id)); return hostedOrderView(c, o); });
   }
   async checkout(actor: HostedActor, input: { subscriptionId: number; termId: number; idempotencyKey: string }) {
+    rejectLegacySplitInitiation();
     const runtime = await this.runtime();
     if (actor.owner) throw new HostedPaymentError(403, "SCHOOL_ADMIN_REQUIRED", "A School Admin must initiate collection.");
     const reservation = await hostedTransaction(this.pool, async c => {

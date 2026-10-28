@@ -86,6 +86,14 @@ describe.each(flows)('$name save payload', f => {
     const form = await f.open(); await pick('beta'); await submit(form);
     expect(s.save).toHaveBeenCalledTimes(1);
     expect(f.data()).toMatchObject({ bankName: 'Fictional Beta Microfinance Bank', bankCode: '90002' });
+    if(f.name === 'Owner company settlement'){
+      expect(host.textContent).toContain('Owner-provided assistance bank details saved. Account verification has not been started.');
+      expect(host.textContent).toContain('unverified transfer instructions remain hidden from schools');
+      expect(host.textContent).toContain('No supported company verification action is currently available');
+      expect(host.textContent).not.toContain('saved for provider verification');
+      for(const key of ['status','verificationStatus','verifiedAt','verifiedBy'])
+        expect(f.data()).not.toHaveProperty(key);
+    }
   });
   it('rejects an unverified provider with no code and does not reuse the saved code', async () => {
     const form = await f.open(); await pick('gamma'); await submit(form);

@@ -291,19 +291,20 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
         <div className="mb-4 rounded-xl border border-[hsl(var(--destructive)/.4)] bg-[hsl(var(--destructive)/.06)] p-3 text-xs font-semibold leading-5" data-testid="text-assistance-limitation">
           Limitation: a request or upload is <strong>never proof of payment</strong>. Independent bank verification is required for assistance. Direct LIVE checkout stays <strong>unavailable until separately approved</strong> release, effective rule and term reconciliation checks pass; a bank credit alone never authorizes Flutterwave.
         </div>
-        {onRequestAssistance ? <AssistanceForm onSubmit={async input => { await onRequestAssistance(input); await done('Assistance request recorded. It is unverified until a bank credit is independently checked.'); }} /> : <Unwired what="Assistance requests" />}
+        <p className={note}>Cash, bank transfers and confirmed offline receipts are assistance records only: they do not pay a subscription or activate NFC. The Owner may create a separate authorized Flutterwave payment link. Only a successful, independently server-verified ₦3,200 transaction for the exact student and term establishes entitlement. Flutterwave settles the Platform Owner's merchant account without school splits or subaccounts.</p>
+        {onRequestAssistance ? <AssistanceForm onSubmit={async input => { await onRequestAssistance(input); await done('Assistance request recorded only. A separate successful, server-verified Flutterwave checkout is required for subscription/NFC activation.'); }} /> : <Unwired what="Assistance requests" />}
       </Section>
 
       <section className="panel overflow-hidden" data-testid="section-assistance-list">
-        <div className="border-b border-[hsl(var(--border))] p-5"><div className="eyebrow">08 · Bank verification</div><h2 className="display-font text-lg font-bold">Assistance cases</h2></div>
-        {assistance.length === 0 ? <EmptyState icon={Landmark} title="No assistance cases" description="Requests appear here. Each stays unverified until a bank credit is independently checked." /> :
+        <div className="border-b border-[hsl(var(--border))] p-5"><div className="eyebrow">08 · Offline assistance records, not subscription payments</div><h2 className="display-font text-lg font-bold">Assistance cases</h2></div>
+        {assistance.length === 0 ? <EmptyState icon={Landmark} title="No assistance cases" description="Cash and bank-transfer help are assistance only. Only a separate verified Flutterwave checkout can pay the subscription or establish NFC entitlement." /> :
           <div className="divide-y divide-[hsl(var(--border))]" data-testid="list-assistance">
             {assistance.map(a => {
               const verified = a.verifiedAmountMinor != null && !!a.bankStatementReference;
               return <div key={a.id} className="px-5 py-4 text-sm" data-testid={`row-assistance-${a.id}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-bold">School #{a.schoolId} · Student #{a.studentId} · Term #{a.termId}</div><StatusPill value={a.status} /></div>
                 <div className={cx(note, 'mt-1')}>Requested {ngnMinor(a.amountMinor)} · {a.requestNote || 'No note'}</div>
-                {verified ? <div className="mt-1 text-xs font-semibold" data-testid={`text-verified-${a.id}`}>Bank verified: {a.bankName ?? '—'} · ref {a.bankStatementReference} · credited {a.bankCreditDate ? date(a.bankCreditDate) : '—'} · {ngnMinor(a.verifiedAmountMinor ?? 0)}</div>
+                {verified ? <div className="mt-1 text-xs font-semibold" data-testid={`text-verified-${a.id}`}>Offline bank receipt recorded (not subscription payment): {a.bankName ?? '—'} · ref {a.bankStatementReference} · receipt date {a.bankCreditDate ? date(a.bankCreditDate) : '—'} · {ngnMinor(a.verifiedAmountMinor ?? 0)}</div>
                   : <div className={cx(note, 'mt-1 font-semibold')}>Not bank-verified. Not proof of payment.</div>}
                 {verified && <DirectAssistanceCheckout caseFile={a} />}
                 {!verified && onVerifyBank && <div className="mt-3"><Button variant="outline" onClick={() => setDialog({ kind: 'verify', a })} testId={`button-verify-${a.id}`}><Landmark className="h-3.5 w-3.5" /> Record bank verification</Button></div>}
@@ -474,8 +475,9 @@ function VerifyDialog({ a, onVerify, onClose, onDone }: { a: AssistanceSnapshot;
     catch (er) { setErr([safeError(er)]); } finally { setBusy(false); }
   };
   const minor = nairaToMinor(f.amount);
-  return <Modal eyebrow={`Case #${a.id} · requested ${ngnMinor(a.amountMinor)}`} title="Independent bank verification" onClose={onClose}>
+  return <Modal eyebrow={`Case #${a.id} · requested ${ngnMinor(a.amountMinor)}`} title="Record assistance bank receipt only" onClose={onClose}>
     <form onSubmit={submit} className="space-y-4" data-testid="form-verify-bank">
+      <p className={note}>This records an independently checked offline bank receipt only. It never activates NFC, pays a subscription or becomes a Flutterwave success. Create a separate authorized Flutterwave checkout for the student; only its independently server-verified success establishes entitlement. Do not record cash as bank credit.</p>
       <p className={note}>Record only what you confirmed on the platform's own bank statement. Receipts, screenshots and the request itself are not evidence of credit.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Bank name"><input className={entry} value={f.bankName} onChange={e => setF(p => ({ ...p, bankName: e.target.value }))} data-testid="input-verify-bank" /></Field>
@@ -486,7 +488,7 @@ function VerifyDialog({ a, onVerify, onClose, onDone }: { a: AssistanceSnapshot;
       {minor !== null && minor !== a.amountMinor && <p className="text-xs font-bold text-[hsl(var(--destructive))]" data-testid="text-verify-mismatch">Credited amount differs from the requested {ngnMinor(a.amountMinor)}. Record the statement figure as-is.</p>}
       <Check checked={checked} onChange={setChecked} testId="checkbox-independently-checked">I independently checked this credit on the bank statement myself, not from a receipt or upload.</Check>
       {err.length > 0 && <ul role="alert" className={cx(errCls, 'list-disc pl-5')} data-testid="errors-verify">{err.map(m => <li key={m}>{m}</li>)}</ul>}
-      <Button type="submit" disabled={busy} testId="button-submit-verify">{busy ? 'Recording…' : 'Record bank verification'}</Button>
+      <Button type="submit" disabled={busy} testId="button-submit-verify">{busy ? 'Recording…' : 'Record assistance bank receipt'}</Button>
     </form>
   </Modal>;
 }

@@ -34,7 +34,7 @@ export function OwnerBankTransferAssistance({schoolId,studentId,termId,actorId,o
   return <Modal title="Owner bank-transfer assistance" eyebrow="School subscription · instructions only" onClose={onClose}>
     <div className="space-y-4" data-testid="owner-bank-transfer-assistance">
       <p className="text-sm font-semibold">Subscription rate: ₦3,200 per student per academic term, paid separately to the Platform Owner.</p>
-      <p className="text-sm" role="note">Viewing these details or opening a request does not confirm a transfer or mark a subscription paid. Only authorized verification of actual receipt can confirm bank credit.</p>
+      <p className="text-sm" role="note">This is optional bank-transfer assistance using the Platform Owner's receiving account, not a school settlement account, split/subaccount setup or proof of Flutterwave LIVE readiness. Flutterwave merchant settlement is handled separately in Flutterwave. Viewing these details or opening a request does not confirm a transfer or mark a subscription paid. Cash or company-account transfers, even after receipt is confirmed, never activate NFC or pay the subscription. The Owner must help with a separate authorized Flutterwave payment link; only its successful, independently server-verified transaction can establish the student's term entitlement.</p>
       {q.isLoading||q.isFetching?<p role="status">Checking verified Owner business account details…</p>:
         q.isError||!d?<div role="alert"><p>Verified Owner bank details cannot be loaded. Do not transfer funds.</p>
           <Button variant="outline" onClick={()=>void q.refetch()}>Reload instructions</Button></div>:
@@ -54,8 +54,8 @@ export function OwnerBankTransferAssistance({schoolId,studentId,termId,actorId,o
             </div>
           </section>:<p role="alert" className="text-sm font-semibold">{d.message}</p>}
           {d.ownerConfigurationPath
-            ?<Link href={d.ownerConfigurationPath} className="text-sm font-semibold underline">Owner only: configure company bank details in Payment settlement</Link>
-            :!d.available&&<p className="text-sm">Ask the Platform Owner to configure and complete verification of the company account in their Owner-only Payment settlement settings. School Admins cannot configure this account.</p>}
+            ?<Link href={d.ownerConfigurationPath} className="text-sm font-semibold underline">Owner only: review assistance receiving details in Owner payment settings</Link>
+            :!d.available&&<p className="text-sm">Verified assistance transfer details are hidden. Do not transfer funds; contact the Platform Owner. No supported company verification action is currently available in EduCore. Saving details in Flutterwave does not verify this EduCore instruction record. School Admins cannot configure or approve this account.</p>}
           <p className="text-sm">Use the exact reference above for this school, student and term. Include the bank transfer reference, date and receipt/evidence reference in the existing assistance request below. Do not include passwords or full bank statements.</p>
           <p className="text-sm font-semibold">Do not transfer twice for an existing paid, pending or uncertain payment. Ask the Owner to reconcile the original payment first. A receipt or reference is evidence only—not confirmed receipt or subscription credit.</p>
           {!d.ownerConfigurationPath&&<form onSubmit={e=>void submit(e)} className="space-y-3">
@@ -65,7 +65,7 @@ export function OwnerBankTransferAssistance({schoolId,studentId,termId,actorId,o
                 disabled={busy||!!saved||uncertain} />
             </label>
             <Button type="submit" variant="outline" disabled={!canSubmit} testId="button-submit-owner-transfer-evidence">
-              {busy?'Submitting…':d.available?'Submit evidence / request review':'Request verified Owner instructions'}
+              {busy?'Submitting…':d.available?'Submit evidence / request review':'Request Owner assistance'}
             </Button>
           </form>}
         </>}

@@ -51,6 +51,10 @@ describe('bank-transfer assistance display, scope and no-payment confirmation',(
     expect(host.textContent).toContain('Fictional Bank');expect(host.textContent).toContain('0000000001');
     expect(host.textContent).toContain('YETENIA-S1-T4-ST31');
     expect(host.textContent).toContain('does not confirm a transfer or mark a subscription paid');
+    expect(host.textContent).toContain('optional bank-transfer assistance');
+    expect(host.textContent).toContain('not a school settlement account, split/subaccount setup or proof of Flutterwave LIVE readiness');
+    expect(host.textContent).toContain('even after receipt is confirmed, never activate NFC or pay the subscription');
+    expect(host.textContent).toContain('a separate authorized Flutterwave payment link');
     expect(f.request).not.toHaveBeenCalled();expect(f.checkout).not.toHaveBeenCalled();
     expect(f.hook.mock.calls[0][2].query).toMatchObject({gcTime:0,staleTime:0,retry:false,
       queryKey:['owner-transfer-instructions',9,1,31,4]});
@@ -59,8 +63,19 @@ describe('bank-transfer assistance display, scope and no-payment confirmation',(
     f.data={...verified(),available:false,bank:null,message:'Verified Owner business details are unavailable. Do not transfer funds.'};
     await render();
     expect(host.textContent).toContain('Do not transfer funds');
-    expect(host.textContent).toContain('School Admins cannot configure this account');
+    expect(host.textContent).toContain('School Admins cannot configure or approve this account');
+    expect(host.textContent).toContain('contact the Platform Owner');
+    expect(host.textContent).toContain('No supported company verification action is currently available');
+    expect(host.textContent).not.toContain('complete verification of the company account in');
     expect(host.textContent).not.toContain('0000000001');expect(host.querySelector('a')).toBeNull();
+  });
+  it('hides unverified bank details even if an unavailable response contains stale bank fields',async()=>{
+    f.data={...verified(),available:false};
+    await render();
+    expect(host.textContent).not.toContain('0000000001');
+    expect(host.textContent).not.toContain('Fictional Bank');
+    expect(host.textContent).toContain('Do not transfer funds; contact the Platform Owner');
+    expect(f.request).not.toHaveBeenCalled();expect(f.checkout).not.toHaveBeenCalled();
   });
   it('offers the existing account configuration link to Owner responses only, without a School Admin request form',async()=>{
     f.data={...verified(),available:false,bank:null,ownerConfigurationPath:'/payment-settlement'};

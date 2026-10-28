@@ -5,7 +5,10 @@ import { mkdtempSync,mkdirSync,readFileSync,realpathSync,rmSync,statSync } from 
 import { createRequire } from "node:module";
 import { dirname,join } from "node:path";
 import { fileURLToPath } from "node:url";
-assert.equal(process.argv.length,2);
+assert.ok(process.argv.length===2 || process.argv.length===3);
+// Optional test-name filter narrows the rehearsal without weakening isolation.
+const testName=process.argv[2];
+if(testName)assert.ok(testName.length<=300 && !testName.startsWith("-"));
 assert.equal(process.env.NODE_ENV,"test");
 assert.deepEqual(Object.keys(process.env).filter(k=>/^(?:PG|DATABASE|FLUTTERWAVE|EDUCORE_|REPLIT_)|SECRET|TOKEN|PASSWORD|API_KEY/.test(k)),[]);
 const root=fileURLToPath(new URL("../../",import.meta.url));
@@ -33,7 +36,8 @@ try{
   assert.equal(statSync(join(socket,`.s.PGSQL.${port}`)).isSocket(),true);
   assert.equal(statSync(data).uid,process.getuid());
   console.log("Owner-rule tests: verified private disposable PostgreSQL, no TCP and no application credentials.");
-  execFileSync(process.execPath,[vitest,"run","--config","vitest.owner-subscription-rules.config.ts"],{
+  execFileSync(process.execPath,[vitest,"run","--config","vitest.owner-subscription-rules.config.ts",
+    ...(testName?["-t",testName]:[])],{
     cwd:api,env,stdio:"inherit",timeout:120000});
 }finally{
   if(started)run("pg_ctl",["-D",data,"-m","immediate","-w","stop"]);

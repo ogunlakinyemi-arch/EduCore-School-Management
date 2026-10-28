@@ -19,7 +19,7 @@ function ProfileView({ p }: { p: Profile }) {
   return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="settlement-profile">
     <Info label="Business" value={p.businessName} /><Info label="Bank" value={p.bankName} /><Info label="Account name" value={p.accountName} />
     <Info label="Account (last 4)" value={p.accountLast4 ? <span className="font-mono">{'****' + p.accountLast4}</span> : 'None on file'} />
-    <Info label="Bank account verification" value={<StatusPill value={p.status === 'VERIFIED' ? 'verified' : p.status === 'ACTION_REQUIRED' ? 'failed' : p.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />} />
+    <Info label="Assistance account verification" value={<StatusPill value={p.status === 'VERIFIED' ? 'verified' : p.status === 'ACTION_REQUIRED' ? 'failed' : p.status === 'PENDING_VERIFICATION' ? 'pending' : 'unverified'} />} />
     <Info label="Contact" value={p.settlementContactEmail} /><Info label="Updated" value={date(p.updatedAt)} />
   </div>;
 }
@@ -47,8 +47,8 @@ function SettlementForm({ profile, saving, onSubmit, onCancel }: { profile?: Pro
     <Field label="Settlement contact email (optional)"><input type="email" className={entry} value={f.settlementContactEmail} onChange={e => patch({ settlementContactEmail: e.target.value })} /></Field>
     <BankFields v={f} set={patch} maskedCurrent={profile?.accountLast4 ? `****${profile.accountLast4}` : null} />
     {blocked && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{blocked}</p>}
-    <p className={note}>Saving submits company recipient details for verification. Entering a bank account does not confirm receipt of a school transfer or credit any subscription.</p>
-    <div className="flex gap-2"><Button type="submit" disabled={saving || f.accountNumber.length !== 10} testId="button-save-settlement">{saving ? 'Saving...' : 'Save for verification'}</Button><Button variant="quiet" onClick={onCancel}>Cancel</Button></div>
+    <p className={note}>Saving stores Owner-provided receiving bank details for optional school subscription bank-transfer assistance at ₦3,200 per student per academic term. It does not start account verification or configure Flutterwave merchant settlement. No supported company verification action is currently available; unverified transfer details remain hidden from schools. Cash and company-account transfers never activate NFC or pay a subscription, even when receipt is confirmed. The Owner must initiate a separate authorized Flutterwave checkout; only a successful, independently server-verified transaction can establish the student's term entitlement.</p>
+    <div className="flex gap-2"><Button type="submit" disabled={saving || f.accountNumber.length !== 10} testId="button-save-settlement">{saving ? 'Saving...' : 'Save bank details'}</Button><Button variant="quiet" onClick={onCancel}>Cancel</Button></div>
   </form>;
 }
 
@@ -77,21 +77,25 @@ function OwnerSettlement() {
   const save = async (d: FormState) => {
     try {
       await update.mutateAsync({ data: { businessName: d.businessName.trim(), businessRegistrationNumber: d.businessRegistrationNumber.trim() || null, settlementContactEmail: d.settlementContactEmail.trim() || undefined, settlementContactPhone: d.settlementContactPhone.trim() || null, bankName: d.bankName.trim(), bankCode: d.bankCode, accountName: d.accountName.trim(), accountNumber: d.accountNumber, currency: 'NGN' } });
-      setEditing(false); setFail(''); setMsg('Company settlement details saved for provider verification.'); invalidateAll(qc);
+      setEditing(false); setFail(''); setMsg('Owner-provided assistance bank details saved. Account verification has not been started. No supported company verification action is currently available; unverified transfer instructions remain hidden from schools.'); invalidateAll(qc);
     } catch (e) { setFail(errMsg(e)); }
   };
   return <div>
-    <IdentityBoundary scope="COMPANY" /><ProviderBanner capability={company.data?.capability} />
+    {tab === 'history' && <><IdentityBoundary scope="COMPANY" /><ProviderBanner capability={company.data?.capability} /></>}
+    {tab === 'company' && <p className={`${note} mb-5`} data-testid="company-assistance-purpose">This EduCore record holds the Platform Owner's receiving bank details solely for optional school subscription bank-transfer assistance: ₦3,200 per student per academic term, subject to the applicable collection period and billing rules. Flutterwave merchant settlement configuration and evidence are handled separately in Flutterwave. This record is not a school settlement account or split/subaccount configuration, and does not establish Flutterwave LIVE readiness or proof of money movement. Cash and company-account transfers never activate NFC or pay a subscription, even when receipt is confirmed. A separate authorized Flutterwave checkout must succeed and be independently server-verified for the exact student and term.</p>}
     {msg && <Notice kind="ok" onClose={() => setMsg('')}>{msg}</Notice>}{fail && !editing && <Notice kind="error" onClose={() => setFail('')}>{fail}</Notice>}
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><Tabs tabs={[['company', 'Company profile'], ['schools', 'NFC fee collection'], ['history', 'All settlement history']] as const} value={tab} onChange={setTab} />
       <Freshness updatedAt={company.dataUpdatedAt} fetching={company.isFetching} onRefresh={() => { company.refetch(); if (tab === 'history') hist.refetch(); }} /></div>
     {tab === 'company' && (company.isLoading ? <SkeletonPage /> : company.isError || !company.data ? <ErrorState retry={() => company.refetch()} /> :
-      <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">Company account</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-company-settlement">{company.data.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
-        {company.data.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="Company account not configured" description="Add the company bank recipient used for company payroll. School money is never mixed with it." /> : <ProfileView p={company.data} />}
-        {company.data.status === 'PENDING_VERIFICATION' && <SettlementRemovalReviewControl />}</section>)}
+      <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">Owner receiving account · subscription assistance</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-company-settlement">{company.data.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
+        {company.data.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="Assistance receiving account not configured" description="Owner-provided receiving details are for optional school subscription assistance only. Unverified transfer details are not shown to schools; no company verification action is currently available." /> : <ProfileView p={company.data} />}
+        {company.data.status === 'PENDING_VERIFICATION' && <>
+          <p className={`${note} mt-4`} role="status" data-testid="company-verification-guidance">Company account verification has not been started. No supported company verification action is currently available; saving or refreshing will not verify this account. These are Owner-provided assistance details, not an account awaiting Flutterwave merchant settlement approval. It remains PENDING and must not be used as verified transfer instructions. Schools cannot view these unverified transfer details and should contact the Platform Owner before any transfer. Beneficiary/account verification would not itself prove actual settlement, money movement or receipt of a school transfer.</p>
+          <SettlementRemovalReviewControl />
+        </>}</section>)}
     {tab === 'schools' && <NfcFeeCollectionOversight />}
     {tab === 'history' && <section className="panel overflow-hidden">{hist.isLoading ? <SkeletonPage /> : hist.isError ? <ErrorState retry={() => hist.refetch()} /> : <SettlementHistoryTable rows={hist.data ?? []} showSchool />}</section>}
-    {editing && <Modal title="Company settlement details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
+    {editing && <Modal title="Owner assistance receiving details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
   </div>;
 }
 
@@ -99,7 +103,7 @@ export function PaymentSettlementPage() {
   const ctx = useGetAuthorizedContext();
   const isOwner = ctx.data?.isPlatformOwner === true;
   return <div className="fade-up">
-    <PageHeading eyebrow="Owner Finance" title="Owner payment settings" description="Owner business receiving account, retained settlement history and read-only fee collection oversight. School split settlement is retired." />
+    <PageHeading eyebrow="Owner Finance" title="Owner payment settings" description="Owner receiving details for optional subscription bank-transfer assistance, retained transaction history and read-only fee collection oversight. Flutterwave merchant settlement is separate; school split settlement remains retired." />
     {ctx.isLoading ? <SkeletonPage /> : ctx.isError ? <ErrorState retry={() => ctx.refetch()} /> :
       isOwner ? <OwnerSettlement /> :
       <EmptyState icon={Landmark} title="Owner-only settings" description="School settlement account collection is retired. These company account settings are only available to the Platform Owner. School fees and platform subscriptions remain in School Finance." />}

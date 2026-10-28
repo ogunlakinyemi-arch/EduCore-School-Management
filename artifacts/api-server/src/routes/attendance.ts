@@ -1,4 +1,5 @@
 import { markClassFromGate } from "../services/gate-class-attendance";
+import {assertVerifiedStudentNfcPayment} from "../services/student-nfc-payment-evidence";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { pool, type DatabasePoolClient } from "@workspace/db";
@@ -454,6 +455,7 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
   );
   if (!student.rows[0]) throw new AuthError(404, "Student not found");
   await assertSubscriptionAccess(device.schoolId, studentId, db);
+  if(method==="NFC")await assertVerifiedStudentNfcPayment(db,device.schoolId,studentId);
   await enforcePolicy(device.schoolId, studentId, method, db);
   if (!body.occurredAt) throw new AuthError(400, "occurredAt is required");
   if (method === "FINGERPRINT") {

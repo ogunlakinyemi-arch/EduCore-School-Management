@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
+import {assertVerifiedStudentNfcPayment} from "../services/student-nfc-payment-evidence";
 import { visibleSubscription } from "../lib/subscription-visibility";
 import { newStudentPaymentReference } from "../lib/student-allocation-policy";
 import { splitAttribution } from "../services/flutterwave-split-checkout";
@@ -1105,7 +1106,8 @@ async function readStudentSubscriptionPaymentResponse(
       ? responseSubscription
       : schoolVisibleFinancialSnapshot(responseSubscription),
     allocations: responseAllocations,
-    activated: payment.status === "PAID",
+    // Legacy financial history is not current direct-payment NFC entitlement.
+    activated: false,
   };
 }
 
@@ -1639,6 +1641,9 @@ router.patch("/cards/:cardId/status", async (req, res) => {
     if (status === "active" && previousStatus !== "active" &&
         (previousStatus !== "locked" || card.rows[0].replacedByCardId != null || card.rows[0].studentId == null)) {
       throw new AuthError(409, "Only a locked, assigned and unreplaced student card can be unlocked");
+    }
+    if (status === "active" && card.rows[0].studentId != null) {
+      await assertVerifiedStudentNfcPayment(client,Number(card.rows[0].schoolId),Number(card.rows[0].studentId));
     }
     if (status === previousStatus) {
       const unchanged = await client.query(`SELECT id,school_id AS "schoolId",uid,student_id AS "studentId",status,scans,last_scan AS "lastScan"

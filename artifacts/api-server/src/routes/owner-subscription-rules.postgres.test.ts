@@ -1,3 +1,4 @@
+import {assertVerifiedStudentNfcPayment} from "../services/student-nfc-payment-evidence";
 import assert from "node:assert/strict";
 import { readFileSync,realpathSync,statSync } from "node:fs";
 import { join } from "node:path";
@@ -894,9 +895,11 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     // The fake verifier is reference-bound to the stored attempt, not a redirect claim.
     const pending=await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps);
     expect(pending.state).toBe("PENDING");
+    await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     states.set("901","successful");
     const paid=await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps);
     expect(paid.state).toBe("PAID");
+    await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).resolves.toBeUndefined();
     expect((await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps)).state).toBe("PAID");
     await expect(verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"902",actorId:null},deps))
       .rejects.toMatchObject({code:"VERIFIED_TRANSACTION_CONFLICT"});
@@ -914,12 +917,20 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     const second={...scope,actorId:9,studentId:33,idempotencyKey:"fictional-assisted-001",assistanceId};
     await expect(startDirectStudentPayment(db as any,{...second,actorId:10},deps))
       .rejects.toThrow("FINANCIAL_ACTOR_NOT_AUTHORIZED");
-    await expect(startDirectStudentPayment(db as any,second,deps))
-      .rejects.toMatchObject({code:"INDEPENDENT_BANK_CREDIT_REQUIRED"});
+    // Offline/cash help may start a NEW checkout without inventing bank evidence.
+    // Merely reserving that checkout must never create a paid entitlement.
+    const requestedCheckout=await startDirectStudentPayment(db as any,second,deps);
+    expect(requestedCheckout?.state).toBe("READY");
+    await expect(assertVerifiedStudentNfcPayment(db as any,1,33)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
+    expect((await db.query("SELECT status FROM subscription_payment_assistance_requests WHERE id=$1",[assistanceId])).rows[0].status)
+      .toBe("REQUESTED");
+    expect((await db.query(`SELECT count(*)::int AS n FROM student_direct_live_attempts a
+      JOIN student_direct_live_obligations o ON o.id=a.obligation_id WHERE o.student_id=33 AND a.state='PAID'`)).rows[0].n).toBe(0);
     const bank=await request(`${queue}/${assistanceId}/verify-bank`,"POST",
       {bankName:"Fictional Test Bank",bankStatementReference:"FICTIONAL-INDEPENDENT-CREDIT-01",
         creditDate:new Date().toISOString().slice(0,10),verifiedAmountMinor:320000,independentlyChecked:true});
     expect(bank.status).toBe(200);
+    await expect(assertVerifiedStudentNfcPayment(db as any,1,33)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     const bankSnapshot=(await db.query("SELECT * FROM subscription_payment_assistance_requests WHERE id=$1",[assistanceId])).rows;
     // Simulate absent audit authority on this disposable fixture, then restore the original evidence.
     await db.query(`UPDATE audit_logs SET event_type='FICTIONAL_MISSING_AUDIT'
@@ -933,11 +944,13 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     txReferences.set("902",secondAttempt.reference);
     expect(secondAttempt.state).toBe("READY");
     expect((await verifyDirectStudentPayment(db as any,{reference:secondAttempt.reference,transactionId:"902",actorId:null},deps)).state).toBe("FAILED");
+    await expect(assertVerifiedStudentNfcPayment(db as any,1,33)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     const retry=await startDirectStudentPayment(db as any,{...second,idempotencyKey:"fictional-assisted-002"},deps);
     assert.ok(retry);
     txReferences.set("903",retry.reference);
     expect(retry.reference).not.toBe(secondAttempt.reference);
     expect((await verifyDirectStudentPayment(db as any,{reference:retry.reference,transactionId:"903",actorId:null},deps)).state).toBe("PAID");
+    await expect(assertVerifiedStudentNfcPayment(db as any,1,33)).resolves.toBeUndefined();
     expect((await db.query("SELECT * FROM subscription_payment_assistance_requests WHERE id=$1",[assistanceId])).rows)
       .toEqual(bankSnapshot);
     expect((await db.query("SELECT count(*)::int AS n FROM student_direct_live_obligations WHERE student_id=33")).rows[0].n).toBe(1);

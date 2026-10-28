@@ -66,8 +66,9 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
     if(!fresh||Number(fresh.id)!==Number(review.id))block("REVIEW_CHANGED");
     if(input.assistanceId){
       const bank=(await c.query(`SELECT b.* FROM subscription_payment_assistance_requests b WHERE b.id=$1
-        AND b.school_id=$2 AND b.student_id=$3 AND b.academic_term_id=$4 AND b.status='BANK_VERIFIED'
-        AND b.amount_minor=320000 AND b.verified_amount_minor=320000 AND b.verified_by IS NOT NULL
+        AND b.school_id=$2 AND b.student_id=$3 AND b.academic_term_id=$4
+        AND b.status IN ('REQUESTED','BANK_VERIFIED') AND b.amount_minor=320000
+        AND (b.status='REQUESTED' OR (b.verified_amount_minor=320000 AND b.verified_by IS NOT NULL
         AND b.verified_at IS NOT NULL AND b.bank_credit_date IS NOT NULL AND b.bank_credit_date<=current_date
         AND NULLIF(trim(b.bank_name),'') IS NOT NULL AND NULLIF(trim(b.bank_statement_reference),'') IS NOT NULL
         AND EXISTS(SELECT 1 FROM audit_logs a WHERE a.record_id=b.id AND a.actor_user_id=b.verified_by
@@ -75,7 +76,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
           AND a.metadata->'after'->>'status'='BANK_VERIFIED'
           AND (a.metadata->'after'->>'amountMinor')::integer=b.verified_amount_minor
           AND a.metadata->'after'->>'bankStatementReference'=b.bank_statement_reference
-          AND (a.metadata->'after'->>'bankCreditDate')::date=b.bank_credit_date) FOR SHARE OF b`,
+          AND (a.metadata->'after'->>'bankCreditDate')::date=b.bank_credit_date))) FOR SHARE OF b`,
         [input.assistanceId,input.schoolId,input.studentId,input.termId])).rows[0];
       if(!bank)block("INDEPENDENT_BANK_CREDIT_REQUIRED");
     }

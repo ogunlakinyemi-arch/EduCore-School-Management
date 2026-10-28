@@ -100,7 +100,7 @@ export function publicNfcLink(row: any) {
     studentName: row.studentName.trim(), studentIdentifier: row.studentIdentifier, termName: row.termName, sessionName: row.sessionName,
     amountMinor: 500_000, amountDueMinor: status === "PAID" ? 0 : 500_000, currency: "NGN",
     mode: row.mode, status, expiresAt: new Date(row.expires_at).toISOString(),
-    settlementStatus: "UNVERIFIED", subscriptionActivated: status === "PAID",
+    settlementStatus: "UNVERIFIED", subscriptionActivated: false,
     checkoutUrl,
     // Never manufacture a receipt for a simulation or reveal a full financial snapshot.
     receiptReference: status === "PAID" && row.receiptSnapshot ? row.paymentReference ?? null : null,

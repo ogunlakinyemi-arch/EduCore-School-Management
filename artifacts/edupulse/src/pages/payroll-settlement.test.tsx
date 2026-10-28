@@ -22,6 +22,15 @@ describe('payroll and settlement safety', () => {
     expect(renderToStaticMarkup(<ProviderBanner mode="MOCK" />)).toContain('No actual funds are moved');
     expect(renderToStaticMarkup(<ProviderBanner mode="NOT_CONFIGURED" />)).toContain('not configured');
   });
+  it.each(['MOCK','TEST','LIVE','NOT_CONFIGURED'])('does not infer account or settlement verification from %s configuration',mode=>{
+    const html=renderToStaticMarkup(<ProviderBanner mode={mode} capability={{
+      provider:'FLUTTERWAVE',mode,credentialsConfigured:true,bankSubaccountsSupported:true,
+    } as never}/>);
+    expect(html).not.toContain('Live settlement verified: no');
+    expect(html).toContain('not established by these configuration settings');
+    expect(html).toContain('Beneficiary/account verification is separate from settlement');
+    expect(html).toContain('Only independently verified transaction evidence');
+  });
   it('does not count unverified settlement history as settled', () => {
     const html = renderToStaticMarkup(<SettlementHistoryTable rows={[{ id: 1, scope: 'SCHOOL', grossAmountMinor: 100000, amountSettledMinor: 100000, currency: 'NGN', status: 'SUCCESS', reconciliationStatus: 'PENDING', externalSettlementVerified: false, occurredAt: '2025-01-01T00:00:00Z' } as never]} />);
     expect(html).toContain('Not verified');

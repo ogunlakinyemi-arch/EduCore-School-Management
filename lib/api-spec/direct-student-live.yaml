@@ -114,7 +114,7 @@ paths:
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
       responses:
         '200':
-          description: Attempt bound to independently verified bank credit
+          description: New Flutterwave checkout bound to an assistance request; offline receipts never establish paid entitlement
           content:
             application/json:
               schema: {$ref: '#/components/schemas/DirectStudentAttempt'}

@@ -228,7 +228,7 @@ describe("student subscription trusted billing policy", () => {
     const database = new FinalizationMemoryPool(false);
     const result = await finalizeVerifiedStudentSubscriptionPayment(database, 17, verified);
 
-    expect(result).toMatchObject({ status: "PAID", activated: true, reconciliationRequired: false });
+    expect(result).toMatchObject({ status: "PAID", activated: false, reconciliationRequired: false });
     expect(database.allocations).toEqual([
       { entryType: "CREDIT", recipientType: "SCHOOL", recipientId: null, amountMinor: 200_000 },
       { entryType: "CREDIT", recipientType: "PLATFORM", recipientId: null, amountMinor: 300_000 },
@@ -264,7 +264,7 @@ describe("student subscription trusted billing policy", () => {
       providerSettlementAmountMinor: 498_500,
     });
 
-    expect(result).toMatchObject({ status: "PAID", activated: true });
+    expect(result).toMatchObject({ status: "PAID", activated: false });
     expect(database.allocations).toEqual([
       { entryType: "CREDIT", recipientType: "SCHOOL", recipientId: null, amountMinor: 200_000 },
       { entryType: "CREDIT", recipientType: "PLATFORM", recipientId: null, amountMinor: 290_000 },

@@ -3,7 +3,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import appSource from '../App.tsx?raw';
 import {beforeEach,describe,expect,it,vi} from 'vitest';
-const s=vi.hoisted(()=>({owner:false,role:'SCHOOL_ADMIN',status:'ACTIVE',schoolId:7,search:'',
+const s=vi.hoisted(()=>({owner:false,role:'SCHOOL_ADMIN',status:'ACTIVE',schoolId:7,search:'',companyStatus:'VERIFIED',
   schoolRead:vi.fn(),schoolUpdate:vi.fn(),schoolHistory:vi.fn(),companyRead:vi.fn(),companyUpdate:vi.fn(),history:vi.fn()}));
 vi.mock('wouter',async original=>({...await original<typeof import('wouter')>(),
   useSearch:()=>s.search,useLocation:()=>['/payment-settlement',vi.fn()],
@@ -18,7 +18,7 @@ vi.mock('@workspace/api-client-react',async original=>{
     useGetSchoolPaymentSettlement:s.schoolRead,useUpdateSchoolPaymentSettlement:s.schoolUpdate,
     useListSchoolSettlementHistory:s.schoolHistory,
     useGetPlatformPaymentSettlement:()=>{s.companyRead();return q({
-      status:'VERIFIED',businessName:'FICTIONAL OWNER COMPANY',bankName:'FICTIONAL OWNER BANK',
+      status:s.companyStatus,businessName:'FICTIONAL OWNER COMPANY',bankName:'FICTIONAL OWNER BANK',
       accountName:'FICTIONAL OWNER RECIPIENT',accountLast4:'0001',capability:{mode:'MOCK'},
     });},
     useUpdatePlatformPaymentSettlement:()=>({isPending:false,mutateAsync:s.companyUpdate}),
@@ -33,10 +33,39 @@ import {FinanceWorkspacePage} from './finance-workspace';
 const render=(node:React.ReactNode)=>renderToStaticMarkup(
   <QueryClientProvider client={new QueryClient()}>{node}</QueryClientProvider>);
 beforeEach(()=>{
-  Object.assign(s,{owner:false,role:'SCHOOL_ADMIN',status:'ACTIVE',schoolId:7,search:''});
+  Object.assign(s,{owner:false,role:'SCHOOL_ADMIN',status:'ACTIVE',schoolId:7,search:'',companyStatus:'VERIFIED'});
   for(const spy of [s.schoolRead,s.schoolUpdate,s.schoolHistory,s.companyRead,s.companyUpdate,s.history])spy.mockClear();
 });
 describe('retired School Admin settlement workflow',()=>{
+  it('explains the pending company verification dead end without changing status or offering self-approval',()=>{
+    s.owner=true;s.companyStatus='PENDING_VERIFICATION';
+    const html=render(<PaymentSettlementPage/>);
+    expect(html).toContain('company-verification-guidance');
+    expect(html).toContain('Company account verification has not been started');
+    expect(html).toContain('No supported company verification action is currently available');
+    expect(html).toContain('It remains PENDING and must not be used as verified transfer instructions');
+    expect(html).toContain('solely for optional school subscription bank-transfer assistance');
+    expect(html).toContain('₦3,200 per student per academic term');
+    expect(html).toContain('Schools cannot view these unverified transfer details');
+    expect(html).not.toContain('banner-provider-mode');
+    expect(html).toContain('would not itself prove actual settlement');
+    expect(html).not.toContain('Live settlement verified: no');
+    expect(html).not.toContain('saved for provider verification');
+    expect(html).not.toMatch(/<button[^>]*>[^<]*(Verify|Approve) company/i);
+    expect(s.companyStatus).toBe('PENDING_VERIFICATION');
+    expect(s.companyUpdate).not.toHaveBeenCalled();
+  });
+  it('does not label a previously verified account as pending or infer settlement from its verification',()=>{
+    s.owner=true;
+    const html=render(<PaymentSettlementPage/>);
+    expect(html).not.toContain('company-verification-guidance');
+    expect(html).toContain('Flutterwave merchant settlement configuration and evidence are handled separately in Flutterwave');
+    expect(html).toContain('does not establish Flutterwave LIVE readiness');
+    expect(html).toContain('Cash and company-account transfers never activate NFC or pay a subscription');
+    expect(html).toContain('A separate authorized Flutterwave checkout must succeed');
+    expect(html).not.toContain('banner-provider-mode');
+    expect(s.companyUpdate).not.toHaveBeenCalled();
+  });
   it('removes the School Finance settlement card without removing school fees, payroll or transport',()=>{
     const html=render(<FinanceWorkspacePage/>);
     expect(html).not.toContain('href="/payment-settlement');

@@ -259,7 +259,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     }
     if (payment.status === "PAID") {
       await client.query("COMMIT");
-      return { status: "PAID", activated: true, reconciliationRequired: false, allocations: [] };
+      return { status: "PAID", activated: false, reconciliationRequired: false, allocations: [] };
     }
     const expected = {
       reference: String(payment.reference),
@@ -608,11 +608,8 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
       );
       }
     }
-    await client.query(
-      `UPDATE nfc_cards SET status='active'
-        WHERE student_id=$1 AND school_id=$2 AND status='unassigned'`,
-      [payment.studentId, payment.schoolId],
-    );
+    // Retained legacy payment history is not a current ₦3,200 direct entitlement.
+    // Never activate a physical card from this archived split-era finalizer.
     await client.query(
       `UPDATE student_subscription_payments
           SET status='PAID',provider_transaction_id=$1,provider_paid_at=$2,paid_at=COALESCE($2,NOW()),
@@ -677,7 +674,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     );
     await recordSplitCollection(client, paymentId, "PAID", Number(payment.subscriptionId));
     await client.query("COMMIT");
-    return { status: "PAID", activated: true, reconciliationRequired: false, allocations };
+    return { status: "PAID", activated: false, reconciliationRequired: false, allocations };
   } catch (error) {
     processingError = error;
     // COMMIT acknowledgement can be lost even when the transaction committed.

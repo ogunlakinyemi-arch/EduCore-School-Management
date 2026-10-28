@@ -23,7 +23,7 @@ export async function ownerBankTransferInstructions(db:Sql,
     termName:String(access.term_name),transferReference:`YETENIA-S${scope.schoolId}-T${scope.termId}-ST${scope.studentId}`,
     collectionPeriodEligible:rollout.chargeable,ownerConfigurationPath:access.isOwner===true?"/payment-settlement":null};
   const unavailable=()=>({...base,available:false,bank:null,
-    message:"Verified Platform Owner business bank-transfer details are unavailable. Do not transfer funds. Ask the Owner to configure and verify the company account in Payment settlement."});
+    message:"Verified Owner receiving details for optional ₦3,200/student/term subscription assistance are unavailable. Do not transfer funds; contact the Platform Owner. No supported company verification action is currently available in EduCore. Flutterwave merchant settlement configuration is separate."});
   const {rows}=await db.query(`SELECT business_name,currency,verification_status,verified_at,verified_by,
     bank_name_encrypted,account_name_encrypted,account_number_encrypted,account_last4,encryption_key_version
     FROM settlement_payroll_profiles WHERE scope='YEMAIT_COMPANY' AND school_id IS NULL LIMIT 2`);
@@ -42,6 +42,6 @@ export async function ownerBankTransferInstructions(db:Sql,
       typeof accountNumber!=="string"||!/^[0-9]{10}$/.test(accountNumber)||
       accountNumber.slice(-4)!==row.account_last4)return unavailable();
     return {...base,available:true,bank:{businessName:row.business_name,bankName,accountName,accountNumber},
-      message:"These are verified company account instructions, not confirmation of your transfer. Submit evidence through the assistance request; only authorized verification can confirm receipt."};
+      message:"These are verified Owner receiving account instructions for optional assistance only. Cash and bank transfers never activate NFC or pay the subscription, even after receipt is confirmed. The Owner must initiate a separate authorized Flutterwave checkout; only its successful, independently server-verified transaction can establish this student's term entitlement. Flutterwave merchant settlement is separate."};
   }catch{return unavailable();}
 }

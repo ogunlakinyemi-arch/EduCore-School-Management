@@ -32,8 +32,15 @@ describe('unreleased direct payments',()=>{
     expect(html).toMatch(/disabled[^>]*>Start direct platform checkout/);
     expect(html).not.toContain('checkout.flutterwave.com');
   });
-  it('does not display an Owner checkout for a request without independently verified bank credit',()=>{
-    expect(renderToStaticMarkup(<DirectAssistanceCheckout caseFile={{...base,status:'REQUESTED',verifiedAmountMinor:null}}/>)).toBe('');
+  it('does not offer checkout for an assistance request with a mismatched price',()=>{
+    expect(renderToStaticMarkup(<DirectAssistanceCheckout caseFile={{...base,status:'REQUESTED',amountMinor:310000,verifiedAmountMinor:null}}/>)).toBe('');
+  });
+  it('allows cash/offline assistance to request a separate checkout without pretending bank verification',()=>{
+    const html=renderToStaticMarkup(<DirectAssistanceCheckout caseFile={{...base,status:'REQUESTED',verifiedAmountMinor:null}}/>);
+    expect(html).toContain('Check direct-payment readiness');
+    expect(html).toContain('Cash, company-account transfers and assistance receipts never activate NFC');
+    expect(html).toContain('Only the new successful, independently server-verified Flutterwave transaction');
+    expect(html).not.toContain('checkout.flutterwave.com');
   });
   it('only offers a readiness check for verified bank credits, never automatic retry or transfer collection',()=>{
     const html=renderToStaticMarkup(<DirectAssistanceCheckout caseFile={base}/>);
