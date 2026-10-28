@@ -14,6 +14,16 @@ const env={
 };
 const reference="SCV4_live_fictional_reference_123456";
 describe("direct LIVE transport safety (fake transport, no credentials or network)",()=>{
+  it("rejects local, IP-only and Development callback hosts independently of webhook matching",()=>{
+    for(const host of ["localhost","service.localhost","127.0.0.1","127.1","[::1]","10.0.0.2",
+      "169.254.169.254","payments.internal","payments.local","example.replit.dev."]){
+      const config=directLiveConfiguration({...env,
+        EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:`https://${host}/api/flutterwave/direct-student/callback`,
+        EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:`https://${host}/api/webhooks/flutterwave/direct-student`});
+      expect(config.callbackUrl,host).toBeNull();
+      expect(config.ready,host).toBe(false);
+    }
+  });
   it("blocks public finalization before provider access when direct history guards are unavailable",async()=>{
     const query=vi.fn(async()=>({rows:[]})),release=vi.fn(),fetcher=vi.fn();
     await expect(verifyDirectStudentPayment({connect:async()=>({query,release})} as any,
@@ -30,6 +40,11 @@ describe("direct LIVE transport safety (fake transport, no credentials or networ
       {EDUCORE_FLUTTERWAVE_DIRECT_RELEASE:undefined},{NODE_ENV:"development"},
       {EDUCORE_FLUTTERWAVE_MODE:"TEST"},{FLUTTERWAVE_LIVE_SECRET_KEY:"FLWSECK-TEST-FAKE"},
       {EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:undefined},
+      ...["localhost","service.localhost","127.0.0.1","127.1","[::1]","10.0.0.2",
+        "169.254.169.254","payments.internal","payments.local","example.replit.dev."].map(host=>({
+        EDUCORE_FLUTTERWAVE_DIRECT_CALLBACK_URL:`https://${host}/api/flutterwave/direct-student/callback`,
+        EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:`https://${host}/api/webhooks/flutterwave/direct-student`,
+      })),
       {EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:undefined},
       {EDUCORE_FLUTTERWAVE_DIRECT_WEBHOOK_URL:"https://other.invalid/api/webhooks/flutterwave/direct-student"},
       {EDUCORE_FLUTTERWAVE_MERCHANT_SCOPE:undefined},

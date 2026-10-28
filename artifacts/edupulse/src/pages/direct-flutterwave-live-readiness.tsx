@@ -14,6 +14,7 @@ import { Button, PageHeading, cx } from '@/components/shared';
 import { hasActiveGlobalOwner } from '@/components/navigation-model';
 import { entry, note, FRESH_MS } from '@/pages/payroll-common';
 import {PilotCalendarReadiness} from "@/components/pilot-calendar-readiness";
+import {PaymentReadinessGuidance} from "@/components/payment-readiness-guidance";
 
 export const POLICY = 'NEW_ONLY_PRESERVE_LEGACY';
 export const PLATFORM_AMOUNT_MINOR = 320000;
@@ -96,7 +97,13 @@ function OwnerWorkspace({ actor }: { actor: number }) {
     queryKey: [...getGetOwnerSubscriptionPaymentRulesQueryKey(), 'actor', actor], staleTime: FRESH_MS, retry: false, refetchOnWindowFocus: false } });
   const termList = (terms.data?.terms ?? []).filter(t => t.schoolId === Number(schoolId));
   const proposals = useMemo(() => (((rules.data as { proposals?: Proposal[] } | undefined)?.proposals) ?? []).filter(isEligibleProposal), [rules.data]);
-  const scope: Scope | null = schoolId && termId && ruleId ? { schoolId: Number(schoolId), termId: Number(termId), ruleId: Number(ruleId) } : null;
+  const optionsAvailable = catalog.isSuccess && terms.isSuccess && rules.isSuccess
+    && !catalog.isFetching && !terms.isFetching && !rules.isFetching;
+  const selectedScopeAvailable = optionsAvailable
+    && catalog.data?.schools.some(s => String(s.id) === schoolId)
+    && termList.some(t => String(t.id) === termId)
+    && proposals.some(p => String(p.id) === ruleId);
+  const scope: Scope | null = selectedScopeAvailable ? { schoolId: Number(schoolId), termId: Number(termId), ruleId: Number(ruleId) } : null;
   const rule = proposals.find(p => String(p.id) === ruleId);
 
   return <div className="fade-up space-y-6" data-testid="page-direct-live-readiness">
@@ -110,7 +117,7 @@ function OwnerWorkspace({ actor }: { actor: number }) {
       <div className="grid gap-3 md:grid-cols-3">
         <label className="text-sm font-bold">School
           <select className={cx(entry, 'mt-1')} value={schoolId} disabled={!catalog.isSuccess} data-testid="select-live-school"
-            onChange={e => { setSchoolId(e.target.value); setTermId(''); }}>
+             onChange={e => { setSchoolId(e.target.value); setTermId(''); setRuleId(''); }}>
             <option value="">{catalog.isLoading ? 'Loading schools…' : 'Select school'}</option>
             {(catalog.data?.schools ?? []).map(s => <option key={s.id} value={s.id}>{s.name} · #{s.id}</option>)}
           </select></label>
@@ -155,6 +162,7 @@ function ScopeWorkspace({ actor, scope, rule }: { actor: number; scope: Scope; r
   const open = reviews.some(v => v.status === 'CREATED' || v.status === 'REVIEWED');
 
   return <>
+    <PaymentReadinessGuidance checks={r?.checks ?? []} />
     <section className="panel overflow-hidden" data-testid="section-readiness">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] p-5">
         <div><div className="eyebrow">02 · Read-only readiness</div><h2 className="display-font text-lg font-bold">Release checks</h2></div>

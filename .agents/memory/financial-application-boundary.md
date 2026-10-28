@@ -17,3 +17,14 @@ still requires all existing fail-closed gates and retained financial history.
 enforcement. Explicitly disclose that direct/privileged SQL can bypass those
 application checks. Application-path test success is not all-writer equivalence,
 Publish compatibility or authority to activate LIVE payments.
+
+Continuing LIVE-readiness work must prioritize concrete app defects and existing
+test evidence, without reopening the settled Support investigation or repeatedly
+trying an unauthenticated browser.
+
+**Why:** The Owner explicitly requested completing safe app-side work without
+contacting Support again or repeating prior investigations.
+
+**How to apply:** Keep the known procedural-delivery blocker explicit, preserve
+every readiness gate, and only attempt authenticated visual checks when a valid
+authorized session is already available. Do not invent operational evidence.

@@ -94,6 +94,39 @@ describe('Direct Flutterwave LIVE readiness', () => {
     expect(screen.getByTestId('list-blockers').textContent).toContain('No approval blockers');
     expect(f.createMutate).not.toHaveBeenCalled(); expect(f.decideMutate).not.toHaveBeenCalled(); expect(f.checkout).not.toHaveBeenCalled();
   });
+  it('does not load readiness for an ID absent from the authorized catalog', () => {
+    mount();
+    const school = screen.getByTestId('select-live-school') as HTMLSelectElement;
+    const injected = document.createElement('option');
+    injected.value = '999'; injected.textContent = 'Not authorized';
+    school.append(injected);
+    fireEvent.change(school, { target: { value: '999' } });
+    fireEvent.change(screen.getByTestId('select-live-term'), { target: { value: '4' } });
+    fireEvent.change(screen.getByTestId('select-live-rule'), { target: { value: '11' } });
+    expect(f.readinessCalls).toBe(0);
+    expect(screen.getByTestId('empty-scope')).toBeTruthy();
+    expect(f.createMutate).not.toHaveBeenCalled();
+  });
+  it('clears the rule and readiness when the selected school changes', () => {
+    mount(); selectScope();
+    fireEvent.change(screen.getByTestId('select-live-school'), { target: { value: '' } });
+    expect((screen.getByTestId('select-live-rule') as HTMLSelectElement).value).toBe('');
+    expect(document.querySelector('[data-testid="section-readiness"]')).toBeNull();
+    expect(f.decideMutate).not.toHaveBeenCalled();
+  });
+  it('explains procedural and operational blockers without offering a bypass or checkout', () => {
+    f.readiness = readyR({ schemaReady: false, approvalReady: false,
+      checks: [check('SCHEMA', 'BLOCKED'), check('RUNTIME_SWITCH', 'BLOCKED'), check('FUTURE_REQUIREMENT', 'BLOCKED')] });
+    mount(); selectScope();
+    const guide = screen.getByTestId('payment-readiness-guidance');
+    expect(guide.textContent).toContain('Ordinary Publish and manual managed-Production SQL do not resolve');
+    expect(guide.textContent).toContain('Leave LIVE disabled');
+    expect(guide.textContent).toContain('Keep payment blocked');
+    expect(guide.textContent).toContain('Legacy split and hosted checkout remain archived');
+    expect(guide.querySelector('button')).toBeNull();
+    expect(f.checkout).not.toHaveBeenCalled();
+    expect((screen.getByTestId('button-create-review') as HTMLButtonElement).disabled).toBe(true);
+  });
   it('gates creation on valid evidence and no-split confirmation', () => {
     mount(); selectScope();
     const btn = screen.getByTestId('button-create-review') as HTMLButtonElement;
