@@ -51,6 +51,10 @@ vi.mock('wouter', () => ({
   Link: ({ href, children, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }));
 
+vi.mock('@/components/school-community-dashboard', () => ({
+  SchoolCommunityDashboard: ({ schoolId }: { schoolId: number }) => <section data-testid={`mock-school-community-${schoolId}`} />,
+}));
+
 vi.mock('@/components/shared', () => ({
   PageHeading: ({ eyebrow, title, description, action }: any) => (
     <header><div>{eyebrow}</div><h1>{title}</h1><p>{description}</p>{action}</header>
@@ -164,6 +168,7 @@ describe('Platform Owner dashboard separation', () => {
     expect(html).toContain('Academic Session');
     expect(html).toContain('href="/academics"');
     expect(html).toContain('href="/finance"');
+    expect(html).toContain('data-testid="mock-school-community-12"');
     expect(state.schoolDashboardCalls).toBe(1);
   });
 });

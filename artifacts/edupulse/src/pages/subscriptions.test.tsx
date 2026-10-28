@@ -2,7 +2,7 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveStudentCheckoutAttempts } from './subscription-payment-helpers';
+import { loadStudentCheckoutAttempts, saveStudentCheckoutAttempts } from './subscription-payment-helpers';
 
 const state = vi.hoisted(() => ({
   schoolId: 7,
@@ -119,6 +119,7 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   window.sessionStorage.clear();
   window.history.replaceState(null, '', '/subscriptions');
   state.schoolId = 7;
@@ -205,39 +206,37 @@ describe('trusted student-subscription payment workflow', () => {
     expect(state.paymentQueryOptions.query.queryKey).toEqual(['payment:91:12']);
   });
 
-  it('sends the generated checkout operation with a stable Idempotency-Key and keeps an unknown outcome from resending', async () => {
-    state.checkout.mockResolvedValue({
-      reused: true,
-      payment: payment({ checkoutUrl: null }),
-    });
+  it('keeps a retained unpaid subscription visible without offering or initiating archived checkout', async () => {
     await renderPage();
-    const button = host.querySelector<HTMLButtonElement>('[data-testid="button-checkout-subscription-91"]');
-    expect(button).not.toBeNull();
-    await act(async () => button!.click());
 
-    const idempotencyKey = window.sessionStorage.getItem('edupulse.student-subscription-idempotency:7:91');
-    expect(idempotencyKey).toMatch(/^[A-Za-z0-9._:-]{8,120}$/);
-    expect(state.checkout).toHaveBeenCalledTimes(1);
-    expect(state.checkout).toHaveBeenCalledWith(91, { headers: { 'Idempotency-Key': idempotencyKey } });
-    expect(host.textContent).toContain('did not provide a secure checkout URL');
+    expect(host.textContent).toContain('Ari Learner');
+    expect(host.textContent).toContain('₦5000');
+    expect(host.textContent).toContain('Legacy checkout archived; reviewed platform rule required');
     expect(host.querySelector('[data-testid="button-checkout-subscription-91"]')).toBeNull();
+    expect(host.querySelector('[data-testid="button-continue-checkout-91"]')).toBeNull();
+    expect(state.checkout).not.toHaveBeenCalled();
+    expect(loadStudentCheckoutAttempts(7, window.sessionStorage)).toEqual([]);
   });
 
-  it('deduplicates concurrent checkout clicks and does not automatically resend after an unknown outcome', async () => {
-    state.checkout.mockRejectedValue(new Error('network timeout'));
+  it('preserves an unknown historical checkout outcome without offering or automatically resending archived checkout', async () => {
+    const attempts = [{
+      requestedSubscriptionId: 91,
+      idempotencyKey: 'student-sub-7-91-unknown-outcome',
+      payment: null,
+      providerTransactionId: null,
+    }];
+    saveStudentCheckoutAttempts(7, attempts, window.sessionStorage);
     await renderPage();
-    const button = host.querySelector<HTMLButtonElement>('[data-testid="button-checkout-subscription-91"]')!;
-    await act(async () => {
-      button.click();
-      button.click();
-      await new Promise(resolve => setTimeout(resolve, 0));
-    });
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await renderPage();
 
-    expect(state.checkout).toHaveBeenCalledTimes(1);
-    expect(host.textContent).toContain('outcome may be unknown');
-    expect(host.textContent).toContain('no new checkout will be sent automatically');
+    expect(host.textContent).toContain('Legacy checkout archived; reviewed platform rule required');
     expect(host.querySelector('[data-testid="button-checkout-subscription-91"]')).toBeNull();
-    expect(state.checkout).toHaveBeenCalledWith(91, expect.objectContaining({ headers: expect.objectContaining({ 'Idempotency-Key': expect.any(String) }) }));
+    expect(state.checkout).not.toHaveBeenCalled();
+    expect(state.getPayment).not.toHaveBeenCalled();
+    expect(state.verify).not.toHaveBeenCalled();
+    expect(loadStudentCheckoutAttempts(7, window.sessionStorage)).toEqual(attempts);
   });
 
   it.each(['9876', null])('retries the persisted payment without another checkout, redirect ID=%s (mocked API)', async transactionId => {
