@@ -136,7 +136,7 @@ function OwnerWorkspace({ actor }: { actor: number }) {
       </div>
       <p className={cx(note, 'mt-2')} data-testid="text-scope-help">
         {catalog.isError || terms.isError || rules.isError ? 'Scope options could not load. No changes were made.'
-          : rules.isSuccess && !proposals.length ? 'No Draft, Scheduled or Active STUDENT_PLATFORM proposal at NGN 3,200 exists. Create one in Subscription & Payment Rules.'
+          : rules.isSuccess && !proposals.length ? 'No eligible NGN 3,200 Student rule is available. Prerequisite guidance remains below; rule creation requires separate review in Subscription & Payment Rules.'
           : schoolId && terms.isSuccess && !termList.length ? 'This school has no academic terms. None will be created here.'
           : 'Nothing is pre-selected. Changing any selection discards the previous readiness, form and confirmations.'}
       </p>
@@ -144,7 +144,8 @@ function OwnerWorkspace({ actor }: { actor: number }) {
         onClick={() => { catalog.refetch(); if (schoolId) terms.refetch(); rules.refetch(); }}>Retry</Button>}
     </section>
     {scope && rule ? <ScopeWorkspace key={`${actor}-${scope.schoolId}-${scope.termId}-${scope.ruleId}`} actor={actor} scope={scope} rule={rule} />
-      : <div className="panel p-8 text-center" data-testid="empty-scope"><FileClock className="mx-auto mb-2 opacity-60" /><p className={note}>Select a school, academic term and Student rule to load readiness.</p></div>}
+      : <><div className="panel p-8 text-center" data-testid="empty-scope"><FileClock className="mx-auto mb-2 opacity-60" /><p className={note}>Select a school, academic term and Student rule to load readiness.</p></div>
+        <PaymentReadinessGuidance /></>}
   </div>;
 }
 

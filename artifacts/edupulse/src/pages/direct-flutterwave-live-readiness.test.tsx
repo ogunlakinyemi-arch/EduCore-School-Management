@@ -27,6 +27,7 @@ const f = vi.hoisted(() => ({
   decideMutate: vi.fn(),
   readinessCalls: 0,
   checkout: vi.fn(),
+  rulesState: 'ready' as 'ready' | 'empty' | 'error',
 }));
 const okCtx = { isPlatformOwner: true, user: { id: 7, status: 'ACTIVE' }, roles: [{ role: 'PLATFORM_OWNER', schoolId: null, status: 'ACTIVE' }] };
 const q = (data: unknown) => ({ data, isSuccess: true, isLoading: false, isFetching: false, isError: false, refetch: vi.fn() });
@@ -37,11 +38,11 @@ vi.mock('@workspace/api-client-react', () => ({
   getGetNfcFeeCollectionFilterOptionsQueryKey: (p: unknown) => ['opts', p],
   useGetNfcFeeCollectionFilterOptions: () => q({ schools: [{ id: 1, name: 'Ikoyi Grammar' }], terms: [{ id: 4, schoolId: 1, schoolName: 'Ikoyi Grammar', sessionName: '2026/27', name: 'First', startDate: '2026-09-01', endDate: '2026-12-15', isCurrent: true }] }),
   getGetOwnerSubscriptionPaymentRulesQueryKey: () => ['rules'],
-  useGetOwnerSubscriptionPaymentRules: () => q({ proposals: [
+  useGetOwnerSubscriptionPaymentRules: () => ({ ...q({ proposals: f.rulesState === 'ready' ? [
     { id: 11, product: 'STUDENT_PLATFORM', status: 'DRAFT', amountMinor: 320000, currency:'NGN',schoolShareMinor:0, effectiveAt: '2026-09-01T00:00:00Z', endsAt: null, version: 3 },
     { id: 12, product: 'STUDENT_PLATFORM', status: 'RETIRED', amountMinor: 320000, effectiveAt: '2026-01-01T00:00:00Z', endsAt: null, version: 1 },
     { id: 13, product: 'TEACHER_STAFF_PLATFORM', status: 'DRAFT', amountMinor: 320000, effectiveAt: '2026-01-01T00:00:00Z', endsAt: null, version: 1 },
-  ] }),
+  ] : [] }), isSuccess: f.rulesState !== 'error', isError: f.rulesState === 'error' }),
   getGetDirectLiveReleaseReadinessQueryKey: (p: unknown) => ['readiness', p],
   useGetDirectLiveReleaseReadiness: () => { f.readinessCalls++; return q(f.readiness); },
   getListDirectLiveReleaseReviewsQueryKey: (p: unknown) => ['reviews', p],
@@ -75,10 +76,28 @@ beforeEach(() => { f.ctx = okCtx; f.readiness = readyR(); f.reviews = []; f.read
 afterEach(cleanup);
 
 describe('Direct Flutterwave LIVE readiness', () => {
+  afterEach(() => { f.rulesState = 'ready'; });
+  it.each(['empty', 'error'] as const)('keeps unevaluated prerequisite guidance visible with an %s rule catalog', (state) => {
+    f.rulesState = state;
+    mount();
+    const guide = screen.getByTestId('payment-readiness-guidance');
+    expect(screen.getByTestId('readiness-not-evaluated').textContent).toContain('no selected scope has been evaluated');
+    expect(guide.querySelectorAll('li')).toHaveLength(8);
+    expect(guide.textContent).toContain('four approved functions and nine triggers');
+    expect(guide.textContent).toContain('does not certify BRO enforcement');
+    expect(guide.textContent).toContain('Do not create or activate a rule merely to reveal diagnostics');
+    expect(guide.querySelector('button')).toBeNull();
+    expect(f.readinessCalls).toBe(0);
+    expect(f.createMutate).not.toHaveBeenCalled();
+    expect(f.decideMutate).not.toHaveBeenCalled();
+    expect(f.checkout).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-testid="button-create-review"]')).toBeNull();
+  });
   it('denies non-global owners without loading anything', () => {
     f.ctx = { ...okCtx, roles: [{ role: 'PLATFORM_OWNER', schoolId: 3, status: 'ACTIVE' }] };
     mount();
     expect(screen.getByTestId('direct-live-denied')).toBeTruthy();
+    expect(document.querySelector('[data-testid="payment-readiness-guidance"]')).toBeNull();
     expect(f.readinessCalls).toBe(0);
   });
   it('shows only eligible rules, no auto-selection, and the switch warning', () => {
@@ -90,6 +109,8 @@ describe('Direct Flutterwave LIVE readiness', () => {
   });
   it('readiness GET performs no mutations or checkout', () => {
     mount(); selectScope();
+    expect(document.querySelector('[data-testid="readiness-not-evaluated"]')).toBeNull();
+    expect(screen.getByTestId('payment-readiness-guidance').querySelectorAll('li')).toHaveLength(2);
     expect(screen.getByTestId('text-checkout-enabled').textContent).toContain('Disabled here');
     expect(screen.getByTestId('list-blockers').textContent).toContain('No approval blockers');
     expect(f.createMutate).not.toHaveBeenCalled(); expect(f.decideMutate).not.toHaveBeenCalled(); expect(f.checkout).not.toHaveBeenCalled();
