@@ -393,6 +393,8 @@ import type {
   GetOfficialCardPreviewParams,
   GetOwnAttendanceParams,
   GetOwnerAttendanceRecordsParams,
+  GetOwnerBankTransferInstructions200,
+  GetOwnerBankTransferInstructionsParams,
   GetParentChildAttendanceParams,
   GetParentCommunicationThreadParams,
   GetParentFeeInvoicePaymentMethods200Item,
@@ -58442,6 +58444,92 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getRequestDirectStudentAssistanceMutationOptions(options));
     }
+
+export const getGetOwnerBankTransferInstructionsUrl = (schoolId: number,
+    params: GetOwnerBankTransferInstructionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/platform-subscriptions/transfer-instructions?${stringifiedParams}` : `/api/schools/${schoolId}/platform-subscriptions/transfer-instructions`
+}
+
+/**
+ * Private read-only verified company instructions. Never creates a request or confirms payment.
+ */
+export const getOwnerBankTransferInstructions = async (schoolId: number,
+    params: GetOwnerBankTransferInstructionsParams, options?: Parameters<typeof customFetch>[1]): Promise<GetOwnerBankTransferInstructions200> => {
+
+  return customFetch<GetOwnerBankTransferInstructions200>(getGetOwnerBankTransferInstructionsUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerBankTransferInstructionsQueryKey = (schoolId: number,
+    params?: GetOwnerBankTransferInstructionsParams,) => {
+    return [
+    `/api/schools/${schoolId}/platform-subscriptions/transfer-instructions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOwnerBankTransferInstructionsQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerBankTransferInstructions>>, TError = ErrorType<void>>(schoolId: number,
+    params: GetOwnerBankTransferInstructionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerBankTransferInstructions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerBankTransferInstructionsQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerBankTransferInstructions>>> = ({ signal }) => getOwnerBankTransferInstructions(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerBankTransferInstructions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerBankTransferInstructionsQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerBankTransferInstructions>>>
+export type GetOwnerBankTransferInstructionsQueryError = ErrorType<void>
+
+
+
+export function useGetOwnerBankTransferInstructions<TData = Awaited<ReturnType<typeof getOwnerBankTransferInstructions>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params: GetOwnerBankTransferInstructionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerBankTransferInstructions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerBankTransferInstructionsQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCreateAssistedDirectStudentCheckoutUrl = (id: number,) => {
 

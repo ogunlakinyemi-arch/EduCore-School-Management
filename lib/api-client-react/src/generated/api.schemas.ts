@@ -27521,6 +27521,50 @@ export type RequestDirectStudentAssistance201 = {
   status: string;
 };
 
+export type GetOwnerBankTransferInstructionsParams = {
+studentId: number;
+termId: number;
+};
+
+export type GetOwnerBankTransferInstructions200AmountMinor = typeof GetOwnerBankTransferInstructions200AmountMinor[keyof typeof GetOwnerBankTransferInstructions200AmountMinor];
+
+
+export const GetOwnerBankTransferInstructions200AmountMinor = {
+  NUMBER_320000: 320000,
+} as const;
+
+export type GetOwnerBankTransferInstructions200Currency = typeof GetOwnerBankTransferInstructions200Currency[keyof typeof GetOwnerBankTransferInstructions200Currency];
+
+
+export const GetOwnerBankTransferInstructions200Currency = {
+  NGN: 'NGN',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetOwnerBankTransferInstructions200Bank = {
+  businessName: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+} | null;
+
+export type GetOwnerBankTransferInstructions200 = {
+  available: boolean;
+  amountMinor: GetOwnerBankTransferInstructions200AmountMinor;
+  currency: GetOwnerBankTransferInstructions200Currency;
+  schoolName: string;
+  termName: string;
+  transferReference: string;
+  collectionPeriodEligible: boolean;
+  /** @nullable */
+  ownerConfigurationPath: string | null;
+  message: string;
+  /** @nullable */
+  bank: GetOwnerBankTransferInstructions200Bank;
+};
+
 export type VerifyDirectStudentLiveCallbackParams = {
 tx_ref: string;
 transaction_id: string;

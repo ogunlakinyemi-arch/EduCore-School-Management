@@ -1,9 +1,10 @@
-import { useRef,useState, type FormEvent } from 'react';
+import { useRef,useState } from 'react';
 import {
   useGetAuthorizedContext,useGetDirectStudentLiveReadiness,getGetDirectStudentLiveReadinessQueryKey,
-  createDirectStudentLiveCheckout,requestDirectStudentAssistance,
+  createDirectStudentLiveCheckout,
 } from '@workspace/api-client-react';
 import { Button } from '@/components/shared';
+import {OwnerBankTransferAssistance} from '@/components/owner-bank-transfer-assistance';
 const field='w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 text-sm';
 const positive=(v:string)=>/^[1-9]\d*$/.test(v)&&Number.isSafeInteger(Number(v));
 export function safeDirectCheckoutUrl(value:string|null|undefined){
@@ -22,7 +23,8 @@ export function DirectStudentLivePanel({schoolId,selectionOptions,showAssistance
   showAssistance?:boolean;onPaymentStateChange?:()=>void;
 }){
   const actorId=useGetAuthorizedContext().data?.user?.id;
-  const [student,setStudent]=useState(''),[term,setTerm]=useState(''),[note,setNote]=useState('');
+  const [student,setStudent]=useState(''),[term,setTerm]=useState('');
+  const [assistanceOpen,setAssistanceOpen]=useState(false);
   const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[message,setMessage]=useState('');
   const [attempt,setAttempt]=useState<{state:string;reference:string;checkoutUrl:string|null}|null>(null);
   const key=useRef<string|null>(null);
@@ -51,18 +53,6 @@ export function DirectStudentLivePanel({schoolId,selectionOptions,showAssistance
       setUncertain(true);setMessage('The original request may have reached Flutterwave. Do not retry automatically or transfer money again. Ask the Owner to reconcile the attempt using the original request.');
     }finally{inflight.current=false;setBusy(false);}
   };
-  const ask=async(e:FormEvent)=>{
-    e.preventDefault();
-    if(!inputValid||note.trim().length<3||busy
-      ||status.data?.blockers.includes('FREE_ROLLOUT_NO_PLATFORM_PAYMENT')!==false)return;
-    if(!window.confirm('Record an assistance request only? This does not verify bank credit or initiate Flutterwave. Do not send a transfer until Yetenia independently confirms instructions.'))return;
-    setBusy(true);setMessage('');
-    try{
-      const r=await requestDirectStudentAssistance(schoolId,{...params,requestNote:note.trim()});
-      setMessage(`Assistance request #${r.id} recorded as ${r.status}. It is not a bank-credit verification or payment.`);
-    }catch{setMessage('Could not record the request. Check with the Owner before trying again; the previous request may have been saved.');}
-    finally{setBusy(false);}
-  };
   return <section className="panel mt-6 space-y-4 p-5" data-testid="direct-student-live-panel">
     <div><h2 className="display-font text-xl font-bold">School-to-Yetenia platform fee</h2>
       <p className="text-sm text-[hsl(var(--muted-foreground))]">Use EduCore free for the current term, without NFC devices or cards. Collection begins only in this school's configured second academic term starting in January 2027. Parents pay school fees directly to the school. Separately, the School Admin initiates ₦3,200 per student per academic term to the Platform Owner through Flutterwave. All gross proceeds settle to the Owner's merchant account; no school or BRO split is sent. An eligible BRO may earn a separate internal ₦150 entitlement under the reviewed policy. Without an eligible BRO, no BRO ledger record or liability is created.</p>
@@ -89,12 +79,14 @@ export function DirectStudentLivePanel({schoolId,selectionOptions,showAssistance
     <Button disabled={!canStart} onClick={()=>void checkout()} testId="button-direct-student-checkout">{busy?'Working…':'Start direct platform checkout'}</Button>
     {attempt && <p className="text-xs">Attempt {attempt.reference} · {attempt.state}. {safeDirectCheckoutUrl(attempt.checkoutUrl) &&
       <a href={safeDirectCheckoutUrl(attempt.checkoutUrl)!} target="_blank" rel="noopener noreferrer" className="underline">Open Flutterwave checkout</a>}</p>}
-    {showAssistance&&<form onSubmit={e=>void ask(e)} className="space-y-2 border-t border-[hsl(var(--border))] pt-4">
-      <label className="block text-sm font-semibold">Request Owner bank-transfer assistance
-        <textarea className={field} maxLength={500} value={note} onChange={e=>setNote(e.target.value)} placeholder="Reason for assistance" /></label>
-      <p className="text-xs">A request or receipt upload is not bank credit. The Owner must verify the actual ₦3,200 transfer independently before any Flutterwave attempt; failed attempts never collect the transfer again.</p>
-      <Button type="submit" variant="outline" disabled={!inputValid||note.trim().length<3||busy||status.data?.blockers.includes('FREE_ROLLOUT_NO_PLATFORM_PAYMENT')!==false} testId="button-request-direct-assistance">Record request only</Button>
-    </form>}
+    {showAssistance&&<div className="space-y-2 border-t border-[hsl(var(--border))] pt-4">
+      <Button type="button" variant="outline" disabled={!inputValid||!actorId||busy}
+        onClick={()=>setAssistanceOpen(true)} testId="button-request-direct-assistance">Request Owner bank-transfer assistance</Button>
+      <p className="text-xs">Select the student and term, then view verified company instructions and submit evidence for review. Opening the panel does not record a request or confirm payment.</p>
+    </div>}
+    {assistanceOpen&&inputValid&&actorId&&<OwnerBankTransferAssistance key={`${actorId}:${schoolId}:${student}:${term}`}
+      schoolId={schoolId} studentId={Number(student)} termId={Number(term)} actorId={actorId}
+      onClose={()=>setAssistanceOpen(false)} />}
     <p className="text-xs">Creating checkout or returning from Flutterwave is not proof of payment. Only an independently verified successful transaction bound to this student and term satisfies the separate platform obligation.</p>
     {message&&<p role="status" className="text-xs font-semibold">{message}</p>}
   </section>;

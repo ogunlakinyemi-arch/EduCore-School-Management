@@ -29377,6 +29377,37 @@ export const RequestDirectStudentAssistanceResponse = zod.object({
 })
 
 
+/**
+ * Private read-only verified company instructions. Never creates a request or confirms payment.
+ */
+export const GetOwnerBankTransferInstructionsParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+export const GetOwnerBankTransferInstructionsQueryParams = zod.object({
+  "studentId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int()
+})
+
+export const GetOwnerBankTransferInstructionsResponse = zod.object({
+  "available": zod.boolean(),
+  "amountMinor": zod.literal(320000),
+  "currency": zod.enum(['NGN']),
+  "schoolName": zod.string(),
+  "termName": zod.string(),
+  "transferReference": zod.string(),
+  "collectionPeriodEligible": zod.boolean(),
+  "ownerConfigurationPath": zod.string().nullable(),
+  "message": zod.string(),
+  "bank": zod.object({
+  "businessName": zod.string(),
+  "bankName": zod.string(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string()
+}).nullable()
+})
+
+
 export const CreateAssistedDirectStudentCheckoutParams = zod.object({
   "id": zod.coerce.number().int()
 })

@@ -6216,6 +6216,8 @@ paths:
     $ref: "./direct-student-live.yaml#/paths/~1schools~1{schoolId}~1platform-subscriptions~1checkout"
   /schools/{schoolId}/platform-subscriptions/assistance:
     $ref: "./direct-student-live.yaml#/paths/~1schools~1{schoolId}~1platform-subscriptions~1assistance"
+  /schools/{schoolId}/platform-subscriptions/transfer-instructions:
+    $ref: "./direct-student-live.yaml#/paths/~1schools~1{schoolId}~1platform-subscriptions~1transfer-instructions"
   /platform/subscription-payment-assistance/{id}/checkout:
     $ref: "./direct-student-live.yaml#/paths/~1platform~1subscription-payment-assistance~1{id}~1checkout"
   /flutterwave/direct-student/callback:

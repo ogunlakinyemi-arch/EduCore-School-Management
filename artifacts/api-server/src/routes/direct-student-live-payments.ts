@@ -4,6 +4,7 @@ import { pool } from "@workspace/db";
 import { requireAuthentication,getUserContext } from "../middlewares/auth";
 import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
 import {readStudentRollout} from "../services/student-platform-rollout";
+import {ownerBankTransferInstructions} from "../services/owner-bank-transfer-instructions";
 import { authenticateDirectStudentWebhook,directStudentReadiness,startDirectStudentPayment,
   verifyDirectStudentPayment,DirectPaymentBlocked } from "../services/direct-student-live-payments";
 const router=Router();
@@ -22,6 +23,17 @@ const safeError=(res:Response,e:unknown)=>{
   res.status(e instanceof DirectPaymentBlocked?e.statusCode:503)
     .json({error:e instanceof DirectPaymentBlocked?e.code:"DIRECT_LIVE_PAYMENT_UNAVAILABLE"});
 };
+router.get("/schools/:schoolId/platform-subscriptions/transfer-instructions",requireAuthentication(),async(req,res)=>{
+  res.setHeader("Cache-Control","private, no-store");
+  const sid=positive.safeParse(req.params.schoolId),s=scope.safeParse(req.query);
+  if(!sid.success||!s.success){res.status(400).json({error:"Invalid school/student/term scope."});return;}
+  if(!owner(req)&&!schoolAdmin(req,sid.data)){res.status(403).json({error:"School Admin or global Owner required."});return;}
+  try{
+    const result=await ownerBankTransferInstructions(pool,{schoolId:sid.data,...s.data},getUserContext(req).user.id);
+    if(!result){res.status(404).json({error:"Accessible school/student/term not found."});return;}
+    res.json(result);
+  }catch{res.status(503).json({error:"Verified Owner bank-transfer instructions are unavailable. Do not transfer funds."});}
+});
 router.get("/schools/:schoolId/platform-subscriptions/live-readiness",requireAuthentication(),async(req,res)=>{
   res.setHeader("Cache-Control","no-store");
   const sid=positive.safeParse(req.params.schoolId),s=scope.safeParse(req.query);

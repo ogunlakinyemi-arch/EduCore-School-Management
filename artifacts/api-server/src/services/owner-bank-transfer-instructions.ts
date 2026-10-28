@@ -1,0 +1,47 @@
+import {decryptPayrollBankValue} from "../lib/payroll-bank-encryption";
+import {readStudentRollout} from "./student-platform-rollout";
+type Sql={query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
+
+/** Read-only. Reuse the company's existing encrypted account, never a school,
+ * personal payroll account, provider subaccount or historical fallback. */
+export async function ownerBankTransferInstructions(db:Sql,
+  scope:{schoolId:number;studentId:number;termId:number},actorId:number){
+  const access=(await db.query(`SELECT s.name AS school_name,t.name AS term_name,
+    EXISTS(SELECT 1 FROM school_memberships m WHERE m.user_id=u.id
+      AND m.role='PLATFORM_OWNER' AND m.school_id IS NULL AND m.status='ACTIVE') AS "isOwner"
+    FROM schools s JOIN students st ON st.school_id=s.id AND st.id=$2
+    JOIN academic_terms t ON t.school_id=s.id AND t.id=$3
+    JOIN app_users u ON u.id=$4 AND u.status='ACTIVE'
+    WHERE s.id=$1 AND lower(s.status)='active' AND lower(st.status)='active'
+      AND EXISTS(SELECT 1 FROM school_memberships m WHERE m.user_id=u.id AND m.status='ACTIVE'
+        AND ((m.role='SCHOOL_ADMIN' AND m.school_id=s.id)
+          OR (m.role='PLATFORM_OWNER' AND m.school_id IS NULL)))`,
+    [scope.schoolId,scope.studentId,scope.termId,actorId])).rows[0];
+  if(!access)return null;
+  const rollout=await readStudentRollout(db,scope.schoolId,scope.termId);
+  const base={amountMinor:320000,currency:"NGN",schoolName:String(access.school_name),
+    termName:String(access.term_name),transferReference:`YETENIA-S${scope.schoolId}-T${scope.termId}-ST${scope.studentId}`,
+    collectionPeriodEligible:rollout.chargeable,ownerConfigurationPath:access.isOwner===true?"/payment-settlement":null};
+  const unavailable=()=>({...base,available:false,bank:null,
+    message:"Verified Platform Owner business bank-transfer details are unavailable. Do not transfer funds. Ask the Owner to configure and verify the company account in Payment settlement."});
+  const {rows}=await db.query(`SELECT business_name,currency,verification_status,verified_at,verified_by,
+    bank_name_encrypted,account_name_encrypted,account_number_encrypted,account_last4,encryption_key_version
+    FROM settlement_payroll_profiles WHERE scope='YEMAIT_COMPANY' AND school_id IS NULL LIMIT 2`);
+  if(rows.length!==1)return unavailable();
+  const row=rows[0],verifiedAt=new Date(row.verified_at??"").getTime();
+  if(row.verification_status!=="VERIFIED"||row.currency!=="NGN"||
+    !Number.isFinite(verifiedAt)||verifiedAt>Date.now()||
+    !Number.isSafeInteger(Number(row.verified_by))||Number(row.verified_by)<=0||
+    typeof row.business_name!=="string"||row.business_name.trim().length<2)return unavailable();
+  try{
+    const read=(field:string)=>decryptPayrollBankValue(row[`${field}_encrypted`],
+      row.encryption_key_version,`settlement:yemait-company:${field.replace(/_([a-z])/g,(_,c:string)=>c.toUpperCase())}`);
+    const bankName=read("bank_name"),accountName=read("account_name"),accountNumber=read("account_number");
+    if(typeof bankName!=="string"||bankName.trim().length<2||
+      typeof accountName!=="string"||accountName.trim().length<2||
+      typeof accountNumber!=="string"||!/^[0-9]{10}$/.test(accountNumber)||
+      accountNumber.slice(-4)!==row.account_last4)return unavailable();
+    return {...base,available:true,bank:{businessName:row.business_name,bankName,accountName,accountNumber},
+      message:"These are verified company account instructions, not confirmation of your transfer. Submit evidence through the assistance request; only authorized verification can confirm receipt."};
+  }catch{return unavailable();}
+}

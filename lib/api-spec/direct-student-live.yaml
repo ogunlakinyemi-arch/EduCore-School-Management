@@ -1,4 +1,44 @@
 paths:
+  /schools/{schoolId}/platform-subscriptions/transfer-instructions:
+    get:
+      operationId: getOwnerBankTransferInstructions
+      tags: [subscriptions]
+      description: Private read-only verified company instructions. Never creates a request or confirms payment.
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: integer}}
+        - {name: studentId, in: query, required: true, schema: {type: integer}}
+        - {name: termId, in: query, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: Verified instructions or explicit unavailable state; no payment confirmation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [available, amountMinor, currency, schoolName, termName, transferReference, collectionPeriodEligible, ownerConfigurationPath, bank, message]
+                properties:
+                  available: {type: boolean}
+                  amountMinor: {type: integer, enum: [320000]}
+                  currency: {type: string, enum: [NGN]}
+                  schoolName: {type: string}
+                  termName: {type: string}
+                  transferReference: {type: string}
+                  collectionPeriodEligible: {type: boolean}
+                  ownerConfigurationPath: {type: [string, 'null']}
+                  message: {type: string}
+                  bank:
+                    type: [object, 'null']
+                    required: [businessName, bankName, accountName, accountNumber]
+                    properties:
+                      businessName: {type: string}
+                      bankName: {type: string}
+                      accountName: {type: string}
+                      accountNumber: {type: string}
+        '400': {description: Invalid school/student/term}
+        '401': {description: Authentication required}
+        '403': {description: School Admin or global Owner required}
+        '404': {description: Accessible school/student/term not found}
+        '503': {description: Instructions cannot be securely verified}
   /schools/{schoolId}/platform-subscriptions/live-readiness:
     get:
       operationId: getDirectStudentLiveReadiness

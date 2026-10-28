@@ -31,3 +31,16 @@ permission to convert or rebill any legacy paid/unpaid student; require
 student/school/term-specific reconciliation evidence and separately reviewed
 transition where a legacy obligation exists. A synthetic provider test does
 not confirm actual merchant-side non-split settlement.
+
+School Admin bank-transfer assistance must show the Owner's existing verified
+official company account, not a school recipient, personal account or invented
+fallback. Missing or unverified instructions must explicitly prevent reliance
+on them and direct configuration to the Owner only.
+
+**Why:** The user requested official Owner bank instructions from the assistance
+action so schools can transfer the Student NGN 3,200-per-term subscription fee,
+without treating viewing instructions or submitting evidence as receipt.
+
+**How to apply:** Keep account verification separate from bank-credit verification
+and subscription confirmation. Reuse existing company settings and assistance
+evidence; never auto-approve an account or payment to make instructions available.
