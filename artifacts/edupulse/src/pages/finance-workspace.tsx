@@ -21,7 +21,7 @@ export function FinanceWorkspacePage() {
           ['/direct-flutterwave-live-readiness', 'Direct Flutterwave LIVE Readiness', 'Read-only release checks and Owner review lifecycle. Approval never enables LIVE or takes payment.'],
         ] : []),
         ['/billing-rules', 'Staff NFC billing rules', 'Existing effective-dated staff billing rules.'],
-        ['/payment-settlement', 'Payment & settlement', 'Platform configuration and school settlement oversight.'],
+        ['/payment-settlement', 'Owner business account & history', 'Owner receiving-account settings for bank-transfer assistance and retained financial history.'],
         ['/payroll', 'Company payroll', 'YETENIA TECHNOLOGIES LIMITED employees, approvals and verified salary outcomes.'],
       ]
     : schoolFinance
@@ -29,7 +29,6 @@ export function FinanceWorkspacePage() {
           ['/finance', 'School fees', 'Invoices, payments, receipts and student statements.'],
           ['/staff-nfc-finance', 'Staff NFC subscriptions', 'School allocations, outstanding subscriptions and receipts.'],
           ...(schoolAdmin ? [
-            ['/payment-settlement', 'Payment & settlement', 'Your school’s protected settlement profile and history.'],
             ['/payroll', 'Payroll & salaries', 'Your school’s teachers and staff only.'],
             ['/transport', 'Transport fees', 'Bus assignments linked to the existing Finance invoices.'],
           ] : []),

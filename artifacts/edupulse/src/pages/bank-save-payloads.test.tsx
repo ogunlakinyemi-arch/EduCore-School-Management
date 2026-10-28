@@ -77,7 +77,6 @@ afterEach(async () => { await act(async () => root.unmount()); client.clear(); h
 type Case = { name: string; open: () => Promise<Element>; data: () => any };
 const flows: Case[] = [
   { name: 'Owner company settlement', async open() { s.owner = true; await render(<PaymentSettlementPage />); await click(node('button-edit-company-settlement')); return node('form-settlement'); }, data: () => s.save.mock.calls[0][0].data },
-  { name: 'School Admin settlement', async open() { s.owner = false; await render(<PaymentSettlementPage />); await click(node('button-edit-settlement')); return node('form-settlement'); }, data: () => s.save.mock.calls[0][0].data },
   { name: 'Owner company employee', async open() { s.owner = true; await render(<PayrollPage />); await click(node('tab-employees')); await click(node('button-edit-profile-1')); return node('form-payroll-profile'); }, data: () => s.save.mock.calls[0][0].data },
   { name: 'School teacher/staff', async open() { s.owner = false; await render(<PayrollPage />); await click(node('tab-employees')); await click(node('button-edit-profile-1')); return node('form-payroll-profile'); }, data: () => s.save.mock.calls[0][0].data },
 ];

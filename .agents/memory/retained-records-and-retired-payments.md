@@ -26,3 +26,17 @@ the exact student and academic term, retaining the existing seven-day grace.
 A legacy active/waived flag or school receipt is not new direct-payment proof.
 Preserve essential identity, payment/status/instructions and support access.
 Keep school/card/device security restrictions independent of payment success.
+
+School Admin Finance must no longer collect or manage a school settlement
+recipient for platform splits. Do not restore the school settlement card, bank
+form or write requests. The Owner's own company receiving account is separate
+and must remain available for school-to-Owner bank-transfer assistance.
+
+**Why:** The user confirmed the product is published but no longer uses school
+subaccount settlement; the Owner no longer needs school accounts for splitting.
+This does not withdraw school-approved bank instructions for parent fee invoices.
+
+**How to apply:** Keep ordinary school fees, invoices and fee-account settings;
+retain authorized historical settlement/audit reads. Keep school settlement
+configuration mutations retired, while preserving the separate NGN 3,200 Student
+subscription flow and eligible NGN 150 internal BRO ledger.

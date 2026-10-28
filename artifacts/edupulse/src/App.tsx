@@ -296,7 +296,7 @@ export function ProtectedRoutes() {
           <Route path="/billing-rules"><RoleGuard isPlatformOwnerOnly><StaffNfcBillingRulesPage /></RoleGuard></Route>
           <Route path="/subscription-payment-rules"><RoleGuard isPlatformOwnerOnly><SubscriptionPaymentRulesContainer /></RoleGuard></Route>
           <Route path="/direct-flutterwave-live-readiness"><RoleGuard isPlatformOwnerOnly><OwnerOnlyGate><DirectFlutterwaveLiveReadinessPage /></OwnerOnlyGate></RoleGuard></Route>
-          <Route path="/payment-settlement"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PaymentSettlementPage /></RoleGuard></Route>
+          <Route path="/payment-settlement"><RoleGuard isPlatformOwnerOnly><PaymentSettlementPage /></RoleGuard></Route>
           <Route path="/flutterwave-settlements"><ArchivedPaymentWorkflowPage /></Route>
           <Route path="/hosted-payments"><ArchivedPaymentWorkflowPage /></Route>
           <Route path="/student-subscription"><RoleGuard allowedRoles={['STUDENT']}><StudentSubscriptionStatusPage /></RoleGuard></Route>

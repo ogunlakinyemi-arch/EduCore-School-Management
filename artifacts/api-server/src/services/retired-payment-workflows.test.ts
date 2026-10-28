@@ -22,6 +22,8 @@ describe("archived financial workflow boundary",()=>{
     ["/api/subscriptions/%2B7/checkout","POST"],["/api/subscriptions/7.0/payment-link","POST"],
     ["/api/schools/7e0/finance/live-subaccount-onboarding","POST"],
     ["/api/platform/finance/payment-settlement/schools/0x7/review","POST"],
+    ...["POST","PUT","PATCH","DELETE"].map(method=>["/api/schools/7/finance/payment-settlement",method]),
+    ["/api/schools/%37/finance/payment-settlement/","PUT"],
   ])("retires %s %s without invoking provider or storage", (path,method)=>expect(retiredPaymentWorkflow(path,method)).toBe(true));
   it.each([
     ["/api/webhooks/flutterwave/hosted-manual","POST"],["/api/webhooks/flutterwave/student-subscriptions","POST"],
@@ -30,7 +32,13 @@ describe("archived financial workflow boundary",()=>{
     ["/api/staff-nfc/checkout","POST"],["/api/parent/fees/invoices/7/providers/FLUTTERWAVE/initialize","POST"],
     ["/api/schools/7/finance/payment-settlement/history","GET"],
     ["/api/public/nfc-payment-links/verify","POST"],
-    ["/api/schools/7/finance/payment-settlement","PUT"],
+    ["/api/schools/7/finance/payment-settlement","GET"],
+    ["/api/platform/finance/payment-settlement","PUT"],
+    ["/api/platform/finance/payment-settlement","GET"],
+    ["/api/schools/7/finance/settings","PUT"],
+    ["/api/schools/7/platform-subscriptions/transfer-instructions","GET"],
+    ["/api/schools/7/platform-subscriptions/assistance","POST"],
+    ["/api/schools/7/platform-subscriptions/checkout","POST"],
     ["/api/flutterwave/split-payments/7/transaction-evidence","GET"],
     ["/api/platform/live-readiness/receipts","GET"],
     ["/api/platform/live-readiness/receipts/7/official-receipt","GET"],
@@ -48,9 +56,13 @@ describe("archived financial workflow boundary",()=>{
   afterAll(async()=>{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));});
   it("returns an uncached 410 before any downstream payment handler, regardless of role claims",async()=>{
     for(const role of ["PLATFORM_OWNER","SCHOOL_ADMIN","PARENT","STUDENT"]){
-      const response=await fetch(`${base}/api/hosted-payments/checkout`,{method:"POST",headers:{"x-role":role}});
-      expect(response.status).toBe(410);expect(await response.json()).toMatchObject({code:"PAYMENT_WORKFLOW_ARCHIVED"});
-      expect(response.headers.get("cache-control")).toBe("no-store");
+      for(const [path,method] of [["/api/hosted-payments/checkout","POST"],
+        ["/api/schools/7/finance/payment-settlement","PUT"],
+        ["/api/schools/7/finance/payment-settlement","DELETE"]]){
+        const response=await fetch(`${base}${path}`,{method,headers:{"x-role":role}});
+        expect(response.status).toBe(410);expect(await response.json()).toMatchObject({code:"PAYMENT_WORKFLOW_ARCHIVED"});
+        expect(response.headers.get("cache-control")).toBe("no-store");
+      }
     }
     expect(downstream).toBe(0);
   });

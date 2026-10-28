@@ -4,12 +4,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Landmark } from 'lucide-react';
 import {
   useGetAuthorizedContext, useGetPlatformPaymentSettlement, useUpdatePlatformPaymentSettlement,
-  useGetSchoolPaymentSettlement, useUpdateSchoolPaymentSettlement, useListSchoolSettlementHistory,
   useListPlatformSettlementHistory,
-  getGetPlatformPaymentSettlementQueryKey, getGetSchoolPaymentSettlementQueryKey,
-  getListSchoolSettlementHistoryQueryKey, getListPlatformSettlementHistoryQueryKey,
+   getGetPlatformPaymentSettlementQueryKey, getListPlatformSettlementHistoryQueryKey,
 } from '@workspace/api-client-react';
-import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, TenantPicker, useTenant, date } from '@/components/shared';
+import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, date } from '@/components/shared';
 import { BankFields, Freshness, IdentityBoundary, Notice, ProviderBanner, SettlementHistoryTable, Tabs, entry, errMsg, note, FRESH_MS } from './payroll-common';
 import { SettlementRemovalReviewControl } from '@/components/settlement-removal-review';
 import { useBankSelectionGuard } from '@/lib/bank-selection';
@@ -26,21 +24,10 @@ function ProfileView({ p }: { p: Profile }) {
   </div>;
 }
 
-function SchoolVerificationNextStep({ status }: { status: string }) {
-  const message = status === 'PENDING_VERIFICATION'
-    ? 'Next step: the Platform Owner will independently check the account holder. No settlement is implied by this pending status.'
-    : status === 'ACTION_REQUIRED'
-      ? 'Action needed: check the bank and account-holder details, update any incorrect information, then save again for a new independent check.'
-      : status === 'VERIFIED'
-        ? 'The account holder was independently matched. This does not mean a collection account is connected or that funds have settled.'
-        : 'Add the school’s own bank account to begin verification.';
-  return <p className={`${note} mt-4`} data-testid="school-settlement-next-step">{message}</p>;
-}
-
 type FormState = { businessName: string; businessRegistrationNumber: string; settlementContactEmail: string; settlementContactPhone: string; bankName: string; bankCode: string; accountName: string; accountNumber: string };
 const blank = (p?: Profile | null): FormState => ({ businessName: p?.businessName ?? '', businessRegistrationNumber: p?.businessRegistrationNumber ?? '', settlementContactEmail: p?.settlementContactEmail ?? '', settlementContactPhone: p?.settlementContactPhone ?? '', bankName: p?.bankName ?? '', bankCode: p?.bankCode ?? '', accountName: p?.accountName ?? '', accountNumber: '' });
 
-function SettlementForm({ profile, scope, saving, onSubmit, onCancel }: { profile?: Profile | null; scope: 'COMPANY' | 'SCHOOL'; saving: boolean; onSubmit: (d: FormState) => void; onCancel: () => void }) {
+function SettlementForm({ profile, saving, onSubmit, onCancel }: { profile?: Profile | null; saving: boolean; onSubmit: (d: FormState) => void; onCancel: () => void }) {
   const [f, setF] = useState<FormState>(() => blank(profile));
   const bankAllowed = useBankSelectionGuard();
   const patch = (p: Partial<FormState>) => setF(s => ({ ...s, ...p }));
@@ -57,55 +44,16 @@ function SettlementForm({ profile, scope, saving, onSubmit, onCancel }: { profil
       <Field label="Registration number (optional)"><input className={entry} value={f.businessRegistrationNumber} onChange={e => patch({ businessRegistrationNumber: e.target.value })} /></Field>
       <Field label="Phone (optional)"><input className={entry} value={f.settlementContactPhone} onChange={e => patch({ settlementContactPhone: e.target.value })} /></Field>
     </div>
-    <Field label={scope === 'SCHOOL' ? 'Settlement contact email' : 'Settlement contact email (optional)'}><input type="email" required={scope === 'SCHOOL'} className={entry} value={f.settlementContactEmail} onChange={e => patch({ settlementContactEmail: e.target.value })} /></Field>
+    <Field label="Settlement contact email (optional)"><input type="email" className={entry} value={f.settlementContactEmail} onChange={e => patch({ settlementContactEmail: e.target.value })} /></Field>
     <BankFields v={f} set={patch} maskedCurrent={profile?.accountLast4 ? `****${profile.accountLast4}` : null} />
     {blocked && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{blocked}</p>}
-    <p className={note}>{scope === 'SCHOOL'
-      ? 'After saving, the account remains pending until a Platform Owner independently checks the account holder. Saving does not send or settle money. Updating details starts verification again.'
-      : 'Saving submits recipient details for provider verification. Entering a bank account does not mean funds have settled; settlement shows only after the provider confirms it.'}</p>
+    <p className={note}>Saving submits company recipient details for verification. Entering a bank account does not confirm receipt of a school transfer or credit any subscription.</p>
     <div className="flex gap-2"><Button type="submit" disabled={saving || f.accountNumber.length !== 10} testId="button-save-settlement">{saving ? 'Saving...' : 'Save for verification'}</Button><Button variant="quiet" onClick={onCancel}>Cancel</Button></div>
   </form>;
 }
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ predicate: q => typeof q.queryKey[0] === 'string' && /payment-settlement|settlement/.test(q.queryKey[0]) });
-}
-
-function SchoolAdminSettlement({ schoolId }: { schoolId: number }) {
-  const qc = useQueryClient();
-  const [tab, setTab] = useState<'profile' | 'history'>('profile');
-  const [editing, setEditing] = useState(false);
-  const [msg, setMsg] = useState(''); const [fail, setFail] = useState('');
-  const q = useGetSchoolPaymentSettlement(schoolId, { query: { enabled: !!schoolId, queryKey: getGetSchoolPaymentSettlementQueryKey(schoolId), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
-  const hp = { limit: 50 };
-  const h = useListSchoolSettlementHistory(schoolId, hp, { query: { enabled: !!schoolId && tab === 'history', queryKey: getListSchoolSettlementHistoryQueryKey(schoolId, hp), staleTime: FRESH_MS, refetchInterval: FRESH_MS } });
-  const update = useUpdateSchoolPaymentSettlement();
-  const save = async (d: FormState) => {
-    try {
-      await update.mutateAsync({ schoolId, data: { businessName: d.businessName.trim(), businessRegistrationNumber: d.businessRegistrationNumber.trim() || null, settlementContactEmail: d.settlementContactEmail.trim(), settlementContactPhone: d.settlementContactPhone.trim() || null, bankName: d.bankName.trim(), bankCode: d.bankCode, accountName: d.accountName.trim(), accountNumber: d.accountNumber, currency: 'NGN' } });
-      setEditing(false); setFail(''); setMsg('Settlement details saved. They stay pending until the account holder is independently checked.'); invalidateAll(qc);
-    } catch (e) {
-      const message = errMsg(e);
-      setFail(/bank list|bank selection|directory|transfer code|provider/i.test(message)
-        ? 'The bank list could not be confirmed. Refresh it, choose your bank from the list, and try again. Nothing was saved.'
-        : 'We could not save these details. Check the required fields and try again, or contact the Platform Owner if the problem continues. Nothing was saved.');
-    }
-  };
-  if (q.isLoading) return <SkeletonPage />;
-  if (q.isError || !q.data) return <ErrorState retry={() => q.refetch()} />;
-  const p = q.data;
-  return <div>
-    <IdentityBoundary scope="SCHOOL" />
-    {msg && <Notice kind="ok" onClose={() => setMsg('')}>{msg}</Notice>}{fail && !editing && <Notice kind="error">{fail}</Notice>}
-    <div className="mb-4 flex justify-between"><Tabs tabs={[['profile', 'Settlement profile'], ['history', 'Settlement history']] as const} value={tab} onChange={setTab} />
-      <Freshness updatedAt={q.dataUpdatedAt} fetching={q.isFetching} onRefresh={() => { q.refetch(); h.refetch(); }} /></div>
-    {tab === 'profile' && <section className="panel p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="display-font text-xl font-bold">School settlement account</h2><Button onClick={() => { setFail(''); setEditing(true); }} testId="button-edit-settlement">{p.status === 'NOT_CONFIGURED' ? 'Add details' : 'Update details'}</Button></div>
-      {p.status === 'NOT_CONFIGURED' ? <EmptyState icon={Landmark} title="No settlement account yet" description="Add the school's own bank recipient. It is never shared with company payroll money." /> : <ProfileView p={p} />}
-      <SchoolVerificationNextStep status={p.status} />
-      {p.status === 'PENDING_VERIFICATION' && <SettlementRemovalReviewControl schoolId={schoolId} />}</section>}
-    {tab === 'history' && <section className="panel overflow-hidden">{h.isLoading ? <SkeletonPage /> : h.isError ? <ErrorState retry={() => h.refetch()} /> : <SettlementHistoryTable rows={h.data ?? []} />}</section>}
-    {editing && <Modal title="Settlement details" eyebrow="School account" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={p} scope="SCHOOL" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
-  </div>;
 }
 
 function OwnerSettlement() {
@@ -143,19 +91,17 @@ function OwnerSettlement() {
         {company.data.status === 'PENDING_VERIFICATION' && <SettlementRemovalReviewControl />}</section>)}
     {tab === 'schools' && <NfcFeeCollectionOversight />}
     {tab === 'history' && <section className="panel overflow-hidden">{hist.isLoading ? <SkeletonPage /> : hist.isError ? <ErrorState retry={() => hist.refetch()} /> : <SettlementHistoryTable rows={hist.data ?? []} showSchool />}</section>}
-    {editing && <Modal title="Company settlement details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} scope="COMPANY" saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
+    {editing && <Modal title="Company settlement details" eyebrow="Company" onClose={() => setEditing(false)}>{fail && <Notice kind="error">{fail}</Notice>}<SettlementForm profile={company.data} saving={update.isPending} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>}
   </div>;
 }
 
 export function PaymentSettlementPage() {
-  const { schoolId } = useTenant();
   const ctx = useGetAuthorizedContext();
   const isOwner = ctx.data?.isPlatformOwner === true;
-  const isAdmin = !!schoolId && ctx.data?.roles?.some(r => r.schoolId === schoolId && r.role === 'SCHOOL_ADMIN' && r.status === 'ACTIVE') === true;
   return <div className="fade-up">
-    <PageHeading eyebrow="Finance / Payment settlement" title="Payment settlement" description="Recipient details and provider-verified settlement outcomes. Company money and school money never share an account." action={isAdmin && !isOwner ? <TenantPicker /> : undefined} />
+    <PageHeading eyebrow="Owner Finance" title="Owner payment settings" description="Owner business receiving account, retained settlement history and read-only fee collection oversight. School split settlement is retired." />
     {ctx.isLoading ? <SkeletonPage /> : ctx.isError ? <ErrorState retry={() => ctx.refetch()} /> :
-      isOwner ? <OwnerSettlement /> : isAdmin ? <SchoolAdminSettlement key={schoolId} schoolId={schoolId} /> :
-      <EmptyState icon={Landmark} title="Not available for your role" description="Payment settlement is limited to School Admins for their own school and the Platform Owner." />}
+      isOwner ? <OwnerSettlement /> :
+      <EmptyState icon={Landmark} title="Owner-only settings" description="School settlement account collection is retired. These company account settings are only available to the Platform Owner. School fees and platform subscriptions remain in School Finance." />}
   </div>;
 }
