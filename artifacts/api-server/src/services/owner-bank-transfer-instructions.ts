@@ -24,7 +24,7 @@ export async function ownerBankTransferInstructions(db:Sql,
     termName:String(access.term_name),transferReference:`YETENIA-S${scope.schoolId}-T${scope.termId}-ST${scope.studentId}`,
     collectionPeriodEligible:rollout.chargeable,ownerConfigurationPath:access.isOwner===true?"/payment-settlement":null};
   const unavailable=()=>({...base,available:false,bank:null,
-    message:"Verified Owner receiving details for optional ₦3,200/student/term subscription assistance are unavailable. Do not transfer funds; contact the Platform Owner. The Owner must explicitly verify the saved receiving account in Company Profile. Flutterwave merchant settlement configuration is separate."});
+    message:"Verified Owner receiving details for optional ₦3,200/student/term subscription assistance are unavailable. Do not transfer funds; contact the Platform Owner. The Owner must select the bank, complete automatic account-name lookup and save the matched company account in Company Profile. Flutterwave merchant settlement configuration is separate."});
   const {rows}=await db.query(`SELECT business_name,currency,verification_status,verified_at,verified_by,
     bank_name_encrypted,account_name_encrypted,account_number_encrypted,account_last4,encryption_key_version
     ,EXISTS(SELECT 1 FROM settlement_payroll_audit_events a

@@ -8219,6 +8219,11 @@ export const CompanySettlementInputCurrency = {
 
 export interface CompanySettlementInput {
   /**
+     * @minLength 1
+     * @maxLength 4096
+     */
+  lookupToken: string;
+  /**
      * @minLength 2
      * @maxLength 160
      */
@@ -15697,6 +15702,26 @@ export interface SettlementRemovalResult {
   /** @nullable */
   schoolId: number | null;
   status: SettlementRemovalResultStatus;
+}
+
+export interface OwnerReceivingAccountSelection {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bankName: string;
+  /** @pattern ^[0-9]{3,12}$ */
+  bankCode: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+}
+
+export interface OwnerReceivingAccountLookup {
+  accountName: string;
+  accountNumberMatched: true;
+  accountLast4: string;
+  lookupToken: string;
+  expiresAt: string;
 }
 
 export type SchoolSettlementReviewInputDecision = typeof SchoolSettlementReviewInputDecision[keyof typeof SchoolSettlementReviewInputDecision];

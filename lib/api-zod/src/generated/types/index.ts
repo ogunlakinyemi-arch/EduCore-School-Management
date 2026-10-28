@@ -1393,6 +1393,8 @@ export * from './ownerPaymentAssistanceInput';
 export * from './ownerPaymentAssistanceInputAmountMinor';
 export * from './ownerPaymentAssistanceResult';
 export * from './ownerReaderReason';
+export * from './ownerReceivingAccountLookup';
+export * from './ownerReceivingAccountSelection';
 export * from './ownerSchool';
 export * from './ownerSchool4b96100';
 export * from './ownerSchool4b96100AdministratorsItem';

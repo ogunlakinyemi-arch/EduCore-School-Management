@@ -5,6 +5,7 @@ import { pool } from "@workspace/db";
 import { developmentFlutterwaveCollectionStatus } from "../lib/flutterwave-development-config";
 import { bankAccountResolutionConfigured } from "../lib/flutterwave-payroll-v3";
 import { liveOwnerResolutionConfigured, officialOwnerAccountName, OWNER_RECEIVING_ACCOUNT_POLICY } from "../lib/owner-receiving-account-policy";
+import { acceptOwnerLookupEvidence, lookupOwnerReceivingAccount } from "../services/owner-receiving-account-lookup";
 import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
 import {
   assertRemovalEnvironment,
@@ -704,6 +705,7 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
     "Invalid company settlement bank information",
   );
   validateBankInput(input);
+  const lookup = acceptOwnerLookupEvidence(context.user.id, input);
   await requireVerifiedPaymentAccountProvider(input);
   const bank = encryptedBankRecord(input, {
     bankName: COMPANY_SETTLEMENT_AD("bankName"),
@@ -717,6 +719,7 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
       `SELECT id, verification_status FROM settlement_payroll_profiles
        WHERE scope='YEMAIT_COMPANY' FOR UPDATE`,
     ))[0];
+    acceptOwnerLookupEvidence(context.user.id, input);
     const result = await client.query(
       `INSERT INTO settlement_payroll_profiles (
          scope,school_id,business_name,business_registration_number,settlement_contact_email,
@@ -726,7 +729,7 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
          provider_subaccount_id,verification_status,verified_at,verified_by,
          created_by,updated_by,updated_at
        ) VALUES ('YEMAIT_COMPANY',NULL,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'NGN',
-         'FLUTTERWAVE',$11,NULL,'PENDING_VERIFICATION',NULL,NULL,$12,$12,NOW())
+         'FLUTTERWAVE',$11,NULL,'VERIFIED',NOW(),$12,$12,$12,NOW())
        ON CONFLICT (scope) WHERE scope='YEMAIT_COMPANY'
        DO UPDATE SET business_name=EXCLUDED.business_name,
          business_registration_number=EXCLUDED.business_registration_number,
@@ -739,8 +742,8 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
          account_last4=EXCLUDED.account_last4,
          encryption_key_version=EXCLUDED.encryption_key_version,
          provider_business_id=EXCLUDED.provider_business_id,
-         provider_subaccount_id=NULL,verification_status='PENDING_VERIFICATION',
-         verified_at=NULL,verified_by=NULL,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+         provider_subaccount_id=NULL,verification_status='VERIFIED',
+         verified_at=NOW(),verified_by=EXCLUDED.updated_by,updated_by=EXCLUDED.updated_by,updated_at=NOW()
        RETURNING *`,
       [
         resolveBoundaryText(input.businessName, "Company name"),
@@ -767,13 +770,22 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
       recordId: row.id as number,
       action: "COMPANY_SETTLEMENT_PROFILE_UPDATED",
       previousStatus: old?.verification_status as string | null ?? null,
-      newStatus: "PENDING_VERIFICATION",
+      newStatus: "VERIFIED",
       metadata: {
         accountLast4: bank.accountLast4,
         encryptionKeyVersion: bank.encryptionKeyVersion,
         providerMode: capability.mode,
         externalSettlementVerified: false,
       },
+    });
+    await audit(client, {
+      actor: context.user, actorRole: "PLATFORM_OWNER", scope: "PLATFORM", schoolId: null,
+      recordType: "SETTLEMENT_PROFILE", recordId: row.id as number,
+      action: "FLUTTERWAVE_BANK_ACCOUNT_RESOLVED",
+      previousStatus: old?.verification_status as string | null ?? null, newStatus: "VERIFIED",
+      metadata: { accountLast4: bank.accountLast4, receivingAccountPolicy: OWNER_RECEIVING_ACCOUNT_POLICY,
+        resolutionEnvironment: "LIVE", lookupAt: new Date(lookup.issuedAt).toISOString(),
+        accountNameMatched: true, subaccountCreated: false, settlementPerformed: false },
     });
     return row;
   });
@@ -784,24 +796,17 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
   );
 }));
 
-router.post("/platform/finance/payment-settlement/verify-account", run(async (req, res) => {
+router.post("/platform/finance/payment-settlement/lookup-account", run(async (req, res) => {
   const context = requirePlatformOwner(req);
-  if (req.body && Object.keys(req.body).length) {
-    throw new AuthError(400, "Verification uses only the saved company account. Do not send bank details or status.");
-  }
-  if (!liveOwnerResolutionConfigured()) {
-    throw new AuthError(409, "Account remains unverified. Use the LIVE runtime with a dedicated LIVE credential for beneficiary resolution; sandbox or Development results are not accepted. No payment activation is required.", "OWNER_ACCOUNT_LIVE_REQUIRED");
-  }
-  const rows = poolRows(await pool.query(
-    "SELECT * FROM settlement_payroll_profiles WHERE scope='YEMAIT_COMPANY' AND school_id IS NULL LIMIT 2",
-  ));
-  if (rows.length !== 1) throw new AuthError(409, "Save one company receiving account before explicitly verifying it.");
-  const row = await verifySettlementBankAccount({
-    row: rows[0], scope: "YEMAIT_COMPANY", actor: context.user, actorRole: "PLATFORM_OWNER",
-  });
   res.setHeader("Cache-Control", "private, no-store");
-  return respond(res, PayrollContract.UpdatePlatformPaymentSettlementResponse,
-    settlementProfileProjection(row, "YEMAIT_COMPANY"));
+  const input = body(PayrollContract.LookupOwnerReceivingAccountBody.strict(), req.body, "Select a supported bank and enter a 10-digit Nigerian account number.");
+  const result = await lookupOwnerReceivingAccount(context.user.id, input);
+  return respond(res, PayrollContract.LookupOwnerReceivingAccountResponse, result);
+}));
+
+router.post("/platform/finance/payment-settlement/verify-account", run(async (req, res) => {
+  requirePlatformOwner(req);
+  res.status(410).json({ error: { message: "Use automatic account-name lookup in Company Profile, then Save Details. The separate verification action has been retired." } });
 }));
 
 async function schoolSettlementProjection(schoolId: number, includeOwnerDiagnostics = true) {

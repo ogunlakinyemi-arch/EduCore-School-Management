@@ -12,7 +12,7 @@ const s = vi.hoisted(() => {
   const profile = { fullName: 'Unit Partner', isOwner: true };
   return {
     owner: true, schoolId: 7, emp, settlement, payout, profile,
-    save: vi.fn(), partnerSave: vi.fn(), verify: vi.fn(), refresh: vi.fn(),
+    save: vi.fn(), partnerSave: vi.fn(), lookup: vi.fn(), refresh: vi.fn(),
     catalogue: undefined as any,
   };
 });
@@ -33,7 +33,7 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
     useGetPaymentAccountProviders: () => q(s.catalogue),
     useGetAuthorizedContext: () => s.owner ? ctxOwner : ctxAdmin,
     useGetPlatformPaymentSettlement: () => ({...setQ, refetch:s.refresh}), useUpdatePlatformPaymentSettlement: mut,
-    useVerifyOwnerReceivingAccount: () => ({isPending:false,mutateAsync:s.verify}),
+    lookupOwnerReceivingAccount: s.lookup,
     useListPlatformSchoolSettlements: () => q([]), useListPlatformSettlementHistory: () => q([]), useGetPlatformSchoolSettlement: () => q(undefined),
     useGetSchoolPaymentSettlement: () => setQ, useUpdateSchoolPaymentSettlement: mut, useListSchoolSettlementHistory: () => q([]),
     useListCompanyPayrollEmployees: () => empQ, useListCompanyPayrollPeriods: () => perQ, useUpsertCompanyPayrollEmployee: mut,
@@ -68,7 +68,10 @@ const pick = async (text: string) => {
 const submit = async (form: Element) => { await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); }); await settle(); };
 
 beforeEach(() => {
-  s.settlement.status='VERIFIED';s.verify.mockReset();s.refresh.mockReset();
+  s.settlement.status='VERIFIED';s.lookup.mockReset().mockResolvedValue({
+    accountName:'YETENIA TECHNOLOGIES LIMITED',accountNumberMatched:true,accountLast4:'1234',
+    lookupToken:'synthetic-encrypted-proof',expiresAt:new Date(Date.now()+300_000).toISOString(),
+  });s.refresh.mockReset();
   s.owner = true; s.schoolId = 7; s.catalogue = catalogue(); s.save.mockReset().mockResolvedValue({}); s.partnerSave.mockReset();
   vi.stubGlobal('fetch', vi.fn(() => { throw new Error('No network'); }));
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -78,7 +81,6 @@ afterEach(async () => { await act(async () => root.unmount()); client.clear(); h
 
 type Case = { name: string; open: () => Promise<Element>; data: () => any };
 const flows: Case[] = [
-  { name: 'Owner company settlement', async open() { s.owner = true; await render(<PaymentSettlementPage />); await click(node('button-edit-company-settlement')); return node('form-settlement'); }, data: () => s.save.mock.calls[0][0].data },
   { name: 'Owner company employee', async open() { s.owner = true; await render(<PayrollPage />); await click(node('tab-employees')); await click(node('button-edit-profile-1')); return node('form-payroll-profile'); }, data: () => s.save.mock.calls[0][0].data },
   { name: 'School teacher/staff', async open() { s.owner = false; await render(<PayrollPage />); await click(node('tab-employees')); await click(node('button-edit-profile-1')); return node('form-payroll-profile'); }, data: () => s.save.mock.calls[0][0].data },
 ];
@@ -88,15 +90,6 @@ describe.each(flows)('$name save payload', f => {
     const form = await f.open(); await pick('beta'); await submit(form);
     expect(s.save).toHaveBeenCalledTimes(1);
     expect(f.data()).toMatchObject({ bankName: 'Fictional Beta Microfinance Bank', bankCode: '90002' });
-    if(f.name === 'Owner company settlement'){
-      expect(s.verify).not.toHaveBeenCalled();
-      expect(host.textContent).toContain('Owner-provided assistance bank details saved, not verified.');
-      expect(host.textContent).toContain('unverified transfer instructions remain hidden from schools');
-      expect(host.textContent).toContain('Use Verify account details explicitly');
-      expect(host.textContent).not.toContain('saved for provider verification');
-      for(const key of ['status','verificationStatus','verifiedAt','verifiedBy'])
-        expect(f.data()).not.toHaveProperty(key);
-    }
   });
   it('rejects an unverified provider with no code and does not reuse the saved code', async () => {
     const form = await f.open(); await pick('gamma'); await submit(form);
@@ -123,27 +116,81 @@ describe.each(flows)('$name save payload', f => {
   });
 });
 
-describe('Owner explicit receiving-account verification control',()=>{
-  it('only invokes resolution on the explicit action, then displays its result and updates the cache',async()=>{
-    s.settlement.status='PENDING_VERIFICATION';
-    s.verify.mockResolvedValue({...s.settlement,status:'VERIFIED'});
-    await render(<PaymentSettlementPage/>);
-    expect(s.verify).not.toHaveBeenCalled();
-    await click(node('button-verify-owner-account'));
-    expect(s.verify).toHaveBeenCalledOnce();
-    expect(s.verify.mock.calls[0]).toEqual([]);
-    expect(host.textContent).toContain('Beneficiary details verified against the official company name');
-    expect(host.textContent).toContain('not proof of a transfer');
+describe('Owner automatic receiving-account lookup',()=>{
+  const open=async()=>{s.settlement.status='PENDING_VERIFICATION';await render(<PaymentSettlementPage/>);
+    await click(node('button-edit-company-settlement'));};
+  const waitLookup=()=>act(async()=>{await new Promise(r=>setTimeout(r,550));});
+  const complete=async()=>{await pick('beta');await typeInto(node<HTMLInputElement>('input-account-number'),'0123451234');};
+  it('looks up automatically only on a complete account and enables Save Details after a match',async()=>{
+    s.save.mockResolvedValue({...s.settlement,status:'VERIFIED'});
+    await open();
+    expect(s.lookup).not.toHaveBeenCalled();
+    expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(true);
+    await complete();
+    expect(document.body.textContent).toContain('Looking up account name');
+    expect(s.lookup).not.toHaveBeenCalled();
+    await waitLookup();
+    expect(s.lookup).toHaveBeenCalledOnce();
+    expect(s.lookup.mock.calls[0][0]).toEqual({bankName:'Fictional Beta Microfinance Bank',bankCode:'90002',accountNumber:'0123451234'});
+    expect(node<HTMLInputElement>('input-account-name').value).toBe('YETENIA TECHNOLOGIES LIMITED');
+    expect(node<HTMLInputElement>('input-account-name').readOnly).toBe(true);
+    expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(false);
+    expect(s.save).not.toHaveBeenCalled();
+    await click(node('button-save-settlement'));
+    expect(s.save).toHaveBeenCalledOnce();
+    expect(s.save.mock.calls[0][0].data).toMatchObject({lookupToken:'synthetic-encrypted-proof',accountName:'YETENIA TECHNOLOGIES LIMITED',bankCode:'90002'});
+    expect(host.textContent).toContain('School Admins can now view these details');
     expect(client.getQueryData(['/api/platform/finance/payment-settlement'])).toMatchObject({status:'VERIFIED'});
+    expect(host.querySelector('[data-testid="button-verify-owner-account"]')).toBeNull();
+  });
+  it('does not lookup incomplete numbers or providers without a supported code',async()=>{
+    await open();await pick('beta');await typeInto(node<HTMLInputElement>('input-account-number'),'01234');
+    await waitLookup();expect(s.lookup).not.toHaveBeenCalled();
+    await pick('gamma');await typeInto(node<HTMLInputElement>('input-account-number'),'0123451234');
+    await waitLookup();expect(s.lookup).not.toHaveBeenCalled();
+    expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(true);
+  });
+  it.each(['LIVE lookup unavailable in Development or sandbox.','Flutterwave could not resolve this account.'])(
+    'keeps name empty and Save disabled on %s',async message=>{
+      s.lookup.mockRejectedValue(new Error(message));await open();await complete();await waitLookup();
+      expect(document.body.textContent).toContain(message);
+      expect(node<HTMLInputElement>('input-account-name').value).toBe('');
+      expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(true);
+      expect(s.save).not.toHaveBeenCalled();
+    });
+  it.each([
+    {accountName:'Other Person'}, {accountName:'YETENIA TECHNOLOGY LIMITED'},
+    {accountNumberMatched:false},{accountLast4:'9999'}, {expiresAt:'2020-01-01T00:00:00Z'},
+  ])('rejects an ambiguous or mismatching lookup result %j',async change=>{
+    s.lookup.mockResolvedValue({...await s.lookup(),...change});s.lookup.mockClear();
+    await open();await complete();await waitLookup();
+    expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(true);
+    expect(node<HTMLInputElement>('input-account-name').value).toBe('');
     expect(s.save).not.toHaveBeenCalled();
   });
-  it('shows the safe failure and leaves the account pending after a failed explicit action',async()=>{
-    s.settlement.status='PENDING_VERIFICATION';
-    s.verify.mockRejectedValue(new Error('Account remains unverified. LIVE resolution unavailable.'));
-    await render(<PaymentSettlementPage/>);await click(node('button-verify-owner-account'));
-    expect(host.textContent).toContain('Account remains unverified. LIVE resolution unavailable.');
-    expect(host.textContent).not.toContain('Beneficiary details verified');
-    expect(s.settlement.status).toBe('PENDING_VERIFICATION');expect(s.save).not.toHaveBeenCalled();
+  it('immediately invalidates the match when the number or selected bank changes',async()=>{
+    await open();await complete();await waitLookup();
+    expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(false);
+    await typeInto(node<HTMLInputElement>('input-account-number'),'0123459999');
+    expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(true);
+    expect(node<HTMLInputElement>('input-account-name').value).toBe('');
+    await pick('alpha');expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(true);
+    expect(s.save).not.toHaveBeenCalled();
+  });
+  it('ignores a stale in-flight result after an account edit',async()=>{
+    let finish!:(value:any)=>void;
+    s.lookup.mockImplementation(()=>new Promise(r=>{finish=r;}));
+    await open();await complete();await waitLookup();
+    await typeInto(node<HTMLInputElement>('input-account-number'),'01234');
+    await act(async()=>finish({accountName:'YETENIA TECHNOLOGIES LIMITED',accountNumberMatched:true,
+      accountLast4:'1234',lookupToken:'old-proof',expiresAt:new Date(Date.now()+300_000).toISOString()}));
+    expect(node<HTMLInputElement>('input-account-name').value).toBe('');
+    expect(node<HTMLButtonElement>('button-save-settlement').disabled).toBe(true);
+  });
+  it('does not resolve on refresh or a programmatic save without lookup evidence',async()=>{
+    await open();await submit(node('form-settlement'));
+    expect(s.lookup).not.toHaveBeenCalled();expect(s.save).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('matching account-name lookup is required');
   });
 });
 

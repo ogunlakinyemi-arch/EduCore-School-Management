@@ -598,6 +598,8 @@ import type {
   OwnerPaymentAssistanceInput,
   OwnerPaymentAssistanceResult,
   OwnerReaderReason,
+  OwnerReceivingAccountLookup,
+  OwnerReceivingAccountSelection,
   OwnerSchoolDirectory,
   OwnerSchoolOverview,
   OwnerSubscriptionRule,
@@ -46106,8 +46108,8 @@ export const getUpdatePlatformPaymentSettlementUrl = () => {
 }
 
 /**
- * Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
- * @summary Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
+ * Requires fresh Owner-bound LIVE account-name lookup evidence. Saves encrypted matched details and verification audit atomically. Never resolves on save, creates a subaccount, confirms funds received or verifies merchant settlement.
+ * @summary Save the matched Owner company receiving account for optional assistance
  */
 export const updatePlatformPaymentSettlement = async (companySettlementInput: CompanySettlementInput, options?: Parameters<typeof customFetch>[1]): Promise<PaymentSettlementProfile> => {
 
@@ -46173,7 +46175,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdatePlatformPaymentSettlementMutationVariables = {data: BodyType<CompanySettlementInput>}
 
     /**
- * @summary Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
+ * @summary Save the matched Owner company receiving account for optional assistance
  */
 export const useUpdatePlatformPaymentSettlement = <TError = ErrorType<PayrollError | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>, TError,UpdatePlatformPaymentSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -46186,25 +46188,39 @@ export const useUpdatePlatformPaymentSettlement = <TError = ErrorType<PayrollErr
       return useMutation(getUpdatePlatformPaymentSettlementMutationOptions(options));
     }
 
-export const getVerifyOwnerReceivingAccountUrl = () => {
+export const getLookupOwnerReceivingAccountUrl = () => {
 
 
 
 
-  return `/api/platform/finance/payment-settlement/verify-account`
+  return `/api/platform/finance/payment-settlement/lookup-account`
 }
 
 /**
- * @summary Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+ * @summary Owner-only automatic LIVE account-name lookup without saving or moving funds
  */
-export const verifyOwnerReceivingAccount = async ( options?: Parameters<typeof customFetch>[1]): Promise<PaymentSettlementProfile> => {
+export const lookupOwnerReceivingAccount = async (ownerReceivingAccountSelection: OwnerReceivingAccountSelection, options?: Parameters<typeof customFetch>[1]): Promise<OwnerReceivingAccountLookup> => {
 
-  return customFetch<PaymentSettlementProfile>(getVerifyOwnerReceivingAccountUrl(),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnerReceivingAccountLookup>(getLookupOwnerReceivingAccountUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerReceivingAccountSelection)
   }
 );}
 
@@ -46212,13 +46228,13 @@ export const verifyOwnerReceivingAccount = async ( options?: Parameters<typeof c
 
 
 
-export const getVerifyOwnerReceivingAccountMutationKey = () => ['verifyOwnerReceivingAccount'] as const;
+export const getLookupOwnerReceivingAccountMutationKey = () => ['lookupOwnerReceivingAccount'] as const;
 
-export const getVerifyOwnerReceivingAccountMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, TError,void, TContext> => {
+export const getLookupOwnerReceivingAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lookupOwnerReceivingAccount>>, TError,LookupOwnerReceivingAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof lookupOwnerReceivingAccount>>, TError,LookupOwnerReceivingAccountMutationVariables, TContext> => {
 
-const mutationKey = getVerifyOwnerReceivingAccountMutationKey();
+const mutationKey = getLookupOwnerReceivingAccountMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -46228,10 +46244,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lookupOwnerReceivingAccount>>, LookupOwnerReceivingAccountMutationVariables> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  verifyOwnerReceivingAccount(requestOptions)
+          return  lookupOwnerReceivingAccount(data,requestOptions)
         }
 
 
@@ -46241,23 +46257,23 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type VerifyOwnerReceivingAccountMutationResult = NonNullable<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>>
-
-    export type VerifyOwnerReceivingAccountMutationError = ErrorType<void>
-
+    export type LookupOwnerReceivingAccountMutationResult = NonNullable<Awaited<ReturnType<typeof lookupOwnerReceivingAccount>>>
+    export type LookupOwnerReceivingAccountMutationBody = BodyType<OwnerReceivingAccountSelection>
+    export type LookupOwnerReceivingAccountMutationError = ErrorType<void>
+    export type LookupOwnerReceivingAccountMutationVariables = {data: BodyType<OwnerReceivingAccountSelection>}
 
     /**
- * @summary Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+ * @summary Owner-only automatic LIVE account-name lookup without saving or moving funds
  */
-export const useVerifyOwnerReceivingAccount = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useLookupOwnerReceivingAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lookupOwnerReceivingAccount>>, TError,LookupOwnerReceivingAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof verifyOwnerReceivingAccount>>,
+        Awaited<ReturnType<typeof lookupOwnerReceivingAccount>>,
         TError,
-        void,
+        LookupOwnerReceivingAccountMutationVariables,
         TContext
       > => {
-      return useMutation(getVerifyOwnerReceivingAccountMutationOptions(options));
+      return useMutation(getLookupOwnerReceivingAccountMutationOptions(options));
     }
 
 export const getReviewCompanySettlementRemovalUrl = () => {

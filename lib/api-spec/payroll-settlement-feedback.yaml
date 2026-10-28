@@ -64,8 +64,8 @@ paths:
     put:
       operationId: updatePlatformPaymentSettlement
       tags: [finance]
-      summary: Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
-      description: Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
+      summary: Save the matched Owner company receiving account for optional assistance
+      description: Requires fresh Owner-bound LIVE account-name lookup evidence. Saves encrypted matched details and verification audit atomically. Never resolves on save, creates a subaccount, confirms funds received or verifies merchant settlement.
       requestBody:
         required: true
         content:
@@ -73,7 +73,7 @@ paths:
             schema: { $ref: "#/components/schemas/CompanySettlementInput" }
       responses:
         "200":
-          description: Persisted masked company settlement profile and provider capability
+          description: Saved masked company receiving profile with beneficiary verification only
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PaymentSettlementProfile" }
@@ -83,22 +83,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PayrollError" }
         "403": { description: Platform Owner role required }
+        "409": { description: Fresh matching LIVE lookup evidence required }
         "503":
           description: Encryption key, provider-mode configuration or settlement capability is unavailable; nothing is represented as verified
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PayrollError" }
-  /platform/finance/payment-settlement/verify-account:
+  /platform/finance/payment-settlement/lookup-account:
     post:
-      operationId: verifyOwnerReceivingAccount
+      operationId: lookupOwnerReceivingAccount
       tags: [finance]
-      summary: Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+      summary: Owner-only automatic LIVE account-name lookup without saving or moving funds
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerReceivingAccountSelection" }
       responses:
         "200":
-          description: Matching LIVE account resolution; masked saved profile, never money-movement evidence
+          description: Matched company beneficiary and short-lived encrypted save evidence; no profile changes
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/PaymentSettlementProfile" }
+              schema: { $ref: "#/components/schemas/OwnerReceivingAccountLookup" }
         "400": { description: Invalid account or missing/unsupported bank mapping }
         "403": { description: Active global Platform Owner required }
         "409": { description: "LIVE guard, name/account mismatch, unavailable profile or concurrent edit" }
@@ -787,8 +793,9 @@ components:
     CompanySettlementInput:
       type: object
       additionalProperties: false
-      required: [businessName, bankName, bankCode, accountName, accountNumber, currency]
+      required: [businessName, bankName, bankCode, accountName, accountNumber, currency, lookupToken]
       properties:
+        lookupToken: { type: string, minLength: 1, maxLength: 4096 }
         businessName: { type: string, minLength: 2, maxLength: 160 }
         businessRegistrationNumber: { type: ["string", "null"], maxLength: 80 }
         settlementContactEmail: { type: string, format: email, maxLength: 254 }
@@ -798,6 +805,23 @@ components:
         accountName: { type: string, minLength: 2, maxLength: 150 }
         accountNumber: { type: string, pattern: "^[0-9]{10}$" }
         currency: { type: string, enum: [NGN] }
+    OwnerReceivingAccountSelection:
+      type: object
+      additionalProperties: false
+      required: [bankName, bankCode, accountNumber]
+      properties:
+        bankName: { type: string, minLength: 2, maxLength: 100 }
+        bankCode: { type: string, pattern: "^[0-9]{3,12}$" }
+        accountNumber: { type: string, pattern: "^[0-9]{10}$" }
+    OwnerReceivingAccountLookup:
+      type: object
+      required: [accountName, accountNumberMatched, accountLast4, lookupToken, expiresAt]
+      properties:
+        accountName: { type: string }
+        accountNumberMatched: { type: boolean, enum: [true] }
+        accountLast4: { type: string }
+        lookupToken: { type: string }
+        expiresAt: { type: string, format: date-time }
     SchoolSettlementInput:
       type: object
       additionalProperties: false

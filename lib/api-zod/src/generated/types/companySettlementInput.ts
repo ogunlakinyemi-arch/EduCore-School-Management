@@ -9,6 +9,11 @@ import type { CompanySettlementInputCurrency } from './companySettlementInputCur
 
 export interface CompanySettlementInput {
   /**
+     * @minLength 1
+     * @maxLength 4096
+     */
+  lookupToken: string;
+  /**
      * @minLength 2
      * @maxLength 160
      */

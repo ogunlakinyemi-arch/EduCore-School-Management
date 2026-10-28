@@ -22,7 +22,6 @@ vi.mock('@workspace/api-client-react',async original=>{
       accountName:'FICTIONAL OWNER RECIPIENT',accountLast4:'0001',capability:{mode:'MOCK'},
     });},
     useUpdatePlatformPaymentSettlement:()=>({isPending:false,mutateAsync:s.companyUpdate}),
-    useVerifyOwnerReceivingAccount:()=>({isPending:false,mutateAsync:vi.fn()}),
     useListPlatformSettlementHistory:(...args:unknown[])=>{s.history(...args);return q([]);},
   };
 });
@@ -38,12 +37,13 @@ beforeEach(()=>{
   for(const spy of [s.schoolRead,s.schoolUpdate,s.schoolHistory,s.companyRead,s.companyUpdate,s.history])spy.mockClear();
 });
 describe('retired School Admin settlement workflow',()=>{
-  it('offers explicit beneficiary verification without changing status on render or refresh',()=>{
+  it('explains automatic beneficiary lookup without a separate verification button or changing status on render',()=>{
     s.owner=true;s.companyStatus='PENDING_VERIFICATION';
     const html=render(<PaymentSettlementPage/>);
     expect(html).toContain('company-verification-guidance');
-    expect(html).toContain('Verify account details');
-    expect(html).toContain('Saving or refreshing will not verify this account');
+    expect(html).not.toContain('button-verify-owner-account');
+    expect(html).toContain('look up the name automatically');
+    expect(html).toContain('Saving without a matching lookup or refreshing never verifies this account');
     expect(html).toContain('Sandbox and Development results cannot verify the account');
     expect(html).toContain('solely for optional school subscription bank-transfer assistance');
     expect(html).toContain('₦3,200 per student per academic term');

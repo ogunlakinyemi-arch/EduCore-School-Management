@@ -132,15 +132,16 @@ async function request(
   });
 }
 
-describe("Owner receiving-account explicit verification", () => {
+describe("Owner automatic receiving-account lookup and save", () => {
   const owner = { "x-test-owner": "true" };
-  const path = "/platform/finance/payment-settlement/verify-account";
+  const path = "/platform/finance/payment-settlement/lookup-account";
   const name = "YETENIA TECHNOLOGIES LIMITED";
   const number = "0123456789";
   let row: Record<string, unknown>;
   let resolution: ReturnType<typeof vi.spyOn>;
   let catalogue: ReturnType<typeof vi.spyOn>;
   let tx: Array<{ sql: string; values: unknown[] }>;
+  let selection: {bankName:string;bankCode:string;accountNumber:string};
   beforeEach(() => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("EDUCORE_FLUTTERWAVE_MODE", "LIVE");
@@ -157,6 +158,7 @@ describe("Owner receiving-account explicit verification", () => {
       account_last4: "6789", currency: "NGN", provider: "FLUTTERWAVE",
       verification_status: "PENDING_VERIFICATION", updated_at: new Date(),
     };
+    selection = {bankName:"Fictional Bank",bankCode:"099",accountNumber:number};
     resolution = vi.spyOn(FlutterwavePayrollV3Client.prototype, "resolveNigerianAccount")
       .mockResolvedValue({ resolvedAccountNumber: number, resolvedAccountName: "Yetenia Technologies Ltd." });
     catalogue = vi.spyOn(FlutterwavePayrollV3Client.prototype, "listNigerianBanks")
@@ -174,7 +176,7 @@ describe("Owner receiving-account explicit verification", () => {
           return { rows: [row], rowCount: 1 };
         }
         if (sql.includes("INSERT INTO settlement_payroll_profiles")) {
-          row = { ...row, verification_status: "PENDING_VERIFICATION" };
+          row = { ...row, verification_status: "VERIFIED" };
           return { rows: [row], rowCount: 1 };
         }
         return { rows: [], rowCount: 0 };
@@ -183,29 +185,39 @@ describe("Owner receiving-account explicit verification", () => {
     });
   });
   afterEach(() => { resolution.mockRestore(); catalogue.mockRestore(); });
-  const post = (headers = owner) => request(path, headers, { method: "POST" });
+  const post = (headers = owner) => request(path, headers, { method: "POST", body:JSON.stringify(selection) });
+  const save = (lookupToken:string,extra:object={}) => request("/platform/finance/payment-settlement",owner,{
+    method:"PUT",body:JSON.stringify({...selection,businessName:name,accountName:"Yetenia Technologies Ltd.",currency:"NGN",lookupToken,...extra}),
+  });
   const noVerification = () => {
     expect(tx.some(q => q.sql.includes("SET verification_status='VERIFIED'"))).toBe(false);
     expect(tx.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(false);
   };
-  it("verifies matching LIVE details only, with policy audit and masked output", async () => {
+  it("looks up without writing, then saves matching LIVE details with policy evidence and masked output", async () => {
     const r = await post(), text = await r.text();
     expect(r.status).toBe(200);
-    expect(JSON.parse(text).status).toBe("VERIFIED");
+    expect(JSON.parse(text)).toMatchObject({accountName:"Yetenia Technologies Ltd.",accountNumberMatched:true});
     expect(text).not.toContain(number);
     expect(text).not.toContain("FLWSECK-");
     expect(resolution).toHaveBeenCalledWith({ bankCode: "099", accountNumber: number }, { requireOwnerLive: true });
+    expect(db.query).not.toHaveBeenCalled();expect(db.connect).not.toHaveBeenCalled();
+    const saved=await save(JSON.parse(text).lookupToken);
+    expect(saved.status).toBe(200);
+    const savedText=await saved.text();
+    expect(JSON.parse(savedText).status).toBe("VERIFIED");
+    expect(savedText).not.toContain(number);
     const audit = tx.find(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"));
     expect(audit?.values.at(-1)).toContain('"receivingAccountPolicy":"YETENIA_BENEFICIARY_LIVE_V1"');
     expect(audit?.values.at(-1)).toContain('"resolutionEnvironment":"LIVE"');
     expect(JSON.stringify(tx)).not.toContain(number);
-    expect(tx.every(q => !/student_|transfer_attempt|subaccount/i.test(q.sql))).toBe(true);
+    expect(tx.every(q => !/student_|transfer_attempt/i.test(q.sql))).toBe(true);
+    expect(tx.find(q => q.sql.includes("INSERT INTO settlement_payroll_profiles"))?.sql).toContain("provider_subaccount_id=NULL");
   });
   it.each(["YETENIA TECHNOLOGY LIMITED", "Other Person", "YETENIA TECHNOLOGIES LIMITED EXTRA"])(
     "does not verify a mismatched provider name %s", async returnedName => {
       resolution.mockResolvedValue({ resolvedAccountNumber: number, resolvedAccountName: returnedName });
       expect((await post()).status).toBe(409);
-      expect(row.verification_status).toBe("ACTION_REQUIRED");
+      expect(row.verification_status).toBe("PENDING_VERIFICATION");
       noVerification();
     },
   );
@@ -214,7 +226,7 @@ describe("Owner receiving-account explicit verification", () => {
     expect((await post()).status).toBe(409); noVerification();
   });
   it.each(["", "unsupported"])("rejects missing/invalid bank code %j before resolution", async code => {
-    row.bank_code_encrypted = code ? encryptPayrollBankValue(code, "settlement:yemait-company:bankCode").ciphertext : null;
+    selection.bankCode=code;
     expect((await post()).status).toBe(400);
     expect(resolution).not.toHaveBeenCalled(); noVerification();
   });
@@ -223,24 +235,31 @@ describe("Owner receiving-account explicit verification", () => {
     expect((await post()).status).toBe(400); expect(resolution).not.toHaveBeenCalled(); noVerification();
   });
   it("rejects a malformed saved account number before provider access", async () => {
-    row.account_number_encrypted = encryptPayrollBankValue("invalid", "settlement:yemait-company:accountNumber").ciphertext;
+    selection.accountNumber="invalid";
     expect((await post()).status).toBe(400); expect(resolution).not.toHaveBeenCalled(); noVerification();
   });
-  it("rejects a non-official saved company/account name without contacting resolution", async () => {
-    row.business_name = "Other Business";
-    expect((await post()).status).toBe(409);
+  it("does not trust a typed name or verification status in lookup input", async () => {
+    const r=await request(path,owner,{method:"POST",body:JSON.stringify({...selection,accountName:name,status:"VERIFIED"})});
+    expect(r.status).toBe(400);
     expect(resolution).not.toHaveBeenCalled(); noVerification();
   });
-  it("does not verify when the saved account changes during resolution", async () => {
-    db.connect.mockResolvedValue({ query: vi.fn(async (sql: string, values: unknown[] = []) => {
-      tx.push({ sql, values }); return { rows: [], rowCount: 0 };
-    }), release: vi.fn() });
-    const r = await post();
-    expect(r.status).toBe(409);
-    expect(tx.some(q => q.values.includes("FLUTTERWAVE_BANK_ACCOUNT_RESOLVED"))).toBe(false);
-    const update = tx.find(q => q.sql.includes("UPDATE settlement_payroll_profiles"));
-    expect(update?.sql).toContain("account_number_encrypted=$8");
-    expect(row.verification_status).toBe("PENDING_VERIFICATION");
+  it.each([{accountNumber:"9999999999"},{bankCode:"098"},{accountName:"Other Person"},{businessName:"Other Business"}])(
+    "rejects stale lookup evidence for changed details %j",async change=>{
+      const evidence=await (await post()).json() as any;
+      expect((await save(evidence.lookupToken,change)).status).toBe(409);
+      expect(db.connect).not.toHaveBeenCalled();noVerification();
+    },
+  );
+  it("rejects tampered, expired and different-actor lookup evidence", async () => {
+    const evidence=await (await post()).json() as any;
+    expect((await save(evidence.lookupToken+"tampered")).status).toBe(409);
+    // The auth fixture uses actor 99; a synthetic proof for another actor is never accepted.
+    const {lookupOwnerReceivingAccount}=await import("../services/owner-receiving-account-lookup");
+    const foreign=await lookupOwnerReceivingAccount(100,selection);
+    expect((await save(foreign.lookupToken)).status).toBe(409);
+    const now=Date.now(); const clock=vi.spyOn(Date,"now").mockReturnValue(now+301_000);
+    try{expect((await save(evidence.lookupToken)).status).toBe(409);}finally{clock.mockRestore();}
+    expect(db.connect).not.toHaveBeenCalled();noVerification();
   });
   it.each([["INVALID_BANK_OR_ACCOUNT", "ACCOUNT_NOT_RESOLVED", 400],
     ["PROVIDER_OUTAGE", "UNCLASSIFIED", 503], ["UNEXPECTED_PROVIDER_RESPONSE", "RESOLVED_DETAILS_DID_NOT_MATCH", 200]] as const)(
@@ -280,20 +299,18 @@ describe("Owner receiving-account explicit verification", () => {
     const r = await request("/platform/finance/payment-settlement", owner, { method: "PUT", body: JSON.stringify({
       businessName: name, bankName: "Fictional Bank", bankCode: "099", accountName: name, accountNumber: number, currency: "NGN",
     }) });
-    expect(r.status).toBe(200);
-    expect((await r.json() as any).status).toBe("PENDING_VERIFICATION");
+    expect(r.status).toBe(400);
     for (let i = 0; i < 2; i++) {
       const read = await request("/platform/finance/payment-settlement", owner);
       expect(read.status).toBe(200); expect((await read.json() as any).status).toBe("PENDING_VERIFICATION");
     }
     expect(resolution).not.toHaveBeenCalled(); noVerification();
   });
-  it("rejects client claims and does not repeat resolution after success", async () => {
+  it("retires the separate manual verification interaction and rejects client claims", async () => {
     expect((await request(path, owner, { method: "POST", body: JSON.stringify({ status: "VERIFIED" }) })).status).toBe(400);
     expect(resolution).not.toHaveBeenCalled();
-    expect((await post()).status).toBe(200);
-    expect((await post()).status).toBe(409);
-    expect(resolution).toHaveBeenCalledTimes(1);
+    expect((await request("/platform/finance/payment-settlement/verify-account",owner,{method:"POST"})).status).toBe(410);
+    expect(resolution).not.toHaveBeenCalled();
   });
 });
 

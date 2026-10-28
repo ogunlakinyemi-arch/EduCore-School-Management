@@ -20008,9 +20008,11 @@ export const GetPlatformPaymentSettlementResponse = zod.object({
 
 
 /**
- * Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
- * @summary Configure the YETENIA TECHNOLOGIES LIMITED Flutterwave settlement recipient (Platform Owner)
+ * Requires fresh Owner-bound LIVE account-name lookup evidence. Saves encrypted matched details and verification audit atomically. Never resolves on save, creates a subaccount, confirms funds received or verifies merchant settlement.
+ * @summary Save the matched Owner company receiving account for optional assistance
  */
+export const updatePlatformPaymentSettlementBodyLookupTokenMax = 4096;
+
 export const updatePlatformPaymentSettlementBodyBusinessNameMin = 2;
 export const updatePlatformPaymentSettlementBodyBusinessNameMax = 160;
 
@@ -20033,6 +20035,7 @@ export const updatePlatformPaymentSettlementBodyAccountNumberRegExp = new RegExp
 
 
 export const UpdatePlatformPaymentSettlementBody = zod.object({
+  "lookupToken": zod.string().min(1).max(updatePlatformPaymentSettlementBodyLookupTokenMax),
   "businessName": zod.string().min(updatePlatformPaymentSettlementBodyBusinessNameMin).max(updatePlatformPaymentSettlementBodyBusinessNameMax),
   "businessRegistrationNumber": zod.string().max(updatePlatformPaymentSettlementBodyBusinessRegistrationNumberMax).nullish(),
   "settlementContactEmail": zod.string().email().max(updatePlatformPaymentSettlementBodySettlementContactEmailMax).optional(),
@@ -20088,48 +20091,27 @@ export const UpdatePlatformPaymentSettlementResponse = zod.object({
 
 
 /**
- * @summary Explicit Owner-only LIVE beneficiary resolution of the saved assistance account; no transfer or settlement
+ * @summary Owner-only automatic LIVE account-name lookup without saving or moving funds
  */
-export const verifyOwnerReceivingAccountResponseAccountLast4RegExp = new RegExp('^[0-9]{4}$');
+export const lookupOwnerReceivingAccountBodyBankNameMin = 2;
+export const lookupOwnerReceivingAccountBodyBankNameMax = 100;
+
+export const lookupOwnerReceivingAccountBodyBankCodeRegExp = new RegExp('^[0-9]{3,12}$');
+export const lookupOwnerReceivingAccountBodyAccountNumberRegExp = new RegExp('^[0-9]{10}$');
 
 
-export const VerifyOwnerReceivingAccountResponse = zod.object({
-  "scope": zod.enum(['YEMAIT_COMPANY']),
-  "businessName": zod.string(),
-  "businessRegistrationNumber": zod.string().nullish(),
-  "settlementContactEmail": zod.string().nullish(),
-  "settlementContactPhone": zod.string().nullish(),
-  "bankName": zod.string().nullable(),
-  "bankCode": zod.string().nullish(),
-  "accountName": zod.string().nullable(),
-  "accountLast4": zod.string().regex(verifyOwnerReceivingAccountResponseAccountLast4RegExp).nullable(),
-  "currency": zod.enum(['NGN']),
-  "status": zod.enum(['NOT_CONFIGURED', 'PENDING_VERIFICATION', 'VERIFIED', 'ACTION_REQUIRED']),
-  "provider": zod.enum(['FLUTTERWAVE']),
-  "providerBusinessId": zod.string().nullish(),
-  "providerSubaccountId": zod.string().nullish(),
-  "capability": zod.object({
-  "provider": zod.enum(['FLUTTERWAVE']),
-  "mode": zod.enum(['TEST', 'LIVE', 'MOCK', 'NOT_CONFIGURED']),
-  "credentialsConfigured": zod.boolean(),
-  "transferCapability": zod.enum(['SUPPORTED', 'MOCK_ONLY', 'NOT_CONFIGURED', 'BLOCKED_IN_DEVELOPMENT']),
-  "bankSubaccountsSupported": zod.boolean(),
-  "liveSettlementVerified": zod.literal(false),
-  "collection": zod.object({
-  "mode": zod.enum(['TEST', 'NOT_CONFIGURED']),
-  "credentialState": zod.enum(['CONFIGURED', 'MISSING', 'INVALID', 'CONFLICT', 'BLOCKED']),
-  "credentialsConfigured": zod.boolean(),
-  "webhookConfigured": zod.boolean(),
-  "checkoutConfigured": zod.boolean(),
-  "assistedCheckoutConfigured": zod.boolean(),
-  "checkoutVerified": zod.literal(false),
-  "automaticSplitSettlementEnabled": zod.literal(false),
-  "automaticSplitSettlementVerified": zod.literal(false),
-  "subaccountIntegration": zod.enum(['NOT_IMPLEMENTED', 'DEVELOPMENT_TEST_ONBOARDING']),
-  "bankAccountVerificationConfigured": zod.boolean()
-}).optional()
-}),
-  "updatedAt": zod.coerce.date().nullable()
+export const LookupOwnerReceivingAccountBody = zod.object({
+  "bankName": zod.string().min(lookupOwnerReceivingAccountBodyBankNameMin).max(lookupOwnerReceivingAccountBodyBankNameMax),
+  "bankCode": zod.string().regex(lookupOwnerReceivingAccountBodyBankCodeRegExp),
+  "accountNumber": zod.string().regex(lookupOwnerReceivingAccountBodyAccountNumberRegExp)
+})
+
+export const LookupOwnerReceivingAccountResponse = zod.object({
+  "accountName": zod.string(),
+  "accountNumberMatched": zod.literal(true),
+  "accountLast4": zod.string(),
+  "lookupToken": zod.string(),
+  "expiresAt": zod.coerce.date()
 })
 
 
