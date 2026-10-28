@@ -37880,7 +37880,7 @@ export const getListPartnerTermCommissionsUrl = () => {
 }
 
 /**
- * @summary Development-only Owner verified deferred commission reconciliation
+ * @summary Owner read-only retained deferred commission reconciliation
  */
 export const listPartnerTermCommissions = async ( options?: Parameters<typeof customFetch>[1]): Promise<DeferredCommission[]> => {
 
@@ -37927,7 +37927,7 @@ export type ListPartnerTermCommissionsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Development-only Owner verified deferred commission reconciliation
+ * @summary Owner read-only retained deferred commission reconciliation
  */
 
 export function useListPartnerTermCommissions<TData = Awaited<ReturnType<typeof listPartnerTermCommissions>>, TError = ErrorType<unknown>>(

@@ -9,10 +9,12 @@ const state = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   toast: vi.fn(),
+  error:false,
+  refetch:vi.fn(),
 }));
 vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: { user: { id: state.actorId } } }),
-  useListPlatformPartnerPayouts: () => ({ data: [], isLoading: false, isError: false }),
+  useListPlatformPartnerPayouts: () => ({ data: [], isLoading: false, isError: state.error,refetch:state.refetch }),
   getListPlatformPartnerPayoutsQueryKey: () => ['/api/platform/partner-payouts'],
   useCreatePartnerPayout: () => ({ mutateAsync: state.create, isPending: false }),
   useUpdatePartnerPayout: () => ({ mutate: state.update }),
@@ -23,7 +25,7 @@ vi.mock('@/components/shared', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   StatusPill: () => null,
   SkeletonPage: () => <div>Loading</div>,
-  ErrorState: () => <div>Error</div>,
+  ErrorState: ({message,retry}:any) => <div>{message}<button onClick={retry}>Retry feed</button></div>,
 }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: state.toast }) }));
 vi.mock('@/pages/partner/nfc-owner-control', () => ({ PartnerNfcOwnerControl: () => null }));
@@ -53,6 +55,7 @@ const clickCreate = async () => {
 beforeEach(async () => {
   sessionStorage.clear();
   state.actorId = 1;
+  state.error=false;
   vi.clearAllMocks();
   state.create.mockRejectedValue(new Error('Lost response'));
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -68,6 +71,16 @@ afterEach(async () => {
 });
 
 describe('Partner payout client retry identity', () => {
+  it('shows a contextual read error and safely retries the payout feed without a payout mutation',async()=>{
+    state.error=true;await render();
+    expect(element.textContent).toContain('BRO payout history could not be loaded');
+    await act(async()=>element.querySelector('button')!.click());
+    expect(state.refetch).toHaveBeenCalledOnce();
+    expect(state.create).not.toHaveBeenCalled();expect(state.update).not.toHaveBeenCalled();
+    state.error=false;await render();
+    expect(element.textContent).toContain('No payouts found.');
+    expect(state.create).not.toHaveBeenCalled();
+  });
   it('sends exact decimal input with a stable key and restores it after remount', async () => {
     await setInput(0, '3');
     await setInput(1, '100.10');

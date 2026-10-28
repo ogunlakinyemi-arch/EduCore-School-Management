@@ -40,3 +40,15 @@ This does not withdraw school-approved bank instructions for parent fee invoices
 retain authorized historical settlement/audit reads. Keep school settlement
 configuration mutations retired, while preserving the separate NGN 3,200 Student
 subscription flow and eligible NGN 150 internal BRO ledger.
+
+Legacy BRO term-commission evidence and approval-history lists are authorized
+Owner historical reads, not split execution. Keep their availability separate
+from Development-only legacy batch approval/export and provider permissions.
+
+**Why:** Applying a split-execution environment guard to these read-only feeds
+made published Owner pages deliberately return 404 before reading any records.
+
+**How to apply:** Preserve authorization and honest read failures; never replace
+a failed financial query with an invented empty ledger. Do not lift mutation,
+provider or release guards to restore history. Published legacy evidence views
+must not offer actions that their guarded services cannot perform.

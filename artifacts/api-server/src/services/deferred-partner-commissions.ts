@@ -9,7 +9,8 @@ import { ApprovePartnerPayoutBatchBody } from "@workspace/api-zod";
 /** SQL view deliberately binds the immutable payment, school, student and term.
  * No current-school attribution lookup and no rewriting legacy commissions. */
 export async function deferredCommissionEvidence() {
-  requireSplitDevelopment();
+  // Owner-authorized historical reads are not split execution. Keep the
+  // Development-only guards on approval/export mutations, not on this SELECT.
   const { rows } = await pool.query(`SELECT * FROM deferred_partner_commission_evidence
     ORDER BY academic_session_id,term,partner_profile_id,id`);
   return rows.map(row => {
@@ -130,7 +131,7 @@ export async function approveCommissionBatch(input: unknown, actorId: number) {
 }
 
 export async function listCommissionBatches() {
-  requireSplitDevelopment();
+  // Published Owner reconciliation needs retained approval history as well.
   return (await pool.query("SELECT * FROM partner_payout_batches ORDER BY id DESC")).rows.map(batchView);
 }
 export async function exportCommissionBatch(id: number, actorId: number,

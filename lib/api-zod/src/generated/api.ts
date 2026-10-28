@@ -16253,7 +16253,7 @@ export const CreatePartnerPayoutResponse = zod.object({
 
 
 /**
- * @summary Development-only Owner verified deferred commission reconciliation
+ * @summary Owner read-only retained deferred commission reconciliation
  */
 export const ListPartnerTermCommissionsResponseItem = zod.object({
   "id": zod.number().int(),

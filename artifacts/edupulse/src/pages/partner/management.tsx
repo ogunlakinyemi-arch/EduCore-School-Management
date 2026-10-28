@@ -665,7 +665,7 @@ export function PayoutsOverview() {
   }, [actorId, toast]);
   
   if (query.isLoading) return <SkeletonPage />;
-  if (query.isError) return <ErrorState retry={() => query.refetch()} />;
+  if (query.isError) return <ErrorState message="BRO payout history could not be loaded. No payout was created or changed." retry={() => { void query.refetch(); }} />;
 
   const payouts = query.data ?? [];
 

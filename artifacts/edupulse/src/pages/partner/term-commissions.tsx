@@ -17,6 +17,9 @@ const Cell = ({ label, value }: { label: string; value: string }) => (
 );
 
 export default function TermCommissionsPage() {
+  // Historical evidence is readable in published deployments; the existing
+  // legacy approval/export services remain Development-only.
+  const recordingEnabled = import.meta.env.DEV;
   const rowsQ = useListPartnerTermCommissions({query:{queryKey:getListPartnerTermCommissionsQueryKey(),staleTime:0,refetchInterval:30000}});
   const batchesQ = useListPartnerPayoutBatches({query:{queryKey:getListPartnerPayoutBatchesQueryKey(),staleTime:0,refetchInterval:30000}});
   const approve = useApprovePartnerPayoutBatch();
@@ -46,6 +49,7 @@ export default function TermCommissionsPage() {
   });
 
   const submit = async () => {
+    if (!recordingEnabled) return;
     if (chosenIds.length === 0) return;
     const d = prepareApproval(window.sessionStorage, chosenIds);
     setDraft(d);
@@ -70,6 +74,7 @@ export default function TermCommissionsPage() {
   };
 
   const exportBatch = async (id: number) => {
+    if (!recordingEnabled) return;
     setExportingId(id);
     try {
       const data = await getPartnerPayoutBatchExport(id);
@@ -87,13 +92,16 @@ export default function TermCommissionsPage() {
   };
 
   if (rowsQ.isLoading) return <SkeletonPage />;
-  if (rowsQ.isError) return <ErrorState retry={() => rowsQ.refetch()} />;
+  if (rowsQ.isError) return <ErrorState message="BRO term commissions could not be loaded. No commission or payout was changed."
+    retry={() => { void rowsQ.refetch(); void batchesQ.refetch(); }} />;
 
   return (
     <div className="w-full min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-500" data-testid="page-term-commissions">
       <PageHeading eyebrow="Business Relationship Officers (BRO)" title="Term Commissions"
-        description="Review deferred BRO commissions by session, term and BRO, then approve eligible rows." />
+        description={recordingEnabled ? "Review deferred BRO commissions by session, term and BRO, then approve eligible rows."
+          : "Read-only commission evidence and retained approval history. This view does not create an entitlement, approve a payout or transfer money."} />
       <div className="mb-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-4 text-sm" role="status" data-testid="notice-record-only">
+        {!recordingEnabled && <p className="mb-2 font-semibold">Published view is read-only. Legacy approval and export actions remain unavailable; split payments are retired.</p>}
         Approval is recording and export only. It creates an audit batch you can export; it never sends money to a BRO.
         Only rows that are eligible, in an ended term, and PENDING can be selected. Additional fee is shown separately and is not VAT.
         Merchant remainder and Owner net are calculated from reported costs, not proof of merchant bank settlement.
@@ -105,7 +113,7 @@ export default function TermCommissionsPage() {
           <div className="font-bold">An approval request is awaiting confirmation</div>
           <p className="mt-1">{draft!.commissionIds.length} commission(s) were submitted and the outcome is unknown. Selection is locked. Retry sends the identical request and key; the server will not apply it twice.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button testId="button-retry-approval" onClick={() => void submit()} disabled={approve.isPending}><RefreshCw size={14} />{approve.isPending ? 'Retrying…' : 'Retry same request'}</Button>
+            <Button testId="button-retry-approval" onClick={() => void submit()} disabled={!recordingEnabled || approve.isPending}><RefreshCw size={14} />{approve.isPending ? 'Retrying…' : 'Retry same request'}</Button>
             <Button variant="outline" testId="button-reconcile" onClick={() => void refresh()}>Reconcile (refresh)</Button>
             <Button variant="outline" testId="button-discard-request" onClick={() => { clearApprovalDraft(window.sessionStorage); setDraft(null); }}>Discard after checking history</Button>
           </div>
@@ -128,7 +136,7 @@ export default function TermCommissionsPage() {
                     <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Schools {g.schoolIds.join(', ')} · school term ids {g.termIds.join(', ')}</div>
                   </div>
                   <label className="flex items-center gap-2 text-sm font-semibold">
-                    <input type="checkbox" className="!w-4" disabled={locked || eligibleIds.length === 0} checked={allOn}
+                    <input type="checkbox" className="!w-4" disabled={!recordingEnabled || locked || eligibleIds.length === 0} checked={allOn}
                       onChange={e => toggle(eligibleIds, e.target.checked)} data-testid={`select-group-${g.key}`} />
                     Select all eligible ({eligibleIds.length})
                   </label>
@@ -155,7 +163,7 @@ export default function TermCommissionsPage() {
                         const ok = isEligible(r);
                         return (
                           <tr key={r.id} data-testid={`row-commission-${r.id}`}>
-                            <td className="p-3"><input type="checkbox" className="!w-4" disabled={!ok || locked} checked={locked ? draft!.commissionIds.includes(r.id) : selected.has(r.id)}
+                            <td className="p-3"><input type="checkbox" className="!w-4" disabled={!recordingEnabled || !ok || locked} checked={locked ? draft!.commissionIds.includes(r.id) : selected.has(r.id)}
                               onChange={e => toggle([r.id], e.target.checked)} aria-label={`Select commission ${r.reference}`} data-testid={`select-commission-${r.id}`} /></td>
                             <td className="p-3 font-mono text-xs">{r.reference}</td>
                             <td className="p-3 text-xs">{r.schoolId} / {r.termId}</td>
@@ -184,7 +192,7 @@ export default function TermCommissionsPage() {
 
       <div className="sticky bottom-4 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-lg" data-testid="bar-selection">
         <div className="text-sm"><strong data-testid="text-selected-count">{chosenIds.length}</strong> selected · BRO liability <strong>{formatMinor(chosenTotal)}</strong></div>
-        <Button disabled={chosenIds.length === 0 || approve.isPending || locked} onClick={() => setConfirming(true)} testId="button-approve-selected">Approve for recording and export</Button>
+        <Button disabled={!recordingEnabled || chosenIds.length === 0 || approve.isPending || locked} onClick={() => setConfirming(true)} testId="button-approve-selected">Approve for recording and export</Button>
       </div>
 
       {confirming && (
@@ -193,7 +201,7 @@ export default function TermCommissionsPage() {
             <p>You are approving {chosenIds.length} commission(s) totalling {formatMinor(chosenTotal)} in one batch. This records an immutable audit batch for export. It does not send money.</p>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setConfirming(false)} testId="button-cancel-approval">Cancel</Button>
-              <Button onClick={() => void submit()} disabled={approve.isPending} testId="button-confirm-approval">{approve.isPending ? 'Recording…' : 'Confirm approval'}</Button>
+              <Button onClick={() => void submit()} disabled={!recordingEnabled || approve.isPending} testId="button-confirm-approval">{approve.isPending ? 'Recording…' : 'Confirm approval'}</Button>
             </div>
           </div>
         </Modal>
@@ -218,7 +226,7 @@ export default function TermCommissionsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusPill value={b.status} />
-                    <Button variant="outline" className="h-8 px-3 text-xs" disabled={revoked || exportingId === b.id} onClick={() => void exportBatch(b.id)} testId={`button-export-${b.id}`}>
+                    <Button variant="outline" className="h-8 px-3 text-xs" disabled={!recordingEnabled || revoked || exportingId === b.id} onClick={() => void exportBatch(b.id)} testId={`button-export-${b.id}`}>
                       <Download size={13} />{revoked ? 'Export blocked' : exportingId === b.id ? 'Exporting…' : 'Export JSON'}
                     </Button>
                   </div>

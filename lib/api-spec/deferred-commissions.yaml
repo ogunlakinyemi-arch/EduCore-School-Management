@@ -4,7 +4,7 @@ paths:
   /platform/partner-term-commissions:
     get:
       operationId: listPartnerTermCommissions
-      summary: Development-only Owner verified deferred commission reconciliation
+      summary: Owner read-only retained deferred commission reconciliation
       responses:
         "200":
           description: Payment-bound commission evidence; missing monetary evidence stays null
