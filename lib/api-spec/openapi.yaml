@@ -4650,6 +4650,42 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PartnerCommission" }
+  /platform/partner-payout-candidates:
+    get:
+      operationId: listPartnerPayoutCandidates
+      tags: [platform-partners]
+      responses:
+        "200":
+          description: Active BRO identities and authoritative ledger balances; no full account numbers
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerPayoutCandidate" } }
+  /platform/partner-payouts/{payoutId}/bank-details:
+    get:
+      operationId: getPartnerPayoutBankDetails
+      tags: [platform-partners]
+      parameters: [{ $ref: "#/components/parameters/PayoutIdPath" }]
+      responses:
+        "200":
+          description: Audited Owner-only disclosure of the verified bank snapshot for manual transfer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerPayoutInformationPrivate" }
+  /partner/payout-information/lookup-account:
+    post:
+      operationId: lookupPartnerReceivingAccount
+      tags: [partners]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerBankSelection" }
+      responses:
+        "200":
+          description: LIVE identity-matched lookup evidence; no save or transfer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerBankLookup" }
   /platform/partner-payouts:
     get:
       operationId: listPlatformPartnerPayouts
@@ -8668,6 +8704,47 @@ components:
         periodEnd: { type: ["string", "null"], format: date }
         createdAt: { type: string, format: date-time }
         paidAt: { type: ["string", "null"], format: date-time }
+        partnerName: { type: ["string", "null"] }
+        bankDetailsAvailable: { type: boolean }
+        paidBy: { type: ["integer", "null"] }
+        bankDetails:
+          oneOf:
+            - { $ref: "#/components/schemas/PartnerPayoutInformationMasked" }
+            - { type: "null" }
+    PartnerBankSelection:
+      type: object
+      additionalProperties: false
+      required: [bankName, bankCode, accountNumber]
+      properties:
+        bankName: { type: string, minLength: 1, maxLength: 200 }
+        bankCode: { type: string, pattern: '^[0-9]{1,20}$' }
+        accountNumber: { type: string, pattern: '^[0-9]{10}$', writeOnly: true }
+    PartnerBankLookup:
+      type: object
+      required: [accountName, accountLast4, lookupToken, expiresAt]
+      properties:
+        accountName: { type: string }
+        accountLast4: { type: string }
+        lookupToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+    PartnerPayoutCandidate:
+      type: object
+      required: [partnerId, fullName, partnerCode, email, accruedCommission, paidCommission, outstandingCommission, payableCommission, reservedCommission, pendingApprovalCommission, bankDetails]
+      properties:
+        partnerId: { type: integer }
+        fullName: { type: string }
+        partnerCode: { type: string }
+        email: { type: string }
+        accruedCommission: { type: number }
+        paidCommission: { type: number }
+        outstandingCommission: { type: number }
+        payableCommission: { type: number }
+        reservedCommission: { type: number }
+        pendingApprovalCommission: { type: number }
+        bankDetails:
+          oneOf:
+            - { $ref: "#/components/schemas/PartnerPayoutInformationMasked" }
+            - { type: "null" }
     PartnerPayoutInput:
       type: object
       additionalProperties: false
@@ -8690,6 +8767,7 @@ components:
       properties:
         status: { type: string, enum: [PROCESSING, PAID, FAILED, REVERSED] }
         paymentReference: { type: string }
+        confirmExternalTransfer: { type: boolean }
     PartnerDashboard:
       type: object
       required: [referredSchools, eligibleStudents, currentTermCommission, lifetimeCommission, paidCommission, outstandingCommission]
@@ -8700,6 +8778,9 @@ components:
         lifetimeCommission: { type: number }
         paidCommission: { type: number }
         outstandingCommission: { type: number }
+        payableCommission: { type: number }
+        reservedCommission: { type: number }
+        pendingApprovalCommission: { type: number }
     PartnerReferralLink:
       type: object
       required: [id, url, status]
@@ -8718,6 +8799,7 @@ components:
         accountName: { type: ["string", "null"] }
         maskedAccountNumber: { type: ["string", "null"], description: "Masked value only, for example ****1234" }
         bankCode: { type: ["string", "null"] }
+        verified: { type: boolean }
         updatedAt: { type: string, format: date-time }
     PartnerPayoutInformationPrivate:
       type: object
@@ -8733,14 +8815,15 @@ components:
         updatedAt: { type: string, format: date-time }
     PartnerPayoutInformationInput:
       type: object
-      required: [payoutMethod, accountName]
+      additionalProperties: false
+      required: [payoutMethod, accountName, bankName, bankCode, accountNumber, lookupToken]
       properties:
-        payoutMethod: { type: string, enum: [BANK_TRANSFER, MOBILE_MONEY, OTHER] }
+        payoutMethod: { type: string, enum: [BANK_TRANSFER] }
         bankName: { type: string }
         accountName: { type: string }
-        accountNumber: { type: string, minLength: 4, description: "Write-only; never returned by the API" }
+        accountNumber: { type: string, pattern: '^[0-9]{10}$', writeOnly: true }
         bankCode: { type: string }
-        otherDetails: { type: string }
+        lookupToken: { type: string, minLength: 1, maxLength: 10000, writeOnly: true }
     ReferralValidationInput:
       type: object
       required: [referralToken]

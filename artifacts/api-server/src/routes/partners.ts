@@ -2,6 +2,12 @@ import { Router, type NextFunction, type Request } from "express";
 import { partnerPayoutRequest } from "../lib/partner-payout-request";
 import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
 import { updateManualPartnerPayout } from "../services/partner-payout-update";
+import { broLedgerBalances } from "../services/bro-ledger-balances";
+import {
+  lookupBroBank, validateBroSelection, acceptBroBankProof, broBankRow, verifiedBroBank,
+  maskedBroBank, bankFingerprint, BRO_BANK_POLICY, sealBroPayoutBank,
+} from "../services/bro-bank-verification";
+import { enrichBroPayout, payoutBankSnapshot, BRO_MANUAL_POLICY } from "../services/bro-payout-records";
 import {
   deferredCommissionEvidence, approveCommissionBatch, listCommissionBatches,
   exportCommissionBatch, ownDeferredCommissionTotals,
@@ -27,6 +33,8 @@ import {
   ResendMyPartnerSchoolInvitationBody,
   ResendMyPartnerSchoolInvitationParams,
   ResendMyPartnerSchoolInvitationResponse,
+  LookupPartnerReceivingAccountBody,
+  UpdatePartnerPayoutInformationBody,
 } from "@workspace/api-zod";
 import {
   AuthError,
@@ -97,42 +105,6 @@ const minorUnitsOf = (value: unknown) => {
 };
 const decimalOfMinorUnits = (value: bigint) =>
   `${value / 100n}.${String(value % 100n).padStart(2, "0")}`;
-const maxPayoutSubsetEntries = 256;
-const maxPayoutSubsetSearchSteps = 100_000;
-function oldestExactPayoutSubset(
-  entries: Array<{ id: number; amount: bigint }>,
-  target: bigint,
-) {
-  const candidates = entries.filter((entry) => entry.amount <= target);
-  if (candidates.length > maxPayoutSubsetEntries) {
-    throw new AuthError(409, "Too many payable entries for safe payout selection; reduce the payable set and retry");
-  }
-  const suffixTotals = Array<bigint>(candidates.length + 1).fill(0n);
-  for (let index = candidates.length - 1; index >= 0; index--) {
-    suffixTotals[index] = suffixTotals[index + 1] + candidates[index].amount;
-  }
-  const selected: number[] = [];
-  let result: number[] | null = null;
-  let searchSteps = 0;
-  const search = (index: number, sum: bigint): boolean => {
-    if (++searchSteps > maxPayoutSubsetSearchSteps) {
-      throw new AuthError(409, "Payout selection exceeded the safe search limit; narrow the payable set and retry");
-    }
-    if (sum === target) {
-      result = [...selected];
-      return true;
-    }
-    if (sum > target || index === candidates.length || sum + suffixTotals[index] < target) return false;
-
-    // Include earlier payable entries first, but backtrack and skip entries when needed.
-    selected.push(candidates[index].id);
-    if (search(index + 1, sum + candidates[index].amount)) return true;
-    selected.pop();
-    return search(index + 1, sum);
-  };
-  search(0, 0n);
-  return result;
-}
 const run = (fn: (req: Request, res: any) => Promise<void>) =>
   (req: Request, res: any, next: NextFunction) => fn(req, res).catch(next);
 const currentPayoutKeyVersion = () =>
@@ -1862,7 +1834,20 @@ router.get("/platform/partners/:partnerId/schools", run(async(req,res)=>{assertR
 router.get("/platform/partners/:partnerId/attribution-history", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT a.id,a.partner_profile_id AS "partnerId",a.school_id AS "schoolId",a.status AS "attributionStatus",a.source AS "attributionSource",a.referral_link_id AS "referralLinkId",a.starts_at AS "startDate",a.ends_at AS "endDate",a.created_at AS "createdAt" FROM school_partner_attributions a WHERE a.partner_profile_id=$1 ORDER BY a.starts_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
 router.get("/platform/partners/:partnerId/commissions", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT ${commissionFields} FROM commission_ledger l WHERE l.partner_profile_id=$1 ORDER BY l.created_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
 router.get("/platform/partners/:partnerId/payouts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts WHERE partner_profile_id=$1 ORDER BY created_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
-router.get("/platform/partners/:partnerId/payout-information", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const partnerId=idOf(req.params.partnerId,"Partner"),client=await pool.connect();try{await client.query("BEGIN");const r=await client.query(`SELECT id,method,bank_name_encrypted,account_name_encrypted,account_number_encrypted,bank_code_encrypted,encryption_key_version,updated_at AS "updatedAt" FROM partner_payout_information WHERE partner_profile_id=$1 AND status='ACTIVE' FOR SHARE`,[partnerId]);if(!r.rows[0])throw new AuthError(404,"Payout information not found");const x=r.rows[0];await audit(req,"Viewed payout information","Partner Payout Information",x.id,{partnerId},client);await client.query("COMMIT");res.json({id:x.id,partnerId,payoutMethod:x.method,bankName:decrypt(x.bank_name_encrypted,x.encryption_key_version),accountName:decrypt(x.account_name_encrypted,x.encryption_key_version),accountNumber:decrypt(x.account_number_encrypted,x.encryption_key_version),bankCode:x.bank_code_encrypted?decrypt(x.bank_code_encrypted,x.encryption_key_version):null,updatedAt:x.updatedAt});}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
+router.get("/platform/partners/:partnerId/payout-information", run(async(req,res)=>{
+  assertRoles(req,["PLATFORM_OWNER"]);
+  res.set("Cache-Control","private, no-store");
+  const partnerId=idOf(req.params.partnerId,"BRO"),client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const p=(await client.query("SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1 FOR SHARE",[partnerId])).rows[0];
+    if(!p) throw new AuthError(404,"BRO not found");
+    const bank=await verifiedBroBank(client,p,decrypt);
+    if(!bank) throw new AuthError(404,"Verified payout information is unavailable");
+    await audit(req,"Viewed payout information","Partner Payout Information",bank.id,{partnerId},client);
+    await client.query("COMMIT");res.json(bank);
+  }catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}
+}));
 
 router.get("/platform/partner-attribution-conflicts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT c.id,c.school_id AS "schoolId",c.existing_partner_profile_id AS "existingPartnerId",c.attempted_partner_profile_id AS "attemptedPartnerId",c.source AS "attemptedAttributionSource",c.status,c.created_at AS "createdAt",c.resolved_at AS "resolvedAt",c.decision AS "resolutionNote" FROM partner_attribution_conflicts c WHERE ($1::text IS NULL OR c.status=$1) ORDER BY c.created_at DESC`,[typeof req.query.status==="string"?req.query.status:null]);res.json(r.rows)}));
 router.post("/platform/partner-attribution-conflicts/:conflictId/resolve", run(async (req, res) => {
@@ -1972,7 +1957,36 @@ router.get("/partner/deferred-commissions", run(async(req,res)=>{
   const p=await self(req); requirePartnerFinanceAccess(p);
   res.json(await ownDeferredCommissionTotals(p.id));
 }));
-router.get("/platform/partner-payouts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts ORDER BY created_at DESC`);res.json(r.rows)}));
+router.get("/platform/partner-payout-candidates", run(async(req,res)=>{
+  assertRoles(req,["PLATFORM_OWNER"]);res.set("Cache-Control","private, no-store");
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    const partners=(await client.query(`SELECT id,full_name,user_id,status,email,partner_code
+      FROM partner_profiles WHERE status='ACTIVE' ORDER BY full_name,id`)).rows;
+    const rows=[];
+    for(const p of partners) rows.push({partnerId:p.id,fullName:p.full_name,email:p.email,partnerCode:p.partner_code,
+      ...await broLedgerBalances(client,p.id),bankDetails:maskedBroBank(await verifiedBroBank(client,p,decrypt))});
+    await client.query("COMMIT");res.json(rows);
+  }catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}
+}));
+router.get("/platform/partner-payouts/:payoutId/bank-details",run(async(req,res)=>{
+  assertRoles(req,["PLATFORM_OWNER"]);res.set("Cache-Control","private, no-store");
+  const id=idOf(req.params.payoutId,"Payout"),client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const row=(await client.query("SELECT id FROM partner_payouts WHERE id=$1 FOR SHARE",[id])).rows[0];
+    const snapshot=row?await payoutBankSnapshot(client,id):null;
+    if(!snapshot)throw new AuthError(404,"Verified payout bank snapshot is unavailable.");
+    await audit(req,"Viewed payout bank snapshot","Payouts",id,{partnerId:snapshot.bank.partnerId},client);
+    await client.query("COMMIT");res.json(snapshot.bank);
+  }catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}
+}));
+router.get("/platform/partner-payouts", run(async(req,res)=>{
+  assertRoles(req,["PLATFORM_OWNER"]);res.set("Cache-Control","private, no-store");
+  const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts ORDER BY created_at DESC`);
+  res.json(await Promise.all(r.rows.map(row=>enrichBroPayout(pool,row))));
+}));
 router.post("/platform/partner-payouts", run(async (req, res) => {
   const context = assertRoles(req, ["PLATFORM_OWNER"]);
   const request = partnerPayoutRequest(req.body);
@@ -1998,10 +2012,15 @@ router.post("/platform/partner-payouts", run(async (req, res) => {
       res.set("Idempotency-Replayed", "true").status(201).json(prior.rows[0].response_snapshot);
       return;
     }
+    const partner=(await client.query(`SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1 FOR UPDATE`,[partnerId])).rows[0];
+    if(!partner || partner.status!=="ACTIVE")throw new AuthError(409,"Select an active eligible BRO.");
+    if(currency!=="NGN")throw new AuthError(400,"BRO manual payouts must use NGN.");
+    const bank=await verifiedBroBank(client,partner,decrypt);
+    if(!bank)throw new AuthError(409,"The BRO must save a successfully LIVE-verified bank account before a payout is created.");
     const payable = await client.query(
       `SELECT id,amount FROM commission_ledger l
        WHERE partner_profile_id=$1 AND currency=$2 AND status='PAYABLE' AND payout_id IS NULL
-       AND (to_jsonb(l)->>'payment_id') IS NULL
+       AND (to_jsonb(l)->>'payment_id') IS NULL AND amount>0
        ORDER BY payable_at,id FOR UPDATE`,
       [partnerId, currency],
     );
@@ -2011,11 +2030,8 @@ router.post("/platform/partner-payouts", run(async (req, res) => {
       return { id: row.id, amount: entryAmount };
     });
     const total = entries.reduce((sum, entry) => sum + entry.amount, 0n);
-    if (amount > total) throw new AuthError(409, "Payout exceeds payable commission");
-    const selected = oldestExactPayoutSubset(entries, amount);
-    if (!selected) {
-      throw new AuthError(409, "Payout amount must exactly match a whole-entry payable commission subset");
-    }
+    if (total<=0n || amount !== total) throw new AuthError(409, "Payout must equal the BRO's complete current available payable balance. Refresh the BRO selection.");
+    const selected = entries.map(e=>e.id);
     const payout = await client.query(
       `INSERT INTO partner_payouts
        (partner_profile_id,amount,currency,status,period_start,period_end,method,notes)
@@ -2023,13 +2039,18 @@ router.post("/platform/partner-payouts", run(async (req, res) => {
        RETURNING id,partner_profile_id AS "partnerId",amount::float,currency,status,
          period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt"`,
       [partnerId, decimalOfMinorUnits(amount), currency, request.payload.periodStart ?? new Date(0),
-        request.payload.periodEnd ?? new Date(), request.payload.method, request.payload.notes],
+        request.payload.periodEnd ?? new Date(), "MANUAL_VERIFIED_BRO", request.payload.notes],
     );
     await client.query(`UPDATE commission_ledger SET payout_id=$1 WHERE id=ANY($2::int[])`,
       [payout.rows[0].id, selected]);
-    await audit(req, "Created partner payout", "Payouts", payout.rows[0].id, null, client);
+    await audit(req, "Created partner payout", "Payouts", payout.rows[0].id, {
+      policy:BRO_MANUAL_POLICY,partnerName:partner.full_name,partnerId,
+      bankSnapshot:sealBroPayoutBank({...bank,payoutId:payout.rows[0].id}),
+      commissionIds:selected,amount:decimalOfMinorUnits(total),executionMode:"EXTERNAL_MANUAL_TRANSFER_ONLY",
+    }, client);
     // Freeze the original HTTP representation, not a later mutable payout status.
-    const snapshot = JSON.parse(JSON.stringify(payout.rows[0]));
+    const snapshot = JSON.parse(JSON.stringify({...payout.rows[0],partnerName:partner.full_name,
+      bankDetailsAvailable:true,bankDetails:maskedBroBank(bank),paidBy:null}));
     await client.query(
       `INSERT INTO partner_payout_requests
        (idempotency_key,request_hash,payout_id,response_snapshot,created_by)
@@ -2175,7 +2196,22 @@ router.post(["/partner/invitations/accept", "/partner/invitations/:invitationTok
 }));
 router.get("/partner/profile", run(async(req,res)=>res.json(await self(req))));
 router.patch("/partner/profile", run(async(req,res)=>{const p=await self(req);requirePartnerOwner(req,p);const b=req.body??{};await pool.query(`UPDATE partner_profiles SET full_name=COALESCE($1,full_name),business_name=COALESCE($2,business_name),phone=COALESCE($3,phone),address=COALESCE($4,address),state=COALESCE($5,state),lga=COALESCE($6,lga),updated_at=NOW() WHERE id=$7`,[b.fullName,b.businessName,b.phone,b.address,b.state,b.lga,p.id]);res.json(await self(req))}));
-router.get("/partner/dashboard", run(async(req,res)=>{const p=await self(req),r=await pool.query(`SELECT (SELECT COUNT(DISTINCT school_id)::int FROM school_partner_attributions WHERE partner_profile_id=$1 AND is_current=true) AS schools,(SELECT COUNT(DISTINCT st.id)::int FROM students st JOIN school_partner_attributions a ON a.school_id=st.school_id WHERE a.partner_profile_id=$1 AND a.is_current=true AND upper(st.status)='ACTIVE') AS students,(SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND status NOT IN('REVERSED','CANCELLED')) AS lifetime,(SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND status='PAID') AS paid,(SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND term=(SELECT term FROM commission_ledger WHERE partner_profile_id=$1 ORDER BY created_at DESC LIMIT 1) AND status NOT IN('REVERSED','CANCELLED')) AS current`,[p.id]);const x=r.rows[0];const response:any={referredSchools:x.schools,eligibleStudents:x.students};if(p.isOwner||["PARTNER_ADMIN","PARTNER_FINANCE"].includes(p.partnerRole)){response.currentTermCommission=x.current;response.lifetimeCommission=x.lifetime;response.paidCommission=x.paid;response.outstandingCommission=x.lifetime-x.paid;}res.json(response)}));
+router.get("/partner/dashboard", run(async(req,res)=>{
+  const p=await self(req),c=await pool.connect();
+  try {
+    await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    const x=(await c.query(`SELECT
+      (SELECT COUNT(DISTINCT school_id)::int FROM school_partner_attributions WHERE partner_profile_id=$1 AND is_current=true) AS schools,
+      (SELECT COUNT(DISTINCT st.id)::int FROM students st JOIN school_partner_attributions a ON a.school_id=st.school_id WHERE a.partner_profile_id=$1 AND a.is_current=true AND upper(st.status)='ACTIVE') AS students,
+      (SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND term=(SELECT term FROM commission_ledger WHERE partner_profile_id=$1 ORDER BY created_at DESC LIMIT 1) AND status NOT IN('REVERSED','CANCELLED')) AS current`,[p.id])).rows[0];
+    const response:any={referredSchools:x.schools,eligibleStudents:x.students};
+    if(p.isOwner||["PARTNER_ADMIN","PARTNER_FINANCE"].includes(p.partnerRole)){
+      const totals=await broLedgerBalances(c,p.id);
+      Object.assign(response,totals,{currentTermCommission:x.current,lifetimeCommission:totals.accruedCommission});
+    }
+    await c.query("COMMIT");res.set("Cache-Control","private, no-store").json(response);
+  }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
+}));
 router.get("/partner/referral-link", run(async(req,res)=>{const p=await self(req);res.json(await partnerLink(req,p))}));
 router.get("/partner/schools", run(async(req,res)=>{
   const p=await self(req);
@@ -2979,30 +3015,60 @@ router.delete("/partner/staff-invitations/:invitationId", run(async (req, res) =
 }));
 router.get("/partner/commissions", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT ${commissionFields} FROM commission_ledger l WHERE l.partner_profile_id=$1 ORDER BY l.created_at DESC`,[p.id]);res.json(r.rows)}));
 router.get("/partner/payouts", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts WHERE partner_profile_id=$1 ORDER BY created_at DESC`,[p.id]);res.json(r.rows)}));
-router.get("/partner/payout-information", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT id,method,account_name_encrypted,account_last4,updated_at AS "updatedAt" FROM partner_payout_information WHERE partner_profile_id=$1 AND status='ACTIVE'`,[p.id]);const x=r.rows[0];res.json(x?{id:x.id,payoutMethod:x.method,bankName:null,accountName:"Stored securely",maskedAccountNumber:mask(x.account_last4),updatedAt:x.updatedAt}:{id:0,payoutMethod:"BANK_TRANSFER",bankName:null,accountName:null,maskedAccountNumber:null,updatedAt:new Date().toISOString()})}));
+router.get("/partner/payout-information", run(async(req,res)=>{
+  const p=await self(req);requirePartnerFinanceAccess(p);res.set("Cache-Control","private, no-store");
+  const c=await pool.connect();
+  try {
+    await c.query("BEGIN");
+    const identity=(await c.query("SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1 FOR SHARE",[p.id])).rows[0];
+    const bank=identity?await verifiedBroBank(c,identity,decrypt):null;
+    await c.query("COMMIT");
+    res.json(maskedBroBank(bank)??{id:0,payoutMethod:"BANK_TRANSFER",bankName:null,accountName:null,
+      maskedAccountNumber:null,bankCode:null,verified:false,updatedAt:new Date().toISOString()});
+  }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
+}));
+router.post("/partner/payout-information/lookup-account",run(async(req,res)=>{
+  const p=await self(req);requirePartnerOwner(req,p);
+  res.set("Cache-Control","private, no-store");
+  const parsed=LookupPartnerReceivingAccountBody.strict().safeParse(req.body);
+  if(!parsed.success)throw new AuthError(400,"Select a supported bank and enter a valid 10-digit account number.");
+  const identity=(await pool.query("SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1",[p.id])).rows[0];
+  if(!identity)throw new AuthError(404,"BRO not found");
+  res.json(await lookupBroBank(getUserContext(req).user.id,identity,validateBroSelection(parsed.data)));
+}));
 router.patch("/partner/payout-information", run(async(req,res)=>{
   const p=await self(req);
   requirePartnerOwner(req,p);
-  const b=req.body??{};
-  if(!b.accountName)throw new AuthError(400,"accountName is required");
+  res.set("Cache-Control","private, no-store");
+  const parsed=UpdatePartnerPayoutInformationBody.strict().safeParse(req.body);
+  if(!parsed.success)throw new AuthError(400,"Fresh matching lookup evidence and complete bank details are required.");
+  const b=parsed.data;
   const client=await pool.connect();
   try{
     await client.query("BEGIN");
-    const existing=await client.query(`SELECT bank_name_encrypted,account_number_encrypted,bank_code_encrypted,account_last4,encryption_key_version FROM partner_payout_information WHERE partner_profile_id=$1 FOR UPDATE`,[p.id]);
-    if(!existing.rows[0]&&!b.accountNumber)throw new AuthError(400,"accountNumber is required when payout information is first created");
-    const version=existing.rows[0]?.encryption_key_version??currentPayoutKeyVersion();
-    const preserve=(field:string)=>existing.rows[0]?.[field]??null;
-    if((b.payoutMethod??"BANK_TRANSFER")==="BANK_TRANSFER"){
-      await requireVerifiedPaymentAccountProvider({
-        bankName:b.bankName??(preserve("bank_name_encrypted")?decrypt(preserve("bank_name_encrypted"),version):undefined),
-        bankCode:b.bankCode??(preserve("bank_code_encrypted")?decrypt(preserve("bank_code_encrypted"),version):undefined),
-      });
-    }
-    const r=await client.query(`INSERT INTO partner_payout_information(partner_profile_id,method,bank_name_encrypted,account_name_encrypted,account_number_encrypted,bank_code_encrypted,account_last4,encryption_key_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(partner_profile_id) DO UPDATE SET method=EXCLUDED.method,bank_name_encrypted=EXCLUDED.bank_name_encrypted,account_name_encrypted=EXCLUDED.account_name_encrypted,account_number_encrypted=EXCLUDED.account_number_encrypted,bank_code_encrypted=EXCLUDED.bank_code_encrypted,account_last4=EXCLUDED.account_last4,encryption_key_version=EXCLUDED.encryption_key_version,updated_at=NOW() RETURNING id,method,account_last4,updated_at AS "updatedAt"`,[p.id,b.payoutMethod??"BANK_TRANSFER",b.bankName!==undefined?encrypt(b.bankName,version):preserve("bank_name_encrypted")??encrypt("",version),encrypt(b.accountName,version),b.accountNumber?encrypt(b.accountNumber,version):preserve("account_number_encrypted"),b.bankCode!==undefined?(b.bankCode?encrypt(b.bankCode,version):null):preserve("bank_code_encrypted"),b.accountNumber?String(b.accountNumber).slice(-4):existing.rows[0].account_last4,version]);
-    await audit(req,"Updated payout information","Partner Payout Information",r.rows[0].id,{fieldsUpdated:Object.keys(b).filter((field)=>field!=="accountNumber")},client);
+    const identity=(await client.query("SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1 FOR UPDATE",[p.id])).rows[0];
+    if(!identity)throw new AuthError(404,"BRO not found");
+    const existing=await broBankRow(client,p.id);
+    const actorId=getUserContext(req).user.id;
+    acceptBroBankProof(actorId,identity,existing,b);
+    await requireVerifiedPaymentAccountProvider(b);
+    // Directory lookup can outlive the evidence. Recheck while the identity and bank revision are locked.
+    acceptBroBankProof(actorId,identity,existing,b);
+    const version=currentPayoutKeyVersion();
+    const r=await client.query(`INSERT INTO partner_payout_information(partner_profile_id,method,bank_name_encrypted,account_name_encrypted,account_number_encrypted,bank_code_encrypted,account_last4,encryption_key_version,status)
+      VALUES($1,'BANK_TRANSFER',$2,$3,$4,$5,$6,$7,'ACTIVE')
+      ON CONFLICT(partner_profile_id) DO UPDATE SET method=EXCLUDED.method,bank_name_encrypted=EXCLUDED.bank_name_encrypted,
+      account_name_encrypted=EXCLUDED.account_name_encrypted,account_number_encrypted=EXCLUDED.account_number_encrypted,
+      bank_code_encrypted=EXCLUDED.bank_code_encrypted,account_last4=EXCLUDED.account_last4,
+      encryption_key_version=EXCLUDED.encryption_key_version,status='ACTIVE',updated_at=NOW() RETURNING *`,
+      [p.id,encrypt(b.bankName,version),encrypt(b.accountName,version),encrypt(b.accountNumber,version),
+        encrypt(b.bankCode,version),b.accountNumber.slice(-4),version]);
+    await audit(req,"Verified BRO bank account","Partner Payout Information",r.rows[0].id,
+      {policy:BRO_BANK_POLICY,fingerprint:bankFingerprint(r.rows[0]),identity:identity.full_name,
+        ownerId:identity.user_id,accountLast4:b.accountNumber.slice(-4),environment:"LIVE"},client);
     await client.query("COMMIT");
-    const x=r.rows[0];
-    res.json({id:x.id,payoutMethod:x.method,bankName:null,accountName:"Stored securely",maskedAccountNumber:mask(x.account_last4),updatedAt:x.updatedAt});
+    res.json({id:r.rows[0].id,payoutMethod:"BANK_TRANSFER",bankName:b.bankName,bankCode:b.bankCode,
+      accountName:b.accountName,maskedAccountNumber:`****${b.accountNumber.slice(-4)}`,verified:true,updatedAt:r.rows[0].updated_at});
   }catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}
 }));
 

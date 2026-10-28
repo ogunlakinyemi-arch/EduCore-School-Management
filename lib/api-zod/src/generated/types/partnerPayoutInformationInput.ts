@@ -9,13 +9,14 @@ import type { PartnerPayoutInformationInputPayoutMethod } from './partnerPayoutI
 
 export interface PartnerPayoutInformationInput {
   payoutMethod: PartnerPayoutInformationInputPayoutMethod;
-  bankName?: string;
+  bankName: string;
   accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+  bankCode: string;
   /**
-     * Write-only; never returned by the API
-     * @minLength 4
+     * @minLength 1
+     * @maxLength 10000
      */
-  accountNumber?: string;
-  bankCode?: string;
-  otherDetails?: string;
+  lookupToken: string;
 }

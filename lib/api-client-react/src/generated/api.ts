@@ -635,6 +635,8 @@ import type {
   Partner,
   PartnerAttributionConflict,
   PartnerAttributionHistory,
+  PartnerBankLookup,
+  PartnerBankSelection,
   PartnerCommission,
   PartnerCommissionRule,
   PartnerCommissionRuleInput,
@@ -659,6 +661,7 @@ import type {
   PartnerPayout,
   PartnerPayoutBatch,
   PartnerPayoutBatchInput,
+  PartnerPayoutCandidate,
   PartnerPayoutInformationInput,
   PartnerPayoutInformationMasked,
   PartnerPayoutInformationPrivate,
@@ -37705,6 +37708,230 @@ export const useUpdatePartnerCommissionStatus = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdatePartnerCommissionStatusMutationOptions(options));
+    }
+
+export const getListPartnerPayoutCandidatesUrl = () => {
+
+
+
+
+  return `/api/platform/partner-payout-candidates`
+}
+
+export const listPartnerPayoutCandidates = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutCandidate[]> => {
+
+  return customFetch<PartnerPayoutCandidate[]>(getListPartnerPayoutCandidatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPartnerPayoutCandidatesQueryKey = () => {
+    return [
+    `/api/platform/partner-payout-candidates`
+    ] as const;
+    }
+
+
+export const getListPartnerPayoutCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof listPartnerPayoutCandidates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerPayoutCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPartnerPayoutCandidatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPartnerPayoutCandidates>>> = ({ signal }) => listPartnerPayoutCandidates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPartnerPayoutCandidates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPartnerPayoutCandidatesQueryResult = NonNullable<Awaited<ReturnType<typeof listPartnerPayoutCandidates>>>
+export type ListPartnerPayoutCandidatesQueryError = ErrorType<unknown>
+
+
+
+export function useListPartnerPayoutCandidates<TData = Awaited<ReturnType<typeof listPartnerPayoutCandidates>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerPayoutCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPartnerPayoutCandidatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPartnerPayoutBankDetailsUrl = (payoutId: number,) => {
+
+
+
+
+  return `/api/platform/partner-payouts/${payoutId}/bank-details`
+}
+
+export const getPartnerPayoutBankDetails = async (payoutId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutInformationPrivate> => {
+
+  return customFetch<PartnerPayoutInformationPrivate>(getGetPartnerPayoutBankDetailsUrl(payoutId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPartnerPayoutBankDetailsQueryKey = (payoutId: number,) => {
+    return [
+    `/api/platform/partner-payouts/${payoutId}/bank-details`
+    ] as const;
+    }
+
+
+export const getGetPartnerPayoutBankDetailsQueryOptions = <TData = Awaited<ReturnType<typeof getPartnerPayoutBankDetails>>, TError = ErrorType<unknown>>(payoutId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutBankDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPartnerPayoutBankDetailsQueryKey(payoutId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPartnerPayoutBankDetails>>> = ({ signal }) => getPartnerPayoutBankDetails(payoutId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: payoutId !== null && payoutId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutBankDetails>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPartnerPayoutBankDetailsQueryResult = NonNullable<Awaited<ReturnType<typeof getPartnerPayoutBankDetails>>>
+export type GetPartnerPayoutBankDetailsQueryError = ErrorType<unknown>
+
+
+
+export function useGetPartnerPayoutBankDetails<TData = Awaited<ReturnType<typeof getPartnerPayoutBankDetails>>, TError = ErrorType<unknown>>(
+ payoutId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutBankDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPartnerPayoutBankDetailsQueryOptions(payoutId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLookupPartnerReceivingAccountUrl = () => {
+
+
+
+
+  return `/api/partner/payout-information/lookup-account`
+}
+
+export const lookupPartnerReceivingAccount = async (partnerBankSelection: PartnerBankSelection, options?: Parameters<typeof customFetch>[1]): Promise<PartnerBankLookup> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerBankLookup>(getLookupPartnerReceivingAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerBankSelection)
+  }
+);}
+
+
+
+
+
+export const getLookupPartnerReceivingAccountMutationKey = () => ['lookupPartnerReceivingAccount'] as const;
+
+export const getLookupPartnerReceivingAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lookupPartnerReceivingAccount>>, TError,LookupPartnerReceivingAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof lookupPartnerReceivingAccount>>, TError,LookupPartnerReceivingAccountMutationVariables, TContext> => {
+
+const mutationKey = getLookupPartnerReceivingAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lookupPartnerReceivingAccount>>, LookupPartnerReceivingAccountMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  lookupPartnerReceivingAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LookupPartnerReceivingAccountMutationResult = NonNullable<Awaited<ReturnType<typeof lookupPartnerReceivingAccount>>>
+    export type LookupPartnerReceivingAccountMutationBody = BodyType<PartnerBankSelection>
+    export type LookupPartnerReceivingAccountMutationError = ErrorType<unknown>
+    export type LookupPartnerReceivingAccountMutationVariables = {data: BodyType<PartnerBankSelection>}
+
+    export const useLookupPartnerReceivingAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lookupPartnerReceivingAccount>>, TError,LookupPartnerReceivingAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof lookupPartnerReceivingAccount>>,
+        TError,
+        LookupPartnerReceivingAccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLookupPartnerReceivingAccountMutationOptions(options));
     }
 
 export const getListPlatformPartnerPayoutsUrl = () => {

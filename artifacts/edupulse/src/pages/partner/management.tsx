@@ -19,7 +19,14 @@ import {
   useUpdatePartnerPayout,
   useListPartnerAttributionConflicts,
   useResolvePartnerAttributionConflict,
-  useCreatePartnerPayout
+  useCreatePartnerPayout,
+  useListPartnerPayoutCandidates,
+  getListPartnerPayoutCandidatesQueryKey,
+  getGetPartnerDashboardQueryKey,
+  getPartnerPayoutBankDetails,
+  type PartnerPayout,
+  type PartnerPayoutCandidate,
+  type PartnerPayoutInformationPrivate
 } from '@workspace/api-client-react';
 import { 
   PageHeading, 
@@ -628,57 +635,188 @@ function PartnerCommissionsList({ partnerId }: { partnerId: number }) {
   );
 }
 
+const ngn = (value: number) => `NGN ${value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const exactAmount = (value: number) => (Math.round(value * 100) / 100).toFixed(2);
+const POLL_MS = 15000;
+
+function CandidatePicker({ candidates, value, onChange, disabled }: {
+  candidates: PartnerPayoutCandidate[]; value: string; onChange: (partnerId: string) => void; disabled: boolean;
+}) {
+  const [text, setText] = useState('');
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const selected = candidates.find(c => String(c.partnerId) === value);
+  const term = text.trim().toLowerCase();
+  const matches = candidates.filter(c => !term || [c.fullName, c.partnerCode, c.email, String(c.partnerId)].some(v => v.toLowerCase().includes(term)));
+  const choose = (c: PartnerPayoutCandidate) => { onChange(String(c.partnerId)); setText(''); setOpen(false); };
+  return (
+    <div className="relative">
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-bold">BRO</span>
+        <input
+          role="combobox" aria-expanded={open} aria-controls="payout-candidate-list" aria-autocomplete="list"
+          aria-activedescendant={open && matches[active] ? `payout-candidate-${matches[active].partnerId}` : undefined}
+          disabled={disabled} data-testid="input-payout-candidate"
+          value={open ? text : selected ? `${selected.fullName} (${selected.partnerCode})` : text}
+          placeholder="Search by name, code or email"
+          onFocus={() => { setOpen(true); setActive(0); }}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onChange={ev => { setText(ev.target.value); setOpen(true); setActive(0); }}
+          onKeyDown={ev => {
+            if (ev.key === 'ArrowDown') { ev.preventDefault(); setOpen(true); setActive(i => Math.min(i + 1, matches.length - 1)); }
+            else if (ev.key === 'ArrowUp') { ev.preventDefault(); setActive(i => Math.max(i - 1, 0)); }
+            else if (ev.key === 'Enter' && open && matches[active]) { ev.preventDefault(); choose(matches[active]); }
+            else if (ev.key === 'Escape') setOpen(false);
+          }}
+        />
+      </label>
+      {open && !disabled && (
+        <ul id="payout-candidate-list" role="listbox" aria-label="Active BROs" className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-1 shadow-lg">
+          {matches.length === 0 && <li className="p-3 text-sm text-[hsl(var(--muted-foreground))]">No active BRO matches.</li>}
+          {matches.map((c, i) => (
+            <li key={c.partnerId} id={`payout-candidate-${c.partnerId}`} role="option" aria-selected={String(c.partnerId) === value}
+              data-testid={`option-payout-candidate-${c.partnerId}`}
+              onMouseDown={ev => { ev.preventDefault(); choose(c); }}
+              className={cx('cursor-pointer rounded-lg p-2.5 text-sm', i === active && 'bg-[hsl(var(--muted)/.6)]')}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-bold">{c.fullName}</span>
+                <span className="font-mono text-xs">{ngn(c.payableCommission)}</span>
+              </div>
+              <div className="text-xs text-[hsl(var(--muted-foreground))]">{c.partnerCode} · {c.email}{c.bankDetails?.verified ? '' : ' · no verified bank'}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ManualTransferModal({ payout, busy, onClose, onConfirm }: {
+  payout: PartnerPayout; busy: boolean; onClose: () => void; onConfirm: (reference: string) => void;
+}) {
+  const { toast } = useToast();
+  const [revealed, setRevealed] = useState<PartnerPayoutInformationPrivate | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [reference, setReference] = useState('');
+  useEffect(() => () => setRevealed(null), []);
+  const reveal = async () => {
+    if (revealing) return;
+    setRevealing(true);
+    try {
+      const details = await getPartnerPayoutBankDetails(payout.id, { cache: 'no-store' });
+      setRevealed(details);
+    } catch (err: any) {
+      toast({ title: 'Bank details unavailable', description: err?.data?.error || err?.message || 'The verified snapshot could not be revealed.', variant: 'destructive' });
+    } finally { setRevealing(false); }
+  };
+  const close = () => { setRevealed(null); onClose(); };
+  const masked = payout.bankDetails;
+  return (
+    <Modal title="Manual bank transfer" eyebrow={`Payout #${payout.id}`} onClose={close}>
+      <div className="space-y-5 text-sm">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><div className="eyebrow">BRO</div><div className="font-bold" data-testid="text-modal-partner">{payout.partnerName || `BRO #${payout.partnerId}`}</div></div>
+          <div><div className="eyebrow">Amount</div><div className="font-bold font-mono">{payout.currency} {exactAmount(payout.amount)}</div></div>
+        </div>
+        <div className="rounded-xl border border-[hsl(var(--border))] p-4">
+          <div className="eyebrow mb-2">Frozen verified bank snapshot</div>
+          {revealed ? (
+            <dl className="grid gap-1" data-testid="text-revealed-bank">
+              <div><dt className="inline font-semibold">Bank: </dt><dd className="inline">{revealed.bankName}{revealed.bankCode ? ` (${revealed.bankCode})` : ''}</dd></div>
+              <div><dt className="inline font-semibold">Account name: </dt><dd className="inline">{revealed.accountName}</dd></div>
+              <div><dt className="inline font-semibold">Account number: </dt><dd className="inline font-mono">{revealed.accountNumber}</dd></div>
+            </dl>
+          ) : masked ? (
+            <div className="text-[hsl(var(--muted-foreground))]">{masked.bankName} · {masked.accountName} · <span className="font-mono">{masked.maskedAccountNumber}</span></div>
+          ) : <div className="text-[hsl(var(--muted-foreground))]">No verified snapshot is attached.</div>}
+          {!revealed && payout.bankDetailsAvailable && (
+            <Button variant="outline" className="mt-3 h-8 px-3 text-xs" disabled={revealing} onClick={reveal} testId="button-reveal-bank">
+              {revealing ? 'Revealing…' : 'Reveal full details (audited)'}
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">EduCore does not send money. Complete the transfer in your bank, then record it here.</p>
+        <label className="flex items-start gap-2">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 w-auto" checked={confirmed} onChange={ev => setConfirmed(ev.target.checked)} data-testid="checkbox-confirm-transfer" />
+          <span>I confirm the external bank transfer has been completed for this exact amount.</span>
+        </label>
+        <Field label="Bank transfer reference">
+          <input value={reference} onChange={ev => setReference(ev.target.value)} data-testid="input-payment-reference" placeholder="Reference from your bank" />
+        </Field>
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={close}>Cancel</Button>
+          <Button disabled={busy || !confirmed || !reference.trim()} onClick={() => { setRevealed(null); onConfirm(reference.trim()); }} testId="button-confirm-paid">
+            {busy ? 'Recording…' : 'Mark paid'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function PayoutsOverview() {
   const context = useGetAuthorizedContext();
   const actorId = context.data?.user.id;
-  const query = useListPlatformPartnerPayouts();
+  const query = useListPlatformPartnerPayouts({ query: { queryKey: getListPlatformPartnerPayoutsQueryKey(), refetchInterval: POLL_MS } });
+  const candidatesQuery = useListPartnerPayoutCandidates({ query: { queryKey: getListPartnerPayoutCandidatesQueryKey(), refetchInterval: POLL_MS } });
   const createPayout = useCreatePartnerPayout();
   const updatePayout = useUpdatePartnerPayout();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [partnerId, setPartnerId] = useState('');
-  const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('NGN');
   const [pending, setPending] = useState<PayoutDraft | null>(null);
   const [storageReady, setStorageReady] = useState(false);
+  const [paying, setPaying] = useState<PartnerPayout | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
   const submitting = useRef(false);
+  const updating = useRef(false);
   const currentActor = useRef(actorId);
   currentActor.current = actorId;
   useEffect(() => {
     setStorageReady(false);
     setPending(null);
     setPartnerId('');
-    setAmount('');
+    setPaying(null);
     if (!actorId) return;
     try {
       const saved = readPayoutDraft(sessionStorage, actorId);
       setPending(saved);
-      if (saved) {
-        setPartnerId(String(saved.partnerId));
-        setAmount(saved.amount);
-        setCurrency(saved.currency);
-      }
+      if (saved) setPartnerId(String(saved.partnerId));
       setStorageReady(true);
     } catch (error) {
       toast({ title: 'Payout retry storage unavailable', description: String(error), variant: 'destructive' });
     }
   }, [actorId, toast]);
+
+  const refreshAll = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: getListPlatformPartnerPayoutsQueryKey() }),
+    queryClient.invalidateQueries({ queryKey: getListPartnerPayoutCandidatesQueryKey() }),
+    queryClient.invalidateQueries({ queryKey: getGetPartnerDashboardQueryKey() }),
+  ]);
   
   if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState message="BRO payout history could not be loaded. No payout was created or changed." retry={() => { void query.refetch(); }} />;
 
   const payouts = query.data ?? [];
+  const candidates = candidatesQuery.data ?? [];
+  const selected = candidates.find(c => String(c.partnerId) === partnerId) ?? null;
+  const candidatesUsable = !candidatesQuery.isLoading && !candidatesQuery.isError && !candidatesQuery.isFetching && !!candidatesQuery.data;
+  const hasVerifiedBank = selected?.bankDetails?.verified === true;
+  const payable = selected ? exactAmount(selected.payableCommission) : '';
+  const blockReason = pending ? null
+    : candidatesQuery.isError ? 'BRO balances could not be loaded.'
+    : !candidatesUsable ? 'Refreshing BRO balances…'
+    : !selected ? 'Select a BRO.'
+    : !hasVerifiedBank ? 'This BRO has no verified bank account.'
+    : !(selected.payableCommission > 0) ? 'This BRO has no payable commission.'
+    : null;
 
   const create = async () => {
     if (!actorId || !storageReady || submitting.current) return;
-    const parsedPartnerId = Number(partnerId);
-    if (!Number.isSafeInteger(parsedPartnerId) || parsedPartnerId < 1 ||
-        !/^\d{1,10}(\.\d{1,2})?$/.test(amount.trim()) || Number(amount) <= 0) {
-      toast({ title: 'Invalid payout', description: 'Enter a valid BRO ID and positive amount.', variant: 'destructive' });
-      return;
-    }
+    if (!pending && blockReason) return;
     const draft = pending ?? {
-      idempotencyKey: crypto.randomUUID(), partnerId: parsedPartnerId, amount: amount.trim(), currency,
+      idempotencyKey: crypto.randomUUID(), partnerId: selected!.partnerId, amount: payable, currency: 'NGN',
     };
     try {
       // Persist BEFORE sending. An unknown response, remount or reload must reuse this request.
@@ -693,12 +831,11 @@ export function PayoutsOverview() {
       await createPayout.mutateAsync({ data: draft });
       // Execution-owned cleanup still runs if navigation removes this component.
       clearPayoutDraft(sessionStorage, actorId);
-      queryClient.invalidateQueries({ queryKey: getListPlatformPartnerPayoutsQueryKey() });
+      void refreshAll();
       if (currentActor.current === actorId) {
         setPending(null);
         toast({ title: 'Payout created', description: 'The payable commission entries are now reserved.' });
         setPartnerId('');
-        setAmount('');
       }
     } catch (err: any) {
       // These responses guarantee no new payout committed. Unknown/5xx results retain the key.
@@ -706,6 +843,7 @@ export function PayoutsOverview() {
         clearPayoutDraft(sessionStorage, actorId);
         if (currentActor.current === actorId) setPending(null);
       }
+      void refreshAll();
       if (currentActor.current === actorId) {
         toast({ title: 'Payout creation failed', description: err.message || 'Retry the saved request before starting another payout.', variant: 'destructive' });
       }
@@ -714,83 +852,107 @@ export function PayoutsOverview() {
     }
   };
 
-  const transition = (payoutId: number, status: 'PROCESSING' | 'PAID' | 'FAILED' | 'REVERSED') => {
-    const paymentReference = status === 'PAID' || status === 'REVERSED'
-      ? window.prompt(status === 'REVERSED' ? 'Enter the reversal reference' : 'Enter the payment reference')
-      : undefined;
+  const transition = (payoutId: number, status: 'PROCESSING' | 'PAID' | 'FAILED' | 'REVERSED', paidReference?: string) => {
+    if (updating.current) return;
+    const paymentReference = status === 'PAID' ? paidReference
+      : status === 'REVERSED' ? window.prompt('Enter the reversal reference') : undefined;
     if ((status === 'PAID' || status === 'REVERSED') && !paymentReference?.trim()) return;
-    updatePayout.mutate({ payoutId, data: { status, paymentReference: paymentReference?.trim() } }, {
+    updating.current = true;
+    setUpdatingId(payoutId);
+    const data = status === 'PAID'
+      ? { status, paymentReference: paymentReference!.trim(), confirmExternalTransfer: true }
+      : { status, paymentReference: paymentReference?.trim() };
+    updatePayout.mutate({ payoutId, data }, {
       onSuccess: () => {
         toast({ title: 'Payout updated', description: `Payout moved to ${status.toLowerCase()}.` });
-        queryClient.invalidateQueries({ queryKey: getListPlatformPartnerPayoutsQueryKey() });
+        if (status === 'PAID') setPaying(null);
       },
       onError: (err: any) => {
-        toast({ title: 'Payout update failed', description: err.error || 'The payout could not be updated.', variant: 'destructive' });
+        toast({ title: 'Payout update failed', description: err?.data?.error || err.error || err?.message || 'The payout could not be updated.', variant: 'destructive' });
       },
+      onSettled: () => { updating.current = false; setUpdatingId(null); void refreshAll(); },
     });
   };
+  const busy = updatingId !== null;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <PageHeading 
         eyebrow="Financials" 
         title="BRO Payouts"
-        description="Review and process platform-wide commission payouts."
+        description="Reserve payable commission for a BRO, transfer manually from your bank, then record the reference."
       />
 
-      <div className="panel mb-6 grid gap-4 p-5 md:grid-cols-[1fr_1fr_140px_auto] md:items-end">
-        <Field label="BRO ID">
-          <input disabled={!!pending || createPayout.isPending} inputMode="numeric" value={partnerId} onChange={(event) => setPartnerId(event.target.value)} placeholder="e.g. 12" />
-        </Field>
-        <Field label="Exact payable amount">
-          <input disabled={!!pending || createPayout.isPending} inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="e.g. 5000" />
-        </Field>
-        <Field label="Currency">
-          <input disabled={!!pending || createPayout.isPending} maxLength={3} value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} />
-        </Field>
-        <Button onClick={create} disabled={!storageReady || createPayout.isPending}>{createPayout.isPending ? 'Creating…' : pending ? 'Retry saved payout' : 'Create payout'}</Button>
+      <div className="panel mb-6 p-5">
+        <div className="grid gap-4 md:grid-cols-[1.4fr_1fr_auto] md:items-end">
+          {pending ? (
+            <div data-testid="text-pending-draft"><div className="eyebrow">Saved request</div>
+              <div className="mt-1 font-bold">{candidates.find(c => c.partnerId === pending.partnerId)?.fullName ?? `BRO #${pending.partnerId}`}</div></div>
+          ) : candidatesQuery.isLoading ? <div className="skeleton h-11 rounded-xl" /> : (
+            <CandidatePicker candidates={candidates} value={partnerId} onChange={setPartnerId} disabled={createPayout.isPending || candidatesQuery.isError} />
+          )}
+          <Field label="Exact payable amount (NGN)">
+            <input readOnly aria-readonly="true" data-testid="text-payable-amount" className="font-mono" value={pending ? pending.amount : payable} placeholder="Select a BRO" />
+          </Field>
+          <Button onClick={create} disabled={!storageReady || createPayout.isPending || (!pending && !!blockReason)} testId="button-create-payout">
+            {createPayout.isPending ? 'Creating…' : pending ? 'Retry saved payout' : 'Create payout'}
+          </Button>
+        </div>
+        {selected && !pending && (
+          <dl className="mt-5 grid gap-3 border-t border-[hsl(var(--border))] pt-4 text-sm sm:grid-cols-3 lg:grid-cols-6" data-testid="text-candidate-balances">
+            {([['Accrued', selected.accruedCommission], ['Paid', selected.paidCommission], ['Outstanding', selected.outstandingCommission],
+              ['Payable', selected.payableCommission], ['Reserved', selected.reservedCommission], ['Pending approval', selected.pendingApprovalCommission]] as const).map(([label, v]) => (
+              <div key={label}><dt className="eyebrow">{label}</dt><dd className="mt-1 font-mono font-bold">{ngn(v)}</dd></div>
+            ))}
+            <div className="sm:col-span-3 lg:col-span-6 text-xs text-[hsl(var(--muted-foreground))]">
+              {selected.email} · {selected.partnerCode} · Bank: {hasVerifiedBank ? `${selected.bankDetails!.bankName} ${selected.bankDetails!.maskedAccountNumber ?? ''}` : 'not verified'}
+            </div>
+          </dl>
+        )}
+        {blockReason && selected && <p className="mt-3 text-sm text-[hsl(var(--destructive))]" role="status" data-testid="text-payout-block">{blockReason}</p>}
+        {candidatesQuery.isError && <div className="mt-3 flex items-center gap-3 text-sm" role="alert">BRO balances could not be loaded.
+          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => { void candidatesQuery.refetch(); }}><RefreshCw size={13} />Retry</Button></div>}
       </div>
       {pending && <p className="mb-4 text-sm" role="status">This payout request is saved. Retry it to confirm its result before creating another payout.</p>}
 
       <div className="panel w-full min-w-0 max-w-full overflow-hidden">
         <div className="w-full max-w-full overflow-x-auto" data-testid="partners-table-scroll">
-          <table className="w-full min-w-[920px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
               <tr>
                 <th className="p-4">Date</th>
-                <th className="p-4">BRO ID</th>
+                <th className="p-4">BRO</th>
                 <th className="p-4">Amount</th>
-                <th className="min-w-[220px] p-4">Status</th>
+                <th className="p-4">Bank snapshot</th>
+                <th className="min-w-[160px] p-4">Status</th>
                 <th className="p-4">Ref</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[hsl(var(--border))]">
               {payouts.map(payout => (
-                <tr key={payout.id} className="transition-colors hover:bg-[hsl(var(--muted)/.2)]">
+                <tr key={payout.id} className="transition-colors hover:bg-[hsl(var(--muted)/.2)]" data-testid={`row-payout-${payout.id}`}>
                   <td className="p-4">{date(payout.createdAt)}</td>
-                  <td className="p-4 font-mono text-xs">{payout.partnerId}</td>
-                  <td className="p-4 font-bold text-[hsl(var(--foreground))]">{payout.currency} {payout.amount.toLocaleString()}</td>
-                  <td className="p-4"><StatusPill value={payout.status} /></td>
+                  <td className="p-4"><div className="font-bold">{payout.partnerName || 'Unknown BRO'}</div><div className="font-mono text-xs text-[hsl(var(--muted-foreground))]">#{payout.partnerId}</div></td>
+                  <td className="p-4 font-bold font-mono text-[hsl(var(--foreground))]">{payout.currency} {exactAmount(payout.amount)}</td>
+                  <td className="p-4 text-xs">{payout.bankDetails ? <>{payout.bankDetails.bankName}<div className="font-mono text-[hsl(var(--muted-foreground))]">{payout.bankDetails.maskedAccountNumber}</div></> : <span className="text-[hsl(var(--muted-foreground))]">{payout.bankDetailsAvailable ? 'Available' : 'None'}</span>}</td>
+                  <td className="p-4"><StatusPill value={payout.status} />{payout.paidBy != null && <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Recorded by user #{payout.paidBy}</div>}</td>
                   <td className="p-4 text-[hsl(var(--muted-foreground))] font-mono text-xs">{payout.paymentReference || '—'}</td>
                   <td className="p-4">
                     <div className="flex justify-end gap-2">
-                      {payout.status === 'PENDING' && <>
-                        <Button className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'PROCESSING')}>Process</Button>
-                        <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'FAILED')}>Fail</Button>
+                      {(payout.status === 'PENDING' || payout.status === 'PROCESSING') && <>
+                        {payout.status === 'PENDING' && <Button className="h-8 px-3 text-xs" disabled={busy} onClick={() => transition(payout.id, 'PROCESSING')}>Process</Button>}
+                        <Button className="h-8 px-3 text-xs" disabled={busy || !payout.bankDetailsAvailable} onClick={() => setPaying(payout)} testId={`button-mark-paid-${payout.id}`}>Mark paid</Button>
+                        <Button variant="outline" className="h-8 px-3 text-xs" disabled={busy} onClick={() => transition(payout.id, 'FAILED')}>Fail</Button>
                       </>}
-                      {payout.status === 'PROCESSING' && <>
-                        <Button className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'PAID')}>Mark paid</Button>
-                        <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'FAILED')}>Fail</Button>
-                      </>}
-                      {payout.status === 'PAID' && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'REVERSED')}>Reverse</Button>}
+                      {payout.status === 'PAID' && <Button variant="outline" className="h-8 px-3 text-xs" disabled={busy} onClick={() => transition(payout.id, 'REVERSED')}>Reverse</Button>}
                     </div>
                   </td>
                 </tr>
               ))}
               {payouts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-[hsl(var(--muted-foreground))]">
+                  <td colSpan={7} className="p-8 text-center text-[hsl(var(--muted-foreground))]">
                     No payouts found.
                   </td>
                 </tr>
@@ -799,6 +961,8 @@ export function PayoutsOverview() {
           </table>
         </div>
       </div>
+      {paying && <ManualTransferModal key={paying.id} payout={paying} busy={updatingId === paying.id}
+        onClose={() => setPaying(null)} onConfirm={reference => transition(paying.id, 'PAID', reference)} />}
     </div>
   );
 }

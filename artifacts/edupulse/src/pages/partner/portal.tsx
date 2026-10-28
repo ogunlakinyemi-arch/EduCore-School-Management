@@ -9,7 +9,11 @@ import {
   useGetMyPartnerPayouts,
   useGetPartnerPayoutInformation,
   useUpdatePartnerProfile,
-  useUpdatePartnerPayoutInformation
+  useUpdatePartnerPayoutInformation,
+  getGetPartnerPayoutInformationQueryKey,
+  getGetPartnerProfileQueryKey,
+  getGetPartnerDashboardQueryKey,
+  type PartnerPayoutInformationInput
 } from '@workspace/api-client-react';
 import { 
   Building2, 
@@ -40,7 +44,7 @@ import NotFound from '@/pages/not-found';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { BankProviderSelect } from '@/components/bank-provider-select';
+import { PartnerBankAccountForm } from '@/components/partner-bank-account-form';
 import { useBankSelectionGuard } from '@/lib/bank-selection';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -123,7 +127,7 @@ function PortalHeader() {
 
 function Dashboard() {
   const profile = useGetPartnerProfile();
-  const dashboard = useGetPartnerDashboard();
+  const dashboard = useGetPartnerDashboard({ query: { queryKey: getGetPartnerDashboardQueryKey(), refetchInterval: 15000, staleTime: 0 } });
   const deferred = useGetMyDeferredCommissions();
   if (profile.isLoading || dashboard.isLoading) return <Loading />;
   if (profile.isError || !profile.data) return (
@@ -386,17 +390,9 @@ const profileSchema = z.object({
   lga: z.string().optional(),
 });
 
-const payoutInfoSchema = z.object({
-  payoutMethod: z.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
-  bankName: z.string().min(2).optional().or(z.literal('')),
-  bankCode: z.string().optional(),
-  accountName: z.string().min(2),
-  accountNumber: z.string().optional(),
-});
-
 export function PartnerSettings() {
   const profileQuery = useGetPartnerProfile();
-  const payoutInfoQuery = useGetPartnerPayoutInformation();
+  const payoutInfoQuery = useGetPartnerPayoutInformation({ query: { queryKey: getGetPartnerPayoutInformationQueryKey(), refetchInterval: 15000, staleTime: 0 } });
   const updateProfile = useUpdatePartnerProfile();
   const updatePayoutInfo = useUpdatePartnerPayoutInformation();
   const bankAllowed = useBankSelectionGuard();
@@ -416,44 +412,33 @@ export function PartnerSettings() {
     } : undefined
   });
 
-  const payoutForm = useForm<z.infer<typeof payoutInfoSchema>>({
-    resolver: zodResolver(payoutInfoSchema),
-    values: payoutInfoQuery.data ? {
-      payoutMethod: payoutInfoQuery.data.payoutMethod as any,
-      bankName: payoutInfoQuery.data.bankName || '',
-      bankCode: (payoutInfoQuery.data as { bankCode?: string | null }).bankCode || '',
-      accountName: payoutInfoQuery.data.accountName || '',
-      accountNumber: '', // Never populate write-only field
-    } : undefined
-  });
-
   const onProfileSubmit = profileForm.handleSubmit((data) => {
     updateProfile.mutate({ data }, {
       onSuccess: () => {
         toast({ title: 'Profile updated' });
-        queryClient.invalidateQueries({ queryKey: ['getPartnerProfile'] });
+        queryClient.invalidateQueries({ queryKey: getGetPartnerProfileQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
       }
     });
   });
 
-  const onPayoutSubmit = payoutForm.handleSubmit((data) => {
-    const saved = payoutInfoQuery.data as { bankName?: string | null; bankCode?: string | null } | undefined;
-    const bank = { bankName: data.bankName ?? '', bankCode: data.bankCode ?? '' };
-    const changed = bank.bankName !== (saved?.bankName ?? '') || bank.bankCode !== (saved?.bankCode ?? '');
-    const needed = data.payoutMethod === 'BANK_TRANSFER' || (changed && !!bank.bankName);
-    if (needed && !bankAllowed(bank, { bankName: saved?.bankName ?? '', bankCode: saved?.bankCode ?? '' }, true)) {
-      payoutForm.setError('bankName', { message: 'Choose a bank with a verified transfer code from the directory.' });
+  const savedFullName = profileQuery.data?.fullName ?? '';
+  const onPayoutSave = (data: PartnerPayoutInformationInput) => {
+    if (!bankAllowed({ bankName: data.bankName, bankCode: data.bankCode }, null, true)) {
+      toast({ title: 'Bank not supported', description: 'Choose a bank with a verified transfer code.', variant: 'destructive' });
       return;
     }
-    const { bankName, bankCode, ...rest } = data;
-    updatePayoutInfo.mutate({ data: { ...rest, ...(bankName ? { bankName } : {}), ...(bankCode ? { bankCode } : {}) } as any }, {
+    updatePayoutInfo.mutate({ data }, {
       onSuccess: () => {
-        toast({ title: 'Payout info updated' });
-        queryClient.invalidateQueries({ queryKey: ['getPartnerPayoutInformation'] });
-        payoutForm.setValue('accountNumber', '');
-      }
+        toast({ title: 'Payout account verified and saved' });
+        queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
+      },
+      onError: (err: any) => {
+        toast({ title: 'Payout account not saved', description: err?.data?.error || err?.error || err?.message || 'Run a fresh lookup and retry.', variant: 'destructive' });
+        queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
+      },
     });
-  });
+  };
 
   if (profileQuery.isLoading || payoutInfoQuery.isLoading) return <SkeletonPage />;
   if (profileQuery.isError) return <ErrorState retry={() => profileQuery.refetch()} />;
@@ -512,36 +497,12 @@ export function PartnerSettings() {
         <section className="panel p-6 md:p-8">
           <div className="mb-6 border-b border-[hsl(var(--border))] pb-4">
             <h2 className="display-font text-xl font-bold">Payout Information</h2>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Where we send your commission payouts.</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Bank details are verified automatically against your registered BRO name.</p>
           </div>
           
-          <form onSubmit={onPayoutSubmit} className="space-y-5">
-            <Field label="Payout Method" error={payoutForm.formState.errors.payoutMethod?.message}>
-              <select {...payoutForm.register('payoutMethod')}>
-                <option value="BANK_TRANSFER">Bank Transfer</option>
-                <option value="MOBILE_MONEY">Mobile Money</option>
-              </select>
-            </Field>
-            <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <BankProviderSelect label="Bank Name" required={false} value={{ bankName: payoutForm.watch('bankName') ?? '', bankCode: payoutForm.watch('bankCode') ?? '' }}
-                  onSelect={b => { payoutForm.setValue('bankName', b.bankName, { shouldDirty: true }); payoutForm.setValue('bankCode', b.bankCode, { shouldDirty: true }); payoutForm.clearErrors('bankName'); }} />
-                {payoutForm.formState.errors.bankName?.message && <span role="alert" className="mt-1.5 block text-xs font-medium text-[hsl(var(--destructive))]">{payoutForm.formState.errors.bankName.message}</span>}
-              </div>
-              <Field label="Account Name" error={payoutForm.formState.errors.accountName?.message}>
-                <input {...payoutForm.register('accountName')} placeholder="Exact name on account" />
-              </Field>
-            </div>
-            <Field label="Account Number" error={payoutForm.formState.errors.accountNumber?.message}>
-              <input {...payoutForm.register('accountNumber')} placeholder={payoutInfoQuery.data?.maskedAccountNumber || "Enter new account number"} />
-            </Field>
-            
-            <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={updatePayoutInfo.isPending || (!payoutForm.formState.isDirty && !payoutForm.getValues('accountNumber'))}>
-                {updatePayoutInfo.isPending ? 'Saving...' : 'Update Payout Details'}
-              </Button>
-            </div>
-          </form>
+          {payoutInfoQuery.isError ? <ErrorState retry={() => payoutInfoQuery.refetch()} /> :
+            <PartnerBankAccountForm key={`${savedFullName}:${payoutInfoQuery.data?.verified ? payoutInfoQuery.data.updatedAt : 'unverified'}`} fullName={savedFullName} current={payoutInfoQuery.data as any}
+              saving={updatePayoutInfo.isPending} onSave={onPayoutSave} />}
         </section>
       </div>
     </div>

@@ -4972,6 +4972,33 @@ export const PartnerPayoutStatus = {
   REVERSED: 'REVERSED',
 } as const;
 
+export type PartnerPayoutInformationMaskedPayoutMethod = typeof PartnerPayoutInformationMaskedPayoutMethod[keyof typeof PartnerPayoutInformationMaskedPayoutMethod];
+
+
+export const PartnerPayoutInformationMaskedPayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationMasked {
+  id: number;
+  payoutMethod: PartnerPayoutInformationMaskedPayoutMethod;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  accountName: string | null;
+  /**
+     * Masked value only, for example ****1234
+     * @nullable
+     */
+  maskedAccountNumber: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  verified?: boolean;
+  updatedAt: string;
+}
+
 export interface PartnerPayout {
   id: number;
   partnerId: number;
@@ -4988,6 +5015,45 @@ export interface PartnerPayout {
   createdAt: string;
   /** @nullable */
   paidAt?: string | null;
+  /** @nullable */
+  partnerName?: string | null;
+  bankDetailsAvailable?: boolean;
+  /** @nullable */
+  paidBy?: number | null;
+  bankDetails?: PartnerPayoutInformationMasked | null;
+}
+
+export interface PartnerBankSelection {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  bankName: string;
+  /** @pattern ^[0-9]{1,20}$ */
+  bankCode: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+}
+
+export interface PartnerBankLookup {
+  accountName: string;
+  accountLast4: string;
+  lookupToken: string;
+  expiresAt: string;
+}
+
+export interface PartnerPayoutCandidate {
+  partnerId: number;
+  fullName: string;
+  partnerCode: string;
+  email: string;
+  accruedCommission: number;
+  paidCommission: number;
+  outstandingCommission: number;
+  payableCommission: number;
+  reservedCommission: number;
+  pendingApprovalCommission: number;
+  bankDetails: PartnerPayoutInformationMasked | null;
 }
 
 export interface PartnerPayoutInput {
@@ -5026,6 +5092,7 @@ export const PartnerPayoutUpdateStatus = {
 export interface PartnerPayoutUpdate {
   status: PartnerPayoutUpdateStatus;
   paymentReference?: string;
+  confirmExternalTransfer?: boolean;
 }
 
 export interface PartnerDashboard {
@@ -5035,6 +5102,9 @@ export interface PartnerDashboard {
   lifetimeCommission: number;
   paidCommission: number;
   outstandingCommission: number;
+  payableCommission?: number;
+  reservedCommission?: number;
+  pendingApprovalCommission?: number;
 }
 
 export type PartnerReferralLinkStatus = typeof PartnerReferralLinkStatus[keyof typeof PartnerReferralLinkStatus];
@@ -5054,32 +5124,6 @@ export interface PartnerReferralLink {
   url: string;
   status: PartnerReferralLinkStatus;
   createdAt?: string;
-}
-
-export type PartnerPayoutInformationMaskedPayoutMethod = typeof PartnerPayoutInformationMaskedPayoutMethod[keyof typeof PartnerPayoutInformationMaskedPayoutMethod];
-
-
-export const PartnerPayoutInformationMaskedPayoutMethod = {
-  BANK_TRANSFER: 'BANK_TRANSFER',
-  MOBILE_MONEY: 'MOBILE_MONEY',
-  OTHER: 'OTHER',
-} as const;
-
-export interface PartnerPayoutInformationMasked {
-  id: number;
-  payoutMethod: PartnerPayoutInformationMaskedPayoutMethod;
-  /** @nullable */
-  bankName: string | null;
-  /** @nullable */
-  accountName: string | null;
-  /**
-     * Masked value only, for example ****1234
-     * @nullable
-     */
-  maskedAccountNumber: string | null;
-  /** @nullable */
-  bankCode?: string | null;
-  updatedAt: string;
 }
 
 export type PartnerPayoutInformationPrivatePayoutMethod = typeof PartnerPayoutInformationPrivatePayoutMethod[keyof typeof PartnerPayoutInformationPrivatePayoutMethod];
@@ -5108,21 +5152,20 @@ export type PartnerPayoutInformationInputPayoutMethod = typeof PartnerPayoutInfo
 
 export const PartnerPayoutInformationInputPayoutMethod = {
   BANK_TRANSFER: 'BANK_TRANSFER',
-  MOBILE_MONEY: 'MOBILE_MONEY',
-  OTHER: 'OTHER',
 } as const;
 
 export interface PartnerPayoutInformationInput {
   payoutMethod: PartnerPayoutInformationInputPayoutMethod;
-  bankName?: string;
+  bankName: string;
   accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+  bankCode: string;
   /**
-     * Write-only; never returned by the API
-     * @minLength 4
+     * @minLength 1
+     * @maxLength 10000
      */
-  accountNumber?: string;
-  bankCode?: string;
-  otherDetails?: string;
+  lookupToken: string;
 }
 
 export interface ReferralValidationInput {
@@ -20243,6 +20286,33 @@ export const PartnerPayout4b96100Status = {
   REVERSED: 'REVERSED',
 } as const;
 
+export type PartnerPayoutInformationMasked4b96100PayoutMethod = typeof PartnerPayoutInformationMasked4b96100PayoutMethod[keyof typeof PartnerPayoutInformationMasked4b96100PayoutMethod];
+
+
+export const PartnerPayoutInformationMasked4b96100PayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationMasked4b96100 {
+  id: number;
+  payoutMethod: PartnerPayoutInformationMasked4b96100PayoutMethod;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  accountName: string | null;
+  /**
+     * Masked value only, for example ****1234
+     * @nullable
+     */
+  maskedAccountNumber: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  verified?: boolean;
+  updatedAt: string;
+}
+
 export interface PartnerPayout4b96100 {
   id: number;
   partnerId: number;
@@ -20259,6 +20329,45 @@ export interface PartnerPayout4b96100 {
   createdAt: string;
   /** @nullable */
   paidAt?: string | null;
+  /** @nullable */
+  partnerName?: string | null;
+  bankDetailsAvailable?: boolean;
+  /** @nullable */
+  paidBy?: number | null;
+  bankDetails?: PartnerPayoutInformationMasked4b96100 | null;
+}
+
+export interface PartnerBankSelection4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  bankName: string;
+  /** @pattern ^[0-9]{1,20}$ */
+  bankCode: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+}
+
+export interface PartnerBankLookup4b96100 {
+  accountName: string;
+  accountLast4: string;
+  lookupToken: string;
+  expiresAt: string;
+}
+
+export interface PartnerPayoutCandidate4b96100 {
+  partnerId: number;
+  fullName: string;
+  partnerCode: string;
+  email: string;
+  accruedCommission: number;
+  paidCommission: number;
+  outstandingCommission: number;
+  payableCommission: number;
+  reservedCommission: number;
+  pendingApprovalCommission: number;
+  bankDetails: PartnerPayoutInformationMasked4b96100 | null;
 }
 
 export interface PartnerPayoutInput4b96100 {
@@ -20297,6 +20406,7 @@ export const PartnerPayoutUpdate4b96100Status = {
 export interface PartnerPayoutUpdate4b96100 {
   status: PartnerPayoutUpdate4b96100Status;
   paymentReference?: string;
+  confirmExternalTransfer?: boolean;
 }
 
 export interface PartnerDashboard4b96100 {
@@ -20306,6 +20416,9 @@ export interface PartnerDashboard4b96100 {
   lifetimeCommission: number;
   paidCommission: number;
   outstandingCommission: number;
+  payableCommission?: number;
+  reservedCommission?: number;
+  pendingApprovalCommission?: number;
 }
 
 export type PartnerReferralLink4b96100Status = typeof PartnerReferralLink4b96100Status[keyof typeof PartnerReferralLink4b96100Status];
@@ -20325,32 +20438,6 @@ export interface PartnerReferralLink4b96100 {
   url: string;
   status: PartnerReferralLink4b96100Status;
   createdAt?: string;
-}
-
-export type PartnerPayoutInformationMasked4b96100PayoutMethod = typeof PartnerPayoutInformationMasked4b96100PayoutMethod[keyof typeof PartnerPayoutInformationMasked4b96100PayoutMethod];
-
-
-export const PartnerPayoutInformationMasked4b96100PayoutMethod = {
-  BANK_TRANSFER: 'BANK_TRANSFER',
-  MOBILE_MONEY: 'MOBILE_MONEY',
-  OTHER: 'OTHER',
-} as const;
-
-export interface PartnerPayoutInformationMasked4b96100 {
-  id: number;
-  payoutMethod: PartnerPayoutInformationMasked4b96100PayoutMethod;
-  /** @nullable */
-  bankName: string | null;
-  /** @nullable */
-  accountName: string | null;
-  /**
-     * Masked value only, for example ****1234
-     * @nullable
-     */
-  maskedAccountNumber: string | null;
-  /** @nullable */
-  bankCode?: string | null;
-  updatedAt: string;
 }
 
 export type PartnerPayoutInformationPrivate4b96100PayoutMethod = typeof PartnerPayoutInformationPrivate4b96100PayoutMethod[keyof typeof PartnerPayoutInformationPrivate4b96100PayoutMethod];
@@ -20379,21 +20466,20 @@ export type PartnerPayoutInformationInput4b96100PayoutMethod = typeof PartnerPay
 
 export const PartnerPayoutInformationInput4b96100PayoutMethod = {
   BANK_TRANSFER: 'BANK_TRANSFER',
-  MOBILE_MONEY: 'MOBILE_MONEY',
-  OTHER: 'OTHER',
 } as const;
 
 export interface PartnerPayoutInformationInput4b96100 {
   payoutMethod: PartnerPayoutInformationInput4b96100PayoutMethod;
-  bankName?: string;
+  bankName: string;
   accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+  bankCode: string;
   /**
-     * Write-only; never returned by the API
-     * @minLength 4
+     * @minLength 1
+     * @maxLength 10000
      */
-  accountNumber?: string;
-  bankCode?: string;
-  otherDetails?: string;
+  lookupToken: string;
 }
 
 export interface ReferralValidationInput4b96100 {

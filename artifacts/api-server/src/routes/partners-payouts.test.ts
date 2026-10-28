@@ -10,9 +10,11 @@ const state = vi.hoisted(() => ({
 const dbMock = vi.hoisted(() => {
   const query = vi.fn(async (sql: string, values: unknown[] = []) => {
     state.queries.push({ sql, values });
-    if (sql.includes("SELECT id,status,payment_reference FROM partner_payouts")) {
+    if (sql.includes("SELECT id,status,payment_reference,method")) {
       return { rows: [{ id: 7, status: state.payoutStatus }], rowCount: 1 };
     }
+    if(sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE"))
+      return {rows:[{id:3,full_name:"Ada Example",user_id:3,status:"ACTIVE"}],rowCount:1};
     if (sql.includes("SELECT id,amount FROM commission_ledger")) {
       return { rows: state.payableRows, rowCount: state.payableRows.length };
     }
@@ -39,6 +41,11 @@ const dbMock = vi.hoisted(() => {
 
 vi.mock("@workspace/db", () => ({ pool: dbMock }));
 vi.mock("@clerk/express", () => ({ clerkClient: { invitations: {} } }));
+vi.mock("../services/bro-bank-verification",async(importOriginal)=>{
+  const actual=await importOriginal<typeof import("../services/bro-bank-verification")>();
+  return {...actual,verifiedBroBank:vi.fn(async()=>({id:1,partnerId:3,payoutMethod:"BANK_TRANSFER",bankName:"Fixture Bank",
+    bankCode:"099",accountName:"Ada Example",accountNumber:"0123456789",maskedAccountNumber:"****6789",verified:true,updatedAt:new Date().toISOString()}))};
+});
 vi.mock("../middlewares/auth", () => ({
   AuthError: class AuthError extends Error {
     constructor(public statusCode: number, message: string) { super(message); }
@@ -149,28 +156,28 @@ describe("partner payout safety", () => {
     expect(allocation?.values).toEqual([9, [10, 11]]);
   });
 
-  it("skips an oversized oldest entry to select a later exact match", async () => {
+  it("rejects a partial subset even if a matching whole entry exists", async () => {
     state.payableRows = [{ id: 20, amount: "0.30" }, { id: 21, amount: "0.20" }];
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ idempotencyKey: "payout-test-0002", partnerId: 3, amount: "0.20" }),
     });
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(409);
     const allocation = state.queries.find(({ sql }) => sql.includes("UPDATE commission_ledger SET payout_id=$1"));
-    expect(allocation?.values).toEqual([9, [21]]);
+    expect(allocation).toBeUndefined();
   });
 
-  it("backtracks from the oldest entry when a non-greedy exact subset exists", async () => {
+  it("rejects an arbitrary non-greedy subset rather than paying less than the balance", async () => {
     state.payableRows = [{ id: 30, amount: "0.20" }, { id: 31, amount: "0.40" }];
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ idempotencyKey: "payout-test-0003", partnerId: 3, amount: "0.40" }),
     });
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(409);
     const allocation = state.queries.find(({ sql }) => sql.includes("UPDATE commission_ledger SET payout_id=$1"));
-    expect(allocation?.values).toEqual([9, [31]]);
+    expect(allocation).toBeUndefined();
   });
 
   it("rejects a payout amount with no exact whole-entry subset", async () => {
@@ -184,7 +191,7 @@ describe("partner payout safety", () => {
     expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_payouts"))).toBe(false);
   });
 
-  it("refuses subset searches that exceed the bounded search budget", async () => {
+  it("rejects a partial balance without running combinatorial subset searches", async () => {
     state.payableRows = Array.from({ length: 256 }, (_, index) => ({ id: index + 1, amount: "0.02" }));
     const response = await fetch(`${baseUrl}/platform/partner-payouts`, {
       method: "POST",
@@ -193,7 +200,7 @@ describe("partner payout safety", () => {
     });
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({
-      error: "Payout selection exceeded the safe search limit; narrow the payable set and retry",
+      error: "Payout must equal the BRO's complete current available payable balance. Refresh the BRO selection.",
     });
     expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_payouts"))).toBe(false);
   });

@@ -10,4 +10,5 @@ import type { PartnerPayoutUpdate4b96100Status } from './partnerPayoutUpdate4b96
 export interface PartnerPayoutUpdate4b96100 {
   status: PartnerPayoutUpdate4b96100Status;
   paymentReference?: string;
+  confirmExternalTransfer?: boolean;
 }

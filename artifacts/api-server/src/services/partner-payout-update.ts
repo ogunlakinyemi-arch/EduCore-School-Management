@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { AuthError, assertResourceId } from "../middlewares/auth";
+import { payoutBankSnapshot, BRO_MANUAL_POLICY } from "./bro-payout-records";
 
 type Audit = (
   req: Request, action: string, module: string, id: number,
@@ -13,16 +14,18 @@ export async function updateManualPartnerPayout(req: Request, audit: Audit) {
   const status = req.body?.status;
   const reference = typeof req.body?.paymentReference === "string" ? req.body.paymentReference.trim() : "";
   const transitions: Record<string, string[]> = {
-    PENDING: ["PROCESSING", "FAILED"], PROCESSING: ["PAID", "FAILED"], PAID: ["REVERSED"],
+    PENDING: ["PROCESSING", "PAID", "FAILED"], PROCESSING: ["PAID", "FAILED"], PAID: ["REVERSED"],
   };
   if (reference.length > 200 || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(reference)) {
     throw new AuthError(400, "A valid paymentReference is required");
   }
+  if(status==="PAID" && req.body?.confirmExternalTransfer!==true)
+    throw new AuthError(400,"Confirm that you independently completed the external bank transfer before marking Paid.");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const current = await client.query(
-      `SELECT id,status,payment_reference,method FROM partner_payouts WHERE id=$1 FOR UPDATE`, [id]);
+      `SELECT id,status,payment_reference,method,amount,currency,partner_profile_id FROM partner_payouts WHERE id=$1 FOR UPDATE`, [id]);
     const row = current.rows[0];
     if (!row) throw new AuthError(404, "Payout not found");
     if (row.method === "DEFERRED_BATCH_EXPORT") {
@@ -33,6 +36,20 @@ export async function updateManualPartnerPayout(req: Request, audit: Audit) {
     }
     if (["PAID", "REVERSED"].includes(status) && !reference) {
       throw new AuthError(400, "paymentReference is required when marking a payout paid or reversed");
+    }
+    if (status==="PAID" && row.method==="MANUAL_VERIFIED_BRO") {
+      if(!await payoutBankSnapshot(client,id))throw new AuthError(409,"Verified payout bank evidence is missing.");
+      const entries=(await client.query(`SELECT id,amount,currency,status,partner_profile_id,
+        (to_jsonb(l)->>'payment_id') AS deferred_payment_id FROM commission_ledger l
+        WHERE payout_id=$1 ORDER BY id FOR UPDATE`,[id])).rows;
+      const minor=(value:unknown)=>{
+        const m=/^(\d+)(?:\.(\d{1,2}))?$/.exec(String(value));
+        return m?BigInt(m[1])*100n+BigInt((m[2]??"").padEnd(2,"0")||"0"):-1n;
+      };
+      if(row.currency!=="NGN" || entries.length===0 || entries.some(e=>e.status!=="PAYABLE"
+        || e.currency!=="NGN" || e.partner_profile_id!==row.partner_profile_id || e.deferred_payment_id
+        || minor(e.amount)<=0n) || entries.reduce((sum,e)=>sum+minor(e.amount),0n)!==minor(row.amount))
+        throw new AuthError(409,"Reserved commissions changed or no longer match this payout. Do not mark Paid; reconcile the ledger.");
     }
     // Keeping a recorded reference also keeps its unique reservation after failure/reversal.
     const recorded = typeof row.payment_reference === "string" ? row.payment_reference.trim() : "";
@@ -59,7 +76,9 @@ export async function updateManualPartnerPayout(req: Request, audit: Audit) {
       `UPDATE commission_ledger SET payout_id=NULL,status='PAYABLE',reversed_at=NOW(),reversal_reference=$2
        WHERE payout_id=$1 AND status='PAID'`, [id, reference]);
     await audit(req, `Updated partner payout to ${status}`, "Payouts", id,
-      status === "REVERSED" ? { reversalReference: reference } : null, client);
+      status === "REVERSED" ? { reversalReference: reference } :
+        status==="PAID" ? { policy:BRO_MANUAL_POLICY,externalTransferConfirmed:true,
+          paymentReference:reference,executionMode:"EXTERNAL_MANUAL_TRANSFER_ONLY" } : null, client);
     await client.query("COMMIT");
     return payout.rows[0];
   } catch (error) {

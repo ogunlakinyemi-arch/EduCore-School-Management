@@ -4,28 +4,34 @@ import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const bank = { id: 1, payoutMethod: 'BANK_TRANSFER', bankName: 'Fictional Alpha Bank', accountName: 'Ada Obi', maskedAccountNumber: '****6789', verified: true, updatedAt: '2025-01-01' };
+const candidate = (o: any = {}) => ({ partnerId: 3, fullName: 'Ada Obi', partnerCode: 'BRO-003', email: 'ada@unit.test', accruedCommission: 500, paidCommission: 200,
+  outstandingCommission: 300, payableCommission: 100.1, reservedCommission: 50, pendingApprovalCommission: 25, bankDetails: bank, ...o });
 const state = vi.hoisted(() => ({
-  actorId: 1,
-  create: vi.fn(),
-  update: vi.fn(),
-  toast: vi.fn(),
-  error:false,
-  refetch:vi.fn(),
+  actorId: 1, create: vi.fn(), update: vi.fn(), toast: vi.fn(), reveal: vi.fn(), error: false, refetch: vi.fn(),
+  candidates: [] as any[], candError: false, candFetching: false, payouts: [] as any[], updatePending: false,
 }));
 vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: { user: { id: state.actorId } } }),
-  useListPlatformPartnerPayouts: () => ({ data: [], isLoading: false, isError: state.error,refetch:state.refetch }),
+  useListPlatformPartnerPayouts: () => ({ data: state.payouts, isLoading: false, isError: state.error, refetch: state.refetch }),
   getListPlatformPartnerPayoutsQueryKey: () => ['/api/platform/partner-payouts'],
+  useListPartnerPayoutCandidates: () => ({ data: state.candError ? undefined : state.candidates, isLoading: false, isError: state.candError, isFetching: state.candFetching, refetch: vi.fn() }),
+  getListPartnerPayoutCandidatesQueryKey: () => ['/api/platform/partner-payout-candidates'],
+  getGetPartnerDashboardQueryKey: () => ['/api/partner/dashboard'],
+  getPartnerPayoutBankDetails: state.reveal,
   useCreatePartnerPayout: () => ({ mutateAsync: state.create, isPending: false }),
-  useUpdatePartnerPayout: () => ({ mutate: state.update }),
+  useUpdatePartnerPayout: () => ({ mutate: state.update, isPending: state.updatePending }),
 }));
 vi.mock('@/components/shared', () => ({
   PageHeading: () => null,
   Field: ({ label, children }: any) => <label>{label}{children}</label>,
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, testId, variant, ...props }: any) => <button data-testid={testId} {...props}>{children}</button>,
   StatusPill: () => null,
+  Modal: ({ children, onClose }: any) => <div data-testid="modal">{children}<button data-testid="modal-close" onClick={onClose}>x</button></div>,
+  cx: (...v: any[]) => v.filter(Boolean).join(' '),
+  date: (v: string) => v,
   SkeletonPage: () => <div>Loading</div>,
-  ErrorState: ({message,retry}:any) => <div>{message}<button onClick={retry}>Retry feed</button></div>,
+  ErrorState: ({ message, retry }: any) => <div>{message}<button onClick={retry}>Retry feed</button></div>,
 }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: state.toast }) }));
 vi.mock('@/pages/partner/nfc-owner-control', () => ({ PartnerNfcOwnerControl: () => null }));
@@ -34,156 +40,139 @@ import { readPayoutDraft, savePayoutDraft } from '@/lib/partner-payout-retry';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-let element: HTMLDivElement;
-let root: Root;
-let client: QueryClient;
-const render = async () => {
-  await act(async () => root.render(<QueryClientProvider client={client}><PayoutsOverview /></QueryClientProvider>));
-};
-const inputs = () => [...element.querySelectorAll('input')];
-const setInput = async (index: number, value: string) => {
-  await act(async () => {
-    const input = inputs()[index];
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-};
-const clickCreate = async () => {
-  await act(async () => (element.querySelector('button') as HTMLButtonElement).click());
+let element: HTMLDivElement; let root: Root; let client: QueryClient;
+const render = async () => { await act(async () => root.render(<QueryClientProvider client={client}><PayoutsOverview /></QueryClientProvider>)); };
+const q = (id: string) => element.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+const createBtn = () => q('button-create-payout') as HTMLButtonElement;
+const click = async (el: HTMLElement | null) => { await act(async () => el!.click()); };
+const typeInto = async (input: HTMLInputElement, value: string) => act(async () => {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+const choose = async (text = 'ada', id = 3) => {
+  const combo = q('input-payout-candidate') as HTMLInputElement;
+  await act(async () => { combo.focus(); });
+  await typeInto(combo, text);
+  await act(async () => { q(`option-payout-candidate-${id}`)!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); });
 };
 
 beforeEach(async () => {
-  sessionStorage.clear();
-  state.actorId = 1;
-  state.error=false;
-  vi.clearAllMocks();
+  sessionStorage.clear(); vi.clearAllMocks();
+  Object.assign(state, { actorId: 1, error: false, candError: false, candFetching: false, payouts: [], updatePending: false, candidates: [candidate(), candidate({ partnerId: 4, fullName: 'Bisi Lawal', partnerCode: 'BRO-004', email: 'bisi@unit.test', bankDetails: null })] });
   state.create.mockRejectedValue(new Error('Lost response'));
+  vi.stubGlobal('fetch', vi.fn(() => { throw new Error('No network'); }));
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  element = document.createElement('div');
-  document.body.appendChild(element);
-  root = createRoot(element);
+  element = document.createElement('div'); document.body.appendChild(element); root = createRoot(element);
   await render();
 });
-afterEach(async () => {
-  await act(async () => root.unmount());
-  client.clear();
-  element.remove();
-});
+afterEach(async () => { await act(async () => root.unmount()); client.clear(); element.remove(); vi.unstubAllGlobals(); });
 
-describe('Partner payout client retry identity', () => {
-  it('shows a contextual read error and safely retries the payout feed without a payout mutation',async()=>{
-    state.error=true;await render();
+describe('BRO payout creation', () => {
+  it('shows a contextual read error and safely retries the payout feed without a payout mutation', async () => {
+    state.error = true; await render();
     expect(element.textContent).toContain('BRO payout history could not be loaded');
-    await act(async()=>element.querySelector('button')!.click());
+    await act(async () => element.querySelector('button')!.click());
     expect(state.refetch).toHaveBeenCalledOnce();
-    expect(state.create).not.toHaveBeenCalled();expect(state.update).not.toHaveBeenCalled();
-    state.error=false;await render();
-    expect(element.textContent).toContain('No payouts found.');
-    expect(state.create).not.toHaveBeenCalled();
+    expect(state.create).not.toHaveBeenCalled(); expect(state.update).not.toHaveBeenCalled();
   });
-  it('sends exact decimal input with a stable key and restores it after remount', async () => {
-    await setInput(0, '3');
-    await setInput(1, '100.10');
-    await clickCreate();
+  it('searches candidates and shows identity, balances and exact read-only payable amount', async () => {
+    await choose('bro-003');
+    expect(element.textContent).toContain('ada@unit.test');
+    expect(q('text-candidate-balances')!.textContent).toContain('NGN 500.00');
+    expect(q('text-candidate-balances')!.textContent).toContain('NGN 25.00');
+    const amount = q('text-payable-amount') as HTMLInputElement;
+    expect(amount.value).toBe('100.10'); expect(amount.readOnly).toBe(true);
+  });
+  it('sends the exact payable amount in NGN with a stable key and restores it after remount', async () => {
+    await choose(); await click(createBtn());
     const first = state.create.mock.calls[0][0].data;
     expect(first).toMatchObject({ partnerId: 3, amount: '100.10', currency: 'NGN' });
     expect(first.idempotencyKey).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
     expect(readPayoutDraft(sessionStorage, 1)).toEqual(first);
-    expect(inputs().every((input) => input.disabled)).toBe(true);
-    await act(async () => root.unmount());
-    root = createRoot(element);
-    await render();
-    expect(inputs()[0].value).toBe('3');
-    expect(inputs()[1].value).toBe('100.10');
-    await clickCreate();
+    await act(async () => root.unmount()); root = createRoot(element); await render();
+    expect((q('text-payable-amount') as HTMLInputElement).value).toBe('100.10');
+    await click(createBtn());
     expect(state.create.mock.calls[1][0].data).toEqual(first);
   });
-
-  it('clears the completed request and invalidates the real generated payout query key', async () => {
+  it('disables creation without a verified bank, without payable, or on stale/error candidates', async () => {
+    await choose('bisi', 4); expect(createBtn().disabled).toBe(true);
+    expect(q('text-payout-block')!.textContent).toContain('no verified bank');
+    state.candidates = [candidate({ payableCommission: 0 })]; await render(); await choose();
+    expect(createBtn().disabled).toBe(true);
+    state.candidates = [candidate()]; state.candFetching = true; await render(); await choose();
+    expect(createBtn().disabled).toBe(true);
+    state.candFetching = false; state.candError = true; await render();
+    expect(createBtn().disabled).toBe(true);
+    await click(createBtn()); expect(state.create).not.toHaveBeenCalled();
+  });
+  it('clears the completed request and invalidates candidates, payouts and dashboard', async () => {
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     state.create.mockResolvedValue({ id: 1 });
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
+    await choose(); await click(createBtn());
     expect(readPayoutDraft(sessionStorage, 1)).toBeNull();
-    expect(inputs()[0].value).toBe('');
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['/api/platform/partner-payouts'] });
-    const first = state.create.mock.calls[0][0].data;
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
-    expect(state.create.mock.calls[1][0].data.idempotencyKey).not.toBe(first.idempotencyKey);
+    for (const k of [['/api/platform/partner-payouts'], ['/api/platform/partner-payout-candidates'], ['/api/partner/dashboard']]) expect(invalidate).toHaveBeenCalledWith({ queryKey: k });
   });
-
-  it('does not share another Owner’s pending request', async () => {
+  it('does not share another Owner pending request', async () => {
     savePayoutDraft(sessionStorage, 2, { idempotencyKey: 'other-owner-request', partnerId: 4, amount: '200', currency: 'NGN' });
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
+    await choose(); await click(createBtn());
     expect(state.create.mock.calls[0][0].data.idempotencyKey).not.toBe('other-owner-request');
     expect(readPayoutDraft(sessionStorage, 2)?.partnerId).toBe(4);
   });
-
-  it('permits correction after a definite rollback but preserves uncertain and key-conflict requests', async () => {
+  it('permits correction after a definite rollback but preserves key-conflict requests', async () => {
     state.create.mockRejectedValue(Object.assign(new Error('Payout exceeds payable commission'), { status: 409 }));
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
+    await choose(); await click(createBtn());
     expect(readPayoutDraft(sessionStorage, 1)).toBeNull();
-    expect(inputs()[0].disabled).toBe(false);
     state.create.mockRejectedValue(Object.assign(new Error('This payout idempotency key was already used with a different payload'), { status: 409 }));
-    await clickCreate();
+    await choose(); await click(createBtn());
     expect(readPayoutDraft(sessionStorage, 1)).not.toBeNull();
-    expect(inputs()[0].disabled).toBe(true);
   });
-
-  it('does not send a request when durable retry storage cannot be saved', async () => {
+  it('does not send when retry storage cannot be saved', async () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => { throw new Error('quota'); });
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
+    await choose(); await click(createBtn());
     expect(state.create).not.toHaveBeenCalled();
     vi.restoreAllMocks();
   });
-
-  it('suppresses rapid duplicate clicks while one request is unresolved', async () => {
+  it('suppresses rapid duplicate clicks and cleans storage after unmount', async () => {
     let resolve!: (value: unknown) => void;
     state.create.mockImplementation(() => new Promise((done) => { resolve = done; }));
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
-    await clickCreate();
+    await choose(); await click(createBtn()); await click(createBtn());
     expect(state.create).toHaveBeenCalledTimes(1);
-    await act(async () => resolve({ id: 1 }));
-  });
-
-  it('cleans up completed storage even when navigation unmounts the form', async () => {
-    let resolve!: (value: unknown) => void;
-    state.create.mockImplementation(() => new Promise((done) => { resolve = done; }));
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
     await act(async () => root.unmount());
     await act(async () => resolve({ id: 1 }));
     expect(readPayoutDraft(sessionStorage, 1)).toBeNull();
-    root = createRoot(element);
-    await render();
+    root = createRoot(element); await render();
   });
+});
 
-  it('does not clear another actor’s restored draft when an earlier request completes', async () => {
-    let resolve!: (value: unknown) => void;
-    state.create.mockImplementation(() => new Promise((done) => { resolve = done; }));
-    await setInput(0, '3');
-    await setInput(1, '100');
-    await clickCreate();
-    savePayoutDraft(sessionStorage, 2, { idempotencyKey: 'owner-two-pending', partnerId: 4, amount: '200', currency: 'NGN' });
-    state.actorId = 2;
-    await render();
-    await act(async () => resolve({ id: 1 }));
-    expect(readPayoutDraft(sessionStorage, 1)).toBeNull();
-    expect(readPayoutDraft(sessionStorage, 2)?.partnerId).toBe(4);
-    expect(inputs()[0].value).toBe('4');
-    expect(inputs()[1].value).toBe('200');
-    expect(inputs()[0].disabled).toBe(true);
+describe('Manual payout settlement', () => {
+  const payout = (o: any = {}) => ({ id: 9, partnerId: 3, amount: 100.1, currency: 'NGN', status: 'PROCESSING', createdAt: '2025-01-01', partnerName: 'Ada Obi', bankDetailsAvailable: true, bankDetails: bank, paidBy: null, ...o });
+  it('reveals frozen bank details only on explicit click and clears them on close', async () => {
+    state.payouts = [payout()]; await render();
+    expect(element.textContent).toContain('****6789');
+    await click(q('button-mark-paid-9'));
+    expect(state.reveal).not.toHaveBeenCalled();
+    state.reveal.mockResolvedValue({ id: 1, partnerId: 3, payoutMethod: 'BANK_TRANSFER', bankName: 'Fictional Alpha Bank', accountName: 'Ada Obi', accountNumber: '0123456789', bankCode: '90001', updatedAt: '' });
+    await click(q('button-reveal-bank'));
+    expect(state.reveal).toHaveBeenCalledWith(9, expect.anything());
+    expect(q('text-revealed-bank')!.textContent).toContain('0123456789');
+    await click(q('modal-close'));
+    expect(element.textContent).not.toContain('0123456789');
+    await click(q('button-mark-paid-9'));
+    expect(q('text-revealed-bank')).toBeNull();
+  });
+  it('requires confirmation and reference, then sends confirmExternalTransfer once', async () => {
+    state.payouts = [payout({ status: 'PENDING' })]; await render();
+    await click(q('button-mark-paid-9'));
+    expect((q('button-confirm-paid') as HTMLButtonElement).disabled).toBe(true);
+    await typeInto(q('input-payment-reference') as HTMLInputElement, ' TRF-551 ');
+    expect((q('button-confirm-paid') as HTMLButtonElement).disabled).toBe(true);
+    await click(q('checkbox-confirm-transfer'));
+    await click(q('button-confirm-paid')); await click(q('button-confirm-paid'));
+    expect(state.update).toHaveBeenCalledTimes(1);
+    expect(state.update.mock.calls[0][0]).toEqual({ payoutId: 9, data: { status: 'PAID', paymentReference: 'TRF-551', confirmExternalTransfer: true } });
+  });
+  it('does not offer mark paid for already paid payouts', async () => {
+    state.payouts = [payout({ status: 'PAID', paymentReference: 'X', paidBy: 1 })]; await render();
+    expect(q('button-mark-paid-9')).toBeNull();
   });
 });

@@ -11,6 +11,4 @@ export type PartnerPayoutInformationInputPayoutMethod = typeof PartnerPayoutInfo
 
 export const PartnerPayoutInformationInputPayoutMethod = {
   BANK_TRANSFER: 'BANK_TRANSFER',
-  MOBILE_MONEY: 'MOBILE_MONEY',
-  OTHER: 'OTHER',
 } as const;

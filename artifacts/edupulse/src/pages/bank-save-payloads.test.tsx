@@ -12,7 +12,7 @@ const s = vi.hoisted(() => {
   const profile = { fullName: 'Unit Partner', isOwner: true };
   return {
     owner: true, schoolId: 7, emp, settlement, payout, profile,
-    save: vi.fn(), partnerSave: vi.fn(), lookup: vi.fn(), refresh: vi.fn(),
+    save: vi.fn(), partnerSave: vi.fn(), lookup: vi.fn(), plookup: vi.fn(), refresh: vi.fn(),
     catalogue: undefined as any,
   };
 });
@@ -33,7 +33,7 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
     useGetPaymentAccountProviders: () => q(s.catalogue),
     useGetAuthorizedContext: () => s.owner ? ctxOwner : ctxAdmin,
     useGetPlatformPaymentSettlement: () => ({...setQ, refetch:s.refresh}), useUpdatePlatformPaymentSettlement: mut,
-    lookupOwnerReceivingAccount: s.lookup,
+    lookupOwnerReceivingAccount: s.lookup, lookupPartnerReceivingAccount: s.plookup,
     useListPlatformSchoolSettlements: () => q([]), useListPlatformSettlementHistory: () => q([]), useGetPlatformSchoolSettlement: () => q(undefined),
     useGetSchoolPaymentSettlement: () => setQ, useUpdateSchoolPaymentSettlement: mut, useListSchoolSettlementHistory: () => q([]),
     useListCompanyPayrollEmployees: () => empQ, useListCompanyPayrollPeriods: () => perQ, useUpsertCompanyPayrollEmployee: mut,
@@ -194,21 +194,71 @@ describe('Owner automatic receiving-account lookup',()=>{
   });
 });
 
-describe('Partner payout save payload', () => {
-  const form = () => document.body.querySelectorAll('form')[1];
-  it('sends bankName and verified bankCode', async () => {
-    await render(<PartnerSettings />); await pick('alpha'); await submit(form());
-    expect(s.partnerSave).toHaveBeenCalledTimes(1);
-    expect(s.partnerSave.mock.calls[0][0].data).toMatchObject({ payoutMethod: 'BANK_TRANSFER', bankName: 'Fictional Alpha Bank', bankCode: '90001' });
-  });
-  it('blocks unverified and free-text banks', async () => {
-    await render(<PartnerSettings />); await pick('gamma'); await submit(form());
-    await typeInto(combo(), 'Typed Bank'); await submit(form());
-    expect(s.partnerSave).not.toHaveBeenCalled();
-  });
-  it('does not save an unconfirmed legacy bank as transfer-enabled', async () => {
+describe('Partner payout automatic bank verification', () => {
+  const form = () => node('form-partner-bank');
+  const acct = () => node<HTMLInputElement>('input-partner-account-number');
+  const wait = () => act(async () => { await new Promise(r => setTimeout(r, 600)); });
+  beforeEach(() => { s.plookup.mockReset().mockResolvedValue({ accountName: 'UNIT PARTNER', accountLast4: '6789', lookupToken: 'synthetic-partner-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() }); });
+  it('hides unverified legacy details and never looks up on load or programmatic save', async () => {
     await render(<PartnerSettings />); await submit(form());
-    expect(s.partnerSave).not.toHaveBeenCalled();
+    expect(node('text-current-bank').textContent).not.toContain('Legacy Bank');
+    expect(s.plookup).not.toHaveBeenCalled(); expect(s.partnerSave).not.toHaveBeenCalled();
+  });
+  it('looks up after 500ms with abort signal and saves only a fresh match', async () => {
+    await render(<PartnerSettings />); await pick('alpha'); await typeInto(acct(), '0123456789');
+    expect(node<HTMLButtonElement>('button-save-partner-bank').disabled).toBe(true);
+    await wait();
+    expect(s.plookup).toHaveBeenCalledTimes(1);
+    expect(s.plookup.mock.calls[0][0]).toEqual({ bankName: 'Fictional Alpha Bank', bankCode: '90001', accountNumber: '0123456789' });
+    expect(s.plookup.mock.calls[0][1]).toMatchObject({ cache: 'no-store' }); expect(s.plookup.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    expect(node<HTMLInputElement>('input-partner-account-name').value).toBe('UNIT PARTNER');
+    await submit(form());
+    expect(s.partnerSave.mock.calls[0][0].data).toEqual({ payoutMethod: 'BANK_TRANSFER', bankName: 'Fictional Alpha Bank', bankCode: '90001', accountNumber: '0123456789', accountName: 'UNIT PARTNER', lookupToken: 'synthetic-partner-proof' });
+  });
+  it('invalidates the match immediately on edit and rejects mismatched last4', async () => {
+    await render(<PartnerSettings />); await pick('alpha'); await typeInto(acct(), '0123456789'); await wait();
+    await typeInto(acct(), '012345678');
+    expect(node<HTMLInputElement>('input-partner-account-name').value).toBe('');
+    await submit(form()); expect(s.partnerSave).not.toHaveBeenCalled();
+    s.plookup.mockResolvedValue({ accountName: 'UNIT PARTNER', accountLast4: '0000', lookupToken: 't', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    await typeInto(acct(), '0123456789'); await wait();
+    expect(node('text-partner-lookup-error').textContent).toContain('not confirmed');
+    await submit(form()); expect(s.partnerSave).not.toHaveBeenCalled();
+  });
+  it('shows server errors with retry and blocks unverified banks', async () => {
+    s.plookup.mockRejectedValue(new Error('Account name does not match registered BRO name'));
+    await render(<PartnerSettings />); await pick('alpha'); await typeInto(acct(), '0123456789'); await wait();
+    expect(node('text-partner-lookup-error').textContent).toContain('does not match');
+    s.plookup.mockResolvedValue({ accountName: 'UNIT PARTNER', accountLast4: '6789', lookupToken: 'x', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    await click(node('button-retry-partner-lookup')); await wait();
+    expect(node<HTMLButtonElement>('button-save-partner-bank').disabled).toBe(false);
+    await pick('gamma'); await wait();
+    expect(node<HTMLButtonElement>('button-save-partner-bank').disabled).toBe(true);
+  });
+  it.each(['Other Person', 'PARTNER UNIT', 'UNIT EXTRA PARTNER'])('rejects a malformed successful response with mismatched beneficiary %s', async accountName => {
+    s.plookup.mockResolvedValue({ accountName, accountLast4: '6789', lookupToken: 'x', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    await render(<PartnerSettings />); await pick('alpha'); await typeInto(acct(), '0123456789'); await wait();
+    expect(node<HTMLButtonElement>('button-save-partner-bank').disabled).toBe(true);
+    expect(node<HTMLInputElement>('input-partner-account-name').value).toBe('');
+    await submit(form()); expect(s.partnerSave).not.toHaveBeenCalled();
+  });
+  it('discards an old in-flight response after editing the number', async () => {
+    let finish!: (value: unknown) => void;
+    s.plookup.mockImplementation(() => new Promise(r => { finish = r; }));
+    await render(<PartnerSettings />); await pick('alpha'); await typeInto(acct(), '0123456789'); await wait();
+    await typeInto(acct(), '01234');
+    await act(async () => finish({ accountName: 'UNIT PARTNER', accountLast4: '6789', lookupToken: 'old', expiresAt: new Date(Date.now() + 300_000).toISOString() }));
+    expect(node<HTMLInputElement>('input-partner-account-name').value).toBe('');
+    expect(node<HTMLButtonElement>('button-save-partner-bank').disabled).toBe(true);
+  });
+  it('disables Save when fresh lookup evidence expires', async () => {
+    s.plookup.mockImplementation(async () => ({ accountName: 'UNIT PARTNER', accountLast4: '6789', lookupToken: 'short', expiresAt: new Date(Date.now() + 250).toISOString() }));
+    await render(<PartnerSettings />); await pick('alpha'); await typeInto(acct(), '0123456789'); await wait();
+    expect(node<HTMLButtonElement>('button-save-partner-bank').disabled).toBe(false);
+    await wait();
+    expect(node<HTMLButtonElement>('button-save-partner-bank').disabled).toBe(true);
+    expect(node('text-partner-lookup-error').textContent).toContain('expired');
+    await submit(form()); expect(s.partnerSave).not.toHaveBeenCalled();
   });
 });
 

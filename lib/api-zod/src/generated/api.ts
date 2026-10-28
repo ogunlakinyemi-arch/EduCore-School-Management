@@ -15977,7 +15977,20 @@ export const ListPartnerPayoutsResponseItem = zod.object({
   "periodStart": zod.coerce.date().nullish(),
   "periodEnd": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
-  "paidAt": zod.coerce.date().nullish()
+  "paidAt": zod.coerce.date().nullish(),
+  "partnerName": zod.string().nullish(),
+  "bankDetailsAvailable": zod.boolean().optional(),
+  "paidBy": zod.number().int().nullish(),
+  "bankDetails": zod.union([zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]).optional()
 })
 export const ListPartnerPayoutsResponse = zod.array(ListPartnerPayoutsResponseItem)
 
@@ -16178,6 +16191,70 @@ export const UpdatePartnerCommissionStatusResponse = zod.object({
 })
 
 
+export const ListPartnerPayoutCandidatesResponseItem = zod.object({
+  "partnerId": zod.number().int(),
+  "fullName": zod.string(),
+  "partnerCode": zod.string(),
+  "email": zod.string(),
+  "accruedCommission": zod.number(),
+  "paidCommission": zod.number(),
+  "outstandingCommission": zod.number(),
+  "payableCommission": zod.number(),
+  "reservedCommission": zod.number(),
+  "pendingApprovalCommission": zod.number(),
+  "bankDetails": zod.union([zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()])
+})
+export const ListPartnerPayoutCandidatesResponse = zod.array(ListPartnerPayoutCandidatesResponseItem)
+
+
+
+
+
+export const GetPartnerPayoutBankDetailsParams = zod.object({
+  "payoutId": zod.coerce.number().int().min(1)
+})
+
+export const GetPartnerPayoutBankDetailsResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "bankCode": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const lookupPartnerReceivingAccountBodyBankNameMax = 200;
+
+export const lookupPartnerReceivingAccountBodyBankCodeRegExp = new RegExp('^[0-9]{1,20}$');
+export const lookupPartnerReceivingAccountBodyAccountNumberRegExp = new RegExp('^[0-9]{10}$');
+
+
+export const LookupPartnerReceivingAccountBody = zod.object({
+  "bankName": zod.string().min(1).max(lookupPartnerReceivingAccountBodyBankNameMax),
+  "bankCode": zod.string().regex(lookupPartnerReceivingAccountBodyBankCodeRegExp),
+  "accountNumber": zod.string().regex(lookupPartnerReceivingAccountBodyAccountNumberRegExp)
+})
+
+export const LookupPartnerReceivingAccountResponse = zod.object({
+  "accountName": zod.string(),
+  "accountLast4": zod.string(),
+  "lookupToken": zod.string(),
+  "expiresAt": zod.coerce.date()
+})
+
+
 /**
  * @summary List partner payouts for administration
  */
@@ -16195,7 +16272,20 @@ export const ListPlatformPartnerPayoutsResponseItem = zod.object({
   "periodStart": zod.coerce.date().nullish(),
   "periodEnd": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
-  "paidAt": zod.coerce.date().nullish()
+  "paidAt": zod.coerce.date().nullish(),
+  "partnerName": zod.string().nullish(),
+  "bankDetailsAvailable": zod.boolean().optional(),
+  "paidBy": zod.number().int().nullish(),
+  "bankDetails": zod.union([zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]).optional()
 })
 export const ListPlatformPartnerPayoutsResponse = zod.array(ListPlatformPartnerPayoutsResponseItem)
 
@@ -16248,7 +16338,20 @@ export const CreatePartnerPayoutResponse = zod.object({
   "periodStart": zod.coerce.date().nullish(),
   "periodEnd": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
-  "paidAt": zod.coerce.date().nullish()
+  "paidAt": zod.coerce.date().nullish(),
+  "partnerName": zod.string().nullish(),
+  "bankDetailsAvailable": zod.boolean().optional(),
+  "paidBy": zod.number().int().nullish(),
+  "bankDetails": zod.union([zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]).optional()
 })
 
 
@@ -16456,7 +16559,8 @@ export const UpdatePartnerPayoutParams = zod.object({
 
 export const UpdatePartnerPayoutBody = zod.object({
   "status": zod.enum(['PROCESSING', 'PAID', 'FAILED', 'REVERSED']),
-  "paymentReference": zod.string().optional()
+  "paymentReference": zod.string().optional(),
+  "confirmExternalTransfer": zod.boolean().optional()
 })
 
 export const updatePartnerPayoutResponseAmountMin = 0;
@@ -16473,7 +16577,20 @@ export const UpdatePartnerPayoutResponse = zod.object({
   "periodStart": zod.coerce.date().nullish(),
   "periodEnd": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
-  "paidAt": zod.coerce.date().nullish()
+  "paidAt": zod.coerce.date().nullish(),
+  "partnerName": zod.string().nullish(),
+  "bankDetailsAvailable": zod.boolean().optional(),
+  "paidBy": zod.number().int().nullish(),
+  "bankDetails": zod.union([zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]).optional()
 })
 
 
@@ -16682,7 +16799,10 @@ export const GetPartnerDashboardResponse = zod.object({
   "currentTermCommission": zod.number(),
   "lifetimeCommission": zod.number(),
   "paidCommission": zod.number(),
-  "outstandingCommission": zod.number()
+  "outstandingCommission": zod.number(),
+  "payableCommission": zod.number().optional(),
+  "reservedCommission": zod.number().optional(),
+  "pendingApprovalCommission": zod.number().optional()
 })
 
 
@@ -16892,7 +17012,20 @@ export const GetMyPartnerPayoutsResponseItem = zod.object({
   "periodStart": zod.coerce.date().nullish(),
   "periodEnd": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
-  "paidAt": zod.coerce.date().nullish()
+  "paidAt": zod.coerce.date().nullish(),
+  "partnerName": zod.string().nullish(),
+  "bankDetailsAvailable": zod.boolean().optional(),
+  "paidBy": zod.number().int().nullish(),
+  "bankDetails": zod.union([zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]).optional()
 })
 export const GetMyPartnerPayoutsResponse = zod.array(GetMyPartnerPayoutsResponseItem)
 
@@ -16907,6 +17040,7 @@ export const GetPartnerPayoutInformationResponse = zod.object({
   "accountName": zod.string().nullable(),
   "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
   "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
   "updatedAt": zod.coerce.date()
 })
 
@@ -16914,17 +17048,18 @@ export const GetPartnerPayoutInformationResponse = zod.object({
 /**
  * @summary Update payout information
  */
-export const updatePartnerPayoutInformationBodyAccountNumberMin = 4;
+export const updatePartnerPayoutInformationBodyAccountNumberRegExp = new RegExp('^[0-9]{10}$');
+export const updatePartnerPayoutInformationBodyLookupTokenMax = 10000;
 
 
 
 export const UpdatePartnerPayoutInformationBody = zod.object({
-  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
-  "bankName": zod.string().optional(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER']),
+  "bankName": zod.string(),
   "accountName": zod.string(),
-  "accountNumber": zod.string().min(updatePartnerPayoutInformationBodyAccountNumberMin).optional().describe('Write-only; never returned by the API'),
-  "bankCode": zod.string().optional(),
-  "otherDetails": zod.string().optional()
+  "accountNumber": zod.string().regex(updatePartnerPayoutInformationBodyAccountNumberRegExp),
+  "bankCode": zod.string(),
+  "lookupToken": zod.string().min(1).max(updatePartnerPayoutInformationBodyLookupTokenMax)
 })
 
 export const UpdatePartnerPayoutInformationResponse = zod.object({
@@ -16934,6 +17069,7 @@ export const UpdatePartnerPayoutInformationResponse = zod.object({
   "accountName": zod.string().nullable(),
   "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
   "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
   "updatedAt": zod.coerce.date()
 })
 

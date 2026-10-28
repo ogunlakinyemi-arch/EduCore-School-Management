@@ -21,5 +21,6 @@ export interface PartnerPayoutInformationMasked4b96100 {
   maskedAccountNumber: string | null;
   /** @nullable */
   bankCode?: string | null;
+  verified?: boolean;
   updatedAt: Date;
 }

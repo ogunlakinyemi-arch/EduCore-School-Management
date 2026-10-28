@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PartnerPayout4b96100Status } from './partnerPayout4b96100Status';
+import type { PartnerPayoutInformationMasked4b96100 } from './partnerPayoutInformationMasked4b96100';
 
 export interface PartnerPayout4b96100 {
   id: number;
@@ -23,4 +24,10 @@ export interface PartnerPayout4b96100 {
   createdAt: Date;
   /** @nullable */
   paidAt?: Date | null;
+  /** @nullable */
+  partnerName?: string | null;
+  bankDetailsAvailable?: boolean;
+  /** @nullable */
+  paidBy?: number | null;
+  bankDetails?: PartnerPayoutInformationMasked4b96100 | null;
 }

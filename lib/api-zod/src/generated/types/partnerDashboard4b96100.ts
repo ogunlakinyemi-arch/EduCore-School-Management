@@ -13,4 +13,7 @@ export interface PartnerDashboard4b96100 {
   lifetimeCommission: number;
   paidCommission: number;
   outstandingCommission: number;
+  payableCommission?: number;
+  reservedCommission?: number;
+  pendingApprovalCommission?: number;
 }
