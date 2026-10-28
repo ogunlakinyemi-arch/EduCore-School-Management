@@ -1,3 +1,5 @@
+> **ARCHIVED legacy handoff — do not execute.** Split/subaccount issuance and old release approvals are retired. Hosting remains on Replit. Current policy: `../january-2027-no-split-payment-policy.md`.
+
 # EduCore LIVE schema: Android owner handoff
 
 ## What to do on your phone

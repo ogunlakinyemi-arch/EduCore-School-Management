@@ -826,3 +826,45 @@ mtime_ms = 1793177201278
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/a67247b4-1630-43d8-9a65-99452c955144/3775b928-83ab-4618-8c0a-9ef0c56ddc18"
 storage_version_token = "1793177211883434"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "IgeHdslKRVDzEr7JF-ixl"
+uri = "file://docs/january-2027-replit-payment-preparation.md"
+type = "text"
+title = "January 2027 Replit payment preparation"
+description = "Official Flutterwave requirement review, concrete fixes, focused test outcomes and the remaining Replit-only launch gates and Owner actions."
+logical_id = "a02790c4-e194-4502-9f6f-20bcf339043b"
+content_hash = "sha256:6dc9e813fa97c993af135284bda71f3c90060e4caa29c2aaf287cc3cc74c55ce"
+size = 12375
+mtime_ms = 1793177900694
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/a02790c4-e194-4502-9f6f-20bcf339043b/93d4b8ac-62bd-43ca-9d64-45384831b794"
+storage_version_token = "1793178026963771"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "rheVLzbO_XAZHzufPzYyf"
+uri = "file://docs/january-2027-no-split-implementation-results.md"
+type = "text"
+title = "No-split implementation and test results"
+description = "Exact application changes, all 314 backend and 9 UI check results, preserved history/reconciliation access, and remaining January LIVE blockers on Replit."
+logical_id = "72084b7d-0d90-4f82-95a5-72de27b4cc9f"
+content_hash = "sha256:c043daa804141df423ec32c62165df656bfa87a436890c687cadddddf7e7c9ac"
+size = 9499
+mtime_ms = 1793179583618
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/72084b7d-0d90-4f82-95a5-72de27b4cc9f/dd4e3e47-1f0f-4364-9f1b-dc0c445dc576"
+storage_version_token = "1793179619285614"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "la_uAdFo2DoIO5PmHTx9n"
+uri = "file://docs/january-2027-no-split-payment-policy.md"
+type = "text"
+title = "Definitive January payment policy"
+description = "School Admin-to-Owner ₦3,200 collection, parent-to-school fees, eligible ₦150 internal BRO entitlement, archived split workflows and unchanged release gates."
+logical_id = "828609a4-8485-4008-a2c5-76359baff02d"
+content_hash = "sha256:c0ac017fa391b67b2096dc51f5d57301ff12af313b4c37f381a17491b9313454"
+size = 6147
+mtime_ms = 1793178658962
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/828609a4-8485-4008-a2c5-76359baff02d/b79eaca9-2381-4224-a34d-4b3a1f3a692d"
+storage_version_token = "1793179619957695"
+content_type = "text/markdown"

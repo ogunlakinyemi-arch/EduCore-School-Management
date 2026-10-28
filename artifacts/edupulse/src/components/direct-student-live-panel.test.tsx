@@ -23,8 +23,12 @@ describe('unreleased direct payments',()=>{
   });
   it('shows the exact non-split rule and prevents a School Admin checkout by default',()=>{
     const html=renderSchool();
-    expect(html).toContain('₦3,200');expect(html).toContain('100% to Yetenia');
-    expect(html).toContain('parent-to-school NFC card/subscription fee workflow is unchanged');
+    expect(html).toContain('₦3,200');
+    expect(html).toContain('Parents pay school fees directly to the school');
+    expect(html).toContain('All gross proceeds settle to the Owner');
+    expect(html).toContain('no school or BRO split is sent');
+    expect(html).toContain('internal ₦150 entitlement');
+    expect(html).toContain('Without an eligible BRO, no BRO ledger record or liability is created');
     expect(html).toMatch(/disabled[^>]*>Start direct platform checkout/);
     expect(html).not.toContain('checkout.flutterwave.com');
   });

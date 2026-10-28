@@ -27,3 +27,13 @@ to charge. An Owner's withdrawal must remain effective while history is preserve
 **How to apply:** Separate authority selection from historical retention. Evaluate
 the latest approved authority and its subsequent decisions; require a fresh,
 explicit approval to restore permission after withdrawal or expiry.
+
+Evaluate expiry, rule windows and school-calendar authority against wall-clock
+time when a transaction may have waited for locks.
+
+**Why:** PostgreSQL `NOW()` is frozen at transaction start. After contention,
+it can still accept a permission that has already expired in real time.
+
+**How to apply:** Use wall-clock predicates at the locked authorization point,
+retain the other exact scope/evidence gates and align explicitly controlled
+fixture clocks. Never extend an approval or calendar to make a retry pass.

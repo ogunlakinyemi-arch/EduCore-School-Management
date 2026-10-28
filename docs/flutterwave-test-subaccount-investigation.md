@@ -1,3 +1,5 @@
+> **HISTORICAL investigation only.** Old subaccount findings do not authorize onboarding, split checkout or release. No historical evidence is erased. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Flutterwave TEST collection-subaccount investigation
 
 ## Genuine TEST outcome — 2026-10-12

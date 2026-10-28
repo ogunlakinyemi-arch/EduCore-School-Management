@@ -27,14 +27,14 @@ it.each([true,false])("keeps the legacy SCV2 split blocked before provider trans
     returnUrl:"https://example.test/return",subaccounts};
   // Repeated attempts cannot initiate duplicate collection or settlement.
   for (let attempt=0;attempt<2;attempt++) {
-    await expect(adapter.initializePayment(input)).rejects.toThrow("SCV2 TEST checkout remains blocked");
+    await expect(adapter.initializePayment(input)).rejects.toThrow("Legacy split checkout is archived");
   }
   expect(transport).not.toHaveBeenCalled();
 });
 it("also blocks a new-policy platform-only fallback before transport", async () => {
   const {transport,adapter}=setup();
   await expect(adapter.initializePayment({reference,amountMinor:500000,currency:"NGN",email:"payer@example.test",
-    returnUrl:"https://example.test/return"})).rejects.toThrow("SCV2 TEST checkout remains blocked");
+    returnUrl:"https://example.test/return"})).rejects.toThrow("Legacy split checkout is archived");
   expect(transport).not.toHaveBeenCalled();
 });
 it.each([true,false])("models the 70 fee once with positive Owner remainder, Partner=%s", eligible => {
@@ -59,29 +59,24 @@ it.each([
   const {transport,adapter}=setup();
   await expect(adapter.initializePayment({reference:item.reference,amountMinor:500000,currency:"NGN",
     email:"payer@example.test",returnUrl:"https://example.test/return",subaccounts:[{...school,transaction_charge:item.charge}]}))
-    .rejects.toThrow("Invalid Development split instructions");
+    .rejects.toThrow("Legacy split checkout is archived");
   expect(transport).not.toHaveBeenCalled();
 });
-it("preserves the legacy fee_ school2000 instruction", async () => {
+it("refuses legacy fee_ school2000 issuance without changing historical calculation", async () => {
   const {transport,adapter}=setup();
-  await adapter.initializePayment({reference:"fee_0123456789abcdef",amountMinor:500000,currency:"NGN",
-    email:"payer@example.test",returnUrl:"https://example.test/return",subaccounts:[{...school,transaction_charge:2000}]});
-  expect(transport).toHaveBeenCalledTimes(1);
+  await expect(adapter.initializePayment({reference:"fee_0123456789abcdef",amountMinor:500000,currency:"NGN",
+    email:"payer@example.test",returnUrl:"https://example.test/return",subaccounts:[{...school,transaction_charge:2000}]}))
+    .rejects.toThrow("Legacy split checkout is archived");
+  expect(transport).not.toHaveBeenCalled();
 });
-it("initializes SCV3 school-only TEST checkout and sends no Partner or ratio field",async()=>{
+it("refuses every SCV3 checkout shape while preserving historical payout arithmetic",async()=>{
   const {transport,adapter}=setup();
   const input={reference:"SCV3_deferred_fixture_reference",amountMinor:500000,currency:"NGN",
     email:"payer@example.test",returnUrl:"https://example.test/return"};
-  await expect(adapter.initializePayment({...input,subaccounts:[school]})).resolves.toMatchObject({
-    reference:input.reference,checkoutUrl:"https://checkout.flutterwave.com/v3/hosting/test",
-  });
-  await expect(adapter.initializePayment(input)).rejects.toThrow("exactly one school");
-  await expect(adapter.initializePayment({...input,subaccounts:[school,partner]})).rejects.toThrow("Invalid Development split");
-  expect(transport).toHaveBeenCalledTimes(1);
-  const sent = JSON.parse(String(transport.mock.calls[0][1]?.body));
-  expect(sent).toMatchObject({amount:5000,currency:"NGN",tx_ref:input.reference,
-    subaccounts:[{id:school.id,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]});
-  expect(JSON.stringify(sent)).not.toContain("transaction_split_ratio");
+  for(const candidate of [input,{...input,subaccounts:[school]},{...input,subaccounts:[school,partner]}]){
+    await expect(adapter.initializePayment(candidate)).rejects.toThrow("Legacy split checkout is archived");
+  }
+  expect(transport).not.toHaveBeenCalled();
   expect(studentPostFeePayouts(input.reference,true,7000)).toMatchObject({
     schoolMinor:190000,merchantRemainderMinor:303000,partnerMinor:10000,ownerNetMinor:293000});
 });

@@ -10,6 +10,18 @@ describe("archived financial workflow boundary",()=>{
     ["/api/subscriptions/9/checkout","POST"],["/api/public/nfc-payment-links/checkout","POST"],
     ["/api/student-nfc/assisted-requests","POST"],["/api/subscriptions/7/payment-link","POST"],
     ["/API/HOSTED-PAYMENTS/CHECKOUT","POST"],["/api/subscriptions/%37/checkout","POST"],
+    ["/api/flutterwave/live/release-check","GET"],["/api/flutterwave/live/billing-context","GET"],
+    ["/api/platform/live-readiness/evidence-preview","POST"],
+    ["/api/platform/live-readiness/receipts/7/reviews","POST"],
+    ["/api/platform/live-readiness/receipts/%37/reviews/","POST"],
+    ["/api/flutterwave/live/school-configuration","POST"],["/api/flutterwave/live/allocation-review","POST"],
+    ["/api/flutterwave/local-split-simulation","GET"],["/api/flutterwave/local-split-simulation","POST"],
+    ["/api/flutterwave/local-split-simulation/reset","POST"],
+    ["/api/platform/live-readiness/receipts/%2B7/reviews","POST"],
+    ["/api/platform/live-readiness/receipts/7e0/reviews","POST"],
+    ["/api/subscriptions/%2B7/checkout","POST"],["/api/subscriptions/7.0/payment-link","POST"],
+    ["/api/schools/7e0/finance/live-subaccount-onboarding","POST"],
+    ["/api/platform/finance/payment-settlement/schools/0x7/review","POST"],
   ])("retires %s %s without invoking provider or storage", (path,method)=>expect(retiredPaymentWorkflow(path,method)).toBe(true));
   it.each([
     ["/api/webhooks/flutterwave/hosted-manual","POST"],["/api/webhooks/flutterwave/student-subscriptions","POST"],
@@ -19,6 +31,9 @@ describe("archived financial workflow boundary",()=>{
     ["/api/schools/7/finance/payment-settlement/history","GET"],
     ["/api/public/nfc-payment-links/verify","POST"],
     ["/api/schools/7/finance/payment-settlement","PUT"],
+    ["/api/flutterwave/split-payments/7/transaction-evidence","GET"],
+    ["/api/platform/live-readiness/receipts","GET"],
+    ["/api/platform/live-readiness/receipts/7/official-receipt","GET"],
   ])("preserves separately authorized historical/essential flow %s", (path,method)=>expect(retiredPaymentWorkflow(path,method)).toBe(false));
   let server:ReturnType<ReturnType<typeof express>["listen"]>,base="";
   let downstream=0;

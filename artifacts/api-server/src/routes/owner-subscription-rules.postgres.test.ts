@@ -50,7 +50,7 @@ const releaseDeps={env:releaseEnv,report:fictionalReport};
 // in the real PostgreSQL authorization, grace-period and release queries.
 const freeFixtureTime="2026-10-27T12:00:00Z";
 function fixtureClockSql(sql:string){
-  return sql.replace(/\bnow\s*\(\s*\)/gi,"owner_rules_fixture_now()")
+  return sql.replace(/\b(?:now|clock_timestamp)\s*\(\s*\)/gi,"owner_rules_fixture_now()")
     .replace(/\bCURRENT_DATE\b/gi,"(owner_rules_fixture_now() AT TIME ZONE 'Africa/Lagos')::date");
 }
 function withFixtureClock<T extends {query:any}>(connection:T):T{

@@ -65,7 +65,7 @@ export function DirectStudentLivePanel({schoolId,selectionOptions,showAssistance
   };
   return <section className="panel mt-6 space-y-4 p-5" data-testid="direct-student-live-panel">
     <div><h2 className="display-font text-xl font-bold">School-to-Yetenia platform fee</h2>
-      <p className="text-sm text-[hsl(var(--muted-foreground))]">Policies approved 27 October 2026. Use EduCore free for the current term, without NFC devices or cards. Collection begins only in this school's configured second academic term starting in January 2027. Then ₦3,200 per student per academic term goes 100% to Yetenia EduCore, with no school or BRO split. The separate parent-to-school NFC card/subscription fee workflow is unchanged.</p>
+      <p className="text-sm text-[hsl(var(--muted-foreground))]">Use EduCore free for the current term, without NFC devices or cards. Collection begins only in this school's configured second academic term starting in January 2027. Parents pay school fees directly to the school. Separately, the School Admin initiates ₦3,200 per student per academic term to the Platform Owner through Flutterwave. All gross proceeds settle to the Owner's merchant account; no school or BRO split is sent. An eligible BRO may earn a separate internal ₦150 entitlement under the reviewed policy. Without an eligible BRO, no BRO ledger record or liability is created.</p>
       <label className="mt-3 block text-sm font-semibold">Fixed Student platform fee<input readOnly aria-readonly="true" aria-label="Fixed Student platform fee" value="₦3,200" className={field} /></label></div>
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="text-sm font-semibold">{selectionOptions?'Student':'Student ID'}{selectionOptions

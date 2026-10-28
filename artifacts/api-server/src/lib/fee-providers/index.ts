@@ -19,7 +19,7 @@ export interface InitializePaymentInput extends ExpectedPayment {
   email: string;
   returnUrl: string;
   customerName?: string;
-  /** Server-frozen, Development-only fixed split instructions; never browser input. */
+  /** @deprecated Retained for historical type compatibility only. Issuance always rejects this field. */
   subaccounts?: import("../flutterwave-split-policy").FixedSplitInstruction[];
 }
 
@@ -416,28 +416,10 @@ abstract class FlutterwaveV3Adapter extends HttpPaymentAdapter {
   async initializePayment(input: InitializePaymentInput): Promise<InitializePaymentResult> {
     assertNoLocalSplitSimulation(input);
     this.assertExpected(input);
-    if (input.subaccounts && (process.env.NODE_ENV !== "development" || process.env.REPLIT_DEPLOYMENT
-        || input.currency !== "NGN" || input.amountMinor !== 500000
-        || input.subaccounts.length < 1 || input.subaccounts.length > (studentAllocationPolicy(input.reference).deferredPartner ? 1 : 2)
-        || new Set(input.subaccounts.map(s => s.id)).size !== input.subaccounts.length
-        || input.subaccounts.some((s, i) => !/^RS_[A-Za-z0-9]{12,80}$/.test(s.id)
-          || s.transaction_charge_type !== "flat_subaccount"
-          || s.transaction_charge !== (i === 0 ? studentAllocationPolicy(input.reference).schoolMinor / 100 : 100)))) {
-      throw new PaymentProviderError("Invalid Development split instructions");
-    }
-    // The confirmed SCV3 TEST model is a fixed school subaccount charge with
-    // Merchant-borne fees and an internal Partner payable. SCV2 remains blocked:
-    // its legacy Partner checkout allocation is not the current policy.
-    if (studentAllocationPolicy(input.reference).version === 2) {
-      throw new PaymentProviderError(
-        "SCV2 TEST checkout remains blocked; existing SCV2 payments keep their original allocation and must not be retried as SCV3.",
-      );
-    }
-    if (studentAllocationPolicy(input.reference).deferredPartner
-        && (!input.subaccounts || input.subaccounts.length !== 1
-          || Object.keys(input.subaccounts[0]).some(key =>
-            !["id", "transaction_charge_type", "transaction_charge"].includes(key)))) {
-      throw new PaymentProviderError("SCV3 requires exactly one school flat_subaccount instruction and no BRO recipient or ratio field");
+    if (/^SCV[23]_/i.test(input.reference) ||
+        ["subaccounts","subaccount","subaccount_id","split","split_ratio",
+          "transaction_charge","transaction_charge_type"].some(key=>key in input)) {
+      throw new PaymentProviderError("Legacy split checkout is archived; historical references must only be reconciled.");
     }
     if (!input.email.includes("@") || !isHttpsUrl(input.returnUrl)) {
       throw new PaymentProviderError("Payment customer email or return URL is invalid");
@@ -452,7 +434,6 @@ abstract class FlutterwaveV3Adapter extends HttpPaymentAdapter {
         currency: normalizeCurrency(input.currency),
         redirect_url: input.returnUrl,
         customer: { email: input.email, ...(input.customerName ? { name: input.customerName } : {}) },
-        ...(input.subaccounts ? { subaccounts: input.subaccounts } : {}),
       }),
     });
     const data = asObject(result.data);

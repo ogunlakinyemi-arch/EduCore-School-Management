@@ -107,29 +107,24 @@ describe("default-disabled LIVE runtime and separate webhook secrets",()=>{
   });
 });
 describe("real V3 request contracts through fictional HTTP only",()=>{
-  it("posts exactly NGN 5000, one school flat_subaccount 1900 and no Partner or surcharge",async()=>{
+  it("permanently blocks split checkout even with complete legacy LIVE configuration",async()=>{
     const fetcher=vi.fn().mockResolvedValue(response({link:"https://checkout.flutterwave.com/v3/hosted/pay/fictional123"}));
     const transport=new FlutterwaveLiveTransport(runtimeEnv(),fetcher);
-    await transport.checkout({reference,email:"payer@example.invalid",schoolSubaccountId:school});
-    const [url,init]=fetcher.mock.calls[0]!;
-    expect(url).toBe("https://api.flutterwave.com/v3/payments");
-    expect(init.redirect).toBe("error");
-    expect(init.headers.Authorization).toBe(`Bearer ${runtimeEnv().FLUTTERWAVE_LIVE_SECRET_KEY}`);
-    expect(JSON.parse(init.body)).toEqual({tx_ref:reference,amount:5000,currency:"NGN",
-      redirect_url:"https://payment.invalid/api/flutterwave/live/callback",customer:{email:"payer@example.invalid"},
-      subaccounts:[{id:school,transaction_charge_type:"flat_subaccount",transaction_charge:1900}]});
+    await expect(transport.checkout({reference,email:"payer@example.invalid",schoolSubaccountId:school}))
+      .rejects.toHaveProperty("code","LEGACY_SPLIT_WORKFLOW_ARCHIVED");
+    expect(fetcher).not.toHaveBeenCalled();
   });
   it.each(["","RS_SCHOOL_LIVE_SUBACCOUNT_ID","RS_bad"])("never posts a missing/placeholder school subaccount %s",async id=>{
     const fetcher=vi.fn();
     await expect(new FlutterwaveLiveTransport(runtimeEnv(),fetcher).checkout({
-      reference,email:"payer@example.invalid",schoolSubaccountId:id})).rejects.toHaveProperty("code","LIVE_CHECKOUT_INPUT_INVALID");
+      reference,email:"payer@example.invalid",schoolSubaccountId:id})).rejects.toHaveProperty("code","LEGACY_SPLIT_WORKFLOW_ARCHIVED");
     expect(fetcher).not.toHaveBeenCalled();
   });
   it.each(["https://checkout.flutterwave.com/v3/hosted/pay/test?bad=1","https://test.checkout.flutterwave.com/v3/hosted/pay/id",
     "https://evil.invalid/v3/hosted/pay/id","https://checkout.flutterwave.com.evil.invalid/v3/hosted/pay/id"])(
-    "refuses untrusted returned checkout URL %s",async link=>{
+    "cannot reactivate legacy checkout using returned URL %s",async link=>{
       await expect(new FlutterwaveLiveTransport(runtimeEnv(),vi.fn().mockResolvedValue(response({link})))
-        .checkout({reference,email:"payer@example.invalid",schoolSubaccountId:school})).rejects.toHaveProperty("code","LIVE_CHECKOUT_LINK_INVALID");
+        .checkout({reference,email:"payer@example.invalid",schoolSubaccountId:school})).rejects.toHaveProperty("code","LEGACY_SPLIT_WORKFLOW_ARCHIVED");
     });
   it.each([{id:124},{tx_ref:"SCV3_live_wrong_reference"},{status:"pending"},{status:"failed"},
     {currency:"USD"},{amount:4999},{amount:5001},{charged_amount:5075},{app_fee:undefined},{merchant_fee:undefined}])(
@@ -154,10 +149,9 @@ describe("real V3 request contracts through fictional HTTP only",()=>{
     expect(result).toMatchObject({amountMinor:500000,chargedAmountMinor:500000,recipientEvidence:"TRANSACTION_BOUND",
       recipients:[{subaccountId:school,currency:"NGN",amountMinor:190000}]});
   });
-  it("scrubs provider/network errors and never retries a checkout POST",async()=>{
+  it("scrubs historical GET network errors without retry or issuing a checkout POST",async()=>{
     const fetcher=vi.fn().mockRejectedValue(new Error(`Authorization Bearer ${runtimeEnv().FLUTTERWAVE_LIVE_SECRET_KEY}`));
-    const error=await new FlutterwaveLiveTransport(runtimeEnv(),fetcher).checkout({
-      reference,email:"payer@example.invalid",schoolSubaccountId:school}).catch(e=>e);
+    const error=await new FlutterwaveLiveTransport(runtimeEnv(),fetcher).collection("123",reference).catch(e=>e);
     expect(error.code).toBe("LIVE_PROVIDER_UNAVAILABLE");
     expect(String(error)).not.toContain("FLWSECK");
     expect(error.cause).toBeUndefined();

@@ -319,8 +319,7 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
           <div className="divide-y divide-[hsl(var(--border))]" data-testid="list-flw-capability">
             <Flag label="Configured" on={flutterwave.configured} />
             <div className="flex items-center justify-between py-2 text-sm"><span className="font-semibold">Mode</span><span className={note} data-testid="text-flw-mode">{flutterwave.mode ?? 'Not reported'}</span></div>
-            <Flag label="Split settlements" on={flutterwave.splitSettlements} />
-            <Flag label="Hosted checkout" on={flutterwave.hostedCheckout} />
+            <p className="py-2 text-sm font-semibold">Direct collection only: ₦3,200 per student per term to the Platform Owner. No school subaccount or split-payment release is supported.</p>
             <Flag label="Webhook verification" on={flutterwave.webhookVerification} />
           </div>}
         <p className={cx(note, 'mt-3')}>Keys and secrets are never displayed. Capability does not mean subscription payment initiation is available.</p>

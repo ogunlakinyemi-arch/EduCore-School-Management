@@ -1,3 +1,5 @@
+> **HISTORICAL approval package — not current execution authority.** Do not restore split/subaccount configuration or use this package to approve a release. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Flutterwave LIVE readiness: Development approval package
 
 Evidence date: **2026-10-23**. **NOT approved for application-database migration or LIVE activation.**

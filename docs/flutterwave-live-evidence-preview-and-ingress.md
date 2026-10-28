@@ -1,3 +1,5 @@
+> **ARCHIVED split-era workflow.** Evidence-preview and legacy receipt release approval operations are retired. Old read-only receipts remain historical evidence, not authority to initiate payment. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Development evidence preview and actual LIVE ingress preparation
 
 ## Scope and limits

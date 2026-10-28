@@ -3,6 +3,7 @@ import { liveSplitAuthorityDigest } from "../lib/flutterwave-live-split-authorit
 import { LiveFinalizationBlocked } from "../lib/flutterwave-live-verification";
 import { requireLiveRelease } from "../lib/flutterwave-live-release";
 import { FlutterwaveLiveTransport } from "../lib/flutterwave-live-transport";
+import { rejectLegacySplitInitiation } from "./retired-payment-workflows";
 
 /** Owner-reviewed configuration, not a provider subaccount creation endpoint.
  * Can be prepared with release flags OFF after separately approved target DDL.
@@ -10,6 +11,7 @@ import { FlutterwaveLiveTransport } from "../lib/flutterwave-live-transport";
 export async function saveLiveSchoolConfiguration(pool:StudentSubscriptionSqlPool,input:{
   actorId:number;evidence:unknown;expiresAt:string;
 }) {
+  rejectLegacySplitInitiation();
   const digest=liveSplitAuthorityDigest(input.evidence);
   const evidence=input.evidence as {merchantScope:string;schoolId:number;schoolSubaccountId:string};
   const expiry=new Date(input.expiresAt).getTime();

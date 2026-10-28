@@ -1,3 +1,5 @@
+> **ARCHIVED — not an operational guide.** Split issuance, subaccounts and old release approvals are retired. Do not run the setup or payment commands below. Historical evidence is retained. See `january-2027-no-split-payment-policy.md` for the current rules.
+
 # Flutterwave split settlements — Development only
 
 ## Scope and verified baseline

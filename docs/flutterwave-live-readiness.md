@@ -1,3 +1,5 @@
+> **ARCHIVED split workflow.** This document cannot authorize configuration, release approval or payment. Preserve its historical evidence only. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Flutterwave deferred Partner commissions — Development review
 
 **Read-only preview and actual ingress follow-up (2026-10-21):**

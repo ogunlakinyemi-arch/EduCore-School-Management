@@ -111,13 +111,12 @@ describe("Development-only fixed amounts and transparent fees",() => {
   });
 });
 describe("Mocked provider contracts — not genuine sandbox evidence",() => {
-  it("sends exact fixed instructions without surcharging the payer",async() => {
+  it("refuses formerly valid fixed instructions before provider HTTP",async() => {
     const fetch = vi.fn(async() => json({link:"https://checkout.flutterwave.com/v3/hosted/pay/unit-test"}));
-    await new FlutterwaveTestAdapter({secretKey:key},{fetch:fetch as any}).initializePayment({...charge,subaccounts:fixedSplitInstructions(school,partner)});
-    const input = JSON.parse((fetch.mock.calls[0] as any)[1].body);
-    expect(input.amount).toBe(5000);
-    expect(input.subaccounts).toEqual(fixedSplitInstructions(school,partner));
-    expect(input).not.toHaveProperty("fee");
+    await expect(new FlutterwaveTestAdapter({secretKey:key},{fetch:fetch as any})
+      .initializePayment({...charge,subaccounts:fixedSplitInstructions(school,partner)}))
+      .rejects.toThrow("Legacy split checkout is archived");
+    expect(fetch).not.toHaveBeenCalled();
   });
   it("rejects injected percentages, amounts, currency and extra recipients before HTTP",async() => {
     const fetch = vi.fn(), adapter = new FlutterwaveTestAdapter({secretKey:key},{fetch});

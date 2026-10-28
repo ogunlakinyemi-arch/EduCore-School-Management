@@ -1,5 +1,14 @@
 openapi: 3.1.0
-info: { title: FlutterwaveSplits, version: 1.0.0 }
+info:
+  title: FlutterwaveSplits
+  version: 1.0.0
+  description: >-
+    ARCHIVED compatibility contract, not an operational payment guide. Split
+    checkout, recipient configuration, simulations, school subaccount onboarding
+    and old release approvals are permanently unavailable (HTTP 410).
+    Only separately authorized historical reads/reconciliation are retained.
+    Current school-to-Owner collection is NGN 3200 with no split fields; the
+    eligible BRO NGN 150 entitlement is a separate internal ledger entry only.
 paths:
   /flutterwave/local-split-simulation:
     get:

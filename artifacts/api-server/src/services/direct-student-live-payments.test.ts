@@ -87,20 +87,44 @@ describe("direct LIVE transport safety (fake transport, no credentials or networ
     expect(payload).not.toHaveProperty("subaccounts");
     expect(payload).not.toHaveProperty("split");
     expect(payload).not.toHaveProperty("payment_plan");
+    for(const key of ["subaccount","subaccount_id","split_ratio","transaction_charge","transaction_charge_type"]){
+      expect(payload).not.toHaveProperty(key);
+    }
     expect(JSON.stringify(payload)).not.toContain(env.FLUTTERWAVE_LIVE_SECRET_KEY);
     expect(()=>authenticateDirectStudentWebhook({"verif-hash":"wrong-verifier"},env)).toThrow();
+    for(const supplied of [undefined,"",["synthetic-webhook-not-live"],"wrong".padEnd(26,"x"),"é".repeat(13)]){
+      expect(()=>authenticateDirectStudentWebhook({"verif-hash":supplied},env)).toThrow();
+    }
+    expect(()=>authenticateDirectStudentWebhook({"flutterwave-signature":"not-a-v3-verifier"},env)).toThrow();
     expect(()=>authenticateDirectStudentWebhook({"verif-hash":env.FLUTTERWAVE_LIVE_WEBHOOK_VERIF_HASH},env)).not.toThrow();
   });
   it("rejects wrong amount, reference, split details and charged-but-failed response",async()=>{
     for(const override of [
-      {amount:5000},{currency:"USD"},{tx_ref:"SCV3_live_old_split_ref"},
-      {subaccounts:[{id:"old-school"}]},{status:"failed",charged_amount:3200},
+      {amount:5000},{amount:3199},{amount:3201},{charged_amount:3300},{id:902},
+      {currency:"USD"},{tx_ref:"SCV3_live_old_split_ref"},{status:"refunded"},{app_fee:undefined},
+      {subaccounts:[{id:"old-school"}]},{subaccounts:{id:"unverified-shape"}},{subaccounts:"unknown"},
+      {subaccounts:false},{subaccounts:0},{status:"failed",charged_amount:3200},
+      {transaction_charge:1900},{transaction_charge_type:"flat_subaccount"},
+      {split_ratio:0},{split:false},{split_type:"flat"},{split_value:1900},{subaccount_id:""},
     ]){
       const fetcher=vi.fn(async()=>Response.json({status:"success",data:{
         id:901,tx_ref:reference,currency:"NGN",amount:3200,charged_amount:3200,
         status:"successful",flw_ref:"FICTIONAL-901",app_fee:50,merchant_fee:0,...override,
       }})) as unknown as typeof fetch;
       await expect(new FlutterwaveLiveTransport(env,fetcher,"DIRECT_STUDENT").directStudentCollection("901",reference)).rejects.toThrow();
+    }
+  });
+  it("verifies the exact transaction through server GET and accepts only empty or absent split metadata",async()=>{
+    for(const subaccounts of [undefined,null,[]]){
+      const fetcher=vi.fn(async()=>Response.json({status:"success",data:{
+        id:901,tx_ref:reference,currency:"NGN",amount:3200,charged_amount:3200,
+        status:"successful",flw_ref:"FICTIONAL-901",app_fee:50,merchant_fee:0,subaccounts,
+      }})) as unknown as typeof fetch;
+      const result=await new FlutterwaveLiveTransport(env,fetcher,"DIRECT_STUDENT").directStudentCollection("901",reference);
+      expect(result).toMatchObject({transactionId:"901",reference,status:"successful"});
+      expect(fetcher).toHaveBeenCalledOnce();
+      expect(fetcher).toHaveBeenCalledWith("https://api.flutterwave.com/v3/transactions/901/verify",
+        expect.objectContaining({method:"GET",redirect:"error"}));
     }
   });
 });

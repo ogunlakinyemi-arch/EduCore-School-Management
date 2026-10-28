@@ -1,3 +1,5 @@
+> **RETIRED operational procedure.** Hosted/split Student checkout is archived. Do not set flags or initiate payments using this guide. Historical evidence is preserved. Current policy: `../january-2027-no-split-payment-policy.md`.
+
 # Hosted Payments: Development TEST configuration
 
 ## Scope and current result

@@ -1,3 +1,5 @@
+> **RETIRED simulation workflow.** UI and API split simulation entry points are unavailable. Fictional historical examples below do not authorize configuration, payment or release. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # TEST / NOT REAL — local no-partner split simulation
 
 This separate Development-only, active-Owner-only screen is available at

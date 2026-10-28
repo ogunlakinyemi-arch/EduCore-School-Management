@@ -29,13 +29,16 @@ contacting Support again or repeating prior investigations.
 every readiness gate, and only attempt authenticated visual checks when a valid
 authorized session is already available. Do not invent operational evidence.
 
-Customer-controlled PostgreSQL is authorized for feasibility assessment only,
-not provisioning, data copying, credential changes or migration execution.
+January launch preparation stays on the existing Replit infrastructure. Do not
+continue an external-hosting plan or present moving elsewhere as the requested
+next step.
 
-**Why:** On 28 October 2026 the Owner explicitly approved a narrowly scoped
-hosting feasibility review while preserving the financial model and all gates.
+**Why:** On 28 October 2026 the Owner clarified: “my product is hosted on Replit”
+and requested January LIVE preparation without a hosting-provider change.
+The earlier external PostgreSQL feasibility assessment never authorized a move.
 
-**How to apply:** Treat any future provider/account/budget, private source export,
-rehearsal, Production cutover and source retirement as separate approval
-boundaries. A technically plausible alternative does not close current
-Production readiness or authorize LIVE.
+**How to apply:** Complete safe app-side work and report the supported Replit
+procedural-delivery blocker honestly. Do not contact Support, provision hosting,
+change credentials, execute Production SQL or publish without new explicit
+authorization. Owner approval alone cannot substitute for missing technical
+enforcement or authorize LIVE.

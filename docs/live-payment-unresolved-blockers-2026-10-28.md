@@ -85,20 +85,13 @@ a successful local rehearsal cannot resolve that limitation.
 Do not try direct-client SQL, SQL-console installation, startup/build DDL,
 custom release hooks, ledger edits, permission elevation or credential workarounds.
 
-Without returning to Support, the minimum actionable outside-code decision is
-**Owner authorization for a database-hosting feasibility review** of a
-customer-controlled PostgreSQL service with a supported procedural migration
-lifecycle, keeping the existing financial model unchanged. This is not
-authorization to provision, spend, copy data, change secrets, cut over or install
-anything on the current managed target. No such alternative is established as
-already provisioned or authorized by this report.
-
-A future separately approved hosting/release plan must bind the serving runtime
-to its exact primary/resource and runtime role, attach existing recovery evidence
-and a current isolated restore rehearsal, preserve the retained-data baseline,
-prove exact post-release catalog definitions/enablement and permission behavior,
-and obtain explicit execution authorization. A developer with SQL access alone
-cannot turn the current unsupported managed-target path into a supported one.
+The Owner has definitively required keeping the existing Replit hosting.
+The earlier external database-hosting feasibility direction is superseded and
+must not be treated as the launch plan. A supported Replit procedural delivery
+mechanism, exact primary/runtime permission verification, recovery acceptance and
+explicit financial release authorization remain necessary. No such mechanism is
+established here. Without it, direct LIVE remains a no-go; SQL access, app
+publication or approval alone cannot close that technical limitation.
 
 ## Other gates: reuse evidence, do not manufacture it
 

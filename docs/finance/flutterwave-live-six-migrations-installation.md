@@ -1,3 +1,5 @@
+> **ARCHIVED split-era procedure — do not execute.** Existing schema/history must remain intact. No Production migration or legacy split release is authorized. Current policy: `../january-2027-no-split-payment-policy.md`.
+
 # Six Flutterwave LIVE migrations: safety review and installation runbook
 
 Date: 2026-10-26. This supersedes the two rollback findings in

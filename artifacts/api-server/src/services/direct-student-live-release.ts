@@ -94,12 +94,13 @@ export async function findApprovedDirectReview(c:Db,scope:{schoolId:number;termI
         WHERE v2.school_id=v.school_id AND v2.academic_term_id=v.academic_term_id AND v2.rule_id=v.rule_id)
       AND EXISTS(SELECT 1 FROM school_memberships sm WHERE sm.user_id=approver.id
         AND sm.role='PLATFORM_OWNER' AND sm.school_id IS NULL AND sm.status='ACTIVE')
-      AND q.expires_at>now() AND v.expires_at>now() AND v.approved_at<=now() AND v.no_split_confirmed=true
+      -- NOW() is frozen at BEGIN and may predate a wait on the release lock.
+      AND q.expires_at>clock_timestamp() AND v.expires_at>clock_timestamp() AND v.approved_at<=clock_timestamp() AND v.no_split_confirmed=true
       AND r.product='STUDENT_PLATFORM' AND r.status IN ('ACTIVE','SCHEDULED') AND r.amount_minor=320000
       AND r.school_share_minor=0 AND r.currency='NGN' AND r.billing_period='ACADEMIC_TERM'
-      AND r.effective_at<=now() AND (r.ends_at IS NULL OR r.ends_at>now())
+      AND r.effective_at<=clock_timestamp() AND (r.ends_at IS NULL OR r.ends_at>clock_timestamp())
       AND t.is_current=true AND upper(t.status)='ACTIVE' AND ses.is_current=true AND upper(ses.status)='ACTIVE'
-      AND (now() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date
+      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date
     ORDER BY v.id DESC LIMIT 1`,
     [scope.schoolId,scope.termId,scope.studentId,reportDigest,config.merchantScope,DIRECT_STUDENT_RELEASE,
       config.callbackUrl,config.webhookUrl])).rows[0];

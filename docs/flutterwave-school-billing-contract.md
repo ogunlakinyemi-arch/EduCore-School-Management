@@ -1,3 +1,5 @@
+> **ARCHIVED split billing contract.** The old billing-context and split checkout cannot initiate payment. School Admins use the separate direct ₦3,200 platform payment. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # School dashboard LIVE billing contract
 
 ## Boundary

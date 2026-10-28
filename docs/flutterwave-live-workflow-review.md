@@ -1,3 +1,5 @@
+> **HISTORICAL REVIEW ONLY.** Split configuration, issuance and release approval are retired. This review is not an operational instruction or present authorization. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Coordinated LIVE workflow — Development-only review
 
 **Actual ingress and Owner preview follow-up (2026-10-21):**

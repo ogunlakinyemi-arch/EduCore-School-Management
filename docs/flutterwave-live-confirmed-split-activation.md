@@ -1,3 +1,5 @@
+> **RETIRED — no split activation is permitted.** No old flag, approval or command in this document can re-enable checkout. Historical evidence remains unchanged below. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Confirmed Flutterwave split model — disabled LIVE activation checklist
 
 **Next Development increment:** an Owner-only read-only evidence import preview

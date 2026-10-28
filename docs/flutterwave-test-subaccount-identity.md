@@ -1,3 +1,5 @@
+> **HISTORICAL identity evidence only.** Do not create subaccounts or start split checkout using commands/examples below; operational split probes are retired. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Flutterwave TEST subaccount and checkout identity — 2026-10-13
 
 ## Scope and actual operation

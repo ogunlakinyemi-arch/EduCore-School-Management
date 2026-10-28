@@ -1,3 +1,5 @@
+> **ARCHIVED legacy installation guide — not execution authority.** Split checkout is retired; no Production SQL, migration or old flag activation is authorized. Current policy: `../january-2027-no-split-payment-policy.md`.
+
 # Minimal LIVE subscription checkout package
 
 **REVIEW ONLY — no Production execution or LIVE activation is authorized.**

@@ -1,3 +1,5 @@
+> **ARCHIVED legacy release.** SCV3 split issuance and approvals are permanently retired, regardless of old configuration. Do not execute this release procedure. Current policy: `january-2027-no-split-payment-policy.md`.
+
 # Default-disabled Flutterwave LIVE SCV3 runtime
 
 ## What Development can safely implement

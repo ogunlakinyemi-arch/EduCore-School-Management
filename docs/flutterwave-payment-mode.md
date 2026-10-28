@@ -1,3 +1,5 @@
+> **RETIREMENT NOTICE:** all Student split/hosted checkout, subaccount and SCV3 release instructions below are historical, not active configuration guidance. Independent non-split payments and historical reconciliation remain separately governed. Current Student policy: `january-2027-no-split-payment-policy.md`.
+
 # Integrated Flutterwave payment mode
 
 Current managed-schema release blocker, exact technical evidence and Quinn's

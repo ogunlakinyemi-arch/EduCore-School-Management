@@ -1,3 +1,4 @@
+import { rejectLegacySplitInitiation } from "./retired-payment-workflows";
 import { pool } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
 import { fixedSplitInstructions, isSplitDevelopment, type FixedSplitInstruction } from "../lib/flutterwave-split-policy";
@@ -33,6 +34,7 @@ export async function splitAttribution(db: StudentSubscriptionSqlClient, schoolI
 
 /** Transaction owns both the frozen plan and its payment. No browser financial inputs. */
 export async function prepareSplitCheckout(paymentId: number): Promise<FixedSplitInstruction[] | undefined> {
+  rejectLegacySplitInitiation();
   assertNoLocalSplitSimulation(paymentId);
   if (!isSplitDevelopment()) return undefined;
   const db = await pool.connect();

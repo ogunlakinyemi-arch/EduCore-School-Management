@@ -1,3 +1,5 @@
+> **HISTORICAL isolated rehearsal, not a Production procedure.** No SQL-console workaround or legacy split activation is authorized. Keep existing hosting on Replit. Current policy: `../january-2027-no-split-payment-policy.md`.
+
 # LIVE checkout SQL-console rehearsal: blocked before SQL
 
 Evidence time: **2026-10-27T08:47:23Z**.

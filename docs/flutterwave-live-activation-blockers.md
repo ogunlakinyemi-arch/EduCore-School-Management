@@ -1,3 +1,5 @@
+> **ARCHIVED split release assessment.** Resolving any old subaccount/split blocker does not permit release or payment. Current Replit-only no-split requirements: `january-2027-no-split-payment-policy.md`.
+
 # Flutterwave LIVE activation — blocked, not operational
 
 ## Development implementation update

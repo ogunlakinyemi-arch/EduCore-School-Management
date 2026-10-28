@@ -6,6 +6,7 @@ import { persistAuthenticatedLiveWebhookReceipt } from "./flutterwave-live-webho
 import { processLiveWorkflow } from "./flutterwave-live-lifecycle";
 import { issueLiveIntent } from "./flutterwave-live-intents";
 import { verifyLiveSplitAuthority } from "../lib/flutterwave-live-split-authority";
+import { rejectLegacySplitInitiation } from "./retired-payment-workflows";
 
 export async function processReleasedLiveWebhook(pool:StudentSubscriptionSqlPool,raw:Buffer,
   headers:Record<string,unknown>,env:NodeJS.ProcessEnv=process.env,fetcher:typeof fetch=fetch) {
@@ -22,6 +23,7 @@ export async function processReleasedLiveWebhook(pool:StudentSubscriptionSqlPool
 export async function initializeLiveSubscriptionCheckout(pool:StudentSubscriptionSqlPool,input:{
   actorId:number;schoolId:number;studentId:number;termId:number;idempotencyKey:string;email:string;
 },env:NodeJS.ProcessEnv=process.env,fetcher:typeof fetch=fetch) {
+  rejectLegacySplitInitiation();
   const release=await requireLiveRelease(pool,env);
   let client=await pool.connect(),authority:any;
   try {

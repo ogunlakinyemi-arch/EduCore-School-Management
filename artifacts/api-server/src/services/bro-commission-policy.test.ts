@@ -24,7 +24,7 @@ describe("prospective independent BRO policy",()=>{
     expect(broEntitlementAmount(policy,{...eligible,paidAt:"2027-01-03T23:00:00Z"})).toBeNull();
   });
 });
-function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved?:boolean;termStart?:string;missingGuard?:string}={}){
+function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved?:boolean;termStart?:string;missingGuard?:string;broEvidence?:"missing"|"inactive"|"unbound"|"ambiguous"}={}){
   const catalog=financialGuardCatalogFixture();
   catalog.functions=catalog.functions.filter(f=>f.proname!==options.missingGuard);
   catalog.triggers=catalog.triggers.filter(t=>t.tgname!==options.missingGuard);
@@ -41,8 +41,11 @@ function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved
       startDate:"2027-01-05",endDate:"2027-04-01",isCurrent:true,status:"ACTIVE",sessionStatus:"ACTIVE"}]};
     if(sql.includes("to_regclass"))return{rows:[{ready:options.ready??true}]};
     if(sql.includes("SELECT * FROM bro_term_commission_entitlements"))return{rows:saved?[saved]:[]};
-    if(sql.includes("SELECT o.id AS obligation_id"))return{rows:[{obligation_id:7,attempt_id:8,paid_at:eligible.paidAt,paid_at_exact:eligible.paidAt,
-      term_start:options.termStart??eligible.termStart,attribution_id:3,partner_profile_id:4,legacy_exists:options.legacy??false}]};
+    if(sql.includes("SELECT o.id AS obligation_id")){
+      const row={obligation_id:7,attempt_id:8,paid_at:eligible.paidAt,paid_at_exact:eligible.paidAt,
+        term_start:options.termStart??eligible.termStart,attribution_id:3,partner_profile_id:4,legacy_exists:options.legacy??false};
+      return{rows:options.broEvidence==="ambiguous"?[row,{...row,partner_profile_id:5}]:options.broEvidence?[]:[row]};
+    }
     if(sql.includes("SELECT p.*"))return{rows:[policyRow]};
     if(sql.includes("INSERT INTO bro_term_commission_entitlements")){
       saved={id:11,school_id:1,amount_minor:args![8]};return{rows:[saved]};
@@ -55,6 +58,15 @@ function database(options:{ready?:boolean;legacy?:boolean;oldEntry?:any;approved
 }
 const scope={schoolId:1,studentId:31,termId:4},actor={id:9,email:"owner@example.test",clerkUserId:"fictional-owner"};
 describe("append-only BRO processing (mocked SQL, no app database)",()=>{
+  it.each(["missing","inactive","unbound","ambiguous"] as const)(
+    "creates no BRO row, liability, zero entry or financial audit for %s eligible evidence",async broEvidence=>{
+      const db=database({broEvidence});
+      await expect(accrueBroCommission(db.pool,scope,actor)).rejects.toThrow("unique eligible");
+      expect(db.saved).toBeNull();expect(db.audits).toHaveLength(0);
+      const statements=db.query.mock.calls.map(([sql])=>sql);
+      expect(statements).toContain("ROLLBACK");
+      expect(statements.some(sql=>/^\s*(?:INSERT|UPDATE|DELETE)\b/i.test(sql))).toBe(false);
+    });
   it("records 150 once and returns the same frozen earning on repeat processing",async()=>{
     const db=database();
     expect(await accrueBroCommission(db.pool,scope,actor)).toEqual({id:11,amountMinor:15000,existing:false});

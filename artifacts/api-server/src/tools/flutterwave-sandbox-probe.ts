@@ -1,3 +1,7 @@
+// ARCHIVED: operational split probes may no longer create recipients or charges.
+import { rejectLegacySplitInitiation } from "../services/retired-payment-workflows";
+rejectLegacySplitInitiation();
+
 /**
  * Explicit, one-shot provider-only TEST verification. No school/Partner records,
  * fee payments, flags, transfers, refunds, Production access or migrations.

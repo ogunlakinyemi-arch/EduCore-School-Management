@@ -1,22 +1,35 @@
 import type { RequestHandler } from "express";
 
+/** No environment switch or old release approval can restore split issuance. */
+export function rejectLegacySplitInitiation():void {
+  throw Object.assign(new Error("Legacy split payment issuance and release approval are archived."),
+    {code:"LEGACY_SPLIT_WORKFLOW_ARCHIVED"});
+}
+
 /** Archive workflows, not records. Historical webhooks/verification are not new checkout. */
 export function retiredPaymentWorkflow(path: string, method: string): boolean {
   let decoded:string;
   try{decoded=decodeURIComponent(path.split("?")[0]).toLowerCase();}catch{return true;}
   const p=decoded.replace(/^\/api(?=\/|$)/,"").replace(/\/+$/,"");
-  if (/^\/hosted-payments(?:\/|$)/.test(p) || /^\/flutterwave\/split-/.test(p)) return true;
+  // Existing transaction evidence is an authenticated historical read, not an
+  // issuance/configuration/release escape hatch.
+  if (["GET","HEAD"].includes(method.toUpperCase()) &&
+      /^\/flutterwave\/split-payments\/\d+\/transaction-evidence$/.test(p)) return false;
+  if (/^\/hosted-payments(?:\/|$)/.test(p) || /^\/flutterwave\/(?:split-|local-split-simulation(?:\/|$))/.test(p)) return true;
+  if (/^\/flutterwave\/live\/(?:release-check|billing-context)(?:\/|$)/.test(p)) return true;
   if (/^\/flutterwave\/live\/school-subaccounts(?:\/|$)/.test(p) ||
       /^\/platform\/flutterwave\/live\/school-subaccounts(?:\/|$)/.test(p)) return true;
-  if(/^\/schools\/\d+\/finance\/live-subaccount-onboarding(?:\/|$)/.test(p))return true;
+  if(/^\/schools\/[^/]+\/finance\/live-subaccount-onboarding(?:\/|$)/.test(p))return true;
   if (!["POST","PUT","PATCH","DELETE"].includes(method.toUpperCase())) return false;
   // School bank profile PUT remains an ordinary authorized account update for
   // independent school payments/payouts; DELETE is retired, not permitted here.
-  return (method.toUpperCase()==="DELETE" && /^\/schools\/\d+\/finance\/payment-settlement(?:\/|$)/.test(p)) ||
+  return (method.toUpperCase()==="DELETE" && /^\/schools\/[^/]+\/finance\/payment-settlement(?:\/|$)/.test(p)) ||
     /^\/student-nfc\/assisted-requests(?:\/|$)/.test(p) ||
-    /^\/platform\/finance\/payment-settlement\/schools\/\d+(?:\/|$)/.test(p) ||
+    /^\/platform\/live-readiness\/evidence-preview$/.test(p) ||
+    /^\/platform\/live-readiness\/receipts\/[^/]+\/reviews$/.test(p) ||
+    /^\/platform\/finance\/payment-settlement\/schools\/[^/]+(?:\/|$)/.test(p) ||
     /^\/flutterwave\/live\/(?:checkout|school-configuration|allocation-review)$/.test(p) ||
-    /^\/subscriptions\/\d+\/(?:checkout|payment-link)$/.test(p) ||
+    /^\/subscriptions\/[^/]+\/(?:checkout|payment-link)$/.test(p) ||
     /^\/public\/nfc-payment-links\/checkout$/.test(p);
 }
 export const rejectRetiredPaymentWorkflows:RequestHandler=(req,res,next)=>{

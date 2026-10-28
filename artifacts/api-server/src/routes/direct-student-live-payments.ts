@@ -9,6 +9,11 @@ import { authenticateDirectStudentWebhook,directStudentReadiness,startDirectStud
 const router=Router();
 const positive=z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const scope=z.object({studentId:positive,termId:positive}).strict();
+const publicIdentifiers={
+  tx_ref:z.string().regex(/^SCV4_live_[A-Za-z0-9_-]{8,80}$/),
+  transaction_id:z.string().regex(/^[1-9][0-9]{0,15}$/)
+    .refine(value=>Number.isSafeInteger(Number(value))),
+};
 const owner=(req:Request)=>{const c=getUserContext(req);return c.user.status==="ACTIVE"&&
   c.roles.some(r=>r.role==="PLATFORM_OWNER"&&r.schoolId===null&&r.status==="ACTIVE");};
 const schoolAdmin=(req:Request,id:number)=>{const c=getUserContext(req);return c.user.status==="ACTIVE"&&
@@ -93,8 +98,7 @@ export const directStudentPublicRouter=Router();
 directStudentPublicRouter.get("/flutterwave/direct-student/callback",async(req,res)=>{
   res.setHeader("Cache-Control","no-store");
   if(!directLiveConfiguration().ready){res.status(409).json({error:"DIRECT_LIVE_RELEASE_DISABLED"});return;}
-  const body=z.object({tx_ref:z.string().regex(/^SCV4_live_[A-Za-z0-9_-]{8,80}$/),
-    transaction_id:z.string().regex(/^[1-9][0-9]{0,15}$/)}).safeParse(req.query);
+  const body=z.object(publicIdentifiers).safeParse(req.query);
   if(!body.success){res.status(400).json({error:"Invalid callback identifiers."});return;}
   try{res.json(await verifyDirectStudentPayment(pool,{reference:body.data.tx_ref,transactionId:body.data.transaction_id,actorId:null}));}
   catch(e){safeError(res,e);}
@@ -105,9 +109,12 @@ directStudentWebhookRouter.post("/",async(req,res)=>{
   try{
     if(!Buffer.isBuffer(req.body))throw new DirectPaymentBlocked("RAW_WEBHOOK_REQUIRED",400);
     authenticateDirectStudentWebhook(req.headers);
+    let payload:unknown;
+    try{payload=JSON.parse(req.body.toString("utf8"));}
+    catch{throw new DirectPaymentBlocked("INVALID_WEBHOOK",400);}
     const parsed=z.object({event:z.literal("charge.completed"),
-      data:z.object({id:z.union([z.string(),z.number().int().safe()]),tx_ref:z.string()})})
-      .safeParse(JSON.parse(req.body.toString("utf8")));
+      data:z.object({id:z.union([publicIdentifiers.transaction_id,z.number().int().positive().safe()]),
+        tx_ref:publicIdentifiers.tx_ref})}).safeParse(payload);
     if(!parsed.success)throw new DirectPaymentBlocked("INVALID_WEBHOOK",400);
     res.json(await verifyDirectStudentPayment(pool,{reference:parsed.data.data.tx_ref,
       transactionId:String(parsed.data.data.id),actorId:null}));

@@ -1,3 +1,5 @@
+> **HISTORICAL legacy release assessment.** Split/subaccount issuance is retired; any former external-hosting next step is superseded. This does not waive current direct-payment/BRO integrity guards. Current Replit-only policy: `../january-2027-no-split-payment-policy.md`.
+
 # EduCore LIVE: protected SQL managed-Publish blocker
 
 Reviewed: 2026-10-27. **Outcome: NO-GO for LIVE activation.**

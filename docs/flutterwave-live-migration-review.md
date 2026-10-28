@@ -1,3 +1,5 @@
+> **HISTORICAL split-era review — do not execute.** Retained DDL/evidence is not permission to install or activate legacy payment workflows. Current Replit-only policy: `january-2027-no-split-payment-policy.md`.
+
 # LIVE readiness additive migration review — 2026-10-21
 
 **2026-10-23 follow-up:** the [Development approval package](flutterwave-live-development-approval-package.md)

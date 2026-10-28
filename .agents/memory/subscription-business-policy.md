@@ -139,6 +139,18 @@ Production migration, publishing, live keys or live transactions.
 
 ## Prospective hosted collection and manual settlement
 
+**Historical only — superseded on 28 October 2026.** The definitive current
+business rules are recorded in `replit.md` and
+`docs/january-2027-no-split-payment-policy.md`. Do not reimplement the former
+₦5,000 hosted/manual distribution below.
+
+**Why:** The Owner explicitly repeated the no-split rules as definitive.
+
+**How to apply:** Retire issuance/configuration/release paths at UI, HTTP and
+service/provider boundaries while preserving historical schemas, records and
+authorized existing-reference reconciliation. Never use legacy flags as a
+fallback when direct LIVE is blocked.
+
 On 2026-10-27 the user explicitly confirmed: “Yes, use the manual ledger.”
 New hosted payments may collect the entire NGN 5,000 into Yetenia's merchant
 account rather than automatically splitting to a school subaccount. Record NGN

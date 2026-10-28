@@ -61,19 +61,11 @@ export class FlutterwaveLiveTransport {
       fail("LIVE_PROVIDER_UNAVAILABLE");
     }
   }
-  async checkout(input:{reference:string;email:string;schoolSubaccountId:string}) {
-    if(this.purpose!=="LEGACY_SPLIT")fail("LIVE_CHECKOUT_INPUT_INVALID");
-    if(!/^SCV3_live_[A-Za-z0-9_-]{8,80}$/.test(input.reference)
-      ||!/^RS_[A-Za-z0-9]{12,80}$/.test(input.schoolSubaccountId)
-      ||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))fail("LIVE_CHECKOUT_INPUT_INVALID");
-    const config=liveReleaseConfiguration(this.env);
-    const data=await this.request("payments",{method:"POST",body:JSON.stringify({
-      tx_ref:input.reference,amount:5000,currency:"NGN",redirect_url:config.callbackUrl,
-      customer:{email:input.email},
-      subaccounts:[{id:input.schoolSubaccountId,transaction_charge_type:"flat_subaccount",transaction_charge:1900}],
-    })});
-    if(!liveCheckoutUrl(data.link))fail("LIVE_CHECKOUT_LINK_INVALID");
-    return data.link as string;
+  async checkout(input:{reference:string;email:string;schoolSubaccountId:string}):Promise<string> {
+    // Signature retained for old callers; only historical GET verification is
+    // supported. Even complete old LIVE configuration cannot initiate a split.
+    void input;
+    return fail("LEGACY_SPLIT_WORKFLOW_ARCHIVED");
   }
   async collection(transactionId:string,reference:string,signal?:AbortSignal) {
     if(this.purpose!=="LEGACY_SPLIT")fail("LIVE_VERIFICATION_INPUT_INVALID");
@@ -108,7 +100,9 @@ export class FlutterwaveLiveTransport {
     const d=await this.request(`transactions/${transactionId}/verify`,{method:"GET"});
     if(String(d.id)!==transactionId || d.tx_ref!==reference || d.currency!=="NGN"
       || liveAmountMinor(d.amount)!==320000
-      || (Array.isArray(d.subaccounts)&&d.subaccounts.length>0) || d.subaccount_id || d.subaccount
+      || (d.subaccounts!=null&&(!Array.isArray(d.subaccounts)||d.subaccounts.length>0))
+      || ["subaccount_id","subaccount","split","split_ratio","split_type","split_value",
+        "transaction_charge","transaction_charge_type"].some(key=>d[key]!=null)
       || (typeof d.flw_ref==="string"&&d.flw_ref.length>200))fail("LIVE_VERIFICATION_MISMATCH");
     if(!["successful","failed","cancelled","pending"].includes(d.status))fail("LIVE_VERIFICATION_MISMATCH");
     // A failed or cancelled attempt is retryable only if the provider explicitly
