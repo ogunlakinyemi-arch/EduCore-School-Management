@@ -246,12 +246,12 @@ export function StudentNfcObligationsPanel({
 
   return <section className="panel mt-6 overflow-hidden" data-testid="panel-student-nfc">
     <div className="border-b border-[hsl(var(--border))] p-5 md:p-6">
-      <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />{platformAdminView?'Student platform fee and retained history':'Automatic NFC subscription'}</div>
-      <h2 className="display-font mt-1 text-xl font-bold">{platformAdminView?"Pay Yetenia's fixed ₦3,200 platform fee":'Term NFC fee, shown separately'}</h2>
+      <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />{platformAdminView||familyView?'Retained payment records':'Automatic NFC subscription'}</div>
+      <h2 className="display-font mt-1 text-xl font-bold">{platformAdminView||familyView?'NFC payment history':'Term NFC fee, shown separately'}</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
         {platformAdminView?<>School Admins can select one student and academic term for a direct, non-split Flutterwave payment to Yetenia EduCore. The platform fee is fixed at ₦3,200 and is not school-configurable. Checkout stays blocked until the direct LIVE release gates are satisfied.
         {' '}The separate parent-to-school NFC card/subscription fee workflow is unchanged and does not satisfy this platform obligation.
-        {' '}The records below retain their original historical amounts and allocations. They are not a new price list or permission to charge again.</>:<>
+        {' '}The records below retain their original historical amounts and allocations. They are not a new price list or permission to charge again.</>:familyView?<>Existing NFC records retain their original amounts and references. These records are not a new fee announcement.</>:<>
         NFC Card Subscription — {minorToNaira(500000)} per term. Payable separately through Flutterwave when genuine payments are configured. Schools cannot create or change it.
         {isOwner && <> New checkout allocations: {minorToNaira(190000)} to the school and {minorToNaira(310000)} to the platform; an eligible Business Relationship Officer (BRO) receives {minorToNaira(10000)} from the platform portion. The platform bears provider fees. Historical payments retain their original allocations. These are not verified bank settlements.</>}
         {teacherView && ' The school allocation is school revenue; it is not personal Teacher income and not an amount a Teacher pays.'}
@@ -262,7 +262,7 @@ export function StudentNfcObligationsPanel({
     {message && <div role={message.tone === 'error' ? 'alert' : 'status'} className="m-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] px-4 py-3 text-sm font-semibold">{message.text}</div>}
     {query.isLoading ? <div className="p-6"><div className="skeleton h-24 rounded-xl" /></div>
       : query.isError ? <ErrorState retry={() => void query.refetch()} />
-      : !rows.length ? <EmptyState icon={ShieldCheck} title="No NFC obligations" description="No automatic NFC term fees are recorded for the students you can see." />
+      : !rows.length ? <EmptyState icon={ShieldCheck} title="No NFC records" description="No NFC payment records are available for the students you can see." />
       : <>
         <dl className="grid grid-cols-2 gap-3 p-5 text-xs md:grid-cols-5 md:p-6" data-testid="nfc-summary">
           {([['Eligible', summary.eligible], ['Paid', summary.paid], ['Unpaid', summary.unpaid], ['Pending', summary.pending], ['Failed', summary.failed]] as const).map(([l, v]) =>
@@ -285,7 +285,7 @@ export function StudentNfcObligationsPanel({
             <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-center">
               <div><div className="text-sm font-bold">{r.studentName}</div>
                 <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{r.className} {r.section} · {r.sessionName}, {r.termName}{isOwner && ` · ${r.schoolName}`}</div></div>
-              <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">NFC Card Subscription — ₦5,000 per term</div>
+              <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">Recorded NFC amount</div>
                 <div className="font-bold tabular-nums">{r.status === 'EXEMPT' || r.status === 'LEGACY_REVIEW' ? minorToNaira(0) : minorToNaira(r.amountMinor)}</div></div>
               {teacherView ? <div /> : <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">Ordinary fees + NFC</div>
                 <div className="font-bold tabular-nums">{minorToNaira(r.ordinaryFeesMinor)} + {minorToNaira(r.amountMinor)} = {minorToNaira(r.totalMinor)}</div>
@@ -296,7 +296,7 @@ export function StudentNfcObligationsPanel({
                     <CreditCard size={14} />{r.status === 'FAILED' ? 'Start new checkout' : 'Pay NFC fee'}</Button>)}
               </div>
             </div>
-            {r.status === 'LEGACY_REVIEW' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Existing school NFC charge (invoice #{r.legacyInvoiceId}) preserved for Owner review. No additional automatic NFC charge has been created.</p>}
+            {r.status === 'LEGACY_REVIEW' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Existing school NFC charge (invoice #{r.legacyInvoiceId}) preserved for Owner review.</p>}
             {r.status === 'EXEMPT' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Exempt for this term. No payment is required.</p>}
             {(r.reference || r.paidAt) && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{r.reference && <>Ref <span className="font-mono">{r.reference}</span></>}{r.paidAt && <> · {date(r.paidAt)}</>} · {r.paymentMethod}</p>}
             {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · BRO {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}

@@ -29,7 +29,7 @@ export function Dashboard() {
 
   if (isPlatformOwner) {
     return (
-      <div className="w-full min-w-0">
+      <div className="owner-dashboard w-full min-w-0 max-w-full" data-testid="owner-dashboard">
         <Link href="/account-applications" data-testid="link-owner-applications"
           className="panel mb-5 flex w-full min-w-0 flex-wrap items-center justify-between gap-2 p-4 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]">
           <span>New Users / Applications</span>
@@ -252,9 +252,9 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
       
       <Suspense fallback={<div role="status" className="mt-8 text-sm">Loading applications…</div>}><AccountApplicationsPanel /></Suspense>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="mt-8 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="panel p-6 md:p-8">
-          <div className="mb-6 flex items-start justify-between">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="eyebrow">Network pulse</div>
               <h2 className="display-font mt-2 text-2xl font-bold">Payments and allocation</h2>
@@ -262,7 +262,7 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
             <span className="rounded-full bg-[hsl(var(--accent)/.2)] px-3 py-1.5 text-xs font-bold text-[hsl(var(--primary))] dark:text-[hsl(var(--accent))]">Live ledger</span>
           </div>
           
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid min-w-0 gap-4 2xl:grid-cols-3">
             <div className="rounded-2xl bg-[hsl(var(--primary))] p-5 text-[hsl(var(--primary-foreground))] shadow-lg">
               <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">Gross collected</div>
               <div className="display-font mt-8 text-3xl font-bold">{money(data?.revenue)}</div>

@@ -271,7 +271,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
       {open && <button className="fixed inset-0 z-30 bg-[hsl(var(--foreground)/.4)] backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} aria-label="Close menu" data-testid="button-dismiss-menu" />}
       <div className="flex min-h-[100dvh] w-full min-w-0 max-w-full flex-col md:pl-[260px]">
-        <header className="sticky top-0 z-20 flex min-h-[76px] shrink-0 flex-col justify-center gap-2 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.95)] px-5 py-3 backdrop-blur-xl sm:h-[76px] sm:flex-row sm:items-center sm:justify-between sm:py-0 md:px-8">
+        <header className="sticky top-0 z-20 flex min-w-0 max-w-full min-h-[76px] shrink-0 flex-col justify-center gap-2 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.95)] px-5 py-3 backdrop-blur-xl xl:h-[76px] xl:flex-row xl:items-center xl:justify-between xl:py-0 md:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-4">
             <button className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={22} /></button>
             <div className="min-w-0">
@@ -283,9 +283,9 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </div>
-          <div className="flex min-w-0 max-w-full items-center gap-3 sm:shrink-0">
+          <div className="flex min-w-0 max-w-full items-center gap-3 xl:shrink-0">
             {isPlatformOwner && (
-              <div className="min-w-0 flex-1 sm:flex-none">
+              <div className="min-w-0 flex-1 xl:flex-none">
                 <TenantPicker />
               </div>
             )}

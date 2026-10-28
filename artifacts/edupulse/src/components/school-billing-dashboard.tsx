@@ -62,8 +62,8 @@ export function LiveSchoolBilling({context,refresh}:{context:SchoolBillingContex
     }finally{inFlight.current.delete(studentId);setBusy(null);refresh();}
   };
   return <section className="space-y-4" aria-label="LIVE school billing">
-    <h1 className="text-2xl font-bold">Student subscriptions · LIVE</h1>
-    <p>{context.termName??'No unambiguous current term'} · NGN 5,000 per student</p>
+    <h1 className="text-2xl font-bold">Student subscription records</h1>
+    <p>{context.termName??'No unambiguous current term'}</p>
     <p>Only independently verified server records confirm payment. A browser return or retained reference does not.
       Finalization requires an authenticated webhook and reviewed allocation evidence.</p>
     {context.reason!=='LIVE_CONTEXT'&&<p role="status">{context.reason}. New checkout is disabled.</p>}

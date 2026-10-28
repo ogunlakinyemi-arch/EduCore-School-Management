@@ -259,6 +259,20 @@
   background-image: linear-gradient(hsl(var(--primary) / 0.03) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary) / 0.03) 1px, transparent 1px);
   background-size: 32px 32px;
 }
+/* Grid min-content widths must not expand the Owner page beyond the shell.
+   Tables keep their own scroll containers; navigation is never clipped. */
+.owner-dashboard {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.owner-dashboard .grid > *,
+.owner-dashboard .panel,
+.owner-dashboard .overflow-x-auto {
+  min-width: 0;
+  max-width: 100%;
+}
 .display-font {
   font-family: var(--app-font-serif);
   letter-spacing: -0.02em;

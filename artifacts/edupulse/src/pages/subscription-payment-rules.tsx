@@ -4,6 +4,7 @@ import { Ban, Eye, FileClock, FilePlus2, Handshake, Landmark, Layers3, Lock, Pen
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, cx, date } from '@/components/shared';
 import { DirectAssistanceCheckout } from '@/components/direct-assistance-checkout';
 import {BroCommissionAccruals,type BroCommissionSnapshot} from '@/components/bro-commission-accruals';
+import { useOwnerPaymentOptions } from '@/components/owner-payment-options';
 
 /* ---------- Types ---------- */
 export type StaffRuleSnapshot = { id: number; version: number; priceMinor: number; schoolShareMinor: number; partnerCommissionMinor: number; effectiveAt: string; status: string };
@@ -409,14 +410,19 @@ function RetireDialog({ p, onRetire, onClose, onDone }: { p: RuleProposalSnapsho
 }
 
 /* ---------- Assistance request ---------- */
-function AssistanceForm({ onSubmit }: { onSubmit: (i: AssistanceRequestInput) => Promise<void> }) {
+export function AssistanceForm({ onSubmit }: { onSubmit: (i: AssistanceRequestInput) => Promise<void> }) {
   const blank = { schoolId: '', studentId: '', termId: '', amount: '3200', note: '' };
   const [f, setF] = useState(blank); const [err, setErr] = useState<string[]>([]); const [busy, setBusy] = useState(false);
-  const id = (k: 'schoolId' | 'studentId' | 'termId') => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value.replace(/\D/g, '') }));
+  const { authorized, schools, choices, selectedSchool } = useOwnerPaymentOptions(f.schoolId);
+  const loading = schools.isFetching || (!!f.schoolId && choices.isFetching);
+  const optionsError = schools.isError || (!!f.schoolId && choices.isError);
+  const validScope = authorized && selectedSchool && !loading && !optionsError
+    && choices.data?.students.some(s => String(s.id) === f.studentId) === true
+    && choices.data?.terms.some(t => String(t.id) === f.termId) === true;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const errs: string[] = []; const amountMinor = nairaToMinor(f.amount);
-    if (!Number(f.schoolId) || !Number(f.studentId) || !Number(f.termId)) errs.push('School, student and term IDs are required.');
+    if (!validScope) errs.push('Select an available school, student and academic term.');
     if (amountMinor === null || amountMinor <= 0) errs.push('Enter a valid naira amount (max two decimals).');
     if (f.note.trim().length < 5) errs.push('Add a short note describing the request.');
     if (errs.length || amountMinor === null) { setErr(errs); return; }
@@ -424,15 +430,29 @@ function AssistanceForm({ onSubmit }: { onSubmit: (i: AssistanceRequestInput) =>
     try { await onSubmit({ schoolId: Number(f.schoolId), studentId: Number(f.studentId), termId: Number(f.termId), amountMinor, requestNote: f.note.trim() }); setF(blank); } catch (er) { setErr([safeError(er)]); } finally { setBusy(false); }
   };
   return <form onSubmit={submit} className="space-y-4" data-testid="form-assistance">
-    <div className="grid grid-cols-3 gap-2">
-      <Field label="School ID"><input className={entry} inputMode="numeric" value={f.schoolId} onChange={id('schoolId')} data-testid="input-assist-school" /></Field>
-      <Field label="Student ID"><input className={entry} inputMode="numeric" value={f.studentId} onChange={id('studentId')} data-testid="input-assist-student" /></Field>
-      <Field label="Term ID"><input className={entry} inputMode="numeric" value={f.termId} onChange={id('termId')} data-testid="input-assist-term" /></Field>
+    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+      <Field label="School"><select aria-label="School" className={cx(entry,'min-w-0 max-w-full')} value={f.schoolId} disabled={busy || !authorized || schools.isFetching || schools.isError}
+        onChange={e => { setF(p => ({...p,schoolId:e.target.value,studentId:'',termId:''})); setErr([]); }} data-testid="select-assist-school">
+        <option value="">Select a school</option>{schools.data?.schools.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+      </select></Field>
+      <Field label="Student"><select aria-label="Student" className={cx(entry,'min-w-0 max-w-full')} value={f.studentId} disabled={busy || !selectedSchool || loading || !!optionsError}
+        onChange={e => setF(p => ({...p,studentId:e.target.value}))} data-testid="select-assist-student">
+        <option value="">Select a student</option>{choices.data?.students.map(s=><option key={s.id} value={s.id}>{s.firstName} {s.lastName} · {s.admissionNo}</option>)}
+      </select></Field>
+      <Field label="Academic term"><select aria-label="Academic term" className={cx(entry,'min-w-0 max-w-full')} value={f.termId} disabled={busy || !selectedSchool || loading || !!optionsError}
+        onChange={e => setF(p => ({...p,termId:e.target.value}))} data-testid="select-assist-term">
+        <option value="">Select an academic term</option>{choices.data?.terms.map(t=><option key={t.id} value={t.id}>{t.sessionName} · {t.name} ({t.startDate} – {t.endDate})</option>)}
+      </select></Field>
     </div>
-    <Field label="Amount (₦)"><input className={entry} inputMode="decimal" value={f.amount} onChange={e => setF(p => ({ ...p, amount: e.target.value }))} data-testid="input-assist-amount" /></Field>
+    {!authorized ? <p role="alert">Active Platform Owner access is required.</p>
+      : loading ? <p role="status">Loading authorized schools, students and academic terms…</p>
+      : optionsError ? <p role="alert">Payment choices could not be loaded. <button type="button" onClick={()=>{void schools.refetch();if(selectedSchool)void choices.refetch();}}>Retry choices</button></p>
+      : !schools.data?.schools.length ? <p role="status">No authorized schools are available.</p>
+      : selectedSchool && (!choices.data?.students.length || !choices.data?.terms.length) ? <p role="status">No students or configured academic terms are available for this school.</p> : null}
+    <Field label="Fixed platform fee (₦)"><input className={entry} readOnly aria-readonly="true" value={f.amount} data-testid="input-assist-amount" /></Field>
     <Field label="Request note"><textarea className={cx(entry, 'min-h-[68px]')} value={f.note} onChange={e => setF(p => ({ ...p, note: e.target.value }))} data-testid="input-assist-note" /></Field>
     {err.length > 0 && <ul role="alert" className={cx(errCls, 'list-disc pl-5')} data-testid="errors-assistance">{err.map(m => <li key={m}>{m}</li>)}</ul>}
-    <Button type="submit" disabled={busy} testId="button-request-assistance">{busy ? 'Recording…' : 'Record request (unverified)'}</Button>
+    <Button type="submit" disabled={busy || !validScope} testId="button-request-assistance">{busy ? 'Recording…' : 'Record request (unverified)'}</Button>
   </form>;
 }
 

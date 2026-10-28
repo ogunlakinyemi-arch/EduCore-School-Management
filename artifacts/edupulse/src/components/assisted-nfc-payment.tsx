@@ -34,7 +34,7 @@ export function AssistedNfcPayment({ schoolId, onCreated }: { schoolId?: number;
     </Modal>}
   </>;
 }
-function PlatformPaymentForm({ schoolId, identity, onCreated }: { schoolId: number; identity: string; onCreated?: () => void }) {
+export function PlatformPaymentForm({ schoolId, identity, onCreated }: { schoolId: number; identity: string; onCreated?: () => void }) {
   const options = useQuery({
     queryKey: assistedOptionsKey(identity, schoolId),
     queryFn: ({ signal }) => customFetch<AssistedOptions>(`/api/student-nfc/assisted-options?schoolId=${schoolId}`, { method: 'GET', signal }),

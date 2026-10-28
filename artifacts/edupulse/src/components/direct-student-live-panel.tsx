@@ -27,7 +27,8 @@ export function DirectStudentLivePanel({schoolId,selectionOptions,showAssistance
   const [attempt,setAttempt]=useState<{state:string;reference:string;checkoutUrl:string|null}|null>(null);
   const key=useRef<string|null>(null);
   const inflight=useRef(false);
-  const inputValid=positive(student)&&positive(term);
+  const inputValid=positive(student)&&positive(term)&&(!selectionOptions||(
+    selectionOptions.students.some(s=>String(s.id)===student)&&selectionOptions.terms.some(t=>String(t.id)===term)));
   const params={studentId:Number(student),termId:Number(term)};
   const status=useGetDirectStudentLiveReadiness(schoolId,params,{query:{
     queryKey:[...getGetDirectStudentLiveReadinessQueryKey(schoolId,params),`actor:${actorId??'none'}`],
