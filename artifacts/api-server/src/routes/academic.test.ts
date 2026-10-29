@@ -8,6 +8,12 @@ const poolMock = vi.hoisted(() => ({
   query: vi.fn(async (sql: string, values: unknown[] = []) => {
     state.calls.push({ sql, values });
     if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
+    if (sql.includes("FROM academic_sessions")) {
+      return { rows: [{ id: 11, schoolId: values[0], name: "2026/2027", status: "ACTIVE" }] };
+    }
+    if (sql.includes("FROM academic_terms")) {
+      return { rows: [{ id: 12, schoolId: 1, sessionId: 11, name: "Second term", status: "ACTIVE" }] };
+    }
     if (sql.includes("INSERT INTO subjects")) {
       return { rows: [{ id: 81, schoolId: 1, name: "Mathematics", code: "MTH", description: null, status: "ACTIVE" }] };
     }
@@ -92,6 +98,36 @@ async function request(path: string, role: string, method = "GET", body?: unknow
 }
 
 describe("school operational academic authorization", () => {
+  it.each(["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER", "ACCOUNTANT"])(
+    "allows %s to read school academic periods used by finance pickers", async role => {
+      const sessions = await request("/academic-sessions?schoolId=1", role);
+      expect(sessions.status).toBe(200);
+      expect(((await sessions.json()) as { name: string }[])[0].name).toBe("2026/2027");
+      const terms = await request("/academic-sessions/11/terms?schoolId=1", role);
+      expect(terms.status).toBe(200);
+      expect(((await terms.json()) as { name: string }[])[0].name).toBe("Second term");
+      expect(state.calls.every(({ sql }) => !/\b(INSERT|UPDATE|DELETE)\b/.test(sql))).toBe(true);
+    },
+  );
+
+  it.each(["PARENT", "STUDENT", "STAFF", "PARTNER"])(
+    "does not expose the school-wide academic catalog to %s", async role => {
+      for (const path of ["/academic-sessions?schoolId=1", "/academic-sessions/11/terms?schoolId=1"]) {
+        expect((await request(path, role)).status).toBe(404);
+      }
+      expect(state.calls).toHaveLength(0);
+    },
+  );
+
+  it("keeps Accountant period reads tenant-scoped and denies academic writes and unrelated reads", async () => {
+    for (const path of ["/academic-sessions?schoolId=2", "/academic-sessions/11/terms?schoolId=2", "/subjects?schoolId=1"]) {
+      expect((await request(path, "ACCOUNTANT")).status).toBe(404);
+    }
+    expect((await request("/academic-sessions?schoolId=1", "ACCOUNTANT", "POST", {
+      name: "2026/2027", startDate: "2026-09-01", endDate: "2027-07-31", isCurrent: false,
+    })).status).toBe(404);
+    expect(state.calls).toHaveLength(0);
+  });
   it("retains platform-owner school academic reads without granting subject writes", async () => {
     const read = await request("/subjects?schoolId=1", "PLATFORM_OWNER");
     expect(read.status).toBe(200);

@@ -67,6 +67,12 @@ export function BulkAssignment({ schoolId, structures, onChanged }: { schoolId: 
   const chosen = matching.find(s => s.id === Number(structureId));
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (sessions.isLoading || classes.isLoading || terms.isLoading || sessions.isError || classes.isError || terms.isError ||
+        !sessions.data?.some(s => s.id === Number(sessionId) && s.schoolId === schoolId) ||
+        !terms.data?.some(t => t.id === Number(termId) && t.sessionId === Number(sessionId)) ||
+        !classes.data?.some(c => c.id === Number(classId) && c.schoolId === schoolId)) {
+      setFailure('Load and select a valid academic session, term and class for this school before issuing invoices.'); return;
+    }
     if (!chosen || dueDate < issueDate) { setFailure('Select a matching published structure and a due date on or after the issue date.'); return; }
     if (!window.confirm(`Issue invoices to active students in ${classes.data?.find(c => c.id === Number(classId))?.name ?? 'this class'}${section ? `, section ${section}` : ''}? Existing assignments will be skipped.`)) return;
     try {
@@ -79,7 +85,7 @@ export function BulkAssignment({ schoolId, structures, onChanged }: { schoolId: 
   const sections = [...new Set((classes.data ?? []).filter(c => c.id === Number(classId)).map(c => c.section).filter(Boolean).concat(structures.filter(s => s.classId === Number(classId) && s.sessionId === Number(sessionId) && s.termId === Number(termId)).map(s => s.section ?? '').filter(Boolean)))];
   return <section className="panel mt-6 overflow-hidden" data-testid="section-bulk-assignment">
     <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">Issue at scale · duplicate-aware</div><h2 className="display-font mt-1 text-xl font-bold">Bulk invoice assignment</h2><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Choose an academic cohort and its published fee version. Each eligible student receives an invoice; existing assignments are reported, not silently replaced.</p></div>
-    {sessions.isLoading || classes.isLoading ? <div className="space-y-3 p-6"><div className="skeleton h-12 rounded-xl" /><div className="skeleton h-12 rounded-xl" /></div> : sessions.isError || classes.isError ? <ErrorState retry={() => { sessions.refetch(); classes.refetch(); }} /> : <form onSubmit={submit} className="space-y-5 p-5 md:p-6">
+    {sessions.isLoading || classes.isLoading ? <div className="space-y-3 p-6"><div className="skeleton h-12 rounded-xl" /><div className="skeleton h-12 rounded-xl" /></div> : sessions.isError || classes.isError ? <ErrorState message={`Bulk assignment could not load ${sessions.isError ? 'academic sessions' : 'classes'}. ${errorMessage(sessions.isError ? sessions.error : classes.error)}`} retry={() => { sessions.refetch(); classes.refetch(); }} /> : <form onSubmit={submit} className="space-y-5 p-5 md:p-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Field label="Academic session"><select required className={input} value={sessionId} onChange={e => { setSessionId(e.target.value); setTermId(''); setStructureId(''); setResult(null); }}><option value="">Select session</option>{sessions.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
         <Field label="Term"><select required className={input} value={termId} disabled={!sessionId || terms.isLoading} onChange={e => { setTermId(e.target.value); setStructureId(''); setResult(null); }}><option value="">Select term</option>{terms.data?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>{terms.isError && <button type="button" className="mt-1 text-xs underline" onClick={() => terms.refetch()}>Retry terms</button>}</Field>
@@ -90,7 +96,7 @@ export function BulkAssignment({ schoolId, structures, onChanged }: { schoolId: 
       {sessionId && termId && classId && !matching.length && <p className="rounded-xl bg-[hsl(var(--secondary))] p-4 text-sm">No published structure matches this exact session, term, class and section. Publish one in Fee structures first.</p>}
       <div className="grid gap-4 sm:grid-cols-2"><Field label="Issue date"><input type="date" required className={input} value={issueDate} onChange={e => setIssueDate(e.target.value)} /></Field><Field label="Due date"><input type="date" required min={issueDate} className={input} value={dueDate} onChange={e => setDueDate(e.target.value)} /></Field></div>
       {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
-      <Button type="submit" disabled={!chosen || bulk.isPending}>{bulk.isPending ? 'Issuing invoices…' : 'Review and issue invoices'}</Button>
+      <Button type="submit" disabled={!chosen || bulk.isPending || terms.isLoading || terms.isError}>{bulk.isPending ? 'Issuing invoices…' : 'Review and issue invoices'}</Button>
     </form>}
     {result && <div className="border-t border-[hsl(var(--border))] p-5 md:p-6" role="status"><div className="eyebrow">Assignment record</div><div className="mt-2 flex flex-wrap gap-3"><strong>{result.createdCount} assigned</strong><span>·</span><strong>{result.skippedCount} skipped</strong></div><div className="mt-4 max-h-72 overflow-y-auto divide-y divide-[hsl(var(--border))] rounded-xl border border-[hsl(var(--border))]">{result.results.map((item, index) => <div key={`${item.studentId}-${index}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"><span className="font-medium">Student #{item.studentId} {item.invoiceId ? `· Invoice #${item.invoiceId}` : ''}</span><span className="flex items-center gap-2"><StatusPill value={item.status} /><span className="text-[hsl(var(--muted-foreground))]">{item.reason || (item.status === 'CREATED' ? 'Invoice issued' : 'Not assigned')}</span></span></div>)}</div></div>}
   </section>;

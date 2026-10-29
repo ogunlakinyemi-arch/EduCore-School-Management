@@ -1,10 +1,8 @@
 import { useAuth } from '@clerk/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, Nfc, ShieldCheck } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Nfc, ShieldCheck } from 'lucide-react';
 import {
-  createStudentSubscriptionCheckout,
-  ApiError,
   customFetch,
   getGetStudentSubscriptionPaymentQueryKey,
   getStudentSubscriptionPayment,
@@ -16,16 +14,13 @@ import {
   type StudentNfcSummary,
 } from '@workspace/api-client-react';
 import { AssistedNfcPayment } from '@/components/assisted-nfc-payment';
-import { NfcPaymentLinkControls } from '@/components/nfc-payment-link-controls';
-import { Button, EmptyState, ErrorState, StatusPill, money, date } from '@/components/shared';
+import { EmptyState, ErrorState, StatusPill, money, date } from '@/components/shared';
 import {
   checkoutEvidenceMatchesServer,
   findCheckoutForFlutterwaveReturn,
-  getStudentCheckoutIdempotencyKey,
   isPaymentStatusPolling,
   loadStudentCheckoutAttempts,
   parseFlutterwaveReturn,
-  safeStudentCheckoutUrl,
   saveStudentCheckoutAttempts,
   type StudentCheckoutAttempt,
 } from '@/pages/subscription-payment-helpers';
@@ -89,10 +84,8 @@ function RowPayment({ row, onPaid }: { row: NfcObligationRow; onPaid: () => void
   if (!enabled) return null;
   if (q.isError) return <p className="mt-2 text-xs text-[hsl(var(--destructive))]">Could not confirm payment status. <button className="font-bold underline" onClick={() => void q.refetch()}>Retry</button></p>;
   if (!matches || !payment) return <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Checking payment status with the server...</p>;
-  const url = safeStudentCheckoutUrl(payment.checkoutUrl);
   return <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]" data-testid={`nfc-payment-status-${row.studentId}-${row.termId}`}>
     Server status: {payment.status.replaceAll('_', ' ').toLowerCase()}. {isPaymentStatusPolling(payment) && 'Refreshing every 30 seconds.'}
-    {payment.status === 'PENDING' && url && <> <a className="font-semibold text-[hsl(var(--primary))] underline" href={url} target="_blank" rel="noreferrer">Reopen secure checkout</a></>}
   </p>;
 }
 
@@ -102,18 +95,15 @@ export function StudentNfcObligationsPanel({
   const qc = useQueryClient();
   const context = useGetAuthorizedContext().data;
   const isOwner = context?.isPlatformOwner === true;
-  const platformAdminView = !isOwner && (context?.roles ?? []).some(r=>r.status==='ACTIVE'&&r.role==='SCHOOL_ADMIN'&&r.schoolId===schoolId);
+  const platformAdminView = !isOwner && (context?.roles ?? []).some(r=>r.status==='ACTIVE'&&['SCHOOL_ADMIN','ACCOUNTANT'].includes(r.role)&&r.schoolId===schoolId);
   const familyView = !isOwner && (familyPortal || ((context?.roles ?? []).some(r => r.status === 'ACTIVE' && ['PARENT', 'STUDENT'].includes(r.role))
     && !(context?.roles ?? []).some(r => r.status === 'ACTIVE' && ['SCHOOL_ADMIN', 'ACCOUNTANT'].includes(r.role))));
   const query = useStudentNfcObligations({studentId,schoolId});
   const verify = useVerifyStudentSubscriptionPayment();
-  const checkout = useMutation({
-    mutationFn: ({ subscriptionId, idempotencyKey }: { subscriptionId: number; idempotencyKey: string }) =>
-      createStudentSubscriptionCheckout(subscriptionId, { headers: { 'Idempotency-Key': idempotencyKey } }),
-  });
   const [message, setMessage] = useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(null);
   const [f, setF] = useState({ schoolId: '', className: '', section: '', sessionId: '', termId: '' });
   const processed = useRef<string | null>(null);
+  // Existing-reference reconciliation still needs its concurrency guard.
   const inflight = useRef(new Set<number>());
   const rows = useMemo(() => (query.data?.rows ?? []).filter(r => !studentId || r.studentId === studentId), [query.data, studentId]);
 
@@ -205,36 +195,6 @@ export function StudentNfcObligationsPanel({
     setMessage({ tone: 'warn', text: 'This return does not match a saved checkout for your visible records. Payment remains unverified.' });
   }, [query.isLoading, query.isError, query.data]);
 
-  const pay = async (row: NfcObligationRow) => {
-    if (!row.canPay || isOwner || !row.subscriptionId || inflight.current.has(row.subscriptionId)) return;
-    const subscriptionId = row.subscriptionId;
-    inflight.current.add(subscriptionId);
-    try {
-      const attempts = loadStudentCheckoutAttempts(row.schoolId);
-      const prior = attempts.find(a => a.requestedSubscriptionId === subscriptionId);
-      if (prior && !prior.payment) { setMessage({ tone: 'warn', text: 'The prior checkout outcome is still unknown. Wait for server reconciliation.' }); return; }
-      const idempotencyKey = getStudentCheckoutIdempotencyKey(row.schoolId, subscriptionId, window.sessionStorage, undefined, row.status === 'FAILED');
-      const pending: StudentCheckoutAttempt = { requestedSubscriptionId: subscriptionId, idempotencyKey, payment: null, providerTransactionId: null };
-      const base = attempts.filter(a => a.idempotencyKey !== idempotencyKey);
-      saveStudentCheckoutAttempts(row.schoolId, [...base, pending]);
-      setMessage(null);
-      const res = await checkout.mutateAsync({ subscriptionId, idempotencyKey });
-      const p = res.payment;
-      if (p.subscriptionId !== subscriptionId || p.schoolId !== row.schoolId) throw new Error('The checkout response did not match the selected record.');
-      saveStudentCheckoutAttempts(row.schoolId, [...base, { ...pending, payment: p }]);
-      invalidateAll();
-      const url = safeStudentCheckoutUrl(p.checkoutUrl);
-      if (p.status === 'PENDING' && url) { window.location.assign(url); return; }
-      setMessage({ tone: p.status === 'FAILED' ? 'error' : 'warn', text: `The server reports ${p.status.replaceAll('_', ' ').toLowerCase()}. No secure checkout is available.` });
-    } catch (e) {
-      if(e instanceof ApiError && ((e.status>=400 && e.status<500) || e.status===503)) {
-        const saved=loadStudentCheckoutAttempts(row.schoolId);
-        saveStudentCheckoutAttempts(row.schoolId,saved.filter(a=>a.requestedSubscriptionId!==subscriptionId || a.payment!=null));
-      }
-      setMessage({ tone: 'error', text: e instanceof Error ? e.message : 'Checkout could not be started.' });
-    } finally { inflight.current.delete(subscriptionId); }
-  };
-
   const sel = 'rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2.5 py-1.5 text-xs font-semibold';
   const filterSel = (key: 'schoolId' | 'className' | 'section' | 'sessionId' | 'termId', label: string) => {
     const o = opts(key);
@@ -246,8 +206,8 @@ export function StudentNfcObligationsPanel({
 
   return <section className="panel mt-6 overflow-hidden" data-testid="panel-student-nfc">
     <div className="border-b border-[hsl(var(--border))] p-5 md:p-6">
-      <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />{platformAdminView||familyView?'Retained payment records':'Automatic NFC subscription'}</div>
-      <h2 className="display-font mt-1 text-xl font-bold">{platformAdminView||familyView?'NFC payment history':'Term NFC fee, shown separately'}</h2>
+      <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />Retained NFC records</div>
+      <h2 className="display-font mt-1 text-xl font-bold">NFC payment and obligation history</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
         {platformAdminView?<>School Admins can select one student and academic term for a direct, non-split Flutterwave payment to Yetenia EduCore. The platform fee is fixed at ₦3,200 and is not school-configurable. Checkout stays blocked until the direct LIVE release gates are satisfied.
         {' '}The separate parent-to-school NFC card/subscription fee workflow is unchanged and does not satisfy this platform obligation.
@@ -284,22 +244,18 @@ export function StudentNfcObligationsPanel({
             <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-center">
               <div><div className="text-sm font-bold">{r.studentName}</div>
                 <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{r.className} {r.section} · {r.sessionName}, {r.termName}{isOwner && ` · ${r.schoolName}`}</div></div>
-              <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">Recorded NFC amount</div>
-                <div className="font-bold tabular-nums">{r.status === 'EXEMPT' || r.status === 'LEGACY_REVIEW' ? minorToNaira(0) : minorToNaira(r.amountMinor)}</div></div>
-              {teacherView ? <div /> : <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">Ordinary fees + NFC</div>
-                <div className="font-bold tabular-nums">{minorToNaira(r.ordinaryFeesMinor)} + {minorToNaira(r.amountMinor)} = {minorToNaira(r.totalMinor)}</div>
+               <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">Original recorded NFC amount · not current pricing</div>
+                 <div className="font-bold tabular-nums">{minorToNaira(r.amountMinor)}</div></div>
+               {teacherView ? <div /> : <div className="text-xs"><div className="text-[hsl(var(--muted-foreground))]">Separate school fees</div>
+                 <div className="font-bold tabular-nums">{minorToNaira(r.ordinaryFeesMinor)}</div>
                 {r.ordinaryFeesAssigned === false && <div className="mt-0.5 text-[hsl(var(--muted-foreground))]" data-testid={`nfc-scheduled-${r.studentId}-${r.termId}`}>Ordinary fees scheduled, not yet invoiced</div>}</div>}
               <div className="flex items-center gap-2"><span title={nfcFeeStatusLabel(r)}><StatusPill value={nfcFeeStatusLabel(r)} /></span>
-                {!platformAdminView && !familyView && r.canPay && !isOwner && ['UNPAID', 'FAILED'].includes(r.status) && r.subscriptionId && (
-                  <Button onClick={() => void pay(r)} disabled={checkout.isPending} testId={`button-pay-nfc-${r.studentId}-${r.termId}`}>
-                    <CreditCard size={14} />{r.status === 'FAILED' ? 'Start new checkout' : 'Pay NFC fee'}</Button>)}
               </div>
             </div>
             {r.status === 'LEGACY_REVIEW' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Existing school NFC charge (invoice #{r.legacyInvoiceId}) preserved for Owner review.</p>}
             {r.status === 'EXEMPT' && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Exempt for this term. No payment is required.</p>}
             {(r.reference || r.paidAt) && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{r.reference && <>Ref <span className="font-mono">{r.reference}</span></>}{r.paidAt && <> · {date(r.paidAt)}</>} · {r.paymentMethod}</p>}
-            {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · BRO {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}
-            {!platformAdminView && !teacherView && !isOwner && <NfcPaymentLinkControls row={r} familyView={familyView} />}
+             {showAllocations && r.status === 'PAID' && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Historical allocation, unchanged: School {minorToNaira(r.schoolAllocatedMinor)} · Platform {minorToNaira(r.platformAllocatedMinor)}{isOwner && <> · BRO {minorToNaira(r.partnerAllocatedMinor)}</>}</p>}
             {!teacherView && !isOwner && <RowPayment row={r} onPaid={onPaid} />}
           </article>)}
         </div>

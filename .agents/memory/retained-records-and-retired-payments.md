@@ -8,6 +8,18 @@ that former test records are being repurposed as real records. This supersedes
 any inference that a test label authorizes cleanup, anonymization, conversion,
 repricing or reset.
 
+Historical QA labels also do not establish that records are safe to include in
+a public-facing product demo. Obtain explicit fictional-data provenance and
+authorization before filming authenticated school/family records.
+
+**Why:** The user requires real-application demonstrations without disclosing
+real student, parent or financial data; older test-labelled records may now be
+operational history.
+
+**How to apply:** Use separately authorized fictional demo data rather than
+assuming an old fixture manifest permits filming. A school-scoped demo does not
+authorize creating a global Owner or exposing other tenants in an Owner view.
+
 **Why:** The user explicitly prohibited deleting or overwriting student, school,
 subscription, payment, receipt, card/device, BRO and audit records when retiring
 school split settlements and Hosted Payments.
@@ -40,6 +52,16 @@ This does not withdraw school-approved bank instructions for parent fee invoices
 retain authorized historical settlement/audit reads. Keep school settlement
 configuration mutations retired, while preserving the separate NGN 3,200 Student
 subscription flow and eligible NGN 150 internal BRO ledger.
+
+School-invoice partial-transfer rules are not retired platform split rules.
+Keep them scoped to school-controlled invoices, including separate school card
+charges; never apply them to the fixed platform subscription.
+
+**Why:** Removing a genuine school collection setting merely because its label
+resembles legacy platform payment functionality changes independent school rules.
+
+**How to apply:** Clarify the fee source and retain School Admin-only control
+unless a separate change to school invoice policy is explicitly approved.
 
 Legacy BRO term-commission evidence and approval-history lists are authorized
 Owner historical reads, not split execution. Keep their availability separate

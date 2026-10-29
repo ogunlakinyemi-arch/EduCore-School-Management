@@ -29,6 +29,8 @@ const router: IRouter = Router();
 router.use(requireAuthentication());
 const writeRoles = ["SCHOOL_ADMIN"] as const;
 const viewRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"] as const;
+// Finance pickers need period metadata, not access to subjects, grades or writes.
+const periodReadRoles = [...viewRoles, "ACCOUNTANT"] as const;
 
 export async function syncStaffBilling(client: any, req: Request, schoolId: number) {
   try {
@@ -74,7 +76,7 @@ function currentFlag(req: Request): boolean {
 }
 
 router.get("/academic-sessions", wrap(async (req, res) => {
-  const q = ListAcademicSessionsQueryParams.parse(req.query); school(req, q.schoolId, viewRoles);
+  const q = ListAcademicSessionsQueryParams.parse(req.query); school(req, q.schoolId, periodReadRoles);
   const r = await pool.query(`SELECT ${sessionSelect} FROM academic_sessions WHERE school_id=$1 AND ($2='all' OR status=$2) ORDER BY start_date DESC`, [q.schoolId, q.status ?? "all"]);
   res.json(r.rows);
 }));
@@ -115,7 +117,7 @@ router.patch("/academic-sessions/:sessionId", wrap(async (req, res) => {
   res.json(r.rows[0]);
 }));
 router.get("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {
-  const p=ListAcademicTermsParams.parse(req.params), q=ListAcademicTermsQueryParams.parse(req.query); school(req,q.schoolId,viewRoles);
+  const p=ListAcademicTermsParams.parse(req.params), q=ListAcademicTermsQueryParams.parse(req.query); school(req,q.schoolId,periodReadRoles);
   const r=await pool.query(`SELECT ${termSelect} FROM academic_terms WHERE academic_session_id=$1 AND school_id=$2 ORDER BY start_date`,[p.sessionId,q.schoolId]); res.json(r.rows);
 }));
 router.post("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {

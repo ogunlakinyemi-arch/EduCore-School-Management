@@ -17,6 +17,7 @@ import type {
 } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, TenantPicker, cx, date, useTenant } from '@/components/shared';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton } from '@/components/school-document';
+import { FinancePeriodFilters } from '@/components/finance-period-filters';
 
 /* ---------- pure helpers (exported for tests) ---------- */
 export const nairaMinor = (minor: number | null | undefined) => {
@@ -363,7 +364,7 @@ export function StaffNfcFinancePage() {
   const [ownerSchool, setOwnerSchool] = useState('');
   const [status, setStatus] = useState<ListStaffNfcFinanceParams['paymentStatus']>('all');
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
-  const [sessionId, setSessionId] = useState(''); const [termId, setTermId] = useState('');
+  const [period, setPeriod] = useState({ schoolId: 0, sessionId: '', termId: '' });
   const [partnerId, setPartnerId] = useState(''); const [search, setSearch] = useState('');
   const [cursors, setCursors] = useState<number[]>([]);
   const [message, setMessage] = useState('');
@@ -371,9 +372,15 @@ export function StaffNfcFinancePage() {
   const [refundItem, setRefundItem] = useState<StaffNfcSubscription | null>(null);
   const [receipt, setReceipt] = useState<{ id: number; schoolId: number } | null>(null);
   const allowed = isPlatformOwner || isSchoolFinance;
+  const filterSchoolId = isPlatformOwner ? Number(ownerSchool) || undefined : tenantSchool;
+  const { sessionId, termId } = period.schoolId === filterSchoolId ? period : { sessionId: '', termId: '' };
+  useEffect(() => {
+    setPeriod({ schoolId: filterSchoolId ?? 0, sessionId: '', termId: '' });
+    setCursors([]);
+  }, [filterSchoolId]);
   const owners = useListOwnerSchoolDirectory({ status: 'all' }, { query: { enabled: isPlatformOwner, queryKey: getListOwnerSchoolDirectoryQueryKey({ status: 'all' }), staleTime: 60_000 } });
   const params: ListStaffNfcFinanceParams = {
-    schoolId: isPlatformOwner ? (ownerSchool ? Number(ownerSchool) : undefined) : tenantSchool,
+    schoolId: filterSchoolId,
     ...(status && status !== 'all' ? { paymentStatus: status } : {}),
     ...(from ? { from } : {}), ...(to ? { to } : {}),
     ...(sessionId && Number(sessionId) ? { academicSessionId: Number(sessionId) } : {}),
@@ -405,8 +412,8 @@ export function StaffNfcFinancePage() {
       <section className="panel mb-6 grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filters">
         {isPlatformOwner && <Field label="School"><select className={entry} value={ownerSchool} onChange={e => { setOwnerSchool(e.target.value); resetPage(); }} data-testid="filter-school"><option value="">All schools</option>{(owners.data?.schools ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>}
         <Field label="Status"><select className={entry} value={status} onChange={e => { setStatus(e.target.value as typeof status); resetPage(); }} data-testid="filter-status">{['all', 'UNPAID', 'PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'].map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.replaceAll('_', ' ')}</option>)}</select></Field>
-        <Field label="Session ID"><input className={entry} inputMode="numeric" value={sessionId} onChange={e => { setSessionId(e.target.value.replace(/\D/g, '')); resetPage(); }} /></Field>
-        <Field label="Term ID"><input className={entry} inputMode="numeric" value={termId} onChange={e => { setTermId(e.target.value.replace(/\D/g, '')); resetPage(); }} /></Field>
+        <FinancePeriodFilters schoolId={allowed && !access.loading ? filterSchoolId : undefined} sessionId={sessionId} termId={termId}
+          onChange={(sessionId, termId) => { setPeriod({ schoolId: filterSchoolId ?? 0, sessionId, termId }); resetPage(); }} />
         <Field label="From"><input type="date" className={entry} value={from} onChange={e => { setFrom(e.target.value); resetPage(); }} /></Field>
         <Field label="To"><input type="date" className={entry} value={to} onChange={e => { setTo(e.target.value); resetPage(); }} /></Field>
         {isPlatformOwner && <Field label="BRO ID"><input className={entry} inputMode="numeric" value={partnerId} onChange={e => { setPartnerId(e.target.value.replace(/\D/g, '')); resetPage(); }} data-testid="filter-partner" /></Field>}
@@ -519,7 +526,7 @@ export function PartnerStaffNfcCommissionsPage() {
   const q = useGetMyStaffNfcPartnerCommissions(params, { query: { enabled: allowed && !access.loading, queryKey: getGetMyStaffNfcPartnerCommissionsQueryKey(params), ...FRESH } });
   const d = q.data;
   return <div className="fade-up">
-    <PageHeading eyebrow="BRO / Staff NFC" title="Staff NFC commissions" description="Eligible activity in your attributed schools and your own commission. No payroll, bank or unrelated finance data is shown." />
+    <PageHeading eyebrow="BRO / Staff NFC" title="Staff NFC commission history" description="Retained commissions keep their original rule and amount. Current ₦2,000 Teacher/Staff subscriptions are platform-only, with no new school or BRO share. Student commission rules are separate. No payroll, bank or unrelated finance data is shown." />
     <Gate allowed={allowed} loading={access.loading} title="BRO commissions">
       <section className="panel mb-6 grid gap-3 p-5 sm:grid-cols-3">
         <Field label="Commission status"><select className={entry} value={status ?? ''} onChange={e => { setStatus((e.target.value || undefined) as typeof status); setCursors([]); }} data-testid="filter-commission-status"><option value="">All</option><option value="PENDING">Pending</option><option value="PAID">Paid</option><option value="REVERSED">Reversed</option></select></Field>
@@ -534,7 +541,7 @@ export function PartnerStaffNfcCommissionsPage() {
           <Info label="Total commission" value={nairaMinor(d?.totals.commissionAmountMinor)} />
         </div>
         <section className="panel overflow-hidden">
-          {!d?.items.length ? <EmptyState icon={Handshake} title="No commission activity" description="Commission appears once a staff subscription in an attributed school is verified paid." /> : <div className="divide-y divide-[hsl(var(--border))]" data-testid="partner-rows">
+          {!d?.items.length ? <EmptyState icon={Handshake} title="No retained staff commissions" description="Historical staff commissions appear here under their original rules. New Teacher/Staff subscriptions do not earn a BRO commission." /> : <div className="divide-y divide-[hsl(var(--border))]" data-testid="partner-rows">
             {d.items.map(i => <div key={i.subscriptionId} className="flex flex-wrap items-center gap-4 px-5 py-4" data-testid={`row-commission-${i.subscriptionId}`}>
               <div className="min-w-0 flex-1"><div className="font-bold">{i.schoolName}</div><div className={note}>{i.sessionName} · {i.termName}</div></div>
               <div className="text-sm tabular-nums"><div className="font-bold">{nairaMinor(i.commissionMinor)}</div><div className={note}>of {nairaMinor(i.priceMinor)}</div></div>

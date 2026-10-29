@@ -69,7 +69,7 @@ function Loading() {
   );
 }
 
-import { FlutterwaveSettlementsPage } from '@/pages/flutterwave-settlements';
+import { ArchivedPaymentWorkflowPage } from '@/pages/archived-payment-workflow';
 
 function PortalHeader() {
   const [location] = useLocation();
@@ -359,7 +359,7 @@ function MyPayouts() {
       <div className="mb-7">
         <div className="eyebrow">Financials</div>
         <h1 className="display-font mt-2 text-3xl font-bold">Payouts</h1>
-        <Link href="/partner/flutterwave-settlements" className="mt-2 inline-block text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-partner-flutterwave-settlements">Split settlement account (Development TEST)</Link>
+        <p className="mt-2 text-xs">Retained payouts are historical records, not automatic transfers. Eligible student commissions are internal-only ₦150 under the existing term and verification rules; earlier amounts remain unchanged.</p>
       </div>
 
       <div className="panel overflow-hidden">
@@ -545,7 +545,7 @@ export default function PartnerPortal() {
         <Route path="/partner/nfc-activation" component={PartnerNfcActivation} />
         <Route path="/partner/commissions" component={MyCommissions} />
         <Route path="/partner/payouts" component={MyPayouts} />
-        <Route path="/partner/flutterwave-settlements" component={FlutterwaveSettlementsPage} />
+        <Route path="/partner/flutterwave-settlements" component={ArchivedPaymentWorkflowPage} />
         <Route path="/partner/profile" component={PartnerSettings} />
         <Route path="/partner/schools/add" component={AddSchoolPage} />
         <Route path="/partner/invite-school" component={AddSchoolPage} />

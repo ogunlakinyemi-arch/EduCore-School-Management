@@ -868,3 +868,31 @@ mtime_ms = 1793178658962
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/828609a4-8485-4008-a2c5-76359baff02d/b79eaca9-2381-4224-a34d-4b3a1f3a692d"
 storage_version_token = "1793179619957695"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "tz6LRwH28FgNsbfUpWeYR"
+uri = "file://generated-artifacts/educore-product-demo/Yetenia-EduCore-Real-App-Demo.mp4"
+type = "video"
+title = "Yetenia EduCore — Real Application Demo"
+description = "2-minute-23-second captioned, 1080p recording of the actual Development application using an authorized fictional school. Covers School Admin, Teacher, Parent and Student; explicitly labels the unavailable Owner segment. MP4 playback verified."
+logical_id = "846ff1c7-0e61-495d-ba8c-de81c600960e"
+content_hash = "sha256:f739d0edac00065ab0ed4a4a3c372dd29468e9dba252924cabac93021297fa48"
+size = 2763411
+mtime_ms = 1793307863558
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/846ff1c7-0e61-495d-ba8c-de81c600960e/56f3c87e-48ea-4661-b287-0ba449cdf369"
+storage_version_token = "1793307924138658"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "aczIUxX5AYGkAGawhzplr"
+uri = "file://generated-artifacts/educore-product-demo/Demo-Report-Card.pdf"
+type = "pdf"
+title = "Fictional Demo Report Card — Actual App Export"
+description = "PDF exported from the real application-generated report-card print document shown in the Parent segment. Fictional demo student only."
+logical_id = "09301010-bd8e-4bd2-9810-1736da18f619"
+content_hash = "sha256:39e5fb05b17b5847c1befd35182284f7d3b14177438fb13aa50e0f0feb3dfc4c"
+size = 66427
+mtime_ms = 1793307864694
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/09301010-bd8e-4bd2-9810-1736da18f619/e85c3754-c6b6-48ed-bf5a-28dc4332e4f3"
+storage_version_token = "1793307924782371"
+content_type = "application/pdf"
