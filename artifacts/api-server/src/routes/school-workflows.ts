@@ -268,12 +268,19 @@ function serializeBranding(schoolId: number, row: Record<string, unknown>) {
     website: row.website,
     schoolType: row.schoolType,
     logoUrl: logoUrl(schoolId, row),
+    primaryColor: typeof row.primaryColor === "string" && /^#[0-9a-f]{6}$/i.test(row.primaryColor) ? row.primaryColor : null,
+    secondaryColor: typeof row.secondaryColor === "string" && /^#[0-9a-f]{6}$/i.test(row.secondaryColor) ? row.secondaryColor : null,
   };
 }
 
 async function getBranding(schoolId: number) {
   return pool.query(
-    `SELECT ${SCHOOL_NAME_SELECT} FROM schools s
+    `SELECT ${SCHOOL_NAME_SELECT},
+      (SELECT metadata->>'primaryColor' FROM audit_logs WHERE school_id=s.id
+        AND action='Official card brand configured' AND module='Cards' ORDER BY id DESC LIMIT 1) AS "primaryColor",
+      (SELECT metadata->>'secondaryColor' FROM audit_logs WHERE school_id=s.id
+        AND action='Official card brand configured' AND module='Cards' ORDER BY id DESC LIMIT 1) AS "secondaryColor"
+      FROM schools s
       LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true
      WHERE s.id=$1`,
     [schoolId],

@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { ReceiptFilePicker, uploadPrivateReceipt, validateReceiptFile, isReceiptSubmissionReference } from '@/components/private-receipt';
 import type { BankTransferInput } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -59,49 +59,51 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : '
 const isReservedNfcCategory = (name: string) => /nfc.*subscription|subscription.*nfc/i.test(name);
 type Tab = 'overview' | 'invoices' | 'transfers' | 'adjustments' | 'structures' | 'bulk' | 'refunds' | 'reports' | 'nfc' | 'categories' | 'controls';
 
-import { BankProviderSelect } from '@/components/bank-provider-select';
-import { useBankSelectionGuard } from '@/lib/bank-selection';
+import { PartnerBankAccountForm } from '@/components/partner-bank-account-form';
+import { lookupSchoolFeeBankAccount, type PartnerPayoutInformationInput } from '@workspace/api-client-react';
 
 export function BankTransferSettings({ schoolId, settings, canEdit, onSaved }: { schoolId: number; settings: FinanceSettings; canEdit: boolean; onSaved: (message: string) => void }) {
   const update = useUpdateFinanceSettings();
-  const bankAllowed = useBankSelectionGuard();
   const [enabled, setEnabled] = useState(settings.bankTransferEnabled);
-  const [bankName, setBankName] = useState(settings.bankName ?? '');
-  const [accountName, setAccountName] = useState(settings.accountName ?? '');
-  const [accountNumber, setAccountNumber] = useState(settings.accountNumber ?? '');
   const [failure, setFailure] = useState('');
-  const complete = bankName.trim().length >= 2 && bankName.trim().length <= 100
-    && accountName.trim().length >= 2 && accountName.trim().length <= 150
-    && /^[0-9]{10}$/.test(accountNumber);
-  const save = async (e: FormEvent) => {
-    e.preventDefault();
+  const [version, setVersion] = useState(0);
+  const lookup = useCallback((input: Parameters<typeof lookupSchoolFeeBankAccount>[0], options?: RequestInit) =>
+    lookupSchoolFeeBankAccount(input, { schoolId }, options), [schoolId]);
+  useEffect(() => { setEnabled(settings.bankTransferEnabled); }, [settings.bankTransferEnabled, schoolId]);
+  const save = async (input: PartnerPayoutInformationInput) => {
     if (!canEdit) return;
-    if (bankName !== (settings.bankName ?? '') && !bankAllowed({ bankName, bankCode: '' }, null, false)) { setFailure('Choose a bank from the directory.'); return; }
-    if (enabled && !complete) { setFailure('Add a bank name, account name and valid 10-digit Nigerian account number before enabling transfers.'); return; }
     try {
       const saved = await update.mutateAsync({ params: { schoolId }, data: {
-        bankTransferEnabled: enabled,
-        ...(complete ? { bankName: bankName.trim(), accountName: accountName.trim(), accountNumber } : {}),
+        bankTransferEnabled: enabled, bankName: input.bankName, bankCode: input.bankCode ?? undefined,
+        accountName: input.accountName, accountNumber: input.accountNumber, lookupToken: input.lookupToken,
       } });
       setEnabled(saved.bankTransferEnabled);
-      setBankName(saved.bankName ?? '');
-      setAccountName(saved.accountName ?? '');
-      setAccountNumber(saved.accountNumber ?? '');
+      setVersion(v => v + 1);
       setFailure('');
-      onSaved(enabled ? 'Approved bank transfer details saved.' : 'Bank transfers disabled for parents.');
+      onSaved(saved.bankTransferEnabled ? 'Verified school bank instructions enabled for parents.' : 'Verified account saved. Parent transfer instructions remain disabled.');
     } catch (error) { setFailure(errorText(error)); }
   };
   return <section className="panel p-6 md:p-8">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="eyebrow">School-approved destination</div><h2 className="display-font mt-2 text-xl font-bold">Bank transfer account</h2></div><StatusPill value={settings.bankTransferEnabled ? 'ACTIVE' : 'INACTIVE'} /></div>
     <p className={`mt-3 ${note}`}>Only enabled details are shared with parents. Disabling transfers removes the payment instructions and submission option from their invoice view.</p>
-    {canEdit ? <form onSubmit={save} className="mt-6 space-y-4">
-      <BankProviderSelect value={{ bankName, bankCode: '' }} onSelect={b => setBankName(b.bankName)} requireCode={false} required={enabled} testId="input-finance-bank-name" />
-      <Field label="Account name"><input required={enabled} minLength={enabled ? 2 : undefined} maxLength={150} value={accountName} onChange={e => setAccountName(e.target.value)} className={entry} data-testid="input-finance-account-name" /></Field>
-      <Field label="Account number · 10 digits"><input type="text" inputMode="numeric" pattern={enabled ? '[0-9]{10}' : undefined} maxLength={10} required={enabled} value={accountNumber} onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ''))} className={`${entry} font-mono tracking-widest`} data-testid="input-finance-account-number" /></Field>
+    <p className={`mt-2 ${note}`}>School fees are paid directly to this school. These details never configure EduCore subscriptions or Flutterwave merchant settlement.</p>
+    {canEdit ? <div className="mt-6 space-y-4">
       <label className="flex items-center gap-3 rounded-xl bg-[hsl(var(--secondary))] p-4 text-sm font-bold"><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} data-testid="checkbox-finance-bank-enabled" />Enable these approved details for parent transfers</label>
       {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
-      <Button type="submit" disabled={update.isPending || (enabled && !complete)} testId="button-save-bank-details">{update.isPending ? 'Saving…' : 'Save bank settings'}</Button>
-    </form> : <div className="mt-6 space-y-3 rounded-xl bg-[hsl(var(--secondary))] p-5 text-sm"><div><span className="eyebrow">Bank</span><div className="mt-1 font-bold">{settings.bankName || 'Not configured'}</div></div><div><span className="eyebrow">Account holder</span><div className="mt-1 font-bold">{settings.accountName || 'Not configured'}</div></div><div><span className="eyebrow">Account number</span><div className="mt-1 font-mono font-bold">{settings.accountNumber || 'Not configured'}</div></div><p className={note}>Only a School Admin can approve or change these settings.</p></div>}
+      <PartnerBankAccountForm key={`${schoolId}:${version}:${settings.maskedAccountNumber}:${settings.bankVerified}`}
+        current={{ ...settings, verified: settings.bankVerified }}
+        fullName={settings.officialSchoolName ?? ''} schoolFees lookupAccount={lookup}
+        saving={update.isPending} onSave={input => void save(input)} />
+      {settings.bankTransferEnabled && <Button type="button" variant="outline" disabled={update.isPending}
+        testId="button-disable-school-transfers" onClick={async () => {
+          try { await update.mutateAsync({ params: { schoolId }, data: { bankTransferEnabled: false } });
+            setEnabled(false); setVersion(v => v + 1); setFailure(''); onSaved('Parent transfer instructions disabled.'); }
+          catch (error) { setFailure(errorText(error)); }
+        }}>Disable parent transfers</Button>}
+    </div> : <div className="mt-6 space-y-3 rounded-xl bg-[hsl(var(--secondary))] p-5 text-sm">
+      <p>{settings.bankName || 'Not configured'} · {settings.accountName || 'Not configured'}</p>
+      <p className="font-mono">{settings.maskedAccountNumber || 'No account on file'}</p>
+      <p className={note}>Only a School Admin can approve or change these settings.</p></div>}
   </section>;
 }
 
@@ -459,10 +461,10 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
   const submit = useSubmitManualBankTransfer({ request: { headers: submissionKey ? { 'Idempotency-Key': submissionKey } : {} } });
   const authorizedInvoice = !!invoice && !!child.data && query.data?.some(item => item.id === invoice.id && item.studentId === studentId && item.schoolId === invoice.schoolId) === true;
   const bankDetails = useGetParentFeeInvoiceBankDetails(invoice?.id ?? 0, {
-    query: { enabled: authorizedInvoice, queryKey: getGetParentFeeInvoiceBankDetailsQueryKey(invoice?.id ?? 0), refetchOnMount: 'always', refetchOnWindowFocus: true },
+    query: { enabled: authorizedInvoice, queryKey: getGetParentFeeInvoiceBankDetailsQueryKey(invoice?.id ?? 0), refetchOnMount: 'always', refetchOnWindowFocus: true, refetchInterval: 15000 },
   });
   const details = bankDetails.data;
-  const approvedBank = authorizedInvoice && details?.available === true && details.invoiceId === invoice?.id
+  const approvedBank = authorizedInvoice && !bankDetails.isError && !bankDetails.isFetching && details?.available === true && details.invoiceId === invoice?.id
     && details.schoolId === invoice.schoolId && !!details.bankName.trim() && !!details.accountName.trim()
     && /^[0-9]{10}$/.test(details.accountNumber);
   const invoices = (query.data ?? []).filter(item => item.studentId === studentId);

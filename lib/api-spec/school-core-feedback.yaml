@@ -523,6 +523,8 @@ components:
       type: object
       required: [schoolId, name, city, state, logoUrl]
       properties:
+        primaryColor: { type: ["string", "null"], pattern: "^#[0-9A-Fa-f]{6}$" }
+        secondaryColor: { type: ["string", "null"], pattern: "^#[0-9A-Fa-f]{6}$" }
         schoolId:
           type: integer
         name:

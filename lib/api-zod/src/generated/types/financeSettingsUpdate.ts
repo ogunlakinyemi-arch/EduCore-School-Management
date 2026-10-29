@@ -28,4 +28,8 @@ export interface FinanceSettingsUpdate {
      * @pattern ^[0-9]{10}$
      */
   accountNumber?: string | null;
+  /** @pattern ^[0-9]{1,20}$ */
+  bankCode?: string;
+  /** @maxLength 10000 */
+  lookupToken?: string;
 }

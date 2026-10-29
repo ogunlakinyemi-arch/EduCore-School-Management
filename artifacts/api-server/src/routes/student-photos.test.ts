@@ -11,6 +11,8 @@ const state = vi.hoisted(() => ({
   bytes: Buffer.alloc(0),
   employeeMembership: true,
   officerChecks: 0,
+  familyLinked: false,
+  ownStudent: false,
   fileAccesses: [] as string[],
 }));
 
@@ -47,7 +49,12 @@ vi.mock("@workspace/db", () => ({
       }
       if (sql.includes("UPDATE employees")) return { rows: [{ previousPhoto: null }] };
       if (sql.includes("FROM students") && sql.includes("SELECT id")) {
+        if (sql.includes("user_id=$3")) return { rows: state.ownStudent && Number(values[0]) === 10 && Number(values[1]) === 1 ? [{ id: 10 }] : [] };
         return { rows: [{ id: 10 }] };
+      }
+      if (sql.includes("JOIN parent_student_relationships psr")) {
+        if (!sql.includes("psr.status='ACTIVE'") || !sql.includes("UPPER(p.status)='ACTIVE'")) throw Error("Missing active family relationship guard");
+        return { rows: state.familyLinked && Number(values[1]) === 1 && Number(values[2]) === 10 ? [{ "?column?": 1 }] : [] };
       }
       if (sql.includes("SELECT photo FROM students WHERE id = $1 AND school_id = $2")) {
         return Number(values[0]) === state.photoStudentId && Number(values[1]) === state.photoSchoolId
@@ -132,6 +139,8 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   state.queries = [];
   state.photo = null;
+  state.familyLinked = false;
+  state.ownStudent = false;
   state.photoStudentId = 10;
   state.photoSchoolId = 1;
   state.bytes = Buffer.from(validPngBytes);
@@ -144,6 +153,20 @@ beforeEach(() => {
 });
 
 describe("student photo endpoints", () => {
+  it.each(["PARENT", "STUDENT"])("serves only the authorized %s child's own managed photograph", async role => {
+    state.photo = "/objects/student-photos/1/10/44b6e0bf-4b47-4c1f-9f70-df7d0ad030b4";
+    state.bytes = Buffer.from(validPngBytes);
+    state.metadata = { size: String(validPngBytes.length), contentType: "image/png" };
+    const denied = await fetch(`${baseUrl}/students/10/photo?schoolId=1`, { headers: { "x-test-role": role } });
+    expect(denied.status).toBe(404);
+    state.familyLinked = true; state.ownStudent = true;
+    const own = await fetch(`${baseUrl}/students/10/photo?schoolId=1`, { headers: { "x-test-role": role } });
+    expect(own.status).toBe(200);
+    const other = await fetch(`${baseUrl}/students/11/photo?schoolId=1`, { headers: { "x-test-role": role } });
+    expect(other.status).toBe(404);
+    const crossSchool = await fetch(`${baseUrl}/students/10/photo?schoolId=2`, { headers: { "x-test-role": role } });
+    expect(crossSchool.status).toBe(404);
+  });
   it("rejects unsupported upload types and non-admin mutation roles", async () => {
     const unsupported = await fetch(`${baseUrl}/students/10/photo-upload-request`, {
       method: "POST",

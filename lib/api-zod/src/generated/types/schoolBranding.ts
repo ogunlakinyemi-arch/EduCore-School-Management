@@ -7,6 +7,16 @@
  */
 
 export interface SchoolBranding {
+  /**
+     * @nullable
+     * @pattern ^#[0-9A-Fa-f]{6}$
+     */
+  primaryColor?: string | null;
+  /**
+     * @nullable
+     * @pattern ^#[0-9A-Fa-f]{6}$
+     */
+  secondaryColor?: string | null;
   schoolId: number;
   name: string;
   /** @nullable */

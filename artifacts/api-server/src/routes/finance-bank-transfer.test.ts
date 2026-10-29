@@ -69,6 +69,8 @@ const poolMock = vi.hoisted(() => {
       query: vi.fn(async (sql: string, values: any[] = []) => {
       state.calls.push({ sql, values });
       if (sql === "BEGIN") return result();
+      if (sql.startsWith("SELECT id,name FROM schools")) return result([{ id: Number(values[0]), name: "Test School" }]);
+      if (sql.includes("action='finance settings: verified school bank'")) return result(state.bankSettings ? [{ id: 1 }] : []);
       if(sql.includes("SELECT 1 FROM fee_invoice_lines l WHERE")) return result();
       if (sql === "COMMIT" || sql === "ROLLBACK") {
         releaseLocks();
@@ -258,6 +260,8 @@ const poolMock = vi.hoisted(() => {
   const connect = vi.fn(async () => makeClient());
   const query = vi.fn(async (sql: string, values: any[] = []) => {
     state.calls.push({ sql, values });
+    if (sql.startsWith("SELECT id,name FROM schools")) return result([{ id: Number(values[0]), name: "Test School" }]);
+    if (sql.includes("action='finance settings: verified school bank'")) return result(state.bankSettings ? [{ id: 1 }] : []);
     if (sql.includes("FROM fee_invoices i") && sql.includes("parent_student_relationships")) {
       return result([makeInvoiceView()]);
     }
@@ -696,14 +700,16 @@ describe("manual bank-transfer review integration", () => {
     const ownerOnly = await updateSettings("PLATFORM_OWNER:null");
     expect(ownerOnly.status).toBe(404);
 
-    const sameSchoolAdmin = await updateSettings("SCHOOL_ADMIN:1,ACCOUNTANT:2");
+    const unverified = await updateSettings("SCHOOL_ADMIN:1,ACCOUNTANT:2");
+    expect(unverified.status).toBe(409);
+    const sameSchoolAdmin = await updateSettings("SCHOOL_ADMIN:1,ACCOUNTANT:2", { partialPaymentsEnabled: true });
     expect(sameSchoolAdmin.status).toBe(200);
     expect(await sameSchoolAdmin.json()).toMatchObject({
-      schoolId: 1, bankTransferEnabled: true, paystackEnabled: true, flutterwaveEnabled: true,
-      bankName: "Configured Bank",
-      accountName: "Example School", accountNumber: "0123456789",
+      schoolId: 1, bankTransferEnabled: true,
+      bankName: "Test Bank",
+      accountName: "Test School", accountNumber: null,
     });
-    expect(state.audit.at(-1)?.[7]).toMatchObject({ accountNumberLast4: "6789" });
+    expect(state.audit.at(-1)?.[7]).toMatchObject({ accountNumberLast4: "7890" });
     expect(JSON.stringify(state.audit.at(-1)?.[7])).not.toContain("0123456789");
   });
 
@@ -712,7 +718,7 @@ describe("manual bank-transfer review integration", () => {
       headers: { "x-test-role": "ACCOUNTANT", "x-test-school": "1" },
     });
     expect(read.status).toBe(200);
-    expect(await read.json()).toMatchObject({ accountNumber: "1234567890", bankTransferEnabled: true });
+    expect(await read.json()).toMatchObject({ accountNumber: null, maskedAccountNumber: "****7890", bankTransferEnabled: true, bankVerified: true });
 
     const beforeUpserts = state.calls.filter(({ sql }) => sql.includes("INSERT INTO fee_school_settings")).length;
     const update = await fetch(`${baseUrl}/school/finance/settings?schoolId=1`, {
@@ -724,6 +730,22 @@ describe("manual bank-transfer review integration", () => {
     expect(state.calls.filter(({ sql }) => sql.includes("INSERT INTO fee_school_settings"))).toHaveLength(beforeUpserts);
   });
 
+  it.each(["ACCOUNTANT:1", "SCHOOL_ADMIN:2", "PLATFORM_OWNER:null", "PARENT:1"])("denies unauthorized school bank lookup for %s", async assignments => {
+    const response = await fetch(`${baseUrl}/school/finance/settings/bank-lookup?schoolId=1`, {
+      method: "POST", headers: { "content-type": "application/json", "x-test-assignments": assignments },
+      body: JSON.stringify({ bankName: "Test Bank", bankCode: "90001", accountNumber: "0123456789" }),
+    });
+    expect(response.status).toBe(404);
+    expect(state.calls.some(({ sql }) => sql.includes("INSERT") || sql.includes("UPDATE"))).toBe(false);
+  });
+  it("Development school-admin lookup fails closed without a provider request or verification write", async () => {
+    const response = await fetch(`${baseUrl}/school/finance/settings/bank-lookup?schoolId=1`, {
+      method: "POST", headers: { "content-type": "application/json", "x-test-assignments": "SCHOOL_ADMIN:1" },
+      body: JSON.stringify({ bankName: "Test Bank", bankCode: "90001", accountNumber: "0123456789" }),
+    });
+    expect(response.status).toBe(409);
+    expect(state.calls).toHaveLength(0);
+  });
   it("defaults school bank details to disabled and rejects invalid Nigerian account numbers", async () => {
     state.bankSettings = null;
     const defaultSettings = await fetch(`${baseUrl}/school/finance/settings?schoolId=1`, {

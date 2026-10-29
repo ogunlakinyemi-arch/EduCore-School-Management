@@ -201,6 +201,10 @@ const resultReturning = `id,school_id AS "schoolId",assessment_id AS "assessment
   section_snapshot AS section,subject_id AS "subjectId",score,max_score AS "maxScore",
   grade,grade_point AS "gradePoint",remark,status,review_status AS "reviewStatus",published_at AS "publishedAt"`;
 const cardSelect = `rc.id,rc.school_id AS "schoolId",rc.student_id AS "studentId",
+  (SELECT CASE WHEN st.photo ~ ('^/objects/student-photos/' || rc.school_id || '/' || rc.student_id ||
+    '/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+    THEN '/api/students/' || st.id || '/photo?schoolId=' || rc.school_id ELSE NULL END
+    FROM students st WHERE st.id=rc.student_id AND st.school_id=rc.school_id) AS "studentPhotoUrl",
   (SELECT concat_ws(' ',st.first_name,st.last_name) FROM students st WHERE st.id=rc.student_id AND st.school_id=rc.school_id) AS "studentName",
   (SELECT st.admission_no FROM students st WHERE st.id=rc.student_id AND st.school_id=rc.school_id) AS "admissionNo",
   (SELECT s.name FROM academic_sessions s WHERE s.id=rc.academic_session_id AND s.school_id=rc.school_id) AS "sessionName",

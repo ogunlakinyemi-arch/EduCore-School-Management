@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { CurrentSubscriptionPolicy } from '@/components/current-subscription-policy';
 import { SchoolBillingDashboard } from '@/components/school-billing-dashboard';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { WalletCards, CircleAlert, CreditCard, RefreshCw } from 'lucide-react';
@@ -608,9 +609,10 @@ function LegacySubscriptionsPage() {
         eyebrow="Financials / Subscriptions"
         title="Revenue & Access."
         description="Monitor student payment statuses and term enrollment. Only independently verified server payments are marked paid."
-        action={<div className="flex items-center gap-3"><Link href="/flutterwave-settlements" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-flutterwave-settlements">Split settlements</Link><Link href="/subscription-enforcement" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-term-enforcement">Term enforcement</Link><TenantPicker /></div>}
+        action={<div className="flex items-center gap-3"><Link href="/flutterwave-settlements" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-flutterwave-settlements">Historical settlements</Link><Link href="/subscription-enforcement" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-term-enforcement">Term enforcement</Link><TenantPicker /></div>}
       />
 
+      {isPlatformOwner && <CurrentSubscriptionPolicy />}
       {message && (
         <div role={message.tone === 'error' ? 'alert' : 'status'} className={`mb-5 rounded-xl border px-4 py-3 text-sm font-semibold ${message.tone === 'ok' ? 'border-[hsl(157_37%_43%/.3)] bg-[hsl(157_37%_43%/.08)]' : message.tone === 'error' ? 'border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] text-[hsl(var(--destructive))]' : 'border-[hsl(35_83%_53%/.4)] bg-[hsl(35_83%_53%/.1)]'}`}>
           {message.text}

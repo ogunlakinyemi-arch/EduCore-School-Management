@@ -8344,7 +8344,10 @@ export const GetFinanceSettingsResponse = zod.object({
   "flutterwaveEnabled": zod.boolean().describe('School-approved Flutterwave test-provider checkout enablement'),
   "bankName": zod.string().nullable(),
   "accountName": zod.string().nullable(),
-  "accountNumber": zod.string().regex(getFinanceSettingsResponseAccountNumberRegExp).nullable()
+  "accountNumber": zod.string().regex(getFinanceSettingsResponseAccountNumberRegExp).nullable().describe('Always null in routine settings responses; full numbers are only disclosed for authorized enabled parent invoice instructions.'),
+  "maskedAccountNumber": zod.string().nullish(),
+  "officialSchoolName": zod.string().optional(),
+  "bankVerified": zod.boolean().optional()
 })
 
 
@@ -8365,6 +8368,9 @@ export const updateFinanceSettingsBodyAccountNameMin = 2;
 export const updateFinanceSettingsBodyAccountNameMax = 150;
 
 export const updateFinanceSettingsBodyAccountNumberRegExp = new RegExp('^[0-9]{10}$');
+export const updateFinanceSettingsBodyBankCodeRegExp = new RegExp('^[0-9]{1,20}$');
+export const updateFinanceSettingsBodyLookupTokenMax = 10000;
+
 
 
 export const UpdateFinanceSettingsBody = zod.object({
@@ -8374,7 +8380,9 @@ export const UpdateFinanceSettingsBody = zod.object({
   "flutterwaveEnabled": zod.boolean().optional(),
   "bankName": zod.string().min(updateFinanceSettingsBodyBankNameMin).max(updateFinanceSettingsBodyBankNameMax).nullish(),
   "accountName": zod.string().min(updateFinanceSettingsBodyAccountNameMin).max(updateFinanceSettingsBodyAccountNameMax).nullish(),
-  "accountNumber": zod.string().regex(updateFinanceSettingsBodyAccountNumberRegExp).nullish()
+  "accountNumber": zod.string().regex(updateFinanceSettingsBodyAccountNumberRegExp).nullish(),
+  "bankCode": zod.string().regex(updateFinanceSettingsBodyBankCodeRegExp).optional(),
+  "lookupToken": zod.string().max(updateFinanceSettingsBodyLookupTokenMax).optional()
 })
 
 export const updateFinanceSettingsResponseAccountNumberRegExp = new RegExp('^[0-9]{10}$');
@@ -8388,7 +8396,41 @@ export const UpdateFinanceSettingsResponse = zod.object({
   "flutterwaveEnabled": zod.boolean().describe('School-approved Flutterwave test-provider checkout enablement'),
   "bankName": zod.string().nullable(),
   "accountName": zod.string().nullable(),
-  "accountNumber": zod.string().regex(updateFinanceSettingsResponseAccountNumberRegExp).nullable()
+  "accountNumber": zod.string().regex(updateFinanceSettingsResponseAccountNumberRegExp).nullable().describe('Always null in routine settings responses; full numbers are only disclosed for authorized enabled parent invoice instructions.'),
+  "maskedAccountNumber": zod.string().nullish(),
+  "officialSchoolName": zod.string().optional(),
+  "bankVerified": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Resolve the school official beneficiary using the authorized LIVE lookup path
+ */
+
+
+
+export const LookupSchoolFeeBankAccountQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const lookupSchoolFeeBankAccountBodyBankNameMin = 2;
+export const lookupSchoolFeeBankAccountBodyBankNameMax = 100;
+
+export const lookupSchoolFeeBankAccountBodyBankCodeRegExp = new RegExp('^[0-9]{1,20}$');
+export const lookupSchoolFeeBankAccountBodyAccountNumberRegExp = new RegExp('^[0-9]{10}$');
+
+
+export const LookupSchoolFeeBankAccountBody = zod.object({
+  "bankName": zod.string().min(lookupSchoolFeeBankAccountBodyBankNameMin).max(lookupSchoolFeeBankAccountBodyBankNameMax),
+  "bankCode": zod.string().regex(lookupSchoolFeeBankAccountBodyBankCodeRegExp),
+  "accountNumber": zod.string().regex(lookupSchoolFeeBankAccountBodyAccountNumberRegExp)
+})
+
+export const LookupSchoolFeeBankAccountResponse = zod.object({
+  "accountName": zod.string(),
+  "accountLast4": zod.string(),
+  "lookupToken": zod.string(),
+  "expiresAt": zod.coerce.date()
 })
 
 
@@ -18144,6 +18186,7 @@ export const ListAcademicReportCardsQueryParams = zod.object({
 })
 
 export const ListAcademicReportCardsResponseItem = zod.object({
+  "studentPhotoUrl": zod.string().nullish().describe('Authorized same-school same-child stored photo endpoint; null if no managed profile photo.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
@@ -18230,6 +18273,7 @@ export const CreateAcademicReportCardBody = zod.object({
 })
 
 export const CreateAcademicReportCardResponse = zod.object({
+  "studentPhotoUrl": zod.string().nullish().describe('Authorized same-school same-child stored photo endpoint; null if no managed profile photo.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
@@ -18305,6 +18349,7 @@ export const PublishAcademicReportCardBody = zod.object({
 })
 
 export const PublishAcademicReportCardResponse = zod.object({
+  "studentPhotoUrl": zod.string().nullish().describe('Authorized same-school same-child stored photo endpoint; null if no managed profile photo.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
@@ -18372,6 +18417,7 @@ export const ListMyAcademicReportCardsQueryParams = zod.object({
 })
 
 export const ListMyAcademicReportCardsResponseItem = zod.object({
+  "studentPhotoUrl": zod.string().nullish().describe('Authorized same-school same-child stored photo endpoint; null if no managed profile photo.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
@@ -18447,6 +18493,7 @@ export const ListChildAcademicReportCardsQueryParams = zod.object({
 })
 
 export const ListChildAcademicReportCardsResponseItem = zod.object({
+  "studentPhotoUrl": zod.string().nullish().describe('Authorized same-school same-child stored photo endpoint; null if no managed profile photo.'),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
@@ -23018,7 +23065,13 @@ export const GetSchoolBrandingParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1)
 })
 
+export const getSchoolBrandingResponsePrimaryColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const getSchoolBrandingResponseSecondaryColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+
+
 export const GetSchoolBrandingResponse = zod.object({
+  "primaryColor": zod.string().regex(getSchoolBrandingResponsePrimaryColorRegExp).nullish(),
+  "secondaryColor": zod.string().regex(getSchoolBrandingResponseSecondaryColorRegExp).nullish(),
   "schoolId": zod.number().int(),
   "name": zod.string(),
   "registrationNumber": zod.string().nullish(),
@@ -23080,7 +23133,13 @@ export const UpdateSchoolBrandingBody = zod.object({
   "schoolType": zod.string().max(updateSchoolBrandingBodySchoolTypeMax).nullish()
 })
 
+export const updateSchoolBrandingResponsePrimaryColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateSchoolBrandingResponseSecondaryColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+
+
 export const UpdateSchoolBrandingResponse = zod.object({
+  "primaryColor": zod.string().regex(updateSchoolBrandingResponsePrimaryColorRegExp).nullish(),
+  "secondaryColor": zod.string().regex(updateSchoolBrandingResponseSecondaryColorRegExp).nullish(),
   "schoolId": zod.number().int(),
   "name": zod.string(),
   "registrationNumber": zod.string().nullish(),
@@ -23144,7 +23203,13 @@ export const ConfirmSchoolLogoUploadBody = zod.object({
   "objectPath": zod.string().regex(confirmSchoolLogoUploadBodyObjectPathRegExp)
 })
 
+export const confirmSchoolLogoUploadResponsePrimaryColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const confirmSchoolLogoUploadResponseSecondaryColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+
+
 export const ConfirmSchoolLogoUploadResponse = zod.object({
+  "primaryColor": zod.string().regex(confirmSchoolLogoUploadResponsePrimaryColorRegExp).nullish(),
+  "secondaryColor": zod.string().regex(confirmSchoolLogoUploadResponseSecondaryColorRegExp).nullish(),
   "schoolId": zod.number().int(),
   "name": zod.string(),
   "registrationNumber": zod.string().nullish(),

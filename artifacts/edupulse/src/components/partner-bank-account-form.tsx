@@ -5,6 +5,11 @@ import { BankProviderSelect } from './bank-provider-select';
 import { useBankSelectionGuard } from '@/lib/bank-selection';
 
 type Masked = { bankName?: string | null; accountName?: string | null; maskedAccountNumber?: string | null; verified?: boolean } | null | undefined;
+function schoolName(value: string) {
+  if (!/^[A-Za-z0-9\s.,'-]+$/.test(value)) return null;
+  const words = value.toUpperCase().replace(/[.,'-]/g, ' ').trim().split(/\s+/);
+  return words.length >= 2 && words.every(Boolean) ? words.join(' ') : null;
+}
 function registeredName(value: string) {
   if (!/^[A-Za-z\s.,'-]+$/.test(value)) return null;
   const words = value.toUpperCase().replace(/[.,'-]/g, ' ').trim().split(/\s+/);
@@ -22,8 +27,11 @@ function errMsg(e: unknown) {
  * authoritative comparison; the client also checks conservative name equality,
  * response shape, last4, token and expiry before enabling Save.
  */
-export function PartnerBankAccountForm({ current, fullName, saving, onSave }: {
+export function PartnerBankAccountForm({ current, fullName, saving, onSave,
+  lookupAccount = lookupPartnerReceivingAccount, schoolFees = false,
+}: {
   current: Masked; fullName: string; saving: boolean; onSave: (data: PartnerPayoutInformationInput) => void;
+  lookupAccount?: typeof lookupPartnerReceivingAccount; schoolFees?: boolean;
 }) {
   const [f, setF] = useState({ bankName: '', bankCode: '', accountNumber: '' });
   const [lookup, setLookup] = useState<(PartnerBankLookup & { key: string }) | null>(null);
@@ -46,13 +54,14 @@ export function PartnerBankAccountForm({ current, fullName, saving, onSave }: {
     const timer = setTimeout(async () => {
       setPhase('loading');
       try {
-        const result = await lookupPartnerReceivingAccount({
+        const result = await lookupAccount({
           bankName: f.bankName, bankCode: f.bankCode, accountNumber: f.accountNumber,
         }, { signal: controller.signal, cache: 'no-store' });
         if (!active) return;
         const remaining = Date.parse(result?.expiresAt ?? '') - Date.now();
         if (!result || typeof result.accountName !== 'string' || !result.accountName.trim()
-          || !registeredName(fullName) || registeredName(result.accountName) !== registeredName(fullName)
+          || !(schoolFees ? schoolName(fullName) : registeredName(fullName))
+          || (schoolFees ? schoolName(result.accountName) !== schoolName(fullName) : registeredName(result.accountName) !== registeredName(fullName))
           || result.accountLast4 !== f.accountNumber.slice(-4)
           || typeof result.lookupToken !== 'string' || !result.lookupToken
           || !Number.isFinite(remaining) || remaining <= 0) {
@@ -68,7 +77,7 @@ export function PartnerBankAccountForm({ current, fullName, saving, onSave }: {
       }
     }, 500);
     return () => { active = false; controller.abort(); clearTimeout(timer); clearTimeout(expiration); };
-  }, [f.bankName, f.bankCode, f.accountNumber, supported, key, retry]);
+  }, [f.bankName, f.bankCode, f.accountNumber, supported, key, retry, lookupAccount, schoolFees]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -83,10 +92,10 @@ export function PartnerBankAccountForm({ current, fullName, saving, onSave }: {
   return <form onSubmit={submit} className="space-y-5" data-testid="form-partner-bank">
     <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/.35)] p-4 text-sm" data-testid="text-current-bank">
       {verified ? <>
-        <div className="eyebrow">Verified payout account</div>
+        <div className="eyebrow">{schoolFees ? 'Verified school-fee account' : 'Verified payout account'}</div>
         <div className="mt-1 font-bold">{verified.bankName}</div>
         <div className="text-[hsl(var(--muted-foreground))]">{verified.accountName} <span className="font-mono">{verified.maskedAccountNumber}</span></div>
-      </> : <span className="text-[hsl(var(--muted-foreground))]">No verified payout account on file. Payouts stay blocked until one is saved through automatic lookup.</span>}
+      </> : <span className="text-[hsl(var(--muted-foreground))]">{schoolFees ? 'No verified school bank account on file. Parent transfer instructions stay unavailable until verification and enablement.' : 'No verified payout account on file. Payouts stay blocked until one is saved through automatic lookup.'}</span>}
     </div>
     <BankProviderSelect value={f} onSelect={b => setF(v => ({ ...v, bankName: b.bankName, bankCode: b.bankCode }))} />
     <div className="grid gap-5 md:grid-cols-2">
@@ -103,8 +112,8 @@ export function PartnerBankAccountForm({ current, fullName, saving, onSave }: {
     </div>
     <div aria-live="polite" role="status" className="text-xs leading-5 text-[hsl(var(--muted-foreground))]" data-testid="status-partner-lookup">
       {phase === 'waiting' || phase === 'loading' ? 'Looking up account name…'
-        : matched ? 'Account name matches your registered BRO name. Save to use this account for payouts.'
-        : `The account name must match your registered BRO name (${fullName}) exactly, ignoring only case, spacing and punctuation separators.`}
+        : matched ? `Account name matches the registered ${schoolFees ? 'school' : 'BRO'} name. Save to use this account for ${schoolFees ? 'school fees' : 'payouts'}.`
+        : `The account name must match the registered ${schoolFees ? 'school official' : 'BRO'} name (${fullName}) exactly, ignoring only case, spacing and punctuation separators.`}
     </div>
     {error && <p role="alert" className="text-sm text-[hsl(var(--destructive))]" data-testid="text-partner-lookup-error">{error}</p>}
     {phase === 'error' && <Button type="button" variant="quiet" onClick={() => setRetry(v => v + 1)} testId="button-retry-partner-lookup">Retry lookup</Button>}

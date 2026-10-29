@@ -12,6 +12,11 @@ import type { AcademicReportCardLine4b96100 } from './academicReportCardLine4b96
 import type { ReportCardStatus4b96100 } from './reportCardStatus4b96100';
 
 export interface AcademicReportCard4b96100 {
+  /**
+     * Authorized same-school same-child stored photo endpoint; null if no managed profile photo.
+     * @nullable
+     */
+  studentPhotoUrl?: string | null;
   id: number;
   schoolId: number;
   studentId: number;

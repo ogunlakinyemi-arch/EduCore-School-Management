@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { acceptSchoolFeeBankProof, lookupSchoolFeeBank, schoolFeeBankIdentity,
+  schoolFeeBankVerified, schoolBankFingerprint, SCHOOL_FEE_BANK_POLICY } from "../services/school-fee-bank-verification";
+import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
+import { FlutterwavePayrollV3Client } from "../lib/flutterwave-payroll-v3";
 import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions, isSystemNfcCategory } from "../lib/student-nfc-obligations";
 import { assignPublishedClassFees } from "../services/fee-publication";
 import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
@@ -168,6 +172,20 @@ const feeAdjustmentShape = `id,school_id AS "schoolId",invoice_id AS "invoiceId"
   CASE WHEN approved_at IS NULL THEN NULL
     ELSE to_char(approved_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "approvedAt"`;
 
+async function maskedFinanceSettings(c: { query: (sql: string, values?: any[]) => Promise<any> }, schoolId: number, row: any) {
+  const identity = await schoolFeeBankIdentity(c, schoolId);
+  const bankVerified = await schoolFeeBankVerified(c, schoolId, row, identity);
+  return { ...row, bankTransferEnabled: row.bankTransferEnabled && bankVerified,
+    accountNumber: null, maskedAccountNumber: row.accountNumber ? `****${row.accountNumber.slice(-4)}` : null,
+    officialSchoolName: identity.name, bankVerified };
+}
+router.post("/school/finance/settings/bank-lookup", async (req, res): Promise<void> => {
+  try {
+    const schoolId = schoolIdForMutation(req, UpdateFinanceSettingsQueryParams, ["SCHOOL_ADMIN"]);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(await lookupSchoolFeeBank(pool, getUserContext(req).user.id, schoolId, req.body));
+  } catch (error) { fail(res, error); }
+});
 router.get("/school/finance/settings", async (req, res): Promise<void> => {
   try {
     const schoolId = schoolIdFromQuery(req, GetFinanceSettingsQueryParams);
@@ -179,11 +197,12 @@ router.get("/school/finance/settings", async (req, res): Promise<void> => {
        FROM fee_school_settings WHERE school_id=$1`,
       [schoolId],
     );
-    res.json(GetFinanceSettingsResponse.parse(result.rows[0] ?? {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(GetFinanceSettingsResponse.parse(await maskedFinanceSettings(pool, schoolId, result.rows[0] ?? {
       schoolId, partialPaymentsEnabled: false, bankTransferEnabled: false,
       paystackEnabled: false, flutterwaveEnabled: false,
       bankName: null, accountName: null, accountNumber: null,
-    }));
+    })));
   } catch (error) { fail(res, error); }
 });
 
@@ -195,15 +214,15 @@ router.patch("/school/finance/settings", async (req, res): Promise<void> => {
     if (Object.keys(body).length === 0) throw new AuthError(400, "At least one finance setting must be provided");
     const context = getUserContext(req);
     await client.query("BEGIN");
-    await client.query(
-      `INSERT INTO fee_school_settings (school_id) VALUES ($1) ON CONFLICT (school_id) DO NOTHING`,
+    const initialized = await client.query(
+      `INSERT INTO fee_school_settings (school_id) VALUES ($1) ON CONFLICT (school_id) DO NOTHING RETURNING school_id`,
       [schoolId],
     );
     const currentResult = await client.query(
       `SELECT partial_payments_enabled AS "partialPaymentsEnabled",
          bank_transfer_enabled AS "bankTransferEnabled",bank_name AS "bankName",
          paystack_enabled AS "paystackEnabled",flutterwave_enabled AS "flutterwaveEnabled",
-         bank_account_name AS "accountName",bank_account_number AS "accountNumber"
+         bank_account_name AS "accountName",bank_account_number AS "accountNumber",updated_at::text AS "bankRevision"
        FROM fee_school_settings WHERE school_id=$1 FOR UPDATE`,
       [schoolId],
     );
@@ -232,6 +251,18 @@ router.patch("/school/finance/settings", async (req, res): Promise<void> => {
     if (bankTransferEnabled && (!bankName || !accountName || !accountNumber)) {
       throw new AuthError(400, "Complete valid bank details are required before enabling manual bank transfers");
     }
+    const identity = await schoolFeeBankIdentity(client, schoolId, true);
+    const hasBankInput = ["bankName", "bankCode", "accountName", "accountNumber", "lookupToken"]
+      .some(key => Object.prototype.hasOwnProperty.call(req.body, key));
+    const requiresProof = hasBankInput || body.bankTransferEnabled === true;
+    if (requiresProof) {
+      const proposed = { ...body, bankName, accountName, accountNumber };
+      const proofBaseline = initialized.rows[0] ? undefined : current;
+      acceptSchoolFeeBankProof(context.user.id, identity, proofBaseline, proposed);
+      await requireVerifiedPaymentAccountProvider(proposed as any, new FlutterwavePayrollV3Client());
+      // Network/directory time must never extend the proof's five-minute lifetime.
+      acceptSchoolFeeBankProof(context.user.id, identity, proofBaseline, proposed);
+    }
     const result = await client.query(
       `INSERT INTO fee_school_settings
         (school_id,partial_payments_enabled,bank_transfer_enabled,paystack_enabled,flutterwave_enabled,
@@ -256,8 +287,13 @@ router.patch("/school/finance/settings", async (req, res): Promise<void> => {
         paystackEnabled, flutterwaveEnabled,
         bankName, accountName, accountNumberLast4: accountNumber?.slice(-4) ?? null,
       });
+    if (requiresProof) await audit(req, client, schoolId, "verified school bank", "finance settings", schoolId,
+      { policy: SCHOOL_FEE_BANK_POLICY, identity: identity.name, bankCode: body.bankCode,
+        fingerprint: schoolBankFingerprint(result.rows[0]), accountNumberLast4: accountNumber?.slice(-4) });
+    const response = await maskedFinanceSettings(client, schoolId, result.rows[0]);
     await client.query("COMMIT");
-    res.json(UpdateFinanceSettingsResponse.parse(result.rows[0]));
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(UpdateFinanceSettingsResponse.parse(response));
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     fail(res, error);
@@ -376,8 +412,9 @@ function safeProviderReason(value: unknown): string | null {
     .trim();
 }
 
-function configuredBankDetails(settings: any) {
+async function configuredBankDetails(settings: any, schoolId: number, c: any = pool) {
   if (!settings?.bankTransferEnabled) return null;
+  if (!await schoolFeeBankVerified(c, schoolId, settings)) return null;
   const bankName = typeof settings.bankName === "string" ? settings.bankName.trim() : "";
   const accountName = typeof settings.accountName === "string" ? settings.accountName.trim() : "";
   const accountNumber = typeof settings.accountNumber === "string" ? settings.accountNumber : "";
@@ -1022,7 +1059,7 @@ router.get("/parent/fees/invoices/:invoiceId/bank-details", async (req, res): Pr
        FROM fee_school_settings WHERE school_id=$1`,
       [invoice.rows[0].schoolId],
     );
-    const bankDetails = configuredBankDetails(settings.rows[0]);
+    const bankDetails = await configuredBankDetails(settings.rows[0], invoice.rows[0].schoolId);
     if (!bankDetails) {
       res.json(GetParentFeeInvoiceBankDetailsResponse.parse({
         invoiceId, schoolId: invoice.rows[0].schoolId, available: false,
@@ -1066,7 +1103,7 @@ router.get("/parent/fees/invoices/:invoiceId/payment-methods", async (req, res):
     );
     const schoolSettings = settings.rows[0];
     const methods: Array<"BANK_TRANSFER" | "PAYSTACK" | "FLUTTERWAVE"> = [];
-    if (configuredBankDetails(schoolSettings)) methods.push("BANK_TRANSFER");
+    if (await configuredBankDetails(schoolSettings, invoice.rows[0].schoolId)) methods.push("BANK_TRANSFER");
 
     const returnUrlAvailable = configuredCheckoutReturnUrl() !== null;
     const amountMinor = Number(invoice.rows[0].outstandingMinor);
@@ -1184,7 +1221,7 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
        FROM fee_school_settings WHERE school_id=$1`,
       [invoice.rows[0].school_id],
     );
-    if (!configuredBankDetails(settings.rows[0])) {
+    if (!await configuredBankDetails(settings.rows[0], invoice.rows[0].school_id, client)) {
       throw new AuthError(409, "Manual bank transfers are not enabled or configured for this school");
     }
     const partialPaymentsEnabled = settings.rows[0]?.partialPaymentsEnabled ?? false;

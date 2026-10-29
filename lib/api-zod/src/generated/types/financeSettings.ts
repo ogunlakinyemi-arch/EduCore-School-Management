@@ -20,8 +20,13 @@ export interface FinanceSettings {
   /** @nullable */
   accountName: string | null;
   /**
+     * Always null in routine settings responses; full numbers are only disclosed for authorized enabled parent invoice instructions.
      * @nullable
      * @pattern ^[0-9]{10}$
      */
   accountNumber: string | null;
+  /** @nullable */
+  maskedAccountNumber?: string | null;
+  officialSchoolName?: string;
+  bankVerified?: boolean;
 }

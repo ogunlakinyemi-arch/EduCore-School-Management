@@ -33,7 +33,7 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
     useGetPaymentAccountProviders: () => q(s.catalogue),
     useGetAuthorizedContext: () => s.owner ? ctxOwner : ctxAdmin,
     useGetPlatformPaymentSettlement: () => ({...setQ, refetch:s.refresh}), useUpdatePlatformPaymentSettlement: mut,
-    lookupOwnerReceivingAccount: s.lookup, lookupPartnerReceivingAccount: s.plookup,
+    lookupOwnerReceivingAccount: s.lookup, lookupPartnerReceivingAccount: s.plookup, lookupSchoolFeeBankAccount: s.plookup,
     useListPlatformSchoolSettlements: () => q([]), useListPlatformSettlementHistory: () => q([]), useGetPlatformSchoolSettlement: () => q(undefined),
     useGetSchoolPaymentSettlement: () => setQ, useUpdateSchoolPaymentSettlement: mut, useListSchoolSettlementHistory: () => q([]),
     useListCompanyPayrollEmployees: () => empQ, useListCompanyPayrollPeriods: () => perQ, useUpsertCompanyPayrollEmployee: mut,
@@ -263,12 +263,20 @@ describe('Partner payout automatic bank verification', () => {
 });
 
 describe('Finance manual transfer settings', () => {
-  const settings = { bankTransferEnabled: true, bankName: 'Legacy Bank', accountName: 'Unit Account', accountNumber: '0123456789' } as any;
+  const settings = { bankTransferEnabled: false, bankName: 'Legacy Bank', accountName: 'Unit School', accountNumber: null, officialSchoolName: 'Unit School', maskedAccountNumber: '****6789', bankVerified: false } as any;
   const mountIt = () => render(<BankTransferSettings schoolId={7} settings={settings} canEdit onSaved={() => {}} />);
-  it('saves a directory pick by name only', async () => {
-    await mountIt(); await pick('beta'); await submit(document.body.querySelector('form')!);
-    expect(s.save.mock.calls[0][0].data).toMatchObject({ bankName: 'Fictional Beta Microfinance Bank' });
-    expect(s.save.mock.calls[0][0].data).not.toHaveProperty('bankCode');
+  it('saves a directory pick only after a fresh official-school-name lookup with bank code and evidence', async () => {
+    s.plookup.mockResolvedValue({ accountName: 'UNIT SCHOOL', accountLast4: '6789',
+      lookupToken: 'school-proof', expiresAt: new Date(Date.now() + 300000).toISOString() });
+    s.save.mockResolvedValue(settings);
+    await mountIt(); await pick('beta');
+    await typeInto(node<HTMLInputElement>('input-partner-account-number'), '0123456789');
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 650)); });
+    expect(node<HTMLInputElement>('input-partner-account-name').readOnly).toBe(true);
+    await submit(document.body.querySelector('form')!);
+    expect(s.save.mock.calls[0][0].data).toMatchObject({ bankName: 'Fictional Beta Microfinance Bank',
+      bankCode: '90002', accountName: 'UNIT SCHOOL', accountNumber: '0123456789', lookupToken: 'school-proof',
+      bankTransferEnabled: false });
   });
   it('rejects typed free text and keeps an untouched saved bank', async () => {
     await mountIt(); await typeInto(combo(), 'Typed Bank');

@@ -6169,6 +6169,11 @@ export type AcademicReportCardAttendance = {
 } | null;
 
 export interface AcademicReportCard {
+  /**
+     * Authorized same-school same-child stored photo endpoint; null if no managed profile photo.
+     * @nullable
+     */
+  studentPhotoUrl?: string | null;
   id: number;
   schoolId: number;
   studentId: number;
@@ -7106,10 +7111,27 @@ export interface FinanceSettings {
   /** @nullable */
   accountName: string | null;
   /**
+     * Always null in routine settings responses; full numbers are only disclosed for authorized enabled parent invoice instructions.
      * @nullable
      * @pattern ^[0-9]{10}$
      */
   accountNumber: string | null;
+  /** @nullable */
+  maskedAccountNumber?: string | null;
+  officialSchoolName?: string;
+  bankVerified?: boolean;
+}
+
+export interface SchoolFeeBankSelection {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bankName: string;
+  /** @pattern ^[0-9]{1,20}$ */
+  bankCode: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
 }
 
 export interface FinanceSettingsUpdate {
@@ -7134,6 +7156,10 @@ export interface FinanceSettingsUpdate {
      * @pattern ^[0-9]{10}$
      */
   accountNumber?: string | null;
+  /** @pattern ^[0-9]{1,20}$ */
+  bankCode?: string;
+  /** @maxLength 10000 */
+  lookupToken?: string;
 }
 
 export interface ParentInvoiceBankDetailsAvailable {
@@ -9127,6 +9153,16 @@ export interface ApiError0a0c478 {
 export type SchoolCoreApiError = ApiError0a0c478;
 
 export interface SchoolBranding {
+  /**
+     * @nullable
+     * @pattern ^#[0-9A-Fa-f]{6}$
+     */
+  primaryColor?: string | null;
+  /**
+     * @nullable
+     * @pattern ^#[0-9A-Fa-f]{6}$
+     */
+  secondaryColor?: string | null;
   schoolId: number;
   name: string;
   /** @nullable */
@@ -21483,6 +21519,11 @@ export type AcademicReportCard4b96100Attendance = {
 } | null;
 
 export interface AcademicReportCard4b96100 {
+  /**
+     * Authorized same-school same-child stored photo endpoint; null if no managed profile photo.
+     * @nullable
+     */
+  studentPhotoUrl?: string | null;
   id: number;
   schoolId: number;
   studentId: number;
@@ -22420,10 +22461,27 @@ export interface FinanceSettings4b96100 {
   /** @nullable */
   accountName: string | null;
   /**
+     * Always null in routine settings responses; full numbers are only disclosed for authorized enabled parent invoice instructions.
      * @nullable
      * @pattern ^[0-9]{10}$
      */
   accountNumber: string | null;
+  /** @nullable */
+  maskedAccountNumber?: string | null;
+  officialSchoolName?: string;
+  bankVerified?: boolean;
+}
+
+export interface SchoolFeeBankSelection4b96100 {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bankName: string;
+  /** @pattern ^[0-9]{1,20}$ */
+  bankCode: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
 }
 
 export interface FinanceSettingsUpdate4b96100 {
@@ -22448,6 +22506,10 @@ export interface FinanceSettingsUpdate4b96100 {
      * @pattern ^[0-9]{10}$
      */
   accountNumber?: string | null;
+  /** @pattern ^[0-9]{1,20}$ */
+  bankCode?: string;
+  /** @maxLength 10000 */
+  lookupToken?: string;
 }
 
 export interface ParentInvoiceBankDetailsAvailable4b96100 {
@@ -24824,6 +24886,13 @@ schoolId: SchoolIdParameter;
 };
 
 export type UpdateFinanceSettingsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type LookupSchoolFeeBankAccountParams = {
 /**
  * @minimum 1
  */

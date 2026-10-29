@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import { Router, type NextFunction, type Request } from "express";
 import { Storage, type File } from "@google-cloud/storage";
 import { pool } from "@workspace/db";
@@ -103,6 +104,18 @@ async function assertPhotoReader(req: Request, schoolId: number, personId: numbe
   if (schoolRoles.some((role) =>
     ["SCHOOL_ADMIN", "TEACHER", "STAFF"].includes(role.role)
   )) return;
+  if (schoolRoles.some(role => role.role === "STUDENT")) {
+    const own = await pool.query("SELECT id FROM students WHERE id=$1 AND school_id=$2 AND user_id=$3", [personId, schoolId, context.user.id]);
+    if (own.rows[0]) return;
+  }
+  if (schoolRoles.some(role => role.role === "PARENT")) {
+    const child = await pool.query(`SELECT 1 FROM parents p
+      JOIN parent_student_relationships psr ON psr.parent_id=p.id
+      JOIN students st ON st.id=psr.student_id
+      WHERE p.user_id=$1 AND st.school_id=$2 AND st.id=$3 AND psr.status='ACTIVE'
+      AND UPPER(p.status)='ACTIVE' AND ${familyChildSchoolScope()}`, [context.user.id, schoolId, personId]);
+    if (child.rows[0]) return;
+  }
 
   if (schoolRoles.some((role) => role.role === "DEVICE_ACTIVATION_OFFICER")) {
     await assertDeviceActivationOfficer(req);

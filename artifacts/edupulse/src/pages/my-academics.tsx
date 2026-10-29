@@ -6,6 +6,7 @@ import {
 import { BookOpen, GraduationCap, Calendar, BarChart3, Clock, CheckCircle2 } from 'lucide-react';
 import { AttendanceRangeControls, rangeFor, type Range } from '@/components/attendance-range';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
+import { AcademicReportPrint } from '@/components/academic-report-document';
 
 export function MyAcademicsPage() {
   const { schoolId } = useTenant();
@@ -230,41 +231,7 @@ function PublishedResultPrintDocument({ schoolId, result }: { schoolId: number; 
 }
 
 function MyReportCardPrintDocument({ schoolId, card }: { schoolId: number; card: any }) {
-  const branding = useSchoolDocumentBranding(schoolId);
-  const school = branding.data;
-  return <SchoolDocumentPrintButton
-    label="Print published report card"
-    testId={`button-print-my-report-card-${card.id}`}
-    disabled={!school || branding.isLoading || branding.isError}
-    unavailableMessage={branding.isError ? 'School branding could not be loaded. Retry before printing this report card.' : 'Loading the selected school identity.'}
-  >
-    <article className="school-document-page">
-      <SchoolDocumentHeader branding={school ?? {}} />
-      <h2 className="school-document-title">Academic report card</h2>
-      <dl className="school-document-grid">
-        <div className="school-document-field"><dt>Student record</dt><dd>#{card.studentId}</dd></div>
-        <div className="school-document-field"><dt>Class</dt><dd>{card.className}{card.section ? ` · ${card.section}` : ''}</dd></div>
-        <div className="school-document-field"><dt>Academic session</dt><dd>{card.sessionName ?? `Session #${card.sessionId}`}</dd></div>
-        <div className="school-document-field"><dt>Academic term</dt><dd>{card.termName ?? `Term #${card.termId}`}</dd></div>
-        <div className="school-document-field"><dt>Publication status</dt><dd>{card.status}{card.publishedAt ? ` · ${new Date(card.publishedAt).toLocaleDateString('en-NG')}` : ''}</dd></div>
-        <div className="school-document-field"><dt>Result completeness</dt><dd>{String(card.resultState).replaceAll('_', ' ')}</dd></div>
-      </dl>
-      <h3 className="school-document-title">Published assessment results</h3>
-      {card.lines.length ? <table className="school-document-table">
-        <thead><tr><th>Subject</th><th>Assessment</th><th>Score</th><th>Grade</th><th>Grade points</th><th>Remark</th></tr></thead>
-        <tbody>{card.lines.map((line: any) => <tr key={line.id}>
-          <td>{line.subjectName}</td>
-          <td>{line.assessmentName}</td>
-          <td>{line.score}/{line.maxScore}</td>
-          <td>{line.grade ?? ''}</td>
-          <td>{line.gradePoint ?? ''}</td>
-          <td>{line.remark ?? ''}</td>
-        </tr>)}</tbody>
-      </table> : <p>No graded results were included at publication.</p>}
-      {card.teacherRemark && <p className="mt-4"><strong>Teacher remark:</strong> {card.teacherRemark}</p>}
-      {card.schoolRemark && <p className="mt-2"><strong>School remark:</strong> {card.schoolRemark}</p>}
-    </article>
-  </SchoolDocumentPrintButton>;
+  return <AcademicReportPrint schoolId={schoolId} card={card} label="Print published report card" testId={`button-print-my-report-card-${card.id}`} />;
 }
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
