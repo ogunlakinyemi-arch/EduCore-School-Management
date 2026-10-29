@@ -1,3 +1,4 @@
+import { teacherScoped, teacherClassScope, teacherStudentScope } from "../lib/teacher-record-scope";
 import { markClassFromGate } from "../services/gate-class-attendance";
 import {assertVerifiedStudentNfcPayment} from "../services/student-nfc-payment-evidence";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
@@ -763,17 +764,36 @@ router.get("/school/attendance/today", requireAuthentication(), run(async (req, 
 router.get("/school/attendance/students/:studentId", requireAuthentication(), run(async (req,res) => {
    const schoolId=Number(req.query.schoolId), studentId=Number(req.params.studentId); const ctx=assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF","TEACHER"]);
   const student=await pool.query(`SELECT id FROM students WHERE id=$1 AND school_id=$2`,[studentId,schoolId]); if(!student.rows[0]) throw new AuthError(404,"Student not found");
-    if (ctx.roles.some(x=>x.role==="TEACHER") && !hasSchoolWideAttendanceRead(ctx, schoolId)) {
-     const assigned=await pool.query(`SELECT 1 FROM teacher_class_assignments t JOIN employees e ON e.id=t.employee_id JOIN student_class_assignments a ON a.school_class_id=t.school_class_id WHERE e.user_id=$1 AND t.school_id=$2 AND a.student_id=$3 AND t.status='ACTIVE' AND a.status='ACTIVE'`,[ctx.user.id,schoolId,studentId]);
+    if (teacherScoped(ctx, schoolId)) {
+     const assigned=await pool.query(`SELECT 1 FROM students st WHERE st.school_id=$2 AND st.id=$3
+       AND ${teacherStudentScope("st", "$1")}`,[ctx.user.id,schoolId,studentId]);
      if(!assigned.rows[0]) throw new AuthError(404,"Student not found");
    }
-  const r=await pool.query(`SELECT e.id,e.school_id AS "schoolId",e.student_id AS "studentId",e.device_id AS "deviceId",e.event_type AS "eventType",e.identification_method AS "identificationMethod",e.occurred_at AS "occurredAt",e.attendance_status AS status,e.result,e.created_at AS "createdAt",${attendanceCardUidSql("e")} AS "cardUid" FROM attendance_events e WHERE e.school_id=$1 AND e.student_id=$2 ORDER BY e.occurred_at DESC LIMIT 500`,[schoolId,studentId]); res.json(r.rows);
+  const r=await pool.query(`SELECT e.id,e.school_id AS "schoolId",e.student_id AS "studentId",e.device_id AS "deviceId",e.event_type AS "eventType",e.identification_method AS "identificationMethod",e.occurred_at AS "occurredAt",e.attendance_status AS status,e.result,e.created_at AS "createdAt",${attendanceCardUidSql("e")} AS "cardUid" FROM attendance_events e WHERE e.school_id=$1 AND e.student_id=$2
+    ${teacherScoped(ctx, schoolId) ? `AND EXISTS (SELECT 1 FROM students st WHERE st.id=e.student_id
+      AND st.school_id=e.school_id AND ${teacherStudentScope("st","$3")})` : ""}
+    ORDER BY e.occurred_at DESC LIMIT 500`,teacherScoped(ctx,schoolId)?[schoolId,studentId,ctx.user.id]:[schoolId,studentId]); res.json(r.rows);
 }));
 
 router.get("/school/attendance/classes/:classId", requireAuthentication(), run(async (req,res) => {
   const schoolId=Number(req.query.schoolId), classId=Number(req.params.classId); const ctx=assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF","TEACHER"]);
-  if (ctx.roles.some(x=>x.role==="TEACHER")&&!hasSchoolWideAttendanceRead(ctx, schoolId)) { const ok=await pool.query(`SELECT 1 FROM teacher_class_assignments t JOIN employees e ON e.id=t.employee_id WHERE e.user_id=$1 AND t.school_id=$2 AND t.school_class_id=$3 AND t.status='ACTIVE'`,[ctx.user.id,schoolId,classId]); if(!ok.rows[0]) throw new AuthError(404,"Class not found"); }
-  const date=String(req.query.date??new Date().toISOString().slice(0,10)); const r=await pool.query(`SELECT id,school_id AS "schoolId",student_id AS "studentId",device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",occurred_at AS "occurredAt",attendance_status AS status,result,created_at AS "createdAt" FROM attendance_events WHERE school_id=$1 AND school_class_id=$2 AND event_date=$3 ORDER BY occurred_at DESC`,[schoolId,classId,date]); res.json(r.rows);
+  if (!Number.isSafeInteger(classId) || classId<1) throw new AuthError(400,"A valid class is required");
+  const restrictedTeacher=teacherScoped(ctx, schoolId);
+  if (restrictedTeacher) {
+    const ok=await pool.query(`SELECT 1 FROM school_classes c WHERE c.school_id=$2 AND c.id=$3
+      AND ${teacherClassScope("c", "$1")}`,[ctx.user.id,schoolId,classId]);
+    if(!ok.rows[0]) throw new AuthError(404,"Class not found");
+  }
+  const date=String(req.query.date??new Date().toISOString().slice(0,10));
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||
+    new Date(date).toISOString().slice(0,10)!==date) throw new AuthError(400,"A valid school day is required");
+  const r=await pool.query(`SELECT e.id,e.school_id AS "schoolId",e.student_id AS "studentId",e.device_id AS "deviceId",
+    e.event_type AS "eventType",e.identification_method AS "identificationMethod",e.occurred_at AS "occurredAt",
+    e.attendance_status AS status,e.result,e.created_at AS "createdAt" FROM attendance_events e
+    WHERE e.school_id=$1 AND e.school_class_id=$2 AND e.event_date=$3
+    ${restrictedTeacher ? `AND EXISTS (SELECT 1 FROM students st WHERE st.school_id=e.school_id
+      AND st.id=e.student_id AND ${teacherStudentScope("st", "$4", "$2")})` : ""}
+    ORDER BY e.occurred_at DESC`,restrictedTeacher?[schoolId,classId,date,ctx.user.id]:[schoolId,classId,date]); res.json(r.rows);
 }));
 
 router.get("/school/attendance/discrepancies", requireAuthentication(), run(async (req,res) => {

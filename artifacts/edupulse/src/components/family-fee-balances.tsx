@@ -15,7 +15,17 @@ export function familyFeeBalances(
   return { schoolOutstanding, schoolPaid, nfcOutstanding, combinedOutstanding: schoolOutstanding + nfcOutstanding };
 }
 
-export function FamilyFeeBalances({ invoices, studentId }: { invoices: FeeInvoice[]; studentId?: number }) {
+export function FamilyFeeBalances({ invoices, studentId, schoolOnly = false }: { invoices: FeeInvoice[]; studentId?: number; schoolOnly?: boolean }) {
+  if (!schoolOnly) return <FamilyAndNfcBalances invoices={invoices} studentId={studentId}/>;
+  const totals = familyFeeBalances(invoices, []);
+  return <section aria-label="School-issued fee balances" className="grid gap-4 sm:grid-cols-2">
+    {[['School fees due', totals.schoolOutstanding], ['School fees paid', totals.schoolPaid]].map(([label, value]) =>
+      <div key={label} className="panel p-5"><div className="eyebrow">{label}</div>
+        <strong className="display-font mt-2 block text-2xl">{money(Number(value) / 100)}</strong></div>)}
+  </section>;
+}
+
+function FamilyAndNfcBalances({ invoices, studentId }: { invoices: FeeInvoice[]; studentId?: number }) {
   const nfc = useStudentNfcObligations({ studentId });
   const rows = (nfc.data?.rows ?? []).filter(row => studentId == null || row.studentId === studentId);
   const totals = familyFeeBalances(invoices, rows);

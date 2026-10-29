@@ -1,3 +1,4 @@
+- [Student/teacher visibility](student-and-teacher-visibility.md) — school fees only for students; teachers read explicit current assignments, enforced server-side.
 - [School fee beneficiaries](school-fee-beneficiary-policy.md) — official-school identity, fresh LIVE evidence and school enablement; never personal Admin names or merchant settlement.
 - [Prospective BRO commission](bro-commission-policy.md) — approved 27 October; ₦150 only after eligible January-term/later verified payment; preserve ₦100 history and separate expense.
 - [BRO manual payouts](bro-manual-payout-policy.md) — complete payable balances, frozen verified-person bank evidence and Owner-recorded external transfers only.

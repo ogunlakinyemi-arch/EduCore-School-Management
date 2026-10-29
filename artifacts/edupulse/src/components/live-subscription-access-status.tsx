@@ -15,6 +15,12 @@ export function LiveSubscriptionAccessStatus({items, audience}:{
 }) {
   const visible = items.filter(item=>item.environment==='LIVE' && item.audiences?.includes(audience));
   if (!visible.length) return null;
+  if (audience === 'student') return <section aria-label="Current school access" className="mb-5 space-y-3">
+    {visible.map(item => <div key={`${item.schoolId}-${item.studentId}`} role="status">
+      <strong>{item.schoolName}: {item.liveStatus === 'VERIFIED_ACTIVE' && item.entitled === true && !item.restricted ? 'Access available' : 'Access requires school assistance'}</strong>
+      {!(item.liveStatus === 'VERIFIED_ACTIVE' && item.entitled === true && !item.restricted) && <p>Contact your School Administrator for help. Your school-issued invoices are available in My fees.</p>}
+    </div>)}
+  </section>;
   return <section aria-label="LIVE subscription access" className="mb-5 space-y-3">
     {visible.map(item=>{
       const status = item.liveStatus && item.liveStatus in copy ? item.liveStatus : 'UNAVAILABLE';

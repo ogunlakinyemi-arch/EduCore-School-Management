@@ -1,3 +1,4 @@
+import { StudentSubscriptionStatusPage } from '@/components/student-subscription-guard';
 import { useEffect, useRef, useState } from 'react';
 import { CurrentSubscriptionPolicy } from '@/components/current-subscription-policy';
 import { SchoolBillingDashboard } from '@/components/school-billing-dashboard';
@@ -657,6 +658,7 @@ export function SubscriptionsRoute() {
   const {schoolId}=useTenant();
   const staff = context?.isPlatformOwner === true || context?.roles?.some(
     role => (role.role === 'SCHOOL_ADMIN' || role.role === 'ACCOUNTANT') && role.status === 'ACTIVE') === true;
+  if (!staff && context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE')) return <StudentSubscriptionStatusPage />;
   if (!staff) return <StudentNfcFamilyPage />;
   const schoolAdmin=context?.isPlatformOwner!==true&&!!schoolId&&context?.roles?.some(r=>r.role==='SCHOOL_ADMIN'&&r.schoolId===schoolId&&r.status==='ACTIVE')===true;
   return <><SubscriptionsPage />{schoolAdmin&&<PlatformPaymentForm key={`${context?.user?.id}:${schoolId}`} schoolId={schoolId!} identity={String(context?.user?.id)} />}<div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div></>;

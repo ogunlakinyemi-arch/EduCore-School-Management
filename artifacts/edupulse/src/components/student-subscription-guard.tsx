@@ -9,10 +9,8 @@ export function isStudentCorePage(path:string){
 }
 export function StudentSubscriptionInstructions(){
   return <div className="space-y-3 text-sm">
-    <p>Ask your School Administrator to review your subscription for the applicable academic term. The school must make its separate platform payment, or request Owner assistance after funds received in Yetenia’s business account have been independently checked.</p>
-    <p>The intended new-rule fee is ₦3,200 per student per term. Existing amounts and unpaid obligations are unchanged; reconciliation and explicit rule approval are required before a new checkout or conversion.</p>
-    <p>Your school sets the separate parent-facing NFC fee, which must be paid in full without installments. A school cash entry, uploaded receipt, transfer claim, or pending/failed payment does not verify the school’s platform payment.</p>
-    <p>Only independently verified platform payment for your student record and term can restore core access. Card registration, school locks, device and other security checks still apply; payment does not automatically activate a card.</p>
+    <p>Your school sets the fees shown in My fees. View your school-issued invoices for the applicable academic term and ask your parent or guardian to contact the school about payment questions.</p>
+    <p>If access is restricted, contact your School Administrator for help. Fee information does not change card registration or school security requirements.</p>
   </div>;
 }
 export function StudentSubscriptionGuard({active,actorId,path,children}:{
@@ -26,11 +24,10 @@ export function StudentSubscriptionGuard({active,actorId,path,children}:{
   const blocked=query.isError || !query.data || query.data.restricted;
   return <>
     {(blocked || path==='/student-subscription') && <section className="panel mb-5 space-y-3 p-5" role="status" data-testid="student-subscription-notice">
-      <h2 className="font-bold">{query.isLoading?'Checking current-term subscription':blocked?'Student core access restricted':'Current-term platform payment verified'}</h2>
-      {blocked && <p className="text-sm">{query.isError?'Subscription status could not be verified. Please retry.':'Core academics, results, attendance, reporting and library access require a verified platform subscription for your current academic term.'} Sign-in, account, subscription/payment status, payment instructions, inbox, welfare, transport and support remain available.</p>}
-      {query.data?.students.map(s=><p className="text-sm" key={`${s.schoolId}-${s.studentId}`}>Student #{s.studentId} · School #{s.schoolId} · Term {s.termId??'unavailable'} · {s.status.replaceAll('_',' ')}</p>)}
+      <h2 className="font-bold">{query.isLoading?'Checking current-term access':blocked?'Student core access restricted':'Current-term access available'}</h2>
+      {blocked && <p className="text-sm">{query.isError?'Access status could not be verified. Please retry.':'Some learning features are currently unavailable. Contact your School Administrator for help.'} Your account, school fees, inbox, welfare, transport and support remain available.</p>}
       <div className="flex flex-wrap gap-4 text-sm font-semibold">
-        <Link href="/student-subscription">Subscription status &amp; instructions</Link>
+        <Link href="/student-subscription">Access status &amp; school fee information</Link>
         <Link href="/my-fees">School fees &amp; evidence</Link>
         <Link href="/inbox">School support</Link>
         <button type="button" onClick={()=>void query.refetch()}>Refresh status</button>
@@ -42,5 +39,5 @@ export function StudentSubscriptionGuard({active,actorId,path,children}:{
   </>;
 }
 export function StudentSubscriptionStatusPage(){
-  return <section className="panel space-y-4 p-5"><h1 className="display-font text-2xl font-bold">My platform subscription</h1><StudentSubscriptionInstructions/></section>;
+  return <section className="panel space-y-4 p-5"><h1 className="display-font text-2xl font-bold">My school fees &amp; access</h1><StudentSubscriptionInstructions/><Link href="/my-fees" className="font-semibold underline">View school-issued fees</Link></section>;
 }

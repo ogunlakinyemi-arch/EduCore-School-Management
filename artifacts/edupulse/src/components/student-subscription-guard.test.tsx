@@ -6,7 +6,7 @@ const state=vi.hoisted(()=>({value:{data:undefined as any,isError:false,isLoadin
 vi.mock('@workspace/api-client-react',()=>({
   useGetMyStudentPlatformAccess:()=>state.value,getGetMyStudentPlatformAccessQueryKey:()=>['student-platform-access'],
 }));
-import { isStudentCorePage,StudentSubscriptionGuard } from './student-subscription-guard';
+import { isStudentCorePage,StudentSubscriptionGuard,StudentSubscriptionStatusPage } from './student-subscription-guard';
 import { ArchivedPaymentWorkflowPage } from '../pages/archived-payment-workflow';
 const render=(path:string)=>renderToStaticMarkup(<StudentSubscriptionGuard active actorId={9} path={path}><div>PRIVATE CORE DATA</div></StudentSubscriptionGuard>);
 describe('student UI access and archived payment entry points',()=>{
@@ -24,10 +24,13 @@ describe('student UI access and archived payment entry points',()=>{
     state.value.data={restricted:false,students:[{schoolId:1,studentId:31,termId:4,status:'VERIFIED'}]};
     expect(render('/results')).toContain('PRIVATE CORE DATA');
   });
-  it('explains full school fee payment, separate platform verification and retained card security',()=>{
+  it('shows school-fee guidance without platform pricing or payment instructions',()=>{
     const html=render('/results');
-    expect(html).toContain('without installments');expect(html).toContain('Card registration');
-    expect(html).toContain('reconciliation');expect(html).toContain('receipt');
+    expect(html).toContain('school-issued invoices');expect(html).toContain('school security');
+    for(const page of [html,renderToStaticMarkup(<StudentSubscriptionStatusPage/>)]){
+      expect(page).not.toMatch(/3,200|3200|platform payment|business account|Flutterwave|reconciliation|checkout/i);
+      expect(page).toContain('My fees');
+    }
   });
   it('removes retired nav items and unmounts old payment page implementations',()=>{
     const nav=readFileSync(`${process.cwd()}/src/components/shared.tsx`,'utf8');

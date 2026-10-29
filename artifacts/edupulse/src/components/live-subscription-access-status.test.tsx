@@ -20,11 +20,18 @@ const render=(items:SubscriptionAccessStatus[],audience:'student'|'parent'='pare
   renderToStaticMarkup(<LiveSubscriptionAccessStatus items={items} audience={audience}/>);
 beforeEach(()=>{state.data=[];state.isError=false;});
 describe('LIVE family subscription UI contract',()=>{
+  it('keeps student guidance neutral and never implies that a verified payment removes an independent lock',()=>{
+    const html=render([{...row('VERIFIED_ACTIVE'),restricted:true,restrictionReason:'SCHOOL_SUBSCRIPTION_LOCKED'}],'student');
+    expect(html).toContain('Access requires school assistance');expect(html).not.toContain('Access available');
+    expect(html).not.toMatch(/checkout|3,200|platform payment/i);
+  });
   it.each(['student','parent'] as const)('renders all explicit states for %s',audience=>{
     for(const [status,label] of [['PENDING','Verification pending'],['VERIFIED_ACTIVE','Verified subscription'],
       ['FAILED','Payment failure reported'],['REFUNDED_REVERSED','Refund or reversal review'],['UNAVAILABLE','LIVE status unavailable']] as const){
-      const html=render([row(status)],audience);expect(html).toContain(label);
-      expect(html).toContain('LIVE checkout is disabled');
+      const html=render([row(status)],audience);
+      expect(html).toContain(audience==='student'?(status==='VERIFIED_ACTIVE'?'Access available':'Access requires school assistance'):label);
+      if(audience==='parent')expect(html).toContain('LIVE checkout is disabled');
+      else expect(html).not.toMatch(/checkout|3,200|platform payment|pay again|refund|payment failure/i);
       expect(html).not.toMatch(/Pay now|fully active|href=.*payment/);
     }
   });

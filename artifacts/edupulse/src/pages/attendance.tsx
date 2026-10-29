@@ -6,7 +6,7 @@ import {
   useGetClassAttendance, getGetClassAttendanceQueryKey,
   getGetSchoolAttendanceTodayQueryKey, getListSchoolAttendanceEventsQueryKey,
   getListAttendanceDiscrepanciesQueryKey,
-  useGetAuthorizedContext,
+  useGetAuthorizedContext, useListClasses,
 } from '@workspace/api-client-react';
 import type { AttendanceEventType, AttendanceStatus } from '@workspace/api-client-react';
 import {
@@ -118,21 +118,33 @@ export function AttendancePage() {
   );
 }
 
-function TeacherClassAttendance({ schoolId }: { schoolId: number }) {
+export function TeacherClassAttendance({ schoolId }: { schoolId: number }) {
+  const context = useGetAuthorizedContext();
+  const actorId = context.data?.user.id;
   const [classId, setClassId] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const classes = useListClasses({ schoolId }, { query: {
+    enabled: !!schoolId && !!actorId && !context.isError, queryKey: ['teacher-attendance-classes', schoolId, actorId],
+    staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true, refetchInterval: 15000,
+  } });
   const selectedClassId = Number(classId);
-  const validClassId = Number.isInteger(selectedClassId) && selectedClassId > 0;
+  const assigned = (classes.data ?? []).filter(c => c.schoolId === schoolId);
+  const validClassId = !!actorId && !context.isError && !classes.isError && !classes.isFetching && assigned.some(c => c.id === selectedClassId);
   const report = useGetClassAttendance(selectedClassId, { schoolId, date }, {
-    query: { enabled: validClassId && !!schoolId, queryKey: getGetClassAttendanceQueryKey(selectedClassId, { schoolId, date }) },
+    query: { enabled: validClassId && !!schoolId, queryKey: [...getGetClassAttendanceQueryKey(selectedClassId, { schoolId, date }), actorId] },
   });
   return <div className="fade-up">
     <PageHeading eyebrow="Operations / Attendance" title="Class attendance" description="Only your assigned classes are available. School-wide attendance is restricted." action={<TenantPicker />} />
     <div className="panel mb-5 flex flex-wrap gap-4 p-5">
-      <Field label="Assigned class ID"><input type="number" min="1" value={classId} onChange={e => setClassId(e.target.value)} /></Field>
+      <Field label="Assigned class"><select data-testid="select-teacher-attendance-class" value={validClassId ? classId : ''} disabled={classes.isLoading || classes.isError || assigned.length === 0} onChange={e => setClassId(e.target.value)}>
+        <option value="">Choose an assigned class</option>
+        {assigned.map(c => <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>)}
+      </select></Field>
       <Field label="School day"><input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
     </div>
-    {!validClassId ? <EmptyState icon={ClipboardCheck} title="Choose an assigned class" description="Enter an assigned class ID to view its attendance for the selected day." /> :
+    {classes.isLoading ? <SkeletonPage /> : classes.isError ? <ErrorState retry={() => classes.refetch()} /> :
+      !assigned.length ? <EmptyState icon={ClipboardCheck} title="No classes assigned" description="Your school has not assigned you any current classes. Contact your School Administrator." /> :
+      !validClassId ? <EmptyState icon={ClipboardCheck} title="Choose an assigned class" description="Select one of your assigned classes to view attendance for the selected school day." /> :
       report.isError ? <div role="alert" className="panel p-5">This class is unavailable or you are not assigned to it.</div> :
       <div className="space-y-4">
         {!!report.data?.length && <AttendancePrintDocument schoolId={schoolId} rows={report.data as any[]} fromDate={date} toDate={date} filters={{ classId: selectedClassId }} disabled={report.isLoading || report.isError} unavailableMessage={report.isError ? 'Class attendance could not be loaded.' : 'Loading assigned class attendance.'} />}

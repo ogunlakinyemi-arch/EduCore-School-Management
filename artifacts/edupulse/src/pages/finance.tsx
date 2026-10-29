@@ -427,7 +427,7 @@ function FamilyInvoiceRows({ invoices, onTransfer, payment }: { invoices: FeeInv
 export function MyFeesPage() {
   const query = useListStudentFeeInvoices();
   const invoices = query.data ?? [];
-  return <div className="fade-up"><PageHeading eyebrow="Student portal / Finance" title="My fees" description="School invoices and NFC subscriptions have separate payment methods and verification." />{query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => query.refetch()} /> : <><FamilyFeeBalances invoices={invoices} /><section className="panel mt-6 overflow-hidden"><div className="border-b border-[hsl(var(--border))] p-5"><div className="eyebrow">School-issued records</div><h2 className="display-font mt-1 text-xl font-bold">Invoices</h2></div><FamilyInvoiceRows invoices={invoices} payment={null} /></section><FamilyPaymentHistory audience="student" invoices={invoices} /><StudentNfcObligationsPanel compact familyPortal /></>}</div>;
+  return <div className="fade-up"><PageHeading eyebrow="Student portal / Finance" title="My fees" description="Your school-issued fees and payment history. Contact your school about any questions." />{query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => query.refetch()} /> : <><FamilyFeeBalances invoices={invoices} schoolOnly /><section className="panel mt-6 overflow-hidden"><div className="border-b border-[hsl(var(--border))] p-5"><div className="eyebrow">School-issued records</div><h2 className="display-font mt-1 text-xl font-bold">Invoices</h2></div><FamilyInvoiceRows invoices={invoices} payment={null} /></section><FamilyPaymentHistory audience="student" invoices={invoices} /></>}</div>;
 }
 
 export function ParentFeesPage({ studentId }: { studentId: number }) {

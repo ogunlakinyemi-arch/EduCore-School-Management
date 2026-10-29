@@ -1,3 +1,4 @@
+import { teacherScoped, teacherClassScope, teacherStudentScope } from "../lib/teacher-record-scope";
 import { Router, type IRouter, type NextFunction, type Request } from "express";
 import {
   ListStudentClassAssignmentsParams, ListStudentClassAssignmentsQueryParams,
@@ -166,6 +167,12 @@ router.patch("/academic-terms/:termId", wrap(async(req,res)=>{
 
 router.get("/students/:studentId/class-assignments",wrap(async(req,res)=>{
   const p=ListStudentClassAssignmentsParams.parse(req.params),q=ListStudentClassAssignmentsQueryParams.parse(req.query);school(req,q.schoolId,viewRoles);
+  const context=getUserContext(req);
+  if(teacherScoped(context,q.schoolId)){
+    const allowed=await pool.query(`SELECT 1 FROM students st WHERE st.id=$1 AND st.school_id=$2
+      AND ${teacherStudentScope("st","$3")}`,[p.studentId,q.schoolId,context.user.id]);
+    if(!allowed.rows[0])throw new AuthError(404,"Student not found");
+  }
   const r=await pool.query(`SELECT a.id,a.student_id AS "studentId",a.school_id AS "schoolId",a.academic_session_id AS "sessionId",a.academic_term_id AS "termId",a.school_class_id AS "classId",c.name AS "className",a.section,a.start_date AS "startDate",a.end_date AS "endDate",a.status FROM student_class_assignments a JOIN school_classes c ON c.id=a.school_class_id AND c.school_id=a.school_id WHERE a.student_id=$1 AND a.school_id=$2 AND ($3::int IS NULL OR a.academic_session_id=$3) AND ($4='all' OR a.status=$4) ORDER BY a.start_date DESC`,[p.studentId,q.schoolId,q.sessionId??null,q.status??"all"]);res.json(r.rows);
 }));
 router.post("/students/:studentId/class-assignments",wrap(async(req,res)=>{
@@ -209,6 +216,27 @@ router.post("/class-subject-assignments",wrap(async(req,res)=>{
   await audit(req,q.schoolId,"Assigned subject to class",r.rows[0].id); res.status(201).json(r.rows[0]);
 }));
 
-router.get("/teacher-class-assignments",wrap(async(req,res)=>{const q=ListTeacherClassAssignmentsQueryParams.parse(req.query);school(req,q.schoolId,viewRoles);const vals:any[]=[q.schoolId];const w=["a.school_id=$1"];if(q.employeeId){vals.push(q.employeeId);w.push(`a.employee_id=$${vals.length}`)}if(q.sessionId){vals.push(q.sessionId);w.push(`a.academic_session_id=$${vals.length}`)}if(q.status&&q.status!=="all"){vals.push(q.status);w.push(`a.status=$${vals.length}`)}const r=await pool.query(`SELECT a.id,a.school_id AS "schoolId",a.employee_id AS "teacherId",a.academic_session_id AS "sessionId",a.school_class_id AS "classId",a.section,a.assignment_type AS "assignmentType",a.subject_id AS "subjectId",a.start_date AS "startDate",a.end_date AS "endDate",a.status FROM teacher_class_assignments a WHERE ${w.join(" AND ")} ORDER BY a.start_date DESC`,vals);res.json(r.rows)}));
+router.get("/teacher-class-assignments",wrap(async(req,res)=>{
+  const q=ListTeacherClassAssignmentsQueryParams.parse(req.query);school(req,q.schoolId,viewRoles);
+  const vals:any[]=[q.schoolId],w=["a.school_id=$1"],context=getUserContext(req);
+  if(teacherScoped(context,q.schoolId)){
+    vals.push(context.user.id);
+    w.push(`EXISTS (SELECT 1 FROM employees own_e JOIN school_classes c ON c.school_id=own_e.school_id
+      AND c.id=a.school_class_id WHERE own_e.id=a.employee_id AND own_e.user_id=$${vals.length}
+      AND ${teacherClassScope("c",`$${vals.length}`)})`,
+      `a.status='ACTIVE' AND a.start_date<=(CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Lagos')::date
+       AND (a.end_date IS NULL OR a.end_date>=(CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Lagos')::date)
+       AND EXISTS (SELECT 1 FROM academic_sessions own_session WHERE own_session.id=a.academic_session_id
+         AND own_session.school_id=a.school_id AND own_session.is_current AND own_session.status='ACTIVE')`);
+  }
+  if(q.employeeId){vals.push(q.employeeId);w.push(`a.employee_id=$${vals.length}`)}
+  if(q.sessionId){vals.push(q.sessionId);w.push(`a.academic_session_id=$${vals.length}`)}
+  if(q.status&&q.status!=="all"){vals.push(q.status);w.push(`a.status=$${vals.length}`)}
+  const r=await pool.query(`SELECT a.id,a.school_id AS "schoolId",a.employee_id AS "teacherId",
+    a.academic_session_id AS "sessionId",a.school_class_id AS "classId",a.section,
+    a.assignment_type AS "assignmentType",a.subject_id AS "subjectId",a.start_date AS "startDate",
+    a.end_date AS "endDate",a.status FROM teacher_class_assignments a
+    WHERE ${w.join(" AND ")} ORDER BY a.start_date DESC`,vals);res.json(r.rows);
+}));
   router.post("/teacher-class-assignments",wrap(async(req,res)=>{const q=AssignTeacherClassQueryParams.parse(req.query),b=AssignTeacherClassBody.parse(req.body);school(req,q.schoolId,writeRoles,true);const client=await pool.connect();try{await client.query("BEGIN");const valid=await client.query(`SELECT e.id FROM employees e JOIN school_classes c ON c.id=$4 AND c.school_id=e.school_id JOIN academic_sessions s ON s.id=$3 AND s.school_id=e.school_id LEFT JOIN subjects sub ON sub.id=$5 AND sub.school_id=e.school_id WHERE e.id=$2 AND e.school_id=$1 AND ($5::int IS NULL OR sub.id IS NOT NULL)`,[q.schoolId,b.teacherId,b.sessionId,b.classId,b.subjectId??null]);if(!valid.rows[0])throw new AuthError(404,"Teacher, class, subject, or session not found in school");await client.query(`UPDATE teacher_class_assignments SET status='INACTIVE',end_date=COALESCE(end_date,CURRENT_DATE),updated_at=NOW() WHERE school_id=$1 AND employee_id=$2 AND academic_session_id=$3 AND school_class_id=$4 AND section=COALESCE($5,section) AND assignment_type=$6 AND ($6<>'SUBJECT_TEACHER' OR subject_id IS NOT DISTINCT FROM $7) AND status='ACTIVE'`,[q.schoolId,b.teacherId,b.sessionId,b.classId,b.section??null,b.assignmentType,b.subjectId??null]);const r=await client.query(`INSERT INTO teacher_class_assignments(school_id,employee_id,academic_session_id,school_class_id,subject_id,section,assignment_type,status,start_date) VALUES($1,$2,$3,$4,$5,COALESCE($6,''),$7,'ACTIVE',$8) RETURNING id,school_id AS "schoolId",employee_id AS "teacherId",academic_session_id AS "sessionId",school_class_id AS "classId",section,assignment_type AS "assignmentType",subject_id AS "subjectId",start_date AS "startDate",end_date AS "endDate",status`,[q.schoolId,b.teacherId,b.sessionId,b.classId,b.subjectId??null,b.section??null,b.assignmentType,b.startDate]);await client.query("COMMIT");await audit(req,q.schoolId,"Assigned teacher to class",r.rows[0].id);res.status(201).json(r.rows[0]);}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
 export default router;

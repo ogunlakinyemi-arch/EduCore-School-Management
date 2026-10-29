@@ -31,7 +31,7 @@ export function SubscriptionAccessBanner({ audience }: { audience: BannerAudienc
     const when = i.enforcementDate ? ` Enforcement date: ${date(i.enforcementDate)}.` : '';
     const term = i.termName ? ` for ${i.termName}` : '';
     if (manual) return `${i.schoolName}: this school has been locked by the Platform Owner. School access, cards and readers are restricted until the school is unlocked. Contact your school administrator.`;
-    if (audience === 'student') return `${i.schoolName}: your card and device access is restricted${term} because your own subscription is unpaid.${when}`;
+    if (audience === 'student') return `${i.schoolName}: your access is currently restricted${term}. Contact your School Administrator for help.`;
     return `${i.schoolName}: card and device access for linked child #${i.studentId} is restricted${term} because that child's subscription is unpaid.${when}`;
   };
   return (

@@ -22,7 +22,7 @@ const poolMock = vi.hoisted(() => {
       return result(([{ id: 11, school_id: 1 }, { id: 12, school_id: 1 }, { id: 22, school_id: 2 }]).filter(x => x.id === Number(values[0]) && x.school_id === Number(values[1])));
     }
     if (sql.includes("FROM teacher_class_assignments")) {
-      const match = sql.includes("a.student_id=$3") ? Number(values[2]) === 11 : Number(values[2]) === 21;
+      const match = sql.includes("FROM students st WHERE") ? Number(values[2]) === 11 : Number(values[2]) === 21;
       return result(Number(values[0]) === 30 && Number(values[1]) === 1 && match ? [{ "?column?": 1 }] : []);
     }
     if (sql.includes("FROM employees WHERE id=$1 AND school_id=$2")) return result(values[0] === 31 && values[1] === 1 ? [{ id: 31 }] : []);
@@ -32,7 +32,7 @@ const poolMock = vi.hoisted(() => {
     if (sql.includes("FROM attendance_events WHERE school_id=$1 AND school_class_id=$2")) {
       return result(state.events.filter(e => e.school_id === Number(values[0]) && e.school_class_id === Number(values[1]) && e.event_date === values[2]));
     }
-    if (sql.includes("FROM attendance_events WHERE") || sql.includes("FROM attendance_events e WHERE")) {
+    if (/FROM attendance_events(?: e)?\s+WHERE/.test(sql)) {
       return result(state.events.filter(e => e.school_id === Number(values[0])));
     }
     if (sql.includes("FROM attendance_discrepancies d")) return result([{ id: 401, schoolId: 1, studentId: 11, kind: "EXIT_WITHOUT_ENTRY", status: "OPEN" }]);

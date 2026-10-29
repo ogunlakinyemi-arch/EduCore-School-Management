@@ -1,3 +1,4 @@
+import { teacherScoped, teacherClassScope, teacherStudentScope } from "../lib/teacher-record-scope";
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
 import {assertVerifiedStudentNfcPayment} from "../services/student-nfc-payment-evidence";
@@ -447,6 +448,11 @@ router.get("/students", async (req, res) => {
     assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
     const values: unknown[] = [query.schoolId];
     const conditions = ["st.school_id = $1"];
+    const restrictedTeacher = teacherScoped(getUserContext(req), query.schoolId);
+    if (restrictedTeacher) {
+      values.push(getUserContext(req).user.id);
+      conditions.push(teacherStudentScope("st", `$${values.length}`));
+    }
     if (query.status && query.status !== "all") {
       values.push(query.status);
       conditions.push(`UPPER(st.status) = UPPER($${values.length})`);
@@ -458,7 +464,9 @@ router.get("/students", async (req, res) => {
     if (query.classId) {
       // classId is a database class record; filtering by name keeps tenant scope explicit.
       values.push(query.classId);
-      conditions.push(`st.class_name = (SELECT name FROM school_classes WHERE id = $${values.length} AND school_id = $1)`);
+      conditions.push(restrictedTeacher
+        ? teacherStudentScope("st", "$2", `$${values.length}`)
+        : `st.class_name = (SELECT name FROM school_classes WHERE id = $${values.length} AND school_id = $1)`);
     }
     const context = getUserContext(req);
     const isOwner = context.roles.some((role) =>
@@ -657,6 +665,8 @@ router.get("/students/:studentId", async (req, res) => {
   try {
     const studentId = asNumber(req.params.studentId);
     const schoolId = tenantId(req, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
+    const context = getUserContext(req);
+    const restrictedTeacher = teacherScoped(context, schoolId);
     const result = await pool.query(`
        SELECT st.id, st.school_id AS "schoolId", st.admission_no AS "admissionNo", st.email,
          (SELECT nc.uid FROM nfc_cards nc WHERE nc.school_id=st.school_id AND nc.student_id=st.id
@@ -673,7 +683,8 @@ router.get("/students/:studentId", async (req, res) => {
           THEN 'active' ELSE 'unpaid' END AS "subscriptionStatus",
         COALESCE((SELECT nc.status FROM nfc_cards nc WHERE nc.student_id = st.id AND nc.status <> 'replaced' LIMIT 1), 'unassigned') AS "cardStatus"
       FROM students st WHERE st.id = $1 AND st.school_id = $2
-    `, [studentId, schoolId]);
+      ${restrictedTeacher ? `AND ${teacherStudentScope("st", "$3")}` : ""}
+    `, restrictedTeacher ? [studentId, schoolId, context.user.id] : [studentId, schoolId]);
     if (!result.rows[0]) return res.status(404).json({ error: "Student not found" });
     res.json({ ...result.rows[0], joinedAt: dateString(result.rows[0].joinedAt) });
   } catch (error) {
@@ -937,6 +948,8 @@ router.get("/classes", async (req, res) => {
   try {
     const query = ListClassesQueryParams.parse(req.query);
     assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
+    const context = getUserContext(req);
+    const restrictedTeacher = teacherScoped(context, query.schoolId);
     const result = await pool.query(`
       SELECT c.id, c.school_id AS "schoolId", c.name, c.section, c.class_teacher AS "classTeacher",
         c.capacity, (SELECT CASE WHEN EXISTS (SELECT 1 FROM student_class_assignments a
@@ -946,8 +959,10 @@ router.get("/classes", async (req, res) => {
               AND a.is_current AND UPPER(a.status) = 'ACTIVE')
           ELSE (SELECT COUNT(*)::int FROM students st WHERE st.school_id = c.school_id
             AND st.class_name = c.name AND st.section = c.section) END) AS "studentCount"
-      FROM school_classes c WHERE c.school_id = $1 ORDER BY c.name, c.section
-    `, [query.schoolId]);
+      FROM school_classes c WHERE c.school_id = $1
+      ${restrictedTeacher ? `AND ${teacherClassScope("c", "$2")}` : ""}
+      ORDER BY c.name, c.section
+    `, restrictedTeacher ? [query.schoolId, context.user.id] : [query.schoolId]);
     res.json(result.rows);
   } catch (error) {
     fail(req, res, error);
