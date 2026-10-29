@@ -991,6 +991,23 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FinanceSettings" }
+  /school/finance/platform-payment-method:
+    get:
+      operationId: getSchoolPlatformPaymentMethod
+      tags: [finance]
+      summary: Read the Owner-configured platform subscription method without school provider controls
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      responses:
+        "200":
+          description: Platform subscription method availability; never a school configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [method, available]
+                properties:
+                  method: { type: [string, "null"], enum: [FLUTTERWAVE, null] }
+                  available: { type: boolean }
   /school/finance/settings/bank-lookup:
     post:
       operationId: lookupSchoolFeeBankAccount

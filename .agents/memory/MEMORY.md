@@ -2,6 +2,7 @@
 - [School fee beneficiaries](school-fee-beneficiary-policy.md) — official-school identity, fresh LIVE evidence and school enablement; never personal Admin names or merchant settlement.
 - [Prospective BRO commission](bro-commission-policy.md) — approved 27 October; ₦150 only after eligible January-term/later verified payment; preserve ₦100 history and separate expense.
 - [BRO manual payouts](bro-manual-payout-policy.md) — complete payable balances, frozen verified-person bank evidence and Owner-recorded external transfers only.
+- [Owner-only BRO finance](owner-only-bro-visibility.md) — commission data is Owner-only even from BRO; school users cannot select platform payment providers.
 - [Tenant-key publish ordering](tenant-key-publish-ordering.md) — publish parent tenant uniqueness before dependent composite foreign keys when existing tables are involved.
 - [School settlement visibility](school-settlement-visibility.md) — school account instructions and status only; internal provider diagnostics belong to Owner administration.
 - [Rollback retention](migration-rollback-retention.md) — check every retainable evidence root under protective locks; empty-schema rollback success is insufficient.

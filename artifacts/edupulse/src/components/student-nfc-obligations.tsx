@@ -209,7 +209,7 @@ export function StudentNfcObligationsPanel({
       <div className="flex items-center gap-2 eyebrow"><Nfc size={14} />Retained NFC records</div>
       <h2 className="display-font mt-1 text-xl font-bold">NFC payment and obligation history</h2>
       <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
-        {platformAdminView?<>School Admins can select one student and academic term for a direct, non-split Flutterwave payment to Yetenia EduCore. The platform fee is fixed at ₦3,200 and is not school-configurable. Checkout stays blocked until the direct LIVE release gates are satisfied.
+        {platformAdminView?<>School Admins can select one student and academic term for a direct platform payment to Yetenia EduCore using only the method configured by the Platform Owner. The platform fee is fixed at ₦3,200 and is not school-configurable. Checkout stays blocked until the direct LIVE release gates are satisfied.
         {' '}The separate parent-to-school NFC card/subscription fee workflow is unchanged and does not satisfy this platform obligation.
         {' '}The records below retain their original historical amounts and allocations. They are not a new price list or permission to charge again.</>:familyView?<>Existing NFC records retain their original amounts and references. These records are not a new fee announcement.</>:<>
         Historical NFC subscription records retain their original amounts. They are not the current subscription price or permission to collect again.

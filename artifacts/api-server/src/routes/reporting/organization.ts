@@ -357,10 +357,7 @@ async function partners(ctx: ReportContext, filters: ReportFilters): Promise<Rep
     isProfileOwner = userRow.isOwner === true;
     partnerRole = userRow.partnerRole;
   }
-  const canReadCommissionDetails = ctx.role === "OWNER" ||
-    isProfileOwner ||
-    partnerRole === "PARTNER_ADMIN" ||
-    partnerRole === "PARTNER_FINANCE";
+  const canReadCommissionDetails = ctx.role === "OWNER";
   const values: SqlValues = ctx.role === "PARTNER"
     ? [ctx.partnerId, ctx.userId]
     : [];
@@ -432,7 +429,7 @@ async function partners(ctx: ReportContext, filters: ReportFilters): Promise<Rep
     ] : []),
   ];
   const result = await paged(
-    "Partner-attributed schools and commissions",
+    canReadCommissionDetails ? "Partner-attributed schools and commissions" : "Partner-attributed schools",
     columns,
     countSql,
     dataSql,

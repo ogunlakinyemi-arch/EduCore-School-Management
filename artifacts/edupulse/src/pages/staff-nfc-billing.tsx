@@ -70,7 +70,7 @@ export function parseCallbackParams(search: string): CallbackParams {
 export const isVerifiedPaid = (s?: Pick<StaffNfcSubscription, 'status'> | null) => s?.status === 'PAID';
 export const canPay = (s?: Pick<StaffNfcSubscription, 'status'> | null) => !!s && ['UNPAID', 'FAILED', 'CANCELLED', 'PENDING'].includes(s.status);
 export const hasDirectStaffSnapshot = (s: Pick<StaffNfcSubscription, 'priceMinor' | 'schoolShareMinor' | 'platformShareMinor' | 'partnerShareMinor'>) =>
-  s.priceMinor === 200000 && s.schoolShareMinor === 0 && s.platformShareMinor === 200000 && s.partnerShareMinor === 0;
+  s.priceMinor === 200000 && s.schoolShareMinor === 0 && s.platformShareMinor === 200000 && (s.partnerShareMinor ?? 0) === 0;
 export const allocationLabel: Record<string, string> = {
   SCHOOL: 'School', PLATFORM: 'Platform', PARTNER: 'BRO', REVERSAL: 'Reversal', PLATFORM_PROVIDER_FEE: 'Provider fee (platform expense)',
 };

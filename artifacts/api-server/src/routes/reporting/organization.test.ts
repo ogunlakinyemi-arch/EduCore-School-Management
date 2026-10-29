@@ -183,10 +183,8 @@ describe("organization reports", () => {
     expect(result.rows).toEqual([expect.objectContaining({
       schoolId: 21,
       studentCount: 17,
-      commissionAmount: "450.00",
-      payableCommission: "200.00",
-      paidCommission: "150.00",
     })]);
+    expect(JSON.stringify(result)).not.toMatch(/commission|entitlement|450\.00|200\.00|150\.00/i);
     const profileQuery = state.calls.find(({ sql }) => sql.includes("FROM partner_profiles pp"));
     const [countQuery, dataQuery] = state.calls.filter(({ sql }) => sql.includes("FROM school_partner_attributions"));
     expect(profileQuery!.sql).toContain("ppu.status='ACTIVE'");
@@ -201,7 +199,7 @@ describe("organization reports", () => {
       expect(query.sql).toContain("ppu.status='ACTIVE'");
       expect(query.values.slice(0, 2)).toEqual([14, 99]);
     }
-    expect(dataQuery!.sql).toContain("cl.partner_profile_id=spa.partner_profile_id");
+    expect(dataQuery!.sql).not.toContain("commission_ledger");
     expect(JSON.stringify(result)).not.toMatch(/studentName|parentName|teacherName|email|phone/);
     expect(dataQuery!.values).toEqual([14, 99, 20, 10]);
   });

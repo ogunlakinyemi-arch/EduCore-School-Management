@@ -78,7 +78,7 @@ function PortalHeader() {
   const { allowed: nfcAllowed } = usePartnerNfcAccess();
   const isOwner = (profile.data as any)?.isOwner ||
     ['PARTNER_OWNER', 'PARTNER_ADMIN'].includes((profile.data as any)?.partnerRole);
-  const canViewFinance = isOwner || (profile.data as any)?.partnerRole === 'PARTNER_FINANCE';
+  const canViewFinance = false;
   
   return (
     <header className="sticky top-0 z-20 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.94)] backdrop-blur-xl">
@@ -97,7 +97,6 @@ function PortalHeader() {
               {isOwner && <Link href="/partner/staff" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/staff') && "text-[hsl(var(--primary))]")}>Staff</Link>}
               {canViewFinance && <Link href="/partner/commissions" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/commissions') && "text-[hsl(var(--primary))]")}>Commissions</Link>}
               {canViewFinance && <Link href="/partner/payouts" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/payouts') && "text-[hsl(var(--primary))]")}>Payouts</Link>}
-              <Link href="/partner/staff-nfc" title="Staff NFC Commissions" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/staff-nfc' && "text-[hsl(var(--primary))]")} data-testid="link-partner-staff-nfc">Staff NFC</Link>
               {nfcAllowed && <Link href="/partner/nfc-activation" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/nfc-activation' && "text-[hsl(var(--primary))]")} data-testid="link-partner-nfc-activation">NFC Activation</Link>}
               <Link href="/reporting" className={cx("hover:text-[hsl(var(--foreground))]", location === '/reporting' && "text-[hsl(var(--primary))]")} data-testid="link-partner-reporting">Reports</Link>
               {isOwner && <Link href="/partner/profile" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/profile' && "text-[hsl(var(--primary))]")}>Settings</Link>}
@@ -116,7 +115,6 @@ function PortalHeader() {
         {isOwner && <Link href="/partner/staff" data-testid="link-partner-staff-mobile" className="hover:underline">Staff</Link>}
         {canViewFinance && <Link href="/partner/commissions" data-testid="link-partner-commissions-mobile" className="hover:underline">Commissions</Link>}
         {canViewFinance && <Link href="/partner/payouts" data-testid="link-partner-payouts-mobile" className="hover:underline">Payouts</Link>}
-        <Link href="/partner/staff-nfc" data-testid="link-partner-staff-nfc-mobile" className="whitespace-nowrap hover:underline">Staff NFC Commissions</Link>
         {nfcAllowed && <Link href="/partner/nfc-activation" data-testid="link-partner-nfc-activation-mobile" className="whitespace-nowrap hover:underline">NFC Activation</Link>}
         {isOwner && <Link href="/partner/profile" data-testid="link-partner-settings-mobile" className="hover:underline">Settings</Link>}
         <Link href="/notification-settings" data-testid="link-partner-preferences-mobile" className="hover:underline">Preferences</Link>
@@ -128,7 +126,7 @@ function PortalHeader() {
 function Dashboard() {
   const profile = useGetPartnerProfile();
   const dashboard = useGetPartnerDashboard({ query: { queryKey: getGetPartnerDashboardQueryKey(), refetchInterval: 15000, staleTime: 0 } });
-  const deferred = useGetMyDeferredCommissions();
+  // Finance-only history is no longer requested by a BRO dashboard.
   if (profile.isLoading || dashboard.isLoading) return <Loading />;
   if (profile.isError || !profile.data) return (
     <div className="mx-auto max-w-3xl p-8">
@@ -139,13 +137,12 @@ function Dashboard() {
     </div>
   );
   if (dashboard.isError || !dashboard.data) return <ErrorState
-    message="BRO commission balances could not be loaded. No payout availability can be confirmed."
+    message="The BRO network could not be loaded."
     retry={() => { void dashboard.refetch(); }} />;
 
   const data = dashboard.data;
   const canManageSchools = canManagePartnerSchools(profile.data);
-  const canViewFinance = (profile.data as any)?.isOwner ||
-    ['PARTNER_ADMIN', 'PARTNER_FINANCE'].includes((profile.data as any)?.partnerRole);
+  const canViewFinance = false;
 
   return (
     <div className="mx-auto max-w-6xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -157,7 +154,7 @@ function Dashboard() {
         {canManageSchools && <AddSchoolButton />}
       </div>
 
-      <div className={`grid gap-5 ${canViewFinance ? 'md:grid-cols-3' : 'md:grid-cols-1'} mb-8`}>
+      <div className="grid gap-5 mb-8">
         <div className="panel p-6 border-t-4 border-t-[hsl(var(--primary))]">
           <div className="eyebrow mb-2">Referred Schools</div>
           <div className="display-font text-4xl font-bold">{data?.referredSchools || 0}</div>
@@ -166,56 +163,7 @@ function Dashboard() {
           </div>
         </div>
         
-        {canViewFinance && <div className="panel p-6 border-t-4 border-t-[hsl(157_37%_43%)]">
-          <div className="eyebrow mb-2">Unpaid Commissions</div>
-          <div className="display-font text-4xl font-bold text-[hsl(157_37%_43%)] dark:text-[hsl(157_37%_55%)]">
-            ₦{data?.outstandingCommission?.toLocaleString() || 0}
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">
-            <Banknote size={14} /> Includes reserved and pending-approval earnings
-          </div>
-        </div>}
-
-        {canViewFinance && <div className="panel p-6 border-t-4 border-t-[hsl(var(--accent))]">
-          <div className="eyebrow mb-2">Lifetime Earned</div>
-          <div className="display-font text-4xl font-bold">
-            ₦{data?.lifetimeCommission?.toLocaleString() || 0}
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">
-            <TrendingUp size={14} /> Total since joining
-          </div>
-        </div>}
       </div>
-
-      {canViewFinance && <section className="panel mb-8 p-6" data-testid="section-bro-payout-balances">
-        <div className="eyebrow">Commission payout balance</div>
-        <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {([
-            ['Available for payout', data.payableCommission],
-            ['Already paid', data.paidCommission],
-            ['Reserved in payouts', data.reservedCommission],
-            ['Pending approval / held', data.pendingApprovalCommission],
-          ] as const).map(([label, value]) => <div key={label}>
-            <dt className="text-xs text-[hsl(var(--muted-foreground))]">{label}</dt>
-            <dd className="mt-1 font-mono text-xl font-bold">NGN {(value ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
-          </div>)}
-        </dl>
-        <p className="mt-4 text-xs text-[hsl(var(--muted-foreground))]">The Owner uses the same available balance. Only payable, unreserved earnings can enter a payout. EduCore does not transfer money; payment is recorded after an externally completed bank transfer.</p>
-      </section>}
-
-      {canViewFinance && <section className="panel mb-8 p-6" data-testid="section-deferred-commissions">
-        <div className="eyebrow">Term-based commissions (new policy)</div>
-        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Shown separately from the historical totals above. Approval is recording only; it does not mean funds were sent.</p>
-        {deferred.isLoading ? <div className="skeleton mt-4 h-16 rounded-xl" /> : deferred.isError || !deferred.data ? (
-          <div className="mt-4 text-sm">Term commission totals could not be loaded. <Button variant="outline" className="ml-2 h-8 px-3 text-xs" onClick={() => deferred.refetch()}>Retry</Button></div>
-        ) : (
-          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-5">
-            {([['Earned', deferred.data.earnedMinor], ['Pending', deferred.data.pendingMinor], ['Approved', deferred.data.approvedMinor], ['Paid', deferred.data.paidMinor], ['Recovery', deferred.data.recoveryMinor]] as const).map(([l, v]) => (
-              <div key={l} data-testid={`text-deferred-${l.toLowerCase()}`}><div className="eyebrow">{l}</div><div className="display-font mt-1 text-xl font-bold">₦{(v / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div></div>
-            ))}
-          </div>
-        )}
-      </section>}
 
       <div className="grid gap-6 md:grid-cols-[1fr_300px]">
         <div className="panel overflow-hidden">
@@ -259,7 +207,7 @@ function Dashboard() {
             <span className="font-bold">Yetenia EduCore Business Relationship Officer (BRO) Program</span>
           </div>
           <p className="text-sm leading-relaxed text-[hsl(var(--sidebar-foreground)/.7)] mb-6">
-            You earn commission on all eligible subscription payments from your referred schools. Payouts are processed at the start of each academic term.
+            Manage your school relationships and account details. Financial commission information is restricted to the Platform Owner.
           </p>
           <Link href="/partner/profile">
             <Button variant="outline" className="w-full bg-transparent border-[hsl(var(--sidebar-border))] hover:bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-foreground))]">
@@ -359,7 +307,7 @@ function MyPayouts() {
       <div className="mb-7">
         <div className="eyebrow">Financials</div>
         <h1 className="display-font mt-2 text-3xl font-bold">Payouts</h1>
-        <p className="mt-2 text-xs">Retained payouts are historical records, not automatic transfers. Eligible student commissions are internal-only ₦150 under the existing term and verification rules; earlier amounts remain unchanged.</p>
+        <p className="mt-2 text-xs">Financial commission information is restricted to the Platform Owner.</p>
       </div>
 
       <div className="panel overflow-hidden">
@@ -411,10 +359,7 @@ const profileSchema = z.object({
 
 export function PartnerSettings() {
   const profileQuery = useGetPartnerProfile();
-  const payoutInfoQuery = useGetPartnerPayoutInformation({ query: { queryKey: getGetPartnerPayoutInformationQueryKey(), refetchInterval: 15000, staleTime: 0 } });
   const updateProfile = useUpdatePartnerProfile();
-  const updatePayoutInfo = useUpdatePartnerPayoutInformation();
-  const bankAllowed = useBankSelectionGuard();
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -436,37 +381,19 @@ export function PartnerSettings() {
       onSuccess: () => {
         toast({ title: 'Profile updated' });
         queryClient.invalidateQueries({ queryKey: getGetPartnerProfileQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
       }
     });
   });
 
-  const savedFullName = profileQuery.data?.fullName ?? '';
-  const onPayoutSave = (data: PartnerPayoutInformationInput) => {
-    if (!bankAllowed({ bankName: data.bankName, bankCode: data.bankCode }, null, true)) {
-      toast({ title: 'Bank not supported', description: 'Choose a bank with a verified transfer code.', variant: 'destructive' });
-      return;
-    }
-    updatePayoutInfo.mutate({ data }, {
-      onSuccess: () => {
-        toast({ title: 'Payout account verified and saved' });
-        queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
-      },
-      onError: (err: any) => {
-        toast({ title: 'Payout account not saved', description: err?.data?.error || err?.error || err?.message || 'Run a fresh lookup and retry.', variant: 'destructive' });
-        queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
-      },
-    });
-  };
 
-  if (profileQuery.isLoading || payoutInfoQuery.isLoading) return <SkeletonPage />;
+  if (profileQuery.isLoading) return <SkeletonPage />;
   if (profileQuery.isError) return <ErrorState retry={() => profileQuery.refetch()} />;
   const canManagePartner = (profileQuery.data as any)?.isOwner ||
     ['PARTNER_OWNER', 'PARTNER_ADMIN'].includes((profileQuery.data as any)?.partnerRole);
   if (!canManagePartner) return (
     <div className="mx-auto max-w-3xl p-8"><div className="panel p-8 text-center">
       <h1 className="display-font text-2xl font-bold">BRO administrator access required</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a BRO owner or administrator can change profile and payout settings.</p>
+          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a BRO administrator can change profile settings.</p>
     </div></div>
   );
 
@@ -513,16 +440,6 @@ export function PartnerSettings() {
           </form>
         </section>
 
-        <section className="panel p-6 md:p-8">
-          <div className="mb-6 border-b border-[hsl(var(--border))] pb-4">
-            <h2 className="display-font text-xl font-bold">Payout Information</h2>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Bank details are verified automatically against your registered BRO name.</p>
-          </div>
-          
-          {payoutInfoQuery.isError ? <ErrorState retry={() => payoutInfoQuery.refetch()} /> :
-            <PartnerBankAccountForm key={`${savedFullName}:${payoutInfoQuery.data?.verified ? payoutInfoQuery.data.updatedAt : 'unverified'}`} fullName={savedFullName} current={payoutInfoQuery.data as any}
-              saving={updatePayoutInfo.isPending} onSave={onPayoutSave} />}
-        </section>
       </div>
     </div>
   );
@@ -543,8 +460,8 @@ export default function PartnerPortal() {
         <Route path="/partner/schools" component={MySchools} />
         <Route path="/partner/staff" component={PartnerStaff} />
         <Route path="/partner/nfc-activation" component={PartnerNfcActivation} />
-        <Route path="/partner/commissions" component={MyCommissions} />
-        <Route path="/partner/payouts" component={MyPayouts} />
+        <Route path="/partner/commissions" component={NotFound} />
+        <Route path="/partner/payouts" component={NotFound} />
         <Route path="/partner/flutterwave-settlements" component={ArchivedPaymentWorkflowPage} />
         <Route path="/partner/profile" component={PartnerSettings} />
         <Route path="/partner/schools/add" component={AddSchoolPage} />

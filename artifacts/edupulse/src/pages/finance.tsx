@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { ArrowLeft, ArrowRight, Banknote, BookOpen, Check, CircleDollarSign, Clock3, FileText, Layers3, Plus, ReceiptText, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import {
-  useGetFinanceSettings, useUpdateFinanceSettings, useListFeeCategories, useCreateFeeCategory, useUpdateFeeCategory,
+  useGetFinanceSettings, useGetSchoolPlatformPaymentMethod, getGetSchoolPlatformPaymentMethodQueryKey, useUpdateFinanceSettings, useListFeeCategories, useCreateFeeCategory, useUpdateFeeCategory,
   useListFeeStructures, useCreateFeeStructure, usePublishFeeStructure, useAssignFeeStructure,
   useListFeeInvoices, useListParentFeeInvoices, useListStudentFeeInvoices, useSubmitManualBankTransfer, useGetParentFeeInvoiceBankDetails, useGetAuthorizedContext,
   useRequestFeeAdjustment, useGetSchoolFinanceSummary, useGetParentChild,
@@ -108,16 +108,19 @@ export function BankTransferSettings({ schoolId, settings, canEdit, onSaved }: {
   </section>;
 }
 
-function ProviderSettings({ schoolId, settings, canEdit, onSaved }: { schoolId: number; settings: FinanceSettings; canEdit: boolean; onSaved: (message: string) => void }) {
-  const update = useUpdateFinanceSettings();
-  const [failure, setFailure] = useState('');
+export function PlatformPaymentMethodNotice({ schoolId }: { schoolId: number }) {
+  const method = useGetSchoolPlatformPaymentMethod({ schoolId }, { query: { queryKey: getGetSchoolPlatformPaymentMethodQueryKey({ schoolId }), enabled: !!schoolId, retry: false, staleTime: 60_000 } });
   return <section className="panel p-6 md:p-8">
-    <div className="eyebrow">Hosted checkout controls</div><h2 className="display-font mt-2 text-xl font-bold">Online payment methods</h2>
-    <p className={`mt-3 ${note}`}>These are provider test-mode checkouts, not live collection methods. Enabling a method requires configured provider test credentials and a secure checkout return URL on the server. Sandbox unavailable or incomplete configuration means the method will not be offered to parents. Remita checkout is unavailable.</p>
-    <div className="mt-5 divide-y divide-[hsl(var(--border))] rounded-xl border border-[hsl(var(--border))]">{([
-      ['PAYSTACK', 'Paystack', 'paystackEnabled'], ['FLUTTERWAVE', 'Flutterwave', 'flutterwaveEnabled'],
-    ] as const).map(([, label, key]) => <div key={key} className="flex flex-wrap items-center justify-between gap-3 p-4"><div><div className="text-sm font-bold">{label} · test checkout</div><div className={note}>{settings[key] ? 'School enabled; only shown when server confirms availability' : 'Disabled for parent checkout'}</div></div>{canEdit ? <Button variant="outline" disabled={update.isPending} onClick={async () => { if (!window.confirm(`${settings[key] ? 'Disable' : 'Enable'} ${label} test checkout for this school? The method is shown only when backend provider configuration is available.`)) return; try { await update.mutateAsync({ params: { schoolId }, data: { [key]: !settings[key] } }); setFailure(''); onSaved(`${label} checkout setting saved. Availability is confirmed by the server per invoice.`); } catch (error) { setFailure(errorText(error)); } }}>{settings[key] ? 'Disable' : 'Enable'} {label}</Button> : <span className={note}>School Admin only</span>}</div>)}</div>
-    {failure && <p role="alert" className="mt-3 text-sm text-[hsl(var(--destructive))]">{failure}</p>}
+    <div className="eyebrow">Platform subscription · Owner-controlled</div>
+    <h2 className="display-font mt-2 text-xl font-bold">Platform payment method</h2>
+    {method.isLoading ? <p className={`mt-3 ${note}`}>Checking the Owner’s payment method…</p>
+      : method.isError ? <p role="alert" className={`mt-3 ${note}`}>The Owner’s payment method could not be confirmed. Do not start a payment. <button type="button" className="underline" onClick={() => void method.refetch()}>Retry</button></p>
+      : <p className={`mt-3 ${note}`} data-testid="platform-payment-method">
+        {method.data?.method === 'FLUTTERWAVE'
+          ? `Platform Owner’s method: Flutterwave. ${method.data.available ? 'Availability still depends on the exact student and term passing server verification.' : 'Platform checkout is currently unavailable.'}`
+          : 'The Platform Owner has not configured an available platform payment method. Platform checkout is unavailable.'}
+      </p>}
+    <p className={`mt-3 ${note}`}>Schools cannot choose or enable a platform provider here. Ordinary school invoices and separate parent-facing NFC/card fees remain school-controlled and do not pay the platform subscription.</p>
   </section>;
 }
 
@@ -351,7 +354,7 @@ export function FinancePage() {
         <div className="space-y-5"><section className="rounded-[22px] bg-[hsl(var(--secondary))] p-6"><div className="flex items-center gap-2 text-[hsl(var(--primary))]"><ShieldCheck size={19} /><span className="text-xs font-extrabold uppercase tracking-widest">Verification boundary</span></div><h2 className="display-font mt-5 text-xl font-bold">Submitted is not settled.</h2><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">A transfer submission stays pending until a school finance operator checks it against the bank record. No receipt is issued before verification.</p></section>
         <section className="panel p-6"><div className="eyebrow">Manual transfer queue</div><div className="mt-4 text-2xl font-bold">{summary.data?.pendingPayments ?? 0} pending</div><p className={`mt-2 ${note}`}>Open each submission to inspect its reference and supporting evidence against the bank record.</p><Button variant="outline" className="mt-4" onClick={() => setTab('transfers')} testId="button-open-transfer-queue">Review transfers <ArrowRight size={15} /></Button></section></div>
       </div>}
-      {tab === 'controls' && settings.data && <div className="mt-5"><ProviderSettings key={`providers-${schoolId}`} schoolId={schoolId} settings={settings.data} canEdit={canEditSettings} onSaved={message => { setFeedback(message); setFailure(''); refresh(); qc.invalidateQueries({ predicate: query => typeof query.queryKey[0] === 'string' && /\/payment-methods$/.test(query.queryKey[0]) }); }} /></div>}
+      {tab === 'controls' && <div className="mt-5"><PlatformPaymentMethodNotice key={`platform-method-${schoolId}`} schoolId={schoolId} /></div>}
       {tab === 'transfers' && <SchoolPaymentQueue schoolId={schoolId} onChanged={message => { setFeedback(message); setFailure(''); }} />}
        {tab === 'adjustments' && <PendingAdjustments schoolId={schoolId} canApprove={canEditSettings} onChanged={message => { setFeedback(message); setFailure(''); }} />}
        {tab === 'refunds' && <RefundDesk key={schoolId} schoolId={schoolId} canApprove={canEditSettings} canRequest={canRequestAdjustment} onChanged={message => { setFeedback(message); setFailure(''); refresh(); }} />}

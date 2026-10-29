@@ -24892,6 +24892,29 @@ export type UpdateFinanceSettingsParams = {
 schoolId: SchoolIdParameter;
 };
 
+export type GetSchoolPlatformPaymentMethodParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+/**
+ * @nullable
+ */
+export type GetSchoolPlatformPaymentMethod200Method = typeof GetSchoolPlatformPaymentMethod200Method[keyof typeof GetSchoolPlatformPaymentMethod200Method] | null;
+
+
+export const GetSchoolPlatformPaymentMethod200Method = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type GetSchoolPlatformPaymentMethod200 = {
+  /** @nullable */
+  method: GetSchoolPlatformPaymentMethod200Method;
+  available: boolean;
+};
+
 export type LookupSchoolFeeBankAccountParams = {
 /**
  * @minimum 1

@@ -682,8 +682,6 @@ describe("manual bank-transfer review integration", () => {
   it("binds school-admin mutations to the requested school and keeps platform-owner oversight read-only", async () => {
     const updateSettings = (assignments: string, body: unknown = {
       bankTransferEnabled: true,
-      paystackEnabled: true,
-      flutterwaveEnabled: true,
       bankName: "Configured Bank",
       accountName: "Example School",
       accountNumber: "0123456789",
@@ -699,6 +697,12 @@ describe("manual bank-transfer review integration", () => {
 
     const ownerOnly = await updateSettings("PLATFORM_OWNER:null");
     expect(ownerOnly.status).toBe(404);
+
+    const schoolProviderChoice = await updateSettings("SCHOOL_ADMIN:1", { paystackEnabled: true });
+    expect(schoolProviderChoice.status).toBe(403);
+    const schoolFlutterwaveChoice = await updateSettings("SCHOOL_ADMIN:1", { flutterwaveEnabled: true });
+    expect(schoolFlutterwaveChoice.status).toBe(403);
+    expect(state.calls.some(({ sql }) => sql === "BEGIN" || sql.includes("INSERT INTO fee_school_settings"))).toBe(false);
 
     const unverified = await updateSettings("SCHOOL_ADMIN:1,ACCOUNTANT:2");
     expect(unverified.status).toBe(409);
@@ -729,6 +733,25 @@ describe("manual bank-transfer review integration", () => {
     expect(update.status).toBe(404);
     expect(state.calls.filter(({ sql }) => sql.includes("INSERT INTO fee_school_settings"))).toHaveLength(beforeUpserts);
   });
+
+  it.each(["SCHOOL_ADMIN", "ACCOUNTANT"])(
+    "shows %s only the Owner-controlled platform payment method or its unavailable state", async role => {
+      const response = await fetch(`${baseUrl}/school/finance/platform-payment-method?schoolId=1`, {
+        headers: { "x-test-role": role, "x-test-school": "1" },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toContain("no-store");
+      const body = await response.json() as { method: string | null; available: boolean };
+      expect([null, "FLUTTERWAVE"]).toContain(body.method);
+      expect(typeof body.available).toBe("boolean");
+      expect(Object.keys(body).sort()).toEqual(["available", "method"]);
+      expect(JSON.stringify(body)).not.toMatch(/paystack|credential|secret|commission/i);
+      const other = await fetch(`${baseUrl}/school/finance/platform-payment-method?schoolId=2`, {
+        headers: { "x-test-role": role, "x-test-school": "1" },
+      });
+      expect(other.status).toBe(404);
+    },
+  );
 
   it.each(["ACCOUNTANT:1", "SCHOOL_ADMIN:2", "PLATFORM_OWNER:null", "PARENT:1"])("denies unauthorized school bank lookup for %s", async assignments => {
     const response = await fetch(`${baseUrl}/school/finance/settings/bank-lookup?schoolId=1`, {

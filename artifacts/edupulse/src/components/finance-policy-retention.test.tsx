@@ -62,9 +62,14 @@ describe('current policy versus retained financial records', () => {
   );
   it('explains the fixed platform price separately from school-controlled fees and original history', () => {
     const html = renderToStaticMarkup(<CurrentSubscriptionPolicy />);
-    for (const text of ['₦3,200', '₦150', 'parent-facing NFC/card fee', 'no school allocation',
-      'not a checkout split or an automatic transfer', 'current term remains free', 'January 2027 second term',
+    for (const text of ['₦3,200', 'parent-facing NFC/card fee', 'no school allocation',
+      'current term remains free', 'January 2027 second term',
       'independently server-verified', 'Unpaid obligations are not silently repriced']) expect(html).toContain(text);
+    expect(html).not.toContain('BRO commission');
+    expect(html).not.toContain('₦150');
+    const ownerHtml = renderToStaticMarkup(<CurrentSubscriptionPolicy showInternal />);
+    expect(ownerHtml).toContain('₦150');
+    expect(ownerHtml).toContain('not a checkout split or an automatic transfer');
   });
   it('removes configurable platform-arrangement copy without showing platform prices in shared family branding', () => {
     const html = renderToStaticMarkup(<NfcServiceBranding />);

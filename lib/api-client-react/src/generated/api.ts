@@ -418,6 +418,8 @@ import type {
   GetSchoolFinanceReportParams,
   GetSchoolFinanceSummaryParams,
   GetSchoolPayrollReportParams,
+  GetSchoolPlatformPaymentMethod200,
+  GetSchoolPlatformPaymentMethodParams,
   GetSchoolSecurityDashboardParams,
   GetSchoolSubscriptionAuditParams,
   GetSchoolTransportPolicyParams,
@@ -18371,6 +18373,90 @@ export const useUpdateFinanceSettings = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateFinanceSettingsMutationOptions(options));
     }
+
+export const getGetSchoolPlatformPaymentMethodUrl = (params: GetSchoolPlatformPaymentMethodParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/platform-payment-method?${stringifiedParams}` : `/api/school/finance/platform-payment-method`
+}
+
+/**
+ * @summary Read the Owner-configured platform subscription method without school provider controls
+ */
+export const getSchoolPlatformPaymentMethod = async (params: GetSchoolPlatformPaymentMethodParams, options?: Parameters<typeof customFetch>[1]): Promise<GetSchoolPlatformPaymentMethod200> => {
+
+  return customFetch<GetSchoolPlatformPaymentMethod200>(getGetSchoolPlatformPaymentMethodUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolPlatformPaymentMethodQueryKey = (params?: GetSchoolPlatformPaymentMethodParams,) => {
+    return [
+    `/api/school/finance/platform-payment-method`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolPlatformPaymentMethodQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolPlatformPaymentMethod>>, TError = ErrorType<unknown>>(params: GetSchoolPlatformPaymentMethodParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPlatformPaymentMethod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolPlatformPaymentMethodQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolPlatformPaymentMethod>>> = ({ signal }) => getSchoolPlatformPaymentMethod(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolPlatformPaymentMethod>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolPlatformPaymentMethodQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolPlatformPaymentMethod>>>
+export type GetSchoolPlatformPaymentMethodQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read the Owner-configured platform subscription method without school provider controls
+ */
+
+export function useGetSchoolPlatformPaymentMethod<TData = Awaited<ReturnType<typeof getSchoolPlatformPaymentMethod>>, TError = ErrorType<unknown>>(
+ params: GetSchoolPlatformPaymentMethodParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPlatformPaymentMethod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolPlatformPaymentMethodQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getLookupSchoolFeeBankAccountUrl = (params: LookupSchoolFeeBankAccountParams,) => {
   const normalizedParams = new URLSearchParams();

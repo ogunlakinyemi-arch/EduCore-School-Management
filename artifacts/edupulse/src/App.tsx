@@ -261,7 +261,7 @@ export function ProtectedRoutes() {
 
   if (isOnlyPartner) {
     return <TenantProvider><Switch>
-      <Route path="/partner/staff-nfc"><Shell><PartnerStaffNfcCommissionsPage /></Shell></Route>
+      <Route path="/partner/staff-nfc"><Shell><ArchivedPaymentWorkflowPage /></Shell></Route>
       <Route><PartnerPortal /></Route>
     </Switch></TenantProvider>;
   }
@@ -524,7 +524,7 @@ export default function App() {
                   <Switch>
                     <Route path="/parent"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
                     <Route path="/parent/*"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
-                    <Route path="/partner/staff-nfc"><RoleGuard allowedRoles={['PARTNER']}><TenantProvider><Shell><PartnerStaffNfcCommissionsPage /></Shell></TenantProvider></RoleGuard></Route>
+                    <Route path="/partner/staff-nfc"><RoleGuard allowedRoles={['PARTNER']}><TenantProvider><Shell><ArchivedPaymentWorkflowPage /></Shell></TenantProvider></RoleGuard></Route>
                     <Route path="/partner"><RoleGuard allowedRoles={['PARTNER']}><PartnerPortal /></RoleGuard></Route>
                     <Route path="/partner/*"><RoleGuard allowedRoles={['PARTNER']}><PartnerPortal /></RoleGuard></Route>
                     <Route><ProtectedRoutes /></Route>

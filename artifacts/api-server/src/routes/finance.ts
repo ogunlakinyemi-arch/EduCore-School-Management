@@ -8,6 +8,7 @@ import { assignPublishedClassFees } from "../services/fee-publication";
 import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
 import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
 import { Router, type IRouter, type Request } from "express";
+import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
 import { requireParentReceipt, receiptDownloadPath } from "../services/payment-receipts";
 import { HostedPaymentError } from "../lib/hosted-manual-policy";
 import {
@@ -206,10 +207,26 @@ router.get("/school/finance/settings", async (req, res): Promise<void> => {
   } catch (error) { fail(res, error); }
 });
 
+router.get("/school/finance/platform-payment-method", (req, res): void => {
+  try {
+    schoolIdFromQuery(req, GetFinanceSettingsQueryParams);
+    const configuration = directLiveConfiguration();
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({
+      method: configuration.configurationReady ? "FLUTTERWAVE" : null,
+      available: configuration.ready,
+    });
+  } catch (error) { fail(res, error); }
+});
+
 router.patch("/school/finance/settings", async (req, res): Promise<void> => {
   const client = await pool.connect();
   try {
     const schoolId = schoolIdForMutation(req, UpdateFinanceSettingsQueryParams, ["SCHOOL_ADMIN"]);
+    if (req.body && typeof req.body === "object" &&
+      (Object.hasOwn(req.body, "paystackEnabled") || Object.hasOwn(req.body, "flutterwaveEnabled"))) {
+      throw new AuthError(403, "Schools cannot configure hosted checkout providers");
+    }
     const body = parsed(UpdateFinanceSettingsBody, req.body);
     if (Object.keys(body).length === 0) throw new AuthError(400, "At least one finance setting must be provided");
     const context = getUserContext(req);

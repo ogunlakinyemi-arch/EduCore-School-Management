@@ -8404,6 +8404,22 @@ export const UpdateFinanceSettingsResponse = zod.object({
 
 
 /**
+ * @summary Read the Owner-configured platform subscription method without school provider controls
+ */
+
+
+
+export const GetSchoolPlatformPaymentMethodQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetSchoolPlatformPaymentMethodResponse = zod.object({
+  "method": zod.union([zod.literal('FLUTTERWAVE'),zod.literal(null)]).nullable(),
+  "available": zod.boolean()
+})
+
+
+/**
  * @summary Resolve the school official beneficiary using the authorized LIVE lookup path
  */
 

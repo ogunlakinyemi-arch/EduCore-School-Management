@@ -2202,13 +2202,8 @@ router.get("/partner/dashboard", run(async(req,res)=>{
     await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     const x=(await c.query(`SELECT
       (SELECT COUNT(DISTINCT school_id)::int FROM school_partner_attributions WHERE partner_profile_id=$1 AND is_current=true) AS schools,
-      (SELECT COUNT(DISTINCT st.id)::int FROM students st JOIN school_partner_attributions a ON a.school_id=st.school_id WHERE a.partner_profile_id=$1 AND a.is_current=true AND upper(st.status)='ACTIVE') AS students,
-      (SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND term=(SELECT term FROM commission_ledger WHERE partner_profile_id=$1 ORDER BY created_at DESC LIMIT 1) AND status NOT IN('REVERSED','CANCELLED')) AS current`,[p.id])).rows[0];
+       (SELECT COUNT(DISTINCT st.id)::int FROM students st JOIN school_partner_attributions a ON a.school_id=st.school_id WHERE a.partner_profile_id=$1 AND a.is_current=true AND upper(st.status)='ACTIVE') AS students`,[p.id])).rows[0];
     const response:any={referredSchools:x.schools,eligibleStudents:x.students};
-    if(p.isOwner||["PARTNER_ADMIN","PARTNER_FINANCE"].includes(p.partnerRole)){
-      const totals=await broLedgerBalances(c,p.id);
-      Object.assign(response,totals,{currentTermCommission:x.current,lifetimeCommission:totals.accruedCommission});
-    }
     await c.query("COMMIT");res.set("Cache-Control","private, no-store").json(response);
   }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
 }));
