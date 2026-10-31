@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Link } from 'wouter';
 import { BookOpen, Plus, Pencil, Link2 } from 'lucide-react';
 import { 
   useListSubjects, useCreateSubject, useUpdateSubject, getListSubjectsQueryKey,
@@ -33,6 +34,7 @@ export function SubjectsPage() {
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
+            {canManageSchool && !!schoolId && <Link href={`/class-subjects?schoolId=${schoolId}`} className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5 text-sm font-bold" data-testid="link-class-subject-setup"><Link2 size={16} />Link to classes</Link>}
             {canManageSchool && <Button onClick={() => setModal({ create: true })} disabled={!schoolId}>
               <Plus size={16} />Add subject
             </Button>}

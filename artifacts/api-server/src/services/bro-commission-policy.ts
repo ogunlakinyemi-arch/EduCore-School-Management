@@ -53,7 +53,20 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
   const c=await pool.connect();
   try{
     await c.query("BEGIN");
-    await requireFinancialActor(c,actor.id);
+    const result=await accrueBroCommissionInTransaction(c,scope,actor);
+    await c.query("COMMIT");
+    return result;
+  }catch(error){await c.query("ROLLBACK").catch(()=>undefined);throw error;}finally{c.release();}
+}
+
+/** Caller owns transaction and lock order. Uses the same evidence/rate and unique earning key. */
+export async function accrueBroCommissionInTransaction(c:BroSql,
+  scope:{schoolId:number;studentId:number;termId:number},
+  actor:{id:number;email:string;clerkUserId:string},automatic=false){
+    // Manual accrual is still an authenticated Owner operation. Automatic
+    // accrual is a system consequence of immutable verified payment evidence,
+    // not a new action by (or an impersonation of) the historical approver.
+    if(!automatic)await requireFinancialActor(c,actor.id);
     await c.query("SET LOCAL lock_timeout='2s'");
     // Same policy lock as approval/retirement, plus one global student/term earning key.
     await c.query("SELECT pg_advisory_xact_lock(310031,1)");
@@ -64,7 +77,7 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
       WHERE student_id=$1 AND academic_term_id=$2 FOR SHARE`,[scope.studentId,scope.termId])).rows[0];
     if(prior){
       if(Number(prior.school_id)!==scope.schoolId)throw new BroCommissionBlocked("Existing earning belongs to another school.");
-      await c.query("COMMIT");return {id:Number(prior.id),amountMinor:Number(prior.amount_minor),existing:true};
+      return {id:Number(prior.id),amountMinor:Number(prior.amount_minor),existing:true};
     }
     // A new earning also requires immutable direct-payment source evidence.
     if(!(await inspectFinancialGuards(c,"direct")).ready)
@@ -124,10 +137,11 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
           collectionStartDate:rollout.collectionStartDate}),actor.id])).rows[0];
     if(!row)throw new BroCommissionBlocked("Concurrent earning requires readback; no amount was changed.");
     await c.query(`INSERT INTO audit_logs("user",role,actor_user_id,clerk_user_id,action,module,record_id,event_type,metadata)
-      VALUES($1,'PLATFORM_OWNER',$2,$3,'BRO_COMMISSION_EARNED','Subscription & Payment Rules',$4,
-        'BRO_COMMISSION_EARNED',$5::jsonb)`,[actor.email,actor.id,actor.clerkUserId,row.id,
+      VALUES($1,$6,$2,$3,'BRO_COMMISSION_EARNED','Subscription & Payment Rules',$4,
+        'BRO_COMMISSION_EARNED',$5::jsonb)`,[automatic?"system":actor.email,automatic?null:actor.id,automatic?null:actor.clerkUserId,row.id,
       JSON.stringify({after:{...scope,partnerId:e.partner_profile_id,policyId:Number(raw.id),amountMinor:amount,
-        currency:"NGN",funding:"SEPARATE_PLATFORM_EXPENSE",status:"PENDING_OWNER_APPROVAL"}})]);
-    await c.query("COMMIT");return {id:Number(row.id),amountMinor:amount,existing:false};
-  }catch(error){await c.query("ROLLBACK").catch(()=>undefined);throw error;}finally{c.release();}
+        currency:"NGN",funding:"SEPARATE_PLATFORM_EXPENSE",status:"PENDING_OWNER_APPROVAL"},
+        trigger:automatic?"SERVER_VERIFIED_SUBSCRIPTION":"OWNER_ACTION",
+        ...(automatic?{reviewApproverId:actor.id}:{} )}),automatic?"SYSTEM":"PLATFORM_OWNER"]);
+    return {id:Number(row.id),amountMinor:amount,existing:false};
 }

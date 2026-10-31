@@ -26093,6 +26093,58 @@ export const ListPartnerInvitationsStatus = {
   REVOKED: 'REVOKED',
 } as const;
 
+export type SaveClassSubjectSetupBodySubjectsItem = {
+  /** @minimum 1 */
+  subjectId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  teacherId?: number | null;
+};
+
+export type SaveClassSubjectSetupBody = {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  termId?: number | null;
+  /**
+     * @maxItems 500
+     * @items.minimum 1
+     */
+  expectedAssignmentIds: number[];
+  /** @maxItems 500 */
+  subjects: SaveClassSubjectSetupBodySubjectsItem[];
+};
+
+export type SaveClassSubjectSetup200 = {
+  saved: boolean;
+  linkedSubjectCount: number;
+};
+
+export type GetMyBroCommissionEntitlements200ItemsItem = {
+  id: number;
+  studentId: number;
+  termId: number;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  earnedAt: string;
+};
+
+export type GetMyBroCommissionEntitlements200 = {
+  earnedMinor: number;
+  currency: string;
+  items: GetMyBroCommissionEntitlements200ItemsItem[];
+};
+
 export type AcceptPartnerInvitationParams = {
 /**
  * @minLength 32

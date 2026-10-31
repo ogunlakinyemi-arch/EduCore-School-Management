@@ -9,18 +9,19 @@ and preserve existing pending-approval, held, deferred-export and historical
 earnings boundaries. Accrued/outstanding does not mean available to pay.
 
 **Why:** On 2026-10-28 the user explicitly replaced typed IDs/arbitrary amounts
-with BRO selection and required correct Owner ledger figures. On 2026-10-29 they
-superseded BRO-facing balance visibility: only the Platform Owner may see
-commission, entitlement, earnings, shares or payouts. The earlier BRO dashboard
-comparison is no longer an allowed display requirement. They authorized manual
-Owner transfer recording, not automatic money movement or new earning authority.
+with BRO selection and required correct Owner ledger figures. The later
+visibility correction permits each BRO to read their own verified eligible
+commission only, never school collections, platform revenue or other BROs.
+This does not restore payout authority or overall policy/report visibility.
+They authorized manual Owner transfer recording, not automatic money movement.
 
 **How to apply:** Never invoke a transfer/payout API or manufacture payable entries
 from the independent NGN 150 pending-approval entitlement history. Freeze verified
 bank instructions per payout so later bank edits cannot change its destination.
 Record explicit external-completion confirmation, Owner identity/time and exact
 ledger reconciliation, retaining retry, concurrency and duplicate-reference guards.
-Do not restore BRO self-service commission or payout pages/API access.
+Keep the BRO's own earning view separate from Owner-controlled payouts and
+overall financial reports; earning is not payout approval or money movement.
 
 BRO beneficiary verification uses the registered person's full name, not the
 company-beneficiary rule. Automatic LIVE lookup followed by proof-backed saving

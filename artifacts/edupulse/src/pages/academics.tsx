@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Notice, isValidRange, rangesOverlap } from '@/components/school-ops-kit';
 import { academicSaveError } from '@/components/academic-save-error';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { Calendar, Plus, Pencil, Check } from 'lucide-react';
+import { Calendar, Plus, Pencil, Check, Link2 } from 'lucide-react';
+import { Link } from 'wouter';
 import { 
   useListAcademicSessions, useCreateAcademicSession, useUpdateAcademicSession, getListAcademicSessionsQueryKey,
   useListAcademicTerms, useCreateAcademicTerm, useUpdateAcademicTerm, getListAcademicTermsQueryKey
@@ -71,6 +72,16 @@ export function AcademicsPage() {
       ) : sessionsQuery.isError ? (
         <ErrorState retry={() => { sessionsQuery.refetch(); }} />
       ) : (
+        <>
+        {canManageSchool && (
+          <div className="panel mb-6 flex flex-wrap items-center justify-between gap-3 p-5" data-testid="panel-academic-setup">
+            <div>
+              <div className="eyebrow">Academic Setup</div>
+              <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">After sessions and terms, link catalogue subjects to each class, then build the timetable.</p>
+            </div>
+            <Link href={`/class-subjects?schoolId=${schoolId}${activeSession ? `&sessionId=${activeSession.id}` : ''}`} className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-class-subject-setup"><Link2 size={15} />Set up class subjects</Link>
+          </div>
+        )}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Sessions Panel */}
           <div className="panel overflow-hidden">
@@ -118,6 +129,7 @@ export function AcademicsPage() {
           )}
 
         </div>
+        </>
       )}
     </div>
   );

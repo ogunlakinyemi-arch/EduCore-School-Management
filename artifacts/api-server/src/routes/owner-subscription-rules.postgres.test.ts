@@ -175,6 +175,16 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     await db.query(migration);
     await db.query(readFileSync(join(process.cwd(),"../../lib/db/drizzle/0176_direct_student_live_preparation.sql"),"utf8"));
     await db.query(readFileSync(join(process.cwd(),"../../lib/db/drizzle/0177_direct_student_live_release_reviews.sql"),"utf8"));
+    // Only the independently identified disposable database receives this DDL.
+    await db.query(`ALTER TABLE app_users ADD COLUMN email text DEFAULT 'fictional-owner@example.test',
+      ADD COLUMN clerk_user_id text DEFAULT 'fixture-owner';
+      ALTER TABLE students ADD COLUMN admission_status text DEFAULT 'ADMITTED';
+      CREATE TABLE partner_profiles(id integer PRIMARY KEY,status text,user_id integer);
+      CREATE TABLE school_partner_attributions(id serial PRIMARY KEY,school_id integer,
+        partner_profile_id integer,status text,starts_at timestamptz,ends_at timestamptz);
+      CREATE TABLE commission_ledger(id serial PRIMARY KEY,school_id integer,student_id integer,
+        payment_id integer,academic_session_id integer,status text,amount numeric);`);
+    await db.query(readFileSync(join(process.cwd(),"../../lib/db/drizzle/0178_independent_bro_term_commissions.sql"),"utf8"));
     await db.query(`CREATE TABLE school_memberships(id serial PRIMARY KEY,user_id integer,school_id integer,role text,status text);
       INSERT INTO school_memberships(user_id,school_id,role,status) VALUES(9,NULL,'PLATFORM_OWNER','ACTIVE')`);
     await new Promise<void>(resolve=>{server=app.listen(0,"127.0.0.1",()=>{
@@ -192,7 +202,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     await db.query(`UPDATE academic_terms SET name='QA Current',start_date='2026-10-17',
       end_date='2026-11-16',is_current=true,status='ACTIVE' WHERE id=4 AND school_id=1`);
     // These are exclusively the independently verified disposable fixture tables.
-    await db.query(`TRUNCATE student_direct_live_release_decisions,student_direct_live_review_bindings,
+    await db.query(`TRUNCATE bro_term_commission_entitlements,student_direct_live_release_decisions,student_direct_live_review_bindings,
       student_direct_live_release_requests,student_direct_live_events,student_direct_live_attempts,
       student_direct_live_obligations,student_direct_live_reviews`);
     for(const table of ["fee_refunds","fee_receipts","fee_payment_line_allocations","fee_payments","fee_invoice_lines","fee_invoices",
@@ -884,6 +894,16 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     await expect(verifyDirectStudentPayment(db as any,{reference:"SCV4_live_unknown_reference_001",
       transactionId:"901",actorId:null},deps)).rejects.toMatchObject({code:"UNKNOWN_REFERENCE"});
     expect(calls).toHaveLength(0);
+    await db.query(`INSERT INTO partner_profiles(id,status,user_id) VALUES(4,'ACTIVE',9);
+      INSERT INTO school_partner_attributions(school_id,partner_profile_id,status,starts_at)
+        VALUES(1,4,'ACTIVE','2026-01-01Z');`);
+    const broPolicy=(await db.query(`INSERT INTO subscription_rule_proposals
+      (product,status,amount_minor,effective_at,reason,created_by,updated_by,activated_at)
+      VALUES('BRO_COMMISSION','ACTIVE',15000,'2026-10-26T23:00Z','Fictional automatic accrual',9,9,now())
+      RETURNING id,version,effective_at`)).rows[0];
+    await db.query(`INSERT INTO audit_logs(role,record_id,event_type,metadata)
+      VALUES('PLATFORM_OWNER',$1,'SUBSCRIPTION_RULE_ACTIVATED',$2::jsonb)`,[broPolicy.id,
+      JSON.stringify({after:{product:"BRO_COMMISSION",amountMinor:15000,version:broPolicy.version,effectiveAt:broPolicy.effective_at}})]);
     const first=await startDirectStudentPayment(db as any,{...scope,idempotencyKey:"fictional-checkout-001"},deps);
     assert.ok(first);
     txReferences.set("901",first.reference);
@@ -898,6 +918,7 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     // The fake verifier is reference-bound to the stored attempt, not a redirect claim.
     const pending=await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps);
     expect(pending.state).toBe("PENDING");
+    expect((await db.query("SELECT count(*)::int AS n FROM bro_term_commission_entitlements")).rows[0].n).toBe(0);
     await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     states.set("901","successful");
     // Observe BOTH independent verifiers waiting on the real attempt row, then
@@ -915,7 +936,8 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
       while(blocked<2 && process.hrtime.bigint()<deadline){
         blocked=Number((await db.query(`SELECT count(*) AS n FROM pg_stat_activity
           WHERE datname=current_database() AND state='active' AND wait_event_type='Lock'
-            AND query LIKE '%SELECT * FROM student_direct_live_attempts WHERE reference=%FOR UPDATE%'`)).rows[0].n);
+            AND (query LIKE '%SELECT * FROM student_direct_live_attempts WHERE reference=%FOR UPDATE%'
+              OR query LIKE '%SELECT pg_advisory_xact_lock(310031,1)%')`)).rows[0].n);
       }
       expect(blocked).toBe(2);
       expect((await db.query("SELECT state FROM student_direct_live_attempts WHERE reference=$1",[first.reference])).rows[0].state)
@@ -926,10 +948,19 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     const [paid,replayed]=await concurrent!;
     expect(replayed.state).toBe("PAID");
     expect(paid.state).toBe("PAID");
+    // No later Owner action or page read creates this earning: it is committed
+    // synchronously with independent verification, once under real concurrent delivery.
+    expect((await db.query(`SELECT partner_profile_id,student_id,academic_term_id,amount_minor,status
+      FROM bro_term_commission_entitlements`)).rows).toEqual([{
+        partner_profile_id:4,student_id:31,academic_term_id:4,amount_minor:15000,status:"PENDING_OWNER_APPROVAL",
+      }]);
+    expect((await db.query(`SELECT count(*)::int AS n FROM audit_logs
+      WHERE event_type='BRO_COMMISSION_EARNED' AND role='SYSTEM'`)).rows[0].n).toBe(1);
     await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).resolves.toBeUndefined();
     await expect(assertVerifiedStudentNfcPayment(db as any,2,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     await expect(assertVerifiedStudentNfcPayment(db as any,1,33)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     expect((await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps)).state).toBe("PAID");
+    expect((await db.query("SELECT count(*)::int AS n FROM bro_term_commission_entitlements")).rows[0].n).toBe(1);
     await expect(verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"902",actorId:null},deps))
       .rejects.toMatchObject({code:"VERIFIED_TRANSACTION_CONFLICT"});
     expect((await db.query(`SELECT o.amount_minor,o.school_share_minor,o.bro_share_minor,o.assistance_request_id

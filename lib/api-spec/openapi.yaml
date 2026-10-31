@@ -4975,6 +4975,80 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: "Invitation is stale, accepted, belongs to another school/recipient, or is already being replaced" }
         "503": { description: Provider or persistence outcome requires reconciliation }
+  /class-subject-assignments/class-setup:
+    put:
+      operationId: saveClassSubjectSetup
+      tags: [academic]
+      summary: Save existing catalogue subjects for a school class and academic scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schoolId, classId, sessionId, expectedAssignmentIds, subjects]
+              properties:
+                schoolId: { type: integer, minimum: 1 }
+                classId: { type: integer, minimum: 1 }
+                sessionId: { type: integer, minimum: 1 }
+                termId: { type: ["integer", "null"], minimum: 1 }
+                expectedAssignmentIds: { type: array, maxItems: 500, items: { type: integer, minimum: 1 } }
+                subjects:
+                  type: array
+                  maxItems: 500
+                  items:
+                    type: object
+                    required: [subjectId]
+                    properties:
+                      subjectId: { type: integer, minimum: 1 }
+                      teacherId: { type: ["integer", "null"], minimum: 1 }
+      responses:
+        "200":
+          description: Atomic class setup saved without deleting historical academic records
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [saved, linkedSubjectCount]
+                properties:
+                  saved: { type: boolean }
+                  linkedSubjectCount: { type: integer }
+        "400": { description: Invalid or duplicate selections }
+        "403": { description: School Admin required }
+        "404": { description: A selected academic resource is outside this school }
+        "409": { description: Stale links or ineligible responsible teacher }
+  /partner/commission-entitlements:
+    get:
+      operationId: getMyBroCommissionEntitlements
+      tags: [partner]
+      summary: Read only the authenticated BRO's own verified student-term entitlements
+      responses:
+        "200":
+          description: Private own-entitlement view; no school collections, revenue or policy evidence
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, earnedMinor, currency]
+                properties:
+                  earnedMinor: { type: integer }
+                  currency: { type: string }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, studentId, termId, amountMinor, currency, status, earnedAt]
+                      properties:
+                        id: { type: integer }
+                        studentId: { type: integer }
+                        termId: { type: integer }
+                        amountMinor: { type: integer }
+                        currency: { type: string }
+                        status: { type: string }
+                        earnedAt: { type: string, format: date-time }
+        "403": { description: BRO membership required }
+        "404": { description: No active own BRO profile }
+        "503": { description: Entitlements could not be confirmed }
   /partner/commissions:
     get:
       operationId: getMyPartnerCommissions

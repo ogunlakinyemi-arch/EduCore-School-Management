@@ -254,6 +254,8 @@ router.post("/academic/timetable", asyncRoute(async (req, res) => {
   let result: any;
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+      [`class-subject-setup:${values.schoolId}:${values.sessionId}:${values.classId}`]);
     await client.query(`SELECT pg_advisory_xact_lock($1::int, $2::int)`, [values.schoolId, weekdays.indexOf(values.day) + 1]);
     const valid = await client.query(
       timetableSelectionSql,
@@ -298,6 +300,8 @@ router.patch("/academic/timetable/:entryId", asyncRoute(async (req, res) => {
     if (!existing.rows[0]) throw new AuthError(404, "Timetable entry not found");
     const previous = rowToValues(existing.rows[0]);
     const values = parseValues({ ...req.body, schoolId }, previous);
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+      [`class-subject-setup:${values.schoolId}:${values.sessionId}:${values.classId}`]);
     await client.query(`SELECT pg_advisory_xact_lock($1::int, $2::int)`, [values.schoolId, weekdays.indexOf(values.day) + 1]);
     const valid = await client.query(
       timetableSelectionSql,

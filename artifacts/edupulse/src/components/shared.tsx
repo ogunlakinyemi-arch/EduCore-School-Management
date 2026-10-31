@@ -65,6 +65,7 @@ const nav: NavItem[] = [
   { href: '/teacher-assignments', label: 'Teacher Assignments', icon: GraduationCap, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/teacher-duty', label: 'Teacher Duty', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/subjects', label: 'Subjects', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
+  { href: '/class-subjects', label: 'Class Subjects', icon: BookOpen, roles: ['SCHOOL_ADMIN'] },
   { href: '/classes', label: 'Classes', icon: Library, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/academic-work', label: 'Academic Work', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/curriculum-management', label: 'Curriculum Management', icon: BookOpen, roles: ['PLATFORM_OWNER'] },

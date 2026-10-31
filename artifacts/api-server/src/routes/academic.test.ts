@@ -3,8 +3,22 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: unknown[] }>,
+  setupClassValid: true,
 }));
 const poolMock = vi.hoisted(() => ({
+  connect: vi.fn(async()=>({
+    release:vi.fn(),
+    query:vi.fn(async(sql:string,values:unknown[]=[])=>{
+      state.calls.push({sql,values});
+      if(sql.includes("FROM school_classes c"))return {rows:state.setupClassValid?[{id:4,section:"B"}]:[]};
+      if(sql.includes("SELECT id,subject_id,employee_id")||sql.includes("SELECT DISTINCT ta.subject_id"))return {rows:[]};
+      if(sql.includes("SELECT id FROM subjects"))return {rows:[{id:81}]};
+      if(sql.includes("SELECT e.id,"))return {rows:[{id:6,eligible:true}]};
+      if(/^(BEGIN|COMMIT|ROLLBACK)$/.test(sql)||sql.includes("pg_advisory_xact_lock")||
+        sql.includes("INSERT INTO class_subjects")||sql.includes("INSERT INTO audit_logs"))return {rows:[]};
+      throw Error(`Unhandled class setup transaction query: ${sql}`);
+    }),
+  })),
   query: vi.fn(async (sql: string, values: unknown[] = []) => {
     state.calls.push({ sql, values });
     if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
@@ -82,6 +96,8 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 ));
 beforeEach(() => {
   state.calls.length = 0;
+  state.setupClassValid = true;
+  poolMock.connect.mockClear();
   poolMock.query.mockClear();
 });
 
@@ -98,6 +114,43 @@ async function request(path: string, role: string, method = "GET", body?: unknow
 }
 
 describe("school operational academic authorization", () => {
+  it("saves class links through the authenticated API and commits its audit atomically",async()=>{
+    const response=await request("/class-subject-assignments/class-setup","SCHOOL_ADMIN","PUT",{
+      schoolId:1,classId:4,sessionId:11,subjects:[{subjectId:81,teacherId:6}],expectedAssignmentIds:[],
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({saved:true,linkedSubjectCount:1});
+    expect(state.calls[0].sql).toBe("BEGIN");
+    expect(state.calls.at(-1)?.sql).toBe("COMMIT");
+    expect(state.calls.some(c=>c.sql.includes("INSERT INTO audit_logs"))).toBe(true);
+    expect(state.calls.find(c=>c.sql.includes("INSERT INTO class_subjects"))?.values).toEqual([1,4,11,null,"B",81,6]);
+    expect(state.calls.some(c=>/INSERT INTO subjects|DELETE |UPDATE academic_timetable|UPDATE.*marks/i.test(c.sql))).toBe(false);
+  });
+  it("rolls back the setup API when a class does not belong to its school",async()=>{
+    state.setupClassValid=false;
+    const response=await request("/class-subject-assignments/class-setup","SCHOOL_ADMIN","PUT",{
+      schoolId:1,classId:99,sessionId:11,subjects:[{subjectId:81}],expectedAssignmentIds:[],
+    });
+    expect(response.status).toBe(404);
+    expect(state.calls.at(-1)?.sql).toBe("ROLLBACK");
+    expect(state.calls.some(c=>/INSERT|UPDATE|DELETE/.test(c.sql))).toBe(false);
+  });
+  it.each(["TEACHER","STAFF","ACCOUNTANT","PARENT","STUDENT","PARTNER","PLATFORM_OWNER"])(
+    "denies %s access to class-subject setup writes", async role => {
+      const response = await request("/class-subject-assignments/class-setup",role,"PUT",{
+        schoolId:1,classId:4,sessionId:11,termId:null,subjects:[],expectedAssignmentIds:[],
+      });
+      expect(response.status).toBe(404);
+      expect(state.calls).toHaveLength(0);
+    },
+  );
+  it("denies class setup for another school before connecting to the database",async()=>{
+    const response=await request("/class-subject-assignments/class-setup","SCHOOL_ADMIN","PUT",{
+      schoolId:2,classId:4,sessionId:11,subjects:[],expectedAssignmentIds:[],
+    });
+    expect(response.status).toBe(404);
+    expect(state.calls).toHaveLength(0);
+  });
   it.each(["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER", "ACCOUNTANT"])(
     "allows %s to read school academic periods used by finance pickers", async role => {
       const sessions = await request("/academic-sessions?schoolId=1", role);

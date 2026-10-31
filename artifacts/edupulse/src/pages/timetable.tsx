@@ -1,4 +1,6 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
+import { Link } from 'wouter';
+import { scopeQuery } from './class-subject-setup-model';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeading, Button, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx, time } from '@/components/shared';
 import { 
@@ -166,7 +168,7 @@ export function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; c
         </div>
         {canEdit && (
           <div className="ml-auto mt-4">
-             <Button disabled={!sessions.length} onClick={() => setModal({ create: true, classId: classId || undefined })} testId="button-add-timetable-entry"><Plus size={16}/> Add Timetable Entry</Button>
+             <Button disabled={!activeSession || !activeTerm || !classId} title={!activeSession || !activeTerm || !classId ? 'Choose a session, term and class first.' : undefined} onClick={() => setModal({ create: true, classId: classId || undefined })} testId="button-add-timetable-entry"><Plus size={16}/> Add Timetable Entry</Button>
           </div>
         )}
       </div>
@@ -199,7 +201,8 @@ export function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; c
           })}
         </div>
       ) : (
-        <EmptyState icon={Calendar} title="Timetable is empty" description={canEdit ? "Add schedule blocks to build the class timetable." : "No schedule blocks are available for this class."} />
+        <EmptyState icon={Calendar} title="Timetable is empty" description={canEdit ? "Add schedule blocks to build the class timetable." : "No schedule blocks are available for this class."}
+          action={canEdit ? <Link href={`/class-subjects?${scopeQuery({ schoolId, sessionId: activeSession?.id, termId: activeTerm?.id, classId: classId || undefined })}`} className="text-sm font-bold underline" data-testid="link-timetable-class-subjects">Check this class's subjects</Link> : undefined} />
       ) : (
         <EmptyState icon={Calendar} title="Select a class" description={canEdit ? "Choose a class to view and manage its timetable." : "Choose a class to view its timetable."} />
       )}
@@ -275,6 +278,20 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
   const subjectValid = eligibleSubjects.some((subject: any) => subject.id === Number(form.subjectId));
   const eligibleTeachers = sectionChosen && termId && subjectValid ? matchingTimetableTeachers(teachers, subjectAssignments, teacherAssignments, session, selection) : [];
   const teacherValid = eligibleTeachers.some(teacher => teacher.id === Number(form.teacherId));
+  // New entries: prefill the teacher when exactly one eligible option exists.
+  // Edits keep their initial values; several options stay an explicit choice.
+  const prefilledFor = useRef('');
+  useEffect(() => {
+    if (!subjectValid || eligibleTeachers.length !== 1) { prefilledFor.current = ''; return; }
+    if (initial || teacherLoading || teacherError || !subjectValid || form.teacherId) return;
+    const key = `${schoolId}:${sessionId}:${termId}:${form.classId}:${section}:${form.subjectId}:${eligibleTeachers[0]?.id}`;
+    if (eligibleTeachers.length === 1 && prefilledFor.current !== key) {
+      prefilledFor.current = key;
+      setForm(previous => ({ ...previous, teacherId: String(eligibleTeachers[0].id) }));
+    }
+  }, [initial, schoolId, sessionId, termId, section, teacherLoading, teacherError, subjectValid, form.teacherId, form.classId, form.subjectId, eligibleTeachers.length, eligibleTeachers[0]?.id]);
+  const setupScope = scopeQuery({ schoolId, sessionId, termId, classId: Number(form.classId) || undefined });
+
   // Assignment changes/refetches must not leave an old option selected.
   useEffect(() => {
     if (subjectLoading || subjectError) return;
@@ -372,7 +389,7 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
           : subjectLoading ? <p role="status">Loading subjects...</p>
           : !eligibleSubjects.length && <p role="status" className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{!form.classId || !sectionChosen
           ? 'Select a class and section to see its assigned subjects.'
-          : 'No subjects are assigned to this class.'}</p>}
+          : <>No subjects are assigned to this class. <Link href={`/class-subjects?${setupScope}`} className="font-bold underline" data-testid="link-editor-class-subjects">Set up class subjects</Link></>}</p>}
       </Field>
       <Field label="Teacher">
         <select required aria-label="Timetable teacher" value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full" disabled={teacherLoading || !!teacherError || !eligibleTeachers.length} aria-describedby="timetable-teacher-help">
@@ -385,7 +402,7 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
             : teacherLoading ? 'Loading teachers...'
             : eligibleTeachers.length
             ? 'Only teachers assigned to this class/section and subject in the selected session are available. Assignments are checked again when saving.'
-            : !form.subjectId ? 'Select an assigned subject to see its eligible teachers.' : 'No teacher is assigned to this subject/class.'}
+            : !form.subjectId ? 'Select an assigned subject to see its eligible teachers.' : <>No teacher is assigned to this subject/class. <Link href={`/class-subjects?${setupScope}`} className="font-bold underline" data-testid="link-editor-class-subject-teacher">Choose a responsible teacher in class subject setup</Link> or use <Link href={`/teacher-assignments?${setupScope}`} className="underline" data-testid="link-editor-teacher-assignments">detailed staffing</Link>.</>}
         </p>
       </Field>
       <Field label="Room (Optional)">

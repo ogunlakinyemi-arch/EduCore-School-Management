@@ -35,6 +35,7 @@ import { PlatformCompanyEmployeesPage } from '@/pages/platform-company-employees
 import { CompanyAccountantPage } from '@/pages/company-accountant';
 import { AcademicsPage } from '@/pages/academics';
 import { SubjectsPage } from '@/pages/subjects';
+import { ClassSubjectsPage } from '@/pages/class-subjects';
 import { AcademicWorkPage } from '@/pages/academic-work';
 import { CurriculumManagementPage } from '@/pages/curriculum-management';
 import { SchoolCurriculumPage } from '@/pages/school-curriculum';
@@ -351,6 +352,9 @@ export function ProtectedRoutes() {
           </Route>
           <Route path="/subjects">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView ownerReadOnly><SubjectsPage /></RoleGuard>
+          </Route>
+          <Route path="/class-subjects">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><ClassSubjectsPage /></RoleGuard>
           </Route>
           <Route path="/academic-work">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView ownerReadOnly><AcademicWorkPage /></RoleGuard>

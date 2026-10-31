@@ -41,6 +41,7 @@ import {
   EmptyState 
 } from '@/components/shared';
 import NotFound from '@/pages/not-found';
+import OwnBroCommissions from './own-commissions';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,7 +79,7 @@ function PortalHeader() {
   const { allowed: nfcAllowed } = usePartnerNfcAccess();
   const isOwner = (profile.data as any)?.isOwner ||
     ['PARTNER_OWNER', 'PARTNER_ADMIN'].includes((profile.data as any)?.partnerRole);
-  const canViewFinance = false;
+  const canViewFinance = (profile.data as any)?.isOwner === true;
   
   return (
     <header className="sticky top-0 z-20 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.94)] backdrop-blur-xl">
@@ -96,7 +97,6 @@ function PortalHeader() {
               <Link href="/partner/schools" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/schools') && "text-[hsl(var(--primary))]")}>Schools</Link>
               {isOwner && <Link href="/partner/staff" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/staff') && "text-[hsl(var(--primary))]")}>Staff</Link>}
               {canViewFinance && <Link href="/partner/commissions" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/commissions') && "text-[hsl(var(--primary))]")}>Commissions</Link>}
-              {canViewFinance && <Link href="/partner/payouts" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/payouts') && "text-[hsl(var(--primary))]")}>Payouts</Link>}
               {nfcAllowed && <Link href="/partner/nfc-activation" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/nfc-activation' && "text-[hsl(var(--primary))]")} data-testid="link-partner-nfc-activation">NFC Activation</Link>}
               <Link href="/reporting" className={cx("hover:text-[hsl(var(--foreground))]", location === '/reporting' && "text-[hsl(var(--primary))]")} data-testid="link-partner-reporting">Reports</Link>
               {isOwner && <Link href="/partner/profile" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/profile' && "text-[hsl(var(--primary))]")}>Settings</Link>}
@@ -114,7 +114,6 @@ function PortalHeader() {
         <Link href="/partner/schools" data-testid="link-partner-schools-mobile" className="hover:underline">Schools</Link>
         {isOwner && <Link href="/partner/staff" data-testid="link-partner-staff-mobile" className="hover:underline">Staff</Link>}
         {canViewFinance && <Link href="/partner/commissions" data-testid="link-partner-commissions-mobile" className="hover:underline">Commissions</Link>}
-        {canViewFinance && <Link href="/partner/payouts" data-testid="link-partner-payouts-mobile" className="hover:underline">Payouts</Link>}
         {nfcAllowed && <Link href="/partner/nfc-activation" data-testid="link-partner-nfc-activation-mobile" className="whitespace-nowrap hover:underline">NFC Activation</Link>}
         {isOwner && <Link href="/partner/profile" data-testid="link-partner-settings-mobile" className="hover:underline">Settings</Link>}
         <Link href="/notification-settings" data-testid="link-partner-preferences-mobile" className="hover:underline">Preferences</Link>
@@ -142,7 +141,7 @@ function Dashboard() {
 
   const data = dashboard.data;
   const canManageSchools = canManagePartnerSchools(profile.data);
-  const canViewFinance = false;
+  const canViewFinance = (profile.data as any)?.isOwner === true;
 
   return (
     <div className="mx-auto max-w-6xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -165,6 +164,7 @@ function Dashboard() {
         
       </div>
 
+      {canViewFinance && <OwnBroCommissions />}
       <div className="grid gap-6 md:grid-cols-[1fr_300px]">
         <div className="panel overflow-hidden">
           <div className="border-b border-[hsl(var(--border))] p-5 md:p-6 flex items-center justify-between">
@@ -207,7 +207,7 @@ function Dashboard() {
             <span className="font-bold">Yetenia EduCore Business Relationship Officer (BRO) Program</span>
           </div>
           <p className="text-sm leading-relaxed text-[hsl(var(--sidebar-foreground)/.7)] mb-6">
-            Manage your school relationships and account details. Financial commission information is restricted to the Platform Owner.
+            Manage your school relationships and account details. You can view your own earned commission entitlements.
           </p>
           <Link href="/partner/profile">
             <Button variant="outline" className="w-full bg-transparent border-[hsl(var(--sidebar-border))] hover:bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-foreground))]">
@@ -307,7 +307,7 @@ function MyPayouts() {
       <div className="mb-7">
         <div className="eyebrow">Financials</div>
         <h1 className="display-font mt-2 text-3xl font-bold">Payouts</h1>
-        <p className="mt-2 text-xs">Financial commission information is restricted to the Platform Owner.</p>
+        <p className="mt-2 text-xs">Your earned entitlements are available in Commissions. Overall financial policies and reports remain restricted to the Platform Owner.</p>
       </div>
 
       <div className="panel overflow-hidden">
@@ -460,7 +460,7 @@ export default function PartnerPortal() {
         <Route path="/partner/schools" component={MySchools} />
         <Route path="/partner/staff" component={PartnerStaff} />
         <Route path="/partner/nfc-activation" component={PartnerNfcActivation} />
-        <Route path="/partner/commissions" component={NotFound} />
+        <Route path="/partner/commissions" component={OwnBroCommissions} />
         <Route path="/partner/payouts" component={NotFound} />
         <Route path="/partner/flutterwave-settlements" component={ArchivedPaymentWorkflowPage} />
         <Route path="/partner/profile" component={PartnerSettings} />

@@ -1,4 +1,5 @@
 import { teacherScoped, teacherClassScope, teacherStudentScope } from "../lib/teacher-record-scope";
+import { classSubjectSetupBody, saveClassSubjectSetup } from "../services/class-subject-setup";
 import { Router, type IRouter, type NextFunction, type Request } from "express";
 import {
   ListStudentClassAssignmentsParams, ListStudentClassAssignmentsQueryParams,
@@ -201,6 +202,18 @@ router.patch("/subjects/:subjectId",wrap(async(req,res)=>{
   if(!r.rows[0])throw new AuthError(404,"Subject not found");await audit(req,q.schoolId,"Updated subject",p.subjectId);res.json(r.rows[0]);
 }));
 
+router.put("/class-subject-assignments/class-setup",wrap(async(req,res)=>{
+  const body=classSubjectSetupBody.parse(req.body);
+  school(req,body.schoolId,writeRoles,true);
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result=await saveClassSubjectSetup(client,body);
+    await audit(req,body.schoolId,"Saved class subject setup",body.classId,client);
+    await client.query("COMMIT");
+    res.set("Cache-Control","private, no-store").json(result);
+  } catch(error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+}));
 router.get("/class-subject-assignments",wrap(async(req,res)=>{
   const q=ListClassSubjectAssignmentsQueryParams.parse(req.query); school(req,q.schoolId,viewRoles);
   const vals:any[]=[q.schoolId]; const w=["cs.school_id=$1"];

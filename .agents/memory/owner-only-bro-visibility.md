@@ -1,21 +1,26 @@
 ---
-name: Owner-only BRO financial visibility and school payment method
-description: BRO commission data is restricted to the Platform Owner; school users see only the Owner's effective platform payment method.
+name: Owner and own-BRO financial visibility
+description: Owner oversight and strictly scoped BRO entitlements, without school payment/revenue disclosure or transfers.
 ---
 
-Only an active Platform Owner may view BRO commission/entitlement information,
-share amounts, policy/rate details, ledger balances and financial exports.
-School Admin, Accountant, Teacher, Staff, Student, Parent and even BRO roles
-must not see those details or retrieve them by URL or API. Keep internal
-calculations, eligibility, historical liabilities and Owner oversight unchanged.
+An active Platform Owner retains authorized overall commission policies and
+records. Each relevant BRO may see only their own earned/eligible student-term
+commission, using the applicable effective-dated ₦150 rule and independent
+verification of attributed student subscriptions. School Admin, Accountant,
+Teacher, Staff, Student and Parent roles receive no BRO commission data.
+BROs must not receive school platform payment amounts/totals, platform revenue,
+other BROs' earnings, or overall Owner policy/report evidence.
 
-**Why:** The user explicitly withdrew prior BRO and school-facing commission
-visibility on 2026-10-29; hiding a widget alone is not an authorization boundary.
+**Why:** The user corrected the earlier Owner-only interpretation: "Only platform
+Owner and BRO should be able to see BRO commission" and a BRO sees only their own
+commission promptly after the school pays for eligible student subscriptions.
 
-**How to apply:** Check role authorization at the serving API and in exports as
-well as UI and navigation. Continue to show ordinary referral/school
-relationships without attaching confidential commission figures. Do not infer
-Owner eligibility from being a BRO owner or school administrator.
+**How to apply:** Authorize and shape responses server-side, derive BRO scope
+from the authenticated principal rather than caller-selected IDs, and keep
+Owner reports separate. Earning follows successful server verification, not an
+Owner button or a read of the BRO dashboard. Preserve term rollout/approval
+gates, historical earnings, pricing and payouts; retries must not double-credit.
+Entitlements are internal ledger entries, never transfers or collection splits.
 
 The Platform Owner controls platform subscription payment configuration.
 Schools see only the Owner's current method or an explicit unavailable state;

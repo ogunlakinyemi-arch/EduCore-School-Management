@@ -1,7 +1,13 @@
 ---
 name: Academic API boundaries
-description: DTO fixtures, authorization-aware choices, date coercion and optional remarks need real boundary evidence.
+description: Academic input contracts, class-first subject linking expectations and authenticated acceptance evidence.
 ---
+
+School Admins must be able to link existing catalogue subjects from a discoverable, class-first Academic Setup workflow, without duplicating subjects or needing raw IDs to assign a responsible teacher. Timetable creation proceeds from session/term and class to linked subjects and eligible teachers.
+
+**Why:** The user reported that School Admins could not find subject-to-class linking and requested a feasible path into timetable creation, while explicitly preserving academic history.
+
+**How to apply:** Keep assignment setup and missing-subject/teacher guidance connected to the timetable workflow. Treat a responsible-teacher choice as an explicit staffing action, not a side effect of merely linking a subject. Preserve existing timetable and marks records when class links change.
 
 Validate calendar components before date coercion, while accepting the exact midnight-UTC serialization used by existing date-only forms. Test both raw date-only strings and the form's serialized payload.
 

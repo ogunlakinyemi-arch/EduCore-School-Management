@@ -17028,6 +17028,58 @@ export const ResendMyPartnerSchoolInvitationResponse = zod.object({
 
 
 /**
+ * @summary Save existing catalogue subjects for a school class and academic scope
+ */
+
+
+
+
+
+export const saveClassSubjectSetupBodyExpectedAssignmentIdsMax = 500;
+
+
+
+export const saveClassSubjectSetupBodySubjectsMax = 500;
+
+
+
+export const SaveClassSubjectSetupBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "classId": zod.number().int().min(1),
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1).nullish(),
+  "expectedAssignmentIds": zod.array(zod.number().int().min(1)).max(saveClassSubjectSetupBodyExpectedAssignmentIdsMax),
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.number().int().min(1),
+  "teacherId": zod.number().int().min(1).nullish()
+})).max(saveClassSubjectSetupBodySubjectsMax)
+})
+
+export const SaveClassSubjectSetupResponse = zod.object({
+  "saved": zod.boolean(),
+  "linkedSubjectCount": zod.number().int()
+})
+
+
+/**
+ * @summary Read only the authenticated BRO's own verified student-term entitlements
+ */
+export const GetMyBroCommissionEntitlementsResponse = zod.object({
+  "earnedMinor": zod.number().int(),
+  "currency": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "studentId": zod.number().int(),
+  "termId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "status": zod.string(),
+  "earnedAt": zod.coerce.date()
+}))
+})
+
+
+/**
  * @summary List the authenticated partner commissions
  */
 export const GetMyPartnerCommissionsResponseItem = zod.object({

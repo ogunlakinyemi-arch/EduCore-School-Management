@@ -16,7 +16,7 @@ export const adminGroups: NavGroupDef[] = [
   { id: 'records', label: 'Records', hrefs: ['/records'] },
   { id: 'students-parents', label: 'Students & Parents', hrefs: ['/students', '/parents', '/student-care', '/behaviour'] },
   { id: 'employees-staff', label: 'Employees & Staff', hrefs: ['/employees', '/teacher-assignments', '/teacher-duty', '/employee-nfc'] },
-  { id: 'classes-subjects', label: 'Classes & Subjects', hrefs: ['/classes', '/subjects', '/curriculum', '/lesson-notes'] },
+  { id: 'classes-subjects', label: 'Classes & Subjects', hrefs: ['/classes', '/subjects', '/class-subjects', '/curriculum', '/lesson-notes'] },
   { id: 'academics', label: 'Academics', hrefs: ['/academics', '/academic-calendar', '/timetable', '/promotion'] },
   { id: 'attendance', label: 'Attendance', hrefs: ['/attendance', '/attendance/schedule'] },
   { id: 'assessments-results', label: 'Assessments & Results', hrefs: ['/academic-work', '/results'] },

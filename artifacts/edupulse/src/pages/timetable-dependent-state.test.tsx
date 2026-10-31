@@ -130,8 +130,8 @@ describe('timetable period → class → section → subject → teacher', () =>
     state.classSubjects.push({ ...state.classSubjects[0], id: 30, subjectId: 15, teacherId: 16 });
     state.assignments.push({ ...state.assignments[0], id: 31, subjectId: 15, teacherId: 16 });
     await renderEditor(); await change('subject', '5'); await change('teacher', '6'); await change('subject', '15');
-    expect(select('teacher').value).toBe(''); expect([...select('teacher').options].map(o => o.value)).toEqual(['', '16']);
-    await submit(); expect(state.create).not.toHaveBeenCalled();
+    // The old teacher is cleared; the sole eligible teacher for the new subject is prefilled.
+    expect(select('teacher').value).toBe('16'); expect([...select('teacher').options].map(o => o.value)).toEqual(['', '16']);
   });
   it('allows an explicitly chosen no-section class without native required-field blocking', async () => {
     classes[1].section = '';
@@ -254,6 +254,7 @@ describe('timetable period → class → section → subject → teacher', () =>
   it('keeps the real editor mounted when its shared subject query errors and recovers', async () => {
     const view=()=> <QueryClientProvider client={qc}><ManageTimetableView schoolId={1} canEdit/></QueryClientProvider>;
     await act(async()=>root.render(view()));
+    await act(async()=>{ const f=host.querySelector<HTMLSelectElement>('[data-testid=select-timetable-filter-class]')!; f.value='4'; f.dispatchEvent(new Event('change',{bubbles:true})); });
     await act(async()=>host.querySelector<HTMLButtonElement>('[data-testid=button-add-timetable-entry]')!.click());
     await change('class','4'); await change('section','B'); await change('subject','5'); await change('teacher','6');
     state.subjectError=new Error('network offline'); await act(async()=>root.render(view()));

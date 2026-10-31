@@ -8,6 +8,7 @@ import { rejectOperationalSimulation } from "../middlewares/local-split-simulati
 import pilotReadinessRouter from "./pilot-readiness";
 import authRouter from "./auth";
 import ownerCommissionPrivacy from "../middlewares/owner-commission-privacy";
+import broOwnEntitlementsRouter from "./bro-own-entitlements";
 import accountApplicationsRouter from "./account-applications";
 import peopleRouter from "./people";
 import academicRouter from "./academic";
@@ -101,6 +102,7 @@ router.use(nfcPrintableRouter);
 router.use(accountApplicationsRouter);
 router.use(authRouter);
 router.use(ownerCommissionPrivacy);
+router.use(broOwnEntitlementsRouter);
 router.use(directStudentReleaseRouter);
 router.use(subscriptionEnforcementRouter);
 router.use(studentCardReplacementRouter);

@@ -379,6 +379,7 @@ import type {
   GetLiveSchoolSubaccounts200,
   GetLiveSchoolSubaccountsParams,
   GetMyAcademicTimetableParams,
+  GetMyBroCommissionEntitlements200,
   GetMyLiveSubscriptionAccessParams,
   GetMyPartnerNfcCardsParams,
   GetMyPartnerNfcStudentsParams,
@@ -765,6 +766,8 @@ import type {
   ReviewPromotionDecisionParams,
   ReviewTransportRequestParams,
   RoleAssignment,
+  SaveClassSubjectSetup200,
+  SaveClassSubjectSetupBody,
   School,
   SchoolAdministratorInput,
   SchoolAdministratorInvitationEmailUpdate,
@@ -39998,6 +40001,171 @@ export const useResendMyPartnerSchoolInvitation = <TError = ErrorType<ForbiddenR
       > => {
       return useMutation(getResendMyPartnerSchoolInvitationMutationOptions(options));
     }
+
+export const getSaveClassSubjectSetupUrl = () => {
+
+
+
+
+  return `/api/class-subject-assignments/class-setup`
+}
+
+/**
+ * @summary Save existing catalogue subjects for a school class and academic scope
+ */
+export const saveClassSubjectSetup = async (saveClassSubjectSetupBody: SaveClassSubjectSetupBody, options?: Parameters<typeof customFetch>[1]): Promise<SaveClassSubjectSetup200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SaveClassSubjectSetup200>(getSaveClassSubjectSetupUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(saveClassSubjectSetupBody)
+  }
+);}
+
+
+
+
+
+export const getSaveClassSubjectSetupMutationKey = () => ['saveClassSubjectSetup'] as const;
+
+export const getSaveClassSubjectSetupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveClassSubjectSetup>>, TError,SaveClassSubjectSetupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveClassSubjectSetup>>, TError,SaveClassSubjectSetupMutationVariables, TContext> => {
+
+const mutationKey = getSaveClassSubjectSetupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveClassSubjectSetup>>, SaveClassSubjectSetupMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveClassSubjectSetup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveClassSubjectSetupMutationResult = NonNullable<Awaited<ReturnType<typeof saveClassSubjectSetup>>>
+    export type SaveClassSubjectSetupMutationBody = BodyType<SaveClassSubjectSetupBody>
+    export type SaveClassSubjectSetupMutationError = ErrorType<void>
+    export type SaveClassSubjectSetupMutationVariables = {data: BodyType<SaveClassSubjectSetupBody>}
+
+    /**
+ * @summary Save existing catalogue subjects for a school class and academic scope
+ */
+export const useSaveClassSubjectSetup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveClassSubjectSetup>>, TError,SaveClassSubjectSetupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveClassSubjectSetup>>,
+        TError,
+        SaveClassSubjectSetupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveClassSubjectSetupMutationOptions(options));
+    }
+
+export const getGetMyBroCommissionEntitlementsUrl = () => {
+
+
+
+
+  return `/api/partner/commission-entitlements`
+}
+
+/**
+ * @summary Read only the authenticated BRO's own verified student-term entitlements
+ */
+export const getMyBroCommissionEntitlements = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetMyBroCommissionEntitlements200> => {
+
+  return customFetch<GetMyBroCommissionEntitlements200>(getGetMyBroCommissionEntitlementsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyBroCommissionEntitlementsQueryKey = () => {
+    return [
+    `/api/partner/commission-entitlements`
+    ] as const;
+    }
+
+
+export const getGetMyBroCommissionEntitlementsQueryOptions = <TData = Awaited<ReturnType<typeof getMyBroCommissionEntitlements>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyBroCommissionEntitlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyBroCommissionEntitlementsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyBroCommissionEntitlements>>> = ({ signal }) => getMyBroCommissionEntitlements({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyBroCommissionEntitlements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyBroCommissionEntitlementsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyBroCommissionEntitlements>>>
+export type GetMyBroCommissionEntitlementsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read only the authenticated BRO's own verified student-term entitlements
+ */
+
+export function useGetMyBroCommissionEntitlements<TData = Awaited<ReturnType<typeof getMyBroCommissionEntitlements>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyBroCommissionEntitlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyBroCommissionEntitlementsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetMyPartnerCommissionsUrl = () => {
 

@@ -8,6 +8,7 @@ import type { StudentSubscriptionSqlPool } from "../lib/student-subscription-bil
 import {inspectDirectReleaseSchema,findApprovedDirectReview} from "./direct-student-live-release";
 import {initialStudentFreePeriod,readStudentRollout} from "./student-platform-rollout";
 import {appendFinancialHistory,requireFinancialActor,transitionDirectAttempt} from "./financial-history-writes";
+import {accrueVerifiedSubscriptionBro} from "./verified-subscription-bro-accrual";
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 export class DirectPaymentBlocked extends Error{
   constructor(public readonly code:string,public readonly statusCode=409){super(code);}
@@ -143,12 +144,16 @@ export async function verifyDirectStudentPayment(pool:StudentSubscriptionSqlPool
   c=await pool.connect();
   try{
     await c.query("BEGIN");
+    // Match policy/accrual lock order before taking the attempt lock, including
+    // duplicate successful events. This avoids Owner accrual/verification deadlocks.
+    if(facts.status==="successful")await c.query("SELECT pg_advisory_xact_lock(310031,1)");
     const a=(await c.query("SELECT * FROM student_direct_live_attempts WHERE reference=$1 FOR UPDATE",[input.reference])).rows[0];
     if(!a)block("UNKNOWN_REFERENCE");
     if(a.provider_transaction_id && a.provider_transaction_id!==facts.transactionId)block("VERIFIED_TRANSACTION_CONFLICT");
     if(["PAID","FAILED"].includes(a.state)){
       if(a.provider_transaction_id!==facts.transactionId || (a.state==="PAID")!==(facts.status==="successful"))
         block("VERIFIED_TRANSACTION_CONFLICT");
+      if(a.state==="PAID")await accrueVerifiedSubscriptionBro(c,Number(a.id));
       await c.query("COMMIT");return view(a);
     }
     if(facts.status==="pending"){
@@ -162,6 +167,7 @@ export async function verifyDirectStudentPayment(pool:StudentSubscriptionSqlPool
       providerFeeMinor:facts.providerFeeMinor,additionalFeeMinor:facts.additionalFeeMinor});
     await event(c,a.id,facts.status==="successful"?"PROVIDER_PAYMENT_VERIFIED":"PROVIDER_FAILURE_VERIFIED",input.actorId,
       {transactionId:facts.transactionId,providerFeeMinor:facts.providerFeeMinor,additionalFeeMinor:facts.additionalFeeMinor});
+    if(saved.state==="PAID")await accrueVerifiedSubscriptionBro(c,Number(saved.id));
     await c.query("COMMIT");return view(saved);
   }catch(e){await c.query("ROLLBACK").catch(()=>undefined);throw e;}finally{c.release();}
 }

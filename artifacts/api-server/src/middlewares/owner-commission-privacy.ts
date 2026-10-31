@@ -43,7 +43,11 @@ router.use((req, res, next) => {
       const context = getUserContext(req);
       owner = isActiveOwner(context);
     } catch { /* Anonymous responses never receive private financial details. */ }
-    return json(owner ? body : withoutBroFinancialData(body));
+    // Only the separately authorized, allowlisted own-entitlement handler may
+    // expose BRO earnings. PARTNER role alone never bypasses general redaction.
+    const ownEntitlements = req.method === "GET" && req.path === "/partner/commission-entitlements"
+      && res.locals.ownBroEntitlements === true;
+    return json(owner || ownEntitlements ? body : withoutBroFinancialData(body));
   }) as typeof res.json;
   next();
 });
