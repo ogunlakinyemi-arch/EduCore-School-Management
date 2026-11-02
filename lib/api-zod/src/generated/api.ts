@@ -581,6 +581,58 @@ export const GetOwnerUidInventoryResponse = zod.object({
 
 
 /**
+ * @summary Owner-only read-only preflight for the exact Device 4 to Device 3 hardware identity correction
+ */
+export const GetOwnerHardwareCorrectionResponse = zod.object({
+  "fingerprint": zod.string(),
+  "before": zod.array(zod.object({
+  "deviceId": zod.number().int(),
+  "serialNumber": zod.string().describe('Empty only on the retained inactive historical Device 4 after this exact correction.'),
+  "status": zod.string()
+})),
+  "after": zod.array(zod.object({
+  "deviceId": zod.number().int(),
+  "serialNumber": zod.string().describe('Empty only on the retained inactive historical Device 4 after this exact correction.'),
+  "status": zod.string()
+}))
+})
+
+
+/**
+ * @summary Atomically correct the exact two existing records, preserve Owner credential and append audit evidence
+ */
+export const applyOwnerHardwareCorrectionBodyFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const applyOwnerHardwareCorrectionBodyReasonMin = 3;
+export const applyOwnerHardwareCorrectionBodyReasonMax = 500;
+
+
+export const applyOwnerHardwareCorrectionBodyReasonRegExp = new RegExp('\\S.*\\S.*\\S');
+
+
+export const ApplyOwnerHardwareCorrectionBody = zod.object({
+  "fingerprint": zod.string().regex(applyOwnerHardwareCorrectionBodyFingerprintRegExp),
+  "reason": zod.string().min(applyOwnerHardwareCorrectionBodyReasonMin).max(applyOwnerHardwareCorrectionBodyReasonMax).regex(applyOwnerHardwareCorrectionBodyReasonRegExp),
+  "confirm": zod.literal(true)
+})
+
+export const ApplyOwnerHardwareCorrectionResponse = zod.object({
+  "before": zod.array(zod.object({
+  "deviceId": zod.number().int(),
+  "serialNumber": zod.string().describe('Empty only on the retained inactive historical Device 4 after this exact correction.'),
+  "status": zod.string()
+})),
+  "after": zod.array(zod.object({
+  "deviceId": zod.number().int(),
+  "serialNumber": zod.string().describe('Empty only on the retained inactive historical Device 4 after this exact correction.'),
+  "status": zod.string()
+})),
+  "auditId": zod.number().int(),
+  "auditedAt": zod.string(),
+  "credentialPreserved": zod.boolean()
+})
+
+
+/**
  * @summary Assign an unassigned NFC reader to the authenticated Platform Owner for UID-only capture
  */
 

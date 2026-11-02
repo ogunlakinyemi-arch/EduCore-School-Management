@@ -117,3 +117,4 @@
 - [Financial approval boundaries](financial-approval-boundaries.md) — lossless canonical evidence and no resurrection of older approvals after withdrawal or expiry.
 - [Procedural schema verification](procedural-schema-verification.md) — empty structural diffs and successful ledgers do not certify functions/triggers; verify approved catalog definitions separately.
 - [Application financial boundary](financial-application-boundary.md) — Owner chose application consolidation without redesign; preserve procedural readiness gates and disclose direct-SQL bypasses.
+- [Hardware identity correction](hardware-identity-correction-policy.md) — retain primary ID/key and both histories; Production execution requires the supported serving workflow and fresh checks.

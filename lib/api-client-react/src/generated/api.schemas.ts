@@ -13950,6 +13950,25 @@ export interface LiveAllocationReviewInput {
   source: LiveAllocationReviewInputSource;
 }
 
+export interface OwnerHardwareIdentity {
+  deviceId: number;
+  /** Empty only on the retained inactive historical Device 4 after this exact correction. */
+  serialNumber: string;
+  status: string;
+}
+
+export interface OwnerHardwareCorrectionInput {
+  /** @pattern ^[a-f0-9]{64}$ */
+  fingerprint: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     * @pattern \S.*\S.*\S
+     */
+  reason: string;
+  confirm: true;
+}
+
 export type OwnerReaderConfigurationEndpointPath = typeof OwnerReaderConfigurationEndpointPath[keyof typeof OwnerReaderConfigurationEndpointPath];
 
 
@@ -24170,6 +24189,20 @@ export const GetOwnerUidInventoryStatus = {
   RESERVED: 'RESERVED',
   DUPLICATE: 'DUPLICATE',
 } as const;
+
+export type GetOwnerHardwareCorrection200 = {
+  fingerprint: string;
+  before: OwnerHardwareIdentity[];
+  after: OwnerHardwareIdentity[];
+};
+
+export type ApplyOwnerHardwareCorrection200 = {
+  before: OwnerHardwareIdentity[];
+  after: OwnerHardwareIdentity[];
+  auditId: number;
+  auditedAt: string;
+  credentialPreserved: boolean;
+};
 
 export type BindOwnerUidReader201Purpose = typeof BindOwnerUidReader201Purpose[keyof typeof BindOwnerUidReader201Purpose];
 

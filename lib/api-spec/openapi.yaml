@@ -105,6 +105,8 @@ paths:
     $ref: "./owner-uid-reader.yaml#/officialCardVerification"
   /platform/uid-inventory:
     $ref: "./owner-uid-reader.yaml#/ownerUidInventory"
+  /platform/devices/owner-hardware-correction:
+    $ref: "./owner-uid-reader.yaml#/ownerHardwareCorrection"
   /platform/devices/{deviceId}/owner-reader:
     $ref: "./owner-uid-reader.yaml#/ownerUidBinding"
   /platform/devices/{deviceId}/owner-reader/unlink:

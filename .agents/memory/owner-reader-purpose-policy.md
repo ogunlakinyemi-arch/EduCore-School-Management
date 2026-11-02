@@ -47,6 +47,19 @@ Owner key, Bearer scheme and versioned callback during provisioning/recovery.
 Treat screenshot-only 401 evidence as insufficient to identify the exact wire
 request or to authorize live credential rotation, publishing or physical tests.
 
+Inspect the complete outgoing path before treating an HTTP 401 as rejection by
+the Owner-reader credential validator. A full event URL used as a firmware base
+can gain another terminal path; that unmatched request can instead reach general
+browser authentication.
+
+**Why:** Production request evidence included a nested Owner-event/attendance
+path returning 401. Matching an Owner prefix did not establish which handler
+rejected the request.
+
+**How to apply:** Separate the server origin, API base and complete callback.
+Report malformed-route evidence separately from credential or device-ID
+evidence, and do not claim a serial-label correction repairs firmware routing.
+
 Captured UID inventory must have a complete Owner-confirmed assignment path, not
 just a read-only list. Only an available reader-captured UID may be selected in
 that path. Lost/damaged replacement requires explicit old-UID revocation and the

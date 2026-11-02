@@ -91,6 +91,7 @@ import type {
   ApiError0a0c478,
   ApiError4b96100,
   AppUser,
+  ApplyOwnerHardwareCorrection200,
   ApproveFeeAdjustmentParams,
   ApproveFeeRefundParams,
   ArchiveParentCommunicationThread200,
@@ -396,6 +397,7 @@ import type {
   GetOwnerAttendanceRecordsParams,
   GetOwnerBankTransferInstructions200,
   GetOwnerBankTransferInstructionsParams,
+  GetOwnerHardwareCorrection200,
   GetOwnerUidInventoryParams,
   GetParentChildAttendanceParams,
   GetParentCommunicationThreadParams,
@@ -600,6 +602,7 @@ import type {
   OwnerAttendanceClass,
   OwnerAttendanceReport,
   OwnerBankCreditConfirmation,
+  OwnerHardwareCorrectionInput,
   OwnerPaymentAssistanceInput,
   OwnerPaymentAssistanceResult,
   OwnerReaderReason,
@@ -2663,6 +2666,171 @@ export function useGetOwnerUidInventory<TData = Awaited<ReturnType<typeof getOwn
 
 
 
+
+export const getGetOwnerHardwareCorrectionUrl = () => {
+
+
+
+
+  return `/api/platform/devices/owner-hardware-correction`
+}
+
+/**
+ * @summary Owner-only read-only preflight for the exact Device 4 to Device 3 hardware identity correction
+ */
+export const getOwnerHardwareCorrection = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetOwnerHardwareCorrection200> => {
+
+  return customFetch<GetOwnerHardwareCorrection200>(getGetOwnerHardwareCorrectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerHardwareCorrectionQueryKey = () => {
+    return [
+    `/api/platform/devices/owner-hardware-correction`
+    ] as const;
+    }
+
+
+export const getGetOwnerHardwareCorrectionQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerHardwareCorrection>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerHardwareCorrection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerHardwareCorrectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerHardwareCorrection>>> = ({ signal }) => getOwnerHardwareCorrection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerHardwareCorrection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerHardwareCorrectionQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerHardwareCorrection>>>
+export type GetOwnerHardwareCorrectionQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner-only read-only preflight for the exact Device 4 to Device 3 hardware identity correction
+ */
+
+export function useGetOwnerHardwareCorrection<TData = Awaited<ReturnType<typeof getOwnerHardwareCorrection>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerHardwareCorrection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerHardwareCorrectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApplyOwnerHardwareCorrectionUrl = () => {
+
+
+
+
+  return `/api/platform/devices/owner-hardware-correction`
+}
+
+/**
+ * @summary Atomically correct the exact two existing records, preserve Owner credential and append audit evidence
+ */
+export const applyOwnerHardwareCorrection = async (ownerHardwareCorrectionInput: OwnerHardwareCorrectionInput, options?: Parameters<typeof customFetch>[1]): Promise<ApplyOwnerHardwareCorrection200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ApplyOwnerHardwareCorrection200>(getApplyOwnerHardwareCorrectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ownerHardwareCorrectionInput)
+  }
+);}
+
+
+
+
+
+export const getApplyOwnerHardwareCorrectionMutationKey = () => ['applyOwnerHardwareCorrection'] as const;
+
+export const getApplyOwnerHardwareCorrectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyOwnerHardwareCorrection>>, TError,ApplyOwnerHardwareCorrectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyOwnerHardwareCorrection>>, TError,ApplyOwnerHardwareCorrectionMutationVariables, TContext> => {
+
+const mutationKey = getApplyOwnerHardwareCorrectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyOwnerHardwareCorrection>>, ApplyOwnerHardwareCorrectionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  applyOwnerHardwareCorrection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyOwnerHardwareCorrectionMutationResult = NonNullable<Awaited<ReturnType<typeof applyOwnerHardwareCorrection>>>
+    export type ApplyOwnerHardwareCorrectionMutationBody = BodyType<OwnerHardwareCorrectionInput>
+    export type ApplyOwnerHardwareCorrectionMutationError = ErrorType<void>
+    export type ApplyOwnerHardwareCorrectionMutationVariables = {data: BodyType<OwnerHardwareCorrectionInput>}
+
+    /**
+ * @summary Atomically correct the exact two existing records, preserve Owner credential and append audit evidence
+ */
+export const useApplyOwnerHardwareCorrection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyOwnerHardwareCorrection>>, TError,ApplyOwnerHardwareCorrectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof applyOwnerHardwareCorrection>>,
+        TError,
+        ApplyOwnerHardwareCorrectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApplyOwnerHardwareCorrectionMutationOptions(options));
+    }
 
 export const getBindOwnerUidReaderUrl = (deviceId: number,) => {
 

@@ -1,3 +1,48 @@
+ownerHardwareCorrection:
+  get:
+    operationId: getOwnerHardwareCorrection
+    tags: [platform]
+    summary: Owner-only read-only preflight for the exact Device 4 to Device 3 hardware identity correction
+    responses:
+      "200":
+        description: Fresh non-secret review token and exact before/after mapping
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fingerprint, before, after]
+              properties:
+                fingerprint: { type: string }
+                before: { type: array, items: { $ref: "#/components/schemas/OwnerHardwareIdentity" } }
+                after: { type: array, items: { $ref: "#/components/schemas/OwnerHardwareIdentity" } }
+      "403": { description: Active bound Owner required }
+      "409": { description: Unreviewed or changed device/schema state }
+  post:
+    operationId: applyOwnerHardwareCorrection
+    tags: [platform]
+    summary: Atomically correct the exact two existing records, preserve Owner credential and append audit evidence
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/OwnerHardwareCorrectionInput" }
+    responses:
+      "200":
+        description: Committed audit evidence; no firmware or queued event changes
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [before, after, auditId, auditedAt, credentialPreserved]
+              properties:
+                before: { type: array, items: { $ref: "#/components/schemas/OwnerHardwareIdentity" } }
+                after: { type: array, items: { $ref: "#/components/schemas/OwnerHardwareIdentity" } }
+                auditId: { type: integer }
+                auditedAt: { type: string }
+                credentialPreserved: { type: boolean }
+      "400": { description: Explicit reviewed confirmation and reason required }
+      "403": { description: Active bound Owner required }
+      "409": { description: Stale preflight or unsafe state; no committed correction }
 ownerUidInventory:
   get:
     operationId: getOwnerUidInventory
@@ -260,6 +305,21 @@ components:
       scheme: bearer
       description: Dedicated Owner UID-reader device credential, revoked on unlink.
   schemas:
+    OwnerHardwareIdentity:
+      type: object
+      required: [deviceId, serialNumber, status]
+      properties:
+        deviceId: { type: integer }
+        serialNumber: { type: string, description: Empty only on the retained inactive historical Device 4 after this exact correction. }
+        status: { type: string }
+    OwnerHardwareCorrectionInput:
+      type: object
+      additionalProperties: false
+      required: [fingerprint, reason, confirm]
+      properties:
+        fingerprint: { type: string, pattern: '^[a-f0-9]{64}$' }
+        reason: { type: string, minLength: 3, maxLength: 500, pattern: '\S.*\S.*\S' }
+        confirm: { type: boolean, enum: [true] }
     OwnerReaderConfiguration:
       type: object
       required: [endpointPath, method, authenticationHeader, authenticationScheme, deviceId, heartbeatIntervalSeconds]

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { OwnerHardwareCorrection } from '@/components/owner-hardware-correction';
 import { OwnerUidReaderSection, BindOwnerReaderForm, UnlinkSchoolDeviceForm, useUidInventory } from '@/components/owner-uid-reader';
 import { TerminalDirection } from '@/components/terminal-direction';
 import { useQueryClient } from '@tanstack/react-query';
@@ -163,6 +164,7 @@ export function DevicesPage() {
           ))}
 
           <OwnerUidReaderSection inventory={inventory} />
+          <div className="mb-6"><OwnerHardwareCorrection /></div>
 
           {modal?.bind && (
             <Modal title="Bind Owner UID reader" eyebrow={modal.bind.serialNumber} onClose={() => setModal(null)}>
