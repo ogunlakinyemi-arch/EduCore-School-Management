@@ -3,8 +3,10 @@ import { createHash, randomBytes } from "node:crypto";
 import { pool } from "@workspace/db";
 import { AuthError, assertRoles, getUserContext, requireAuthentication } from "../middlewares/auth";
 import { ownerReaderBinding, parseOwnerUidEvent, verifyOwnerReaderSecret,
-  OWNER_READER_ACTION, OWNER_UID_ACTION, OWNER_READER_STATUS_ACTION, type ReaderDb } from "../services/owner-uid-reader";
+  OWNER_READER_ACTION, OWNER_UID_ACTION, OWNER_READER_STATUS_ACTION, ownerCredentialVersion,
+  ownerReaderConfiguration, type ReaderDb } from "../services/owner-uid-reader";
 import { terminalInternalId } from "../lib/terminal-contract";
+import { inventoryFilters, listCapturedUids } from "../services/owner-uid-inventory";
 
 const run = (fn: (req: Request, res: Response) => Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => void fn(req, res).catch(next);
@@ -29,7 +31,9 @@ async function recordBinding(db: ReaderDb, actor: number, id: number, metadata: 
 
 router.get("/platform/uid-inventory", run(async (req, res) => {
   assertRoles(req, ["PLATFORM_OWNER"]);
+  const filters = inventoryFilters(req.query);
   const readers = await pool.query(`SELECT d.id AS "deviceId",d.serial_number AS "serialNumber",d.name,
+    binding.metadata->>'credentialIdentifier' AS "internalCredentialIdentifier",
     (binding.metadata->>'ownerUserId')::int AS "ownerUserId",
     (SELECT max(a."timestamp") FROM audit_logs a WHERE a.module='UIDInventory'
       AND a.action=$1 AND a.record_id=d.id
@@ -47,23 +51,16 @@ router.get("/platform/uid-inventory", run(async (req, res) => {
         AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier'
       ORDER BY a.id DESC LIMIT 1) report ON TRUE
     WHERE d.school_id IS NULL ORDER BY d.serial_number`, [OWNER_UID_ACTION, OWNER_READER_ACTION, OWNER_READER_STATUS_ACTION]);
-  const inventory = await pool.query(`SELECT captured.metadata->>'uid' AS uid,
-    captured.record_id AS "readerDeviceId",captured."timestamp" AS "capturedAt",
-    (card.id IS NOT NULL) AS assigned,card.school_id AS "schoolId",card.student_id AS "studentId",card.status
-    FROM (SELECT DISTINCT ON (metadata->>'uid') metadata,record_id,"timestamp",id FROM audit_logs
-      WHERE module='UIDInventory' AND action=$1 ORDER BY metadata->>'uid',id DESC) captured
-    LEFT JOIN LATERAL (SELECT id,school_id,student_id,status FROM nfc_cards
-      WHERE upper(uid)=captured.metadata->>'uid'
-      ORDER BY CASE WHEN student_id IS NOT NULL THEN 0 ELSE 1 END,id DESC LIMIT 1) card ON TRUE
-    ORDER BY captured."timestamp" DESC LIMIT 500`, [OWNER_UID_ACTION]);
+  const inventory = await listCapturedUids(pool, filters);
   // Never expose credential identifiers, hashes, or internal receipt fingerprints.
   const publicReport = (value: any) => value ? {
     uid: value.uid ?? null, rawUid: value.rawUid ?? value.uid ?? null,
     scanStatus: value.scanStatus ?? "CAPTURED", duplicateUid: value.duplicateUid === true,
   } : null;
-  res.json({ readers: readers.rows.map(r => ({ ...r,
+  res.json({ readers: readers.rows.map(({ internalCredentialIdentifier, ...r }) => ({ ...r,
+    credentialVersion: ownerCredentialVersion({ credentialIdentifier: internalCredentialIdentifier }),
     lastReport: publicReport(r.lastReport), lastScan: publicReport(r.lastScan),
-  })), inventory: inventory.rows });
+  })), ...inventory });
 }));
 
 router.post("/platform/devices/:deviceId/owner-reader", run(async (req, res) => {
@@ -88,7 +85,42 @@ router.post("/platform/devices/:deviceId/owner-reader", run(async (req, res) => 
       purpose: "OWNER_UID_READER", credentialIdentifier: identifier,
       secretHash: createHash("sha256").update(secret).digest("hex"), reason: why });
     await client.query("COMMIT");
-    res.status(201).json({ deviceId: id, purpose: "OWNER_UID_READER", credential: `${identifier}.${secret}` });
+    res.status(201).json({ deviceId: id, purpose: "OWNER_UID_READER", credential: `${identifier}.${secret}`,
+      credentialVersion: ownerCredentialVersion({ credentialIdentifier: identifier }), configuration: ownerReaderConfiguration(id) });
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
+}));
+
+router.post("/platform/devices/:deviceId/owner-reader/credential", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const id = deviceId(req), why = reason(req), actor = getUserContext(req).user.id;
+  if (req.body.confirm !== true || typeof req.body.expectedCredentialVersion !== "string" ||
+      !/^[a-f0-9]{16}$/.test(req.body.expectedCredentialVersion)) {
+    throw new AuthError(400, "Explicit confirmation and the current Owner credential version are required");
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const device = (await client.query(`SELECT id,school_id AS "schoolId",device_type AS "deviceType",status
+      FROM platform_devices WHERE id=$1 FOR UPDATE`, [id])).rows[0];
+    const binding = await ownerReaderBinding(client, id);
+    if (!device || device.schoolId != null || device.status !== "ACTIVE" ||
+        !["NFC", "HYBRID"].includes(device.deviceType?.toUpperCase()) || !binding) {
+      throw new AuthError(409, "An active Owner-bound NFC reader is required; school credentials cannot be used");
+    }
+    if (binding.ownerUserId !== actor) throw new AuthError(403, "Only this reader's bound Owner can rotate its credential");
+    if (req.body.expectedCredentialVersion !== ownerCredentialVersion(binding)) {
+      throw new AuthError(409, "Reader credential changed. Refresh before explicitly rotating again");
+    }
+    const identifier = `owner_uid_${randomBytes(12).toString("hex")}`;
+    const secret = randomBytes(32).toString("base64url");
+    await recordBinding(client, actor, id, {
+      ...binding, credentialIdentifier: identifier, secretHash: createHash("sha256").update(secret).digest("hex"),
+      reason: why, previousCredentialVersion: ownerCredentialVersion(binding),
+    });
+    await client.query("COMMIT");
+    res.json({ deviceId: id, purpose: "OWNER_UID_READER", credential: `${identifier}.${secret}`,
+      credentialVersion: ownerCredentialVersion({ credentialIdentifier: identifier }), configuration: ownerReaderConfiguration(id) });
   } catch (e) { await client.query("ROLLBACK"); throw e; }
   finally { client.release(); }
 }));
@@ -115,7 +147,7 @@ router.post("/platform/devices/:deviceId/owner-reader/unlink", run(async (req, r
 export const ownerUidIngestionRouter = Router();
 ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit: "16kb", strict: true }), run(async (req, res) => {
   const token = /^Bearer ([^\s]+)$/i.exec(req.header("Authorization") ?? "")?.[1];
-  if (!token) throw new AuthError(401, "Owner reader credential required");
+  if (!token) throw new AuthError(401, "Authorization: Bearer <dedicated Owner reader credential> required. Do not use a school key or browser session");
   const id = terminalInternalId(req.body?.device_id, "device");
   const client = await pool.connect();
   try {

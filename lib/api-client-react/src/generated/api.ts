@@ -396,6 +396,7 @@ import type {
   GetOwnerAttendanceRecordsParams,
   GetOwnerBankTransferInstructions200,
   GetOwnerBankTransferInstructionsParams,
+  GetOwnerUidInventoryParams,
   GetParentChildAttendanceParams,
   GetParentCommunicationThreadParams,
   GetParentFeeInvoicePaymentMethods200Item,
@@ -766,6 +767,8 @@ import type {
   ReviewPromotionDecisionParams,
   ReviewTransportRequestParams,
   RoleAssignment,
+  RotateOwnerUidReaderCredential200,
+  RotateOwnerUidReaderCredentialBody,
   SaveClassSubjectSetup200,
   SaveClassSubjectSetupBody,
   School,
@@ -2577,20 +2580,27 @@ export const useVerifyOfficialCardQr = <TError = ErrorType<void>,
       return useMutation(getVerifyOfficialCardQrMutationOptions(options));
     }
 
-export const getGetOwnerUidInventoryUrl = () => {
+export const getGetOwnerUidInventoryUrl = (params?: GetOwnerUidInventoryParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/platform/uid-inventory`
+  return stringifiedParams.length > 0 ? `/api/platform/uid-inventory?${stringifiedParams}` : `/api/platform/uid-inventory`
 }
 
 /**
  * @summary Read Owner UID-only reader bindings and captured UID inventory
  */
-export const getOwnerUidInventory = async ( options?: Parameters<typeof customFetch>[1]): Promise<OwnerUidInventory> => {
+export const getOwnerUidInventory = async (params?: GetOwnerUidInventoryParams, options?: Parameters<typeof customFetch>[1]): Promise<OwnerUidInventory> => {
 
-  return customFetch<OwnerUidInventory>(getGetOwnerUidInventoryUrl(),
+  return customFetch<OwnerUidInventory>(getGetOwnerUidInventoryUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2603,23 +2613,23 @@ export const getOwnerUidInventory = async ( options?: Parameters<typeof customFe
 
 
 
-export const getGetOwnerUidInventoryQueryKey = () => {
+export const getGetOwnerUidInventoryQueryKey = (params?: GetOwnerUidInventoryParams,) => {
     return [
-    `/api/platform/uid-inventory`
+    `/api/platform/uid-inventory`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetOwnerUidInventoryQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerUidInventory>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerUidInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetOwnerUidInventoryQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerUidInventory>>, TError = ErrorType<unknown>>(params?: GetOwnerUidInventoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerUidInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetOwnerUidInventoryQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerUidInventoryQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerUidInventory>>> = ({ signal }) => getOwnerUidInventory({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerUidInventory>>> = ({ signal }) => getOwnerUidInventory(params, { signal, ...requestOptions });
 
 
 
@@ -2637,11 +2647,11 @@ export type GetOwnerUidInventoryQueryError = ErrorType<unknown>
  */
 
 export function useGetOwnerUidInventory<TData = Awaited<ReturnType<typeof getOwnerUidInventory>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerUidInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetOwnerUidInventoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerUidInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetOwnerUidInventoryQueryOptions(options)
+  const queryOptions = getGetOwnerUidInventoryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -2830,6 +2840,95 @@ export const useUnlinkOwnerUidReader = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUnlinkOwnerUidReaderMutationOptions(options));
+    }
+
+export const getRotateOwnerUidReaderCredentialUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/owner-reader/credential`
+}
+
+/**
+ * @summary Explicitly rotate only this Owner-bound reader credential and return its matching protocol configuration once
+ */
+export const rotateOwnerUidReaderCredential = async (deviceId: number,
+    rotateOwnerUidReaderCredentialBody: RotateOwnerUidReaderCredentialBody, options?: Parameters<typeof customFetch>[1]): Promise<RotateOwnerUidReaderCredential200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RotateOwnerUidReaderCredential200>(getRotateOwnerUidReaderCredentialUrl(deviceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(rotateOwnerUidReaderCredentialBody)
+  }
+);}
+
+
+
+
+
+export const getRotateOwnerUidReaderCredentialMutationKey = () => ['rotateOwnerUidReaderCredential'] as const;
+
+export const getRotateOwnerUidReaderCredentialMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotateOwnerUidReaderCredential>>, TError,RotateOwnerUidReaderCredentialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rotateOwnerUidReaderCredential>>, TError,RotateOwnerUidReaderCredentialMutationVariables, TContext> => {
+
+const mutationKey = getRotateOwnerUidReaderCredentialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rotateOwnerUidReaderCredential>>, RotateOwnerUidReaderCredentialMutationVariables> = (props) => {
+          const {deviceId,data} = props ?? {};
+
+          return  rotateOwnerUidReaderCredential(deviceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RotateOwnerUidReaderCredentialMutationResult = NonNullable<Awaited<ReturnType<typeof rotateOwnerUidReaderCredential>>>
+    export type RotateOwnerUidReaderCredentialMutationBody = BodyType<RotateOwnerUidReaderCredentialBody>
+    export type RotateOwnerUidReaderCredentialMutationError = ErrorType<void>
+    export type RotateOwnerUidReaderCredentialMutationVariables = {deviceId: number;data: BodyType<RotateOwnerUidReaderCredentialBody>}
+
+    /**
+ * @summary Explicitly rotate only this Owner-bound reader credential and return its matching protocol configuration once
+ */
+export const useRotateOwnerUidReaderCredential = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotateOwnerUidReaderCredential>>, TError,RotateOwnerUidReaderCredentialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rotateOwnerUidReaderCredential>>,
+        TError,
+        RotateOwnerUidReaderCredentialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRotateOwnerUidReaderCredentialMutationOptions(options));
     }
 
 export const getIngestOwnerUidReadUrl = () => {

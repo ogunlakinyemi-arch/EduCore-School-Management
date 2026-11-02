@@ -513,13 +513,35 @@ export const VerifyOfficialCardQrResponse = zod.object({
 /**
  * @summary Read Owner UID-only reader bindings and captured UID inventory
  */
+export const getOwnerUidInventoryQueryQMax = 128;
+
+
+export const getOwnerUidInventoryQueryPageDefault = 1;
+
+export const getOwnerUidInventoryQueryPageSizeDefault = 500;
+export const getOwnerUidInventoryQueryPageSizeMax = 500;
+
+
+
+export const GetOwnerUidInventoryQueryParams = zod.object({
+  "q": zod.coerce.string().max(getOwnerUidInventoryQueryQMax).optional(),
+  "deviceId": zod.coerce.number().int().min(1).optional(),
+  "status": zod.enum(['UNKNOWN_UNASSIGNED', 'ASSIGNED', 'RESERVED', 'DUPLICATE']).optional(),
+  "page": zod.coerce.number().int().min(1).default(getOwnerUidInventoryQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getOwnerUidInventoryQueryPageSizeMax).default(getOwnerUidInventoryQueryPageSizeDefault)
+})
+
 export const GetOwnerUidInventoryResponse = zod.object({
+  "total": zod.number().int().optional(),
+  "page": zod.number().int().optional(),
+  "pageSize": zod.number().int().optional(),
   "readers": zod.array(zod.object({
   "deviceId": zod.number().int(),
   "serialNumber": zod.string(),
   "name": zod.string(),
   "ownerUserId": zod.number().int(),
   "lastReadAt": zod.string().nullable(),
+  "credentialVersion": zod.string().optional().describe('Non-secret optimistic rotation token; never a device credential.'),
   "lastSeenAt": zod.string().nullish(),
   "lastReport": zod.object({
   "scanStatus": zod.string().optional(),
@@ -536,6 +558,14 @@ export const GetOwnerUidInventoryResponse = zod.object({
 })),
   "inventory": zod.array(zod.object({
   "uid": zod.string(),
+  "rawUid": zod.string().optional(),
+  "firstSeenAt": zod.string().optional(),
+  "lastSeenAt": zod.string().optional(),
+  "scanCount": zod.number().int().optional(),
+  "duplicate": zod.boolean().optional(),
+  "captureStatus": zod.enum(['UNKNOWN_UNASSIGNED', 'ASSIGNED', 'RESERVED']).optional(),
+  "deviceName": zod.string().nullish(),
+  "serialNumber": zod.string().nullish(),
   "readerDeviceId": zod.number().int(),
   "capturedAt": zod.string(),
   "assigned": zod.boolean(),
@@ -568,7 +598,16 @@ export const BindOwnerUidReaderBody = zod.object({
 export const BindOwnerUidReaderResponse = zod.object({
   "deviceId": zod.number().int(),
   "purpose": zod.enum(['OWNER_UID_READER']),
-  "credential": zod.string()
+  "credential": zod.string(),
+  "credentialVersion": zod.string().optional(),
+  "configuration": zod.object({
+  "endpointPath": zod.enum(['/api/v1/owner-reader/uid-events']),
+  "method": zod.enum(['POST']),
+  "authenticationHeader": zod.enum(['Authorization']),
+  "authenticationScheme": zod.enum(['Bearer']),
+  "deviceId": zod.string().describe('Exact EDUCORE identifier for this linked physical device.'),
+  "heartbeatIntervalSeconds": zod.literal(30)
+}).optional()
 })
 
 
@@ -592,6 +631,44 @@ export const UnlinkOwnerUidReaderBody = zod.object({
 })
 
 export const UnlinkOwnerUidReaderResponse = zod.unknown()
+
+
+/**
+ * @summary Explicitly rotate only this Owner-bound reader credential and return its matching protocol configuration once
+ */
+
+
+
+export const RotateOwnerUidReaderCredentialParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const rotateOwnerUidReaderCredentialBodyReasonMin = 3;
+export const rotateOwnerUidReaderCredentialBodyReasonMax = 500;
+
+export const rotateOwnerUidReaderCredentialBodyExpectedCredentialVersionRegExp = new RegExp('^[a-f0-9]{16}$');
+
+
+export const RotateOwnerUidReaderCredentialBody = zod.object({
+  "reason": zod.string().min(rotateOwnerUidReaderCredentialBodyReasonMin).max(rotateOwnerUidReaderCredentialBodyReasonMax),
+  "confirm": zod.literal(true),
+  "expectedCredentialVersion": zod.string().regex(rotateOwnerUidReaderCredentialBodyExpectedCredentialVersionRegExp)
+})
+
+export const RotateOwnerUidReaderCredentialResponse = zod.object({
+  "deviceId": zod.number().int(),
+  "purpose": zod.enum(['OWNER_UID_READER']),
+  "credential": zod.string(),
+  "credentialVersion": zod.string(),
+  "configuration": zod.object({
+  "endpointPath": zod.enum(['/api/v1/owner-reader/uid-events']),
+  "method": zod.enum(['POST']),
+  "authenticationHeader": zod.enum(['Authorization']),
+  "authenticationScheme": zod.enum(['Bearer']),
+  "deviceId": zod.string().describe('Exact EDUCORE identifier for this linked physical device.'),
+  "heartbeatIntervalSeconds": zod.literal(30)
+})
+})
 
 
 /**

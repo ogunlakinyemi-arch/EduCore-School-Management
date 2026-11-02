@@ -109,6 +109,8 @@ paths:
     $ref: "./owner-uid-reader.yaml#/ownerUidBinding"
   /platform/devices/{deviceId}/owner-reader/unlink:
     $ref: "./owner-uid-reader.yaml#/ownerUidUnlink"
+  /platform/devices/{deviceId}/owner-reader/credential:
+    $ref: "./owner-uid-reader.yaml#/ownerUidCredential"
   /v1/owner-reader/uid-events:
     $ref: "./owner-uid-reader.yaml#/ownerUidEvent"
   /schools/{schoolId}/community-dashboard:

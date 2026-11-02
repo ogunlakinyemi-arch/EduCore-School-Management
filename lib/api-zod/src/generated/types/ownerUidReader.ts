@@ -15,6 +15,8 @@ export interface OwnerUidReader {
   ownerUserId: number;
   /** @nullable */
   lastReadAt: string | null;
+  /** Non-secret optimistic rotation token; never a device credential. */
+  credentialVersion?: string;
   /** @nullable */
   lastSeenAt?: string | null;
   /** @nullable */

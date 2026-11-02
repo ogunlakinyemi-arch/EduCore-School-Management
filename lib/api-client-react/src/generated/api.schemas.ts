@@ -13950,6 +13950,51 @@ export interface LiveAllocationReviewInput {
   source: LiveAllocationReviewInputSource;
 }
 
+export type OwnerReaderConfigurationEndpointPath = typeof OwnerReaderConfigurationEndpointPath[keyof typeof OwnerReaderConfigurationEndpointPath];
+
+
+export const OwnerReaderConfigurationEndpointPath = {
+  '/api/v1/owner-reader/uid-events': '/api/v1/owner-reader/uid-events',
+} as const;
+
+export type OwnerReaderConfigurationMethod = typeof OwnerReaderConfigurationMethod[keyof typeof OwnerReaderConfigurationMethod];
+
+
+export const OwnerReaderConfigurationMethod = {
+  POST: 'POST',
+} as const;
+
+export type OwnerReaderConfigurationAuthenticationHeader = typeof OwnerReaderConfigurationAuthenticationHeader[keyof typeof OwnerReaderConfigurationAuthenticationHeader];
+
+
+export const OwnerReaderConfigurationAuthenticationHeader = {
+  Authorization: 'Authorization',
+} as const;
+
+export type OwnerReaderConfigurationAuthenticationScheme = typeof OwnerReaderConfigurationAuthenticationScheme[keyof typeof OwnerReaderConfigurationAuthenticationScheme];
+
+
+export const OwnerReaderConfigurationAuthenticationScheme = {
+  Bearer: 'Bearer',
+} as const;
+
+export type OwnerReaderConfigurationHeartbeatIntervalSeconds = typeof OwnerReaderConfigurationHeartbeatIntervalSeconds[keyof typeof OwnerReaderConfigurationHeartbeatIntervalSeconds];
+
+
+export const OwnerReaderConfigurationHeartbeatIntervalSeconds = {
+  NUMBER_30: 30,
+} as const;
+
+export interface OwnerReaderConfiguration {
+  endpointPath: OwnerReaderConfigurationEndpointPath;
+  method: OwnerReaderConfigurationMethod;
+  authenticationHeader: OwnerReaderConfigurationAuthenticationHeader;
+  authenticationScheme: OwnerReaderConfigurationAuthenticationScheme;
+  /** Exact EDUCORE identifier for this linked physical device. */
+  deviceId: string;
+  heartbeatIntervalSeconds: OwnerReaderConfigurationHeartbeatIntervalSeconds;
+}
+
 export interface OwnerReaderReason {
   /**
      * @minLength 3
@@ -14024,6 +14069,8 @@ export interface OwnerUidReader {
   ownerUserId: number;
   /** @nullable */
   lastReadAt: string | null;
+  /** Non-secret optimistic rotation token; never a device credential. */
+  credentialVersion?: string;
   /** @nullable */
   lastSeenAt?: string | null;
   /** @nullable */
@@ -14032,8 +14079,27 @@ export interface OwnerUidReader {
   lastScan?: OwnerUidReaderLastScan;
 }
 
+export type CapturedUidCaptureStatus = typeof CapturedUidCaptureStatus[keyof typeof CapturedUidCaptureStatus];
+
+
+export const CapturedUidCaptureStatus = {
+  UNKNOWN_UNASSIGNED: 'UNKNOWN_UNASSIGNED',
+  ASSIGNED: 'ASSIGNED',
+  RESERVED: 'RESERVED',
+} as const;
+
 export interface CapturedUid {
   uid: string;
+  rawUid?: string;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  scanCount?: number;
+  duplicate?: boolean;
+  captureStatus?: CapturedUidCaptureStatus;
+  /** @nullable */
+  deviceName?: string | null;
+  /** @nullable */
+  serialNumber?: string | null;
   readerDeviceId: number;
   capturedAt: string;
   assigned: boolean;
@@ -14046,6 +14112,9 @@ export interface CapturedUid {
 }
 
 export interface OwnerUidInventory {
+  total?: number;
+  page?: number;
+  pageSize?: number;
   readers: OwnerUidReader[];
   inventory: CapturedUid[];
 }
@@ -24060,6 +24129,37 @@ export type VerifyOfficialCardQr200 = {
   message: string;
 };
 
+export type GetOwnerUidInventoryParams = {
+/**
+ * @maxLength 128
+ */
+q?: string;
+/**
+ * @minimum 1
+ */
+deviceId?: number;
+status?: GetOwnerUidInventoryStatus;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 500
+ */
+pageSize?: number;
+};
+
+export type GetOwnerUidInventoryStatus = typeof GetOwnerUidInventoryStatus[keyof typeof GetOwnerUidInventoryStatus];
+
+
+export const GetOwnerUidInventoryStatus = {
+  UNKNOWN_UNASSIGNED: 'UNKNOWN_UNASSIGNED',
+  ASSIGNED: 'ASSIGNED',
+  RESERVED: 'RESERVED',
+  DUPLICATE: 'DUPLICATE',
+} as const;
+
 export type BindOwnerUidReader201Purpose = typeof BindOwnerUidReader201Purpose[keyof typeof BindOwnerUidReader201Purpose];
 
 
@@ -24071,6 +24171,34 @@ export type BindOwnerUidReader201 = {
   deviceId: number;
   purpose: BindOwnerUidReader201Purpose;
   credential: string;
+  credentialVersion?: string;
+  configuration?: OwnerReaderConfiguration;
+};
+
+export type RotateOwnerUidReaderCredentialBody = {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  confirm: true;
+  /** @pattern ^[a-f0-9]{16}$ */
+  expectedCredentialVersion: string;
+};
+
+export type RotateOwnerUidReaderCredential200Purpose = typeof RotateOwnerUidReaderCredential200Purpose[keyof typeof RotateOwnerUidReaderCredential200Purpose];
+
+
+export const RotateOwnerUidReaderCredential200Purpose = {
+  OWNER_UID_READER: 'OWNER_UID_READER',
+} as const;
+
+export type RotateOwnerUidReaderCredential200 = {
+  deviceId: number;
+  purpose: RotateOwnerUidReaderCredential200Purpose;
+  credential: string;
+  credentialVersion: string;
+  configuration: OwnerReaderConfiguration;
 };
 
 export type IngestOwnerUidRead200ScanStatus = typeof IngestOwnerUidRead200ScanStatus[keyof typeof IngestOwnerUidRead200ScanStatus];

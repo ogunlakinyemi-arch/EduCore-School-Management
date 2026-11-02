@@ -9,6 +9,9 @@ import type { CapturedUid } from './capturedUid';
 import type { OwnerUidReader } from './ownerUidReader';
 
 export interface OwnerUidInventory {
+  total?: number;
+  page?: number;
+  pageSize?: number;
   readers: OwnerUidReader[];
   inventory: CapturedUid[];
 }

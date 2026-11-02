@@ -6,6 +6,13 @@ export const OWNER_READER_ACTION = "Owner UID reader binding";
 export const OWNER_UID_ACTION = "Owner reader UID captured";
 export const OWNER_READER_STATUS_ACTION = "Owner reader status reported";
 export type ReaderDb = { query: (sql: string, values?: any[]) => Promise<{ rows: any[] }> };
+export const ownerCredentialVersion = (binding: { credentialIdentifier: string }) =>
+  createHash("sha256").update(binding.credentialIdentifier).digest("hex").slice(0, 16);
+export const ownerReaderConfiguration = (deviceId: number) => ({
+  endpointPath: "/api/v1/owner-reader/uid-events" as const, method: "POST" as const,
+  authenticationHeader: "Authorization" as const, authenticationScheme: "Bearer" as const,
+  deviceId: `EDUCORE${String(deviceId).padStart(2, "0")}`, heartbeatIntervalSeconds: 30 as const,
+});
 
 /** Durable operational state: retain these audit entries like terminal directions. */
 export async function ownerReaderBinding(db: ReaderDb, deviceId: number) {

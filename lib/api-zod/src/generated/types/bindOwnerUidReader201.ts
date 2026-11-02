@@ -6,9 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BindOwnerUidReader201Purpose } from './bindOwnerUidReader201Purpose';
+import type { OwnerReaderConfiguration } from './ownerReaderConfiguration';
 
 export type BindOwnerUidReader201 = {
   deviceId: number;
   purpose: BindOwnerUidReader201Purpose;
   credential: string;
+  credentialVersion?: string;
+  configuration?: OwnerReaderConfiguration;
 };
