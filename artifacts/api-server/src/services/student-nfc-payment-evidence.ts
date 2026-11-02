@@ -2,7 +2,9 @@ import {AuthError} from "../middlewares/auth";
 import {lagosDate} from "./student-platform-rollout";
 type Sql={query(sql:string,values?:any[]):Promise<{rows:any[]}>};
 
-/** Physical NFC activation/use has no free-period, manual receipt or grace bypass.
+/** Strict independent payment evidence: never treats grace or manual receipts as payment.
+ * Attendance may separately apply an explicitly audited, exact-card temporary grace;
+ * initial activation and replacement issuance still call this strict check.
  * Ordinary app access retains its separate rollout policy. The reference binds
  * the server-created checkout to one immutable school/student/term obligation.
  */

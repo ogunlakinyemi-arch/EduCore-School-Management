@@ -4363,6 +4363,8 @@ export interface CardInput {
 }
 
 export interface StudentCardRestriction {
+  overridable?: boolean;
+  waived?: boolean;
   code: string;
   message: string;
   resolution: string;
@@ -4374,9 +4376,31 @@ export type StudentCardReadinessStage = typeof StudentCardReadinessStage[keyof t
 export const StudentCardReadinessStage = {
   ACTIVE: 'ACTIVE',
   AWAITING_ACTIVATION: 'AWAITING_ACTIVATION',
+  ADMINISTRATIVE_LOCK: 'ADMINISTRATIVE_LOCK',
   SECURITY_LOCK: 'SECURITY_LOCK',
   RESTRICTED: 'RESTRICTED',
 } as const;
+
+/**
+ * @nullable
+ */
+export type StudentCardControlEventDetails = { [key: string]: unknown } | null;
+
+export interface StudentCardControlEvent {
+  id: number;
+  action: string;
+  reason: string;
+  /** @nullable */
+  actorUserId: number | null;
+  createdAt: string;
+  /** @nullable */
+  details: StudentCardControlEventDetails;
+}
+
+export type StudentCardReadinessGrace = {
+  state: string;
+  grant: StudentCardControlEvent | null;
+};
 
 export interface StudentCardReadiness {
   cardId: number;
@@ -4385,10 +4409,56 @@ export interface StudentCardReadiness {
   uid: string;
   status: string;
   stage: StudentCardReadinessStage;
+  version: number;
+  canLock: boolean;
+  canGrantGrace: boolean;
+  canRevokeGrace: boolean;
+  effectiveStatus: string;
+  statusSource: string;
+  serverNow: string;
+  grace: StudentCardReadinessGrace;
+  history: StudentCardControlEvent[];
   explanation: string;
   canActivate: boolean;
   canPrint: boolean;
   restrictions: StudentCardRestriction[];
+}
+
+export type StudentCardControlInputAction = typeof StudentCardControlInputAction[keyof typeof StudentCardControlInputAction];
+
+
+export const StudentCardControlInputAction = {
+  LOCK: 'LOCK',
+  UNLOCK: 'UNLOCK',
+  GRANT_GRACE: 'GRANT_GRACE',
+  REVOKE_GRACE: 'REVOKE_GRACE',
+} as const;
+
+export type StudentCardControlInputRestrictionsItem = typeof StudentCardControlInputRestrictionsItem[keyof typeof StudentCardControlInputRestrictionsItem];
+
+
+export const StudentCardControlInputRestrictionsItem = {
+  NFC_FLUTTERWAVE_PAYMENT_REQUIRED: 'NFC_FLUTTERWAVE_PAYMENT_REQUIRED',
+  STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED: 'STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED',
+  SUBSCRIPTION_REQUIRED: 'SUBSCRIPTION_REQUIRED',
+} as const;
+
+export interface StudentCardControlInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 0 */
+  version: number;
+  confirm: true;
+  /**
+     * @minLength 3
+     * @maxLength 480
+     */
+  reason: string;
+  action: StudentCardControlInputAction;
+  expiresAt?: string;
+  restrictions?: StudentCardControlInputRestrictionsItem[];
 }
 
 export type CardStatusInputStatus = typeof CardStatusInputStatus[keyof typeof CardStatusInputStatus];
@@ -20007,6 +20077,8 @@ export interface CardInput4b96100 {
 }
 
 export interface StudentCardRestriction4b96100 {
+  overridable?: boolean;
+  waived?: boolean;
   code: string;
   message: string;
   resolution: string;
@@ -20018,9 +20090,31 @@ export type StudentCardReadiness4b96100Stage = typeof StudentCardReadiness4b9610
 export const StudentCardReadiness4b96100Stage = {
   ACTIVE: 'ACTIVE',
   AWAITING_ACTIVATION: 'AWAITING_ACTIVATION',
+  ADMINISTRATIVE_LOCK: 'ADMINISTRATIVE_LOCK',
   SECURITY_LOCK: 'SECURITY_LOCK',
   RESTRICTED: 'RESTRICTED',
 } as const;
+
+/**
+ * @nullable
+ */
+export type StudentCardControlEvent4b96100Details = { [key: string]: unknown } | null;
+
+export interface StudentCardControlEvent4b96100 {
+  id: number;
+  action: string;
+  reason: string;
+  /** @nullable */
+  actorUserId: number | null;
+  createdAt: string;
+  /** @nullable */
+  details: StudentCardControlEvent4b96100Details;
+}
+
+export type StudentCardReadiness4b96100Grace = {
+  state: string;
+  grant: StudentCardControlEvent4b96100 | null;
+};
 
 export interface StudentCardReadiness4b96100 {
   cardId: number;
@@ -20029,10 +20123,56 @@ export interface StudentCardReadiness4b96100 {
   uid: string;
   status: string;
   stage: StudentCardReadiness4b96100Stage;
+  version: number;
+  canLock: boolean;
+  canGrantGrace: boolean;
+  canRevokeGrace: boolean;
+  effectiveStatus: string;
+  statusSource: string;
+  serverNow: string;
+  grace: StudentCardReadiness4b96100Grace;
+  history: StudentCardControlEvent4b96100[];
   explanation: string;
   canActivate: boolean;
   canPrint: boolean;
   restrictions: StudentCardRestriction4b96100[];
+}
+
+export type StudentCardControlInput4b96100Action = typeof StudentCardControlInput4b96100Action[keyof typeof StudentCardControlInput4b96100Action];
+
+
+export const StudentCardControlInput4b96100Action = {
+  LOCK: 'LOCK',
+  UNLOCK: 'UNLOCK',
+  GRANT_GRACE: 'GRANT_GRACE',
+  REVOKE_GRACE: 'REVOKE_GRACE',
+} as const;
+
+export type StudentCardControlInput4b96100RestrictionsItem = typeof StudentCardControlInput4b96100RestrictionsItem[keyof typeof StudentCardControlInput4b96100RestrictionsItem];
+
+
+export const StudentCardControlInput4b96100RestrictionsItem = {
+  NFC_FLUTTERWAVE_PAYMENT_REQUIRED: 'NFC_FLUTTERWAVE_PAYMENT_REQUIRED',
+  STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED: 'STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED',
+  SUBSCRIPTION_REQUIRED: 'SUBSCRIPTION_REQUIRED',
+} as const;
+
+export interface StudentCardControlInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 0 */
+  version: number;
+  confirm: true;
+  /**
+     * @minLength 3
+     * @maxLength 480
+     */
+  reason: string;
+  action: StudentCardControlInput4b96100Action;
+  expiresAt?: string;
+  restrictions?: StudentCardControlInput4b96100RestrictionsItem[];
 }
 
 export type CardStatusInput4b96100Status = typeof CardStatusInput4b96100Status[keyof typeof CardStatusInput4b96100Status];

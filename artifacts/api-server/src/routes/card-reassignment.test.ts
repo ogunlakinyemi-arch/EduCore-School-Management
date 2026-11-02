@@ -37,6 +37,7 @@ const poolMock = vi.hoisted(() => {
   const connect = vi.fn(async () => ({
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
+      if(sql.includes('AS "assignmentVersion"'))return {rows:[{version:1,assignmentVersion:1,now:new Date().toISOString(),events:[],latestGrace:null}]};
       if(sql.includes('nc.student_id AS "studentId"') && sql.includes('AS "currentCards"'))
         return {rows:[{...state.card,studentStatus:"ACTIVE",schoolStatus:"ACTIVE",employeeBindings:0,currentCards:1}]};
       if(sql.includes("SELECT action,reason,previous_status"))return {rows:[{action:state.lockAction,reason:state.lockReason}]};
@@ -195,13 +196,12 @@ describe("confirmed Owner activation does not bypass NFC restrictions",()=>{
       previousStatus:"locked",newStatus:"active",reason:activation.reason,confirmed:true,studentId:10,uid:"NFC-31",
     });
   });
-  it("retains a recorded security lock until a reasoned explicit Owner review",async()=>{
+  it("retains a recorded security lock even after a reasoned explicit Owner request",async()=>{
     state.lockAction="STATUS_CHANGED";state.lockReason="Security review of card possession";
     expect(state.card.status).toBe("locked");
     const result=await activate({...activation,reason:"Security review completed; holder verified"});
-    expect(result.status).toBe(200);
-    const history=state.queries.find(q=>q.sql.includes("INSERT INTO nfc_card_history"))!;
-    expect(history.values[6]).toBe("Security review completed; holder verified");
+    expect(result.status).toBe(409);
+    expect(state.queries.some(q=>q.sql.includes("INSERT INTO nfc_card_history"))).toBe(false);
   });
 });
 

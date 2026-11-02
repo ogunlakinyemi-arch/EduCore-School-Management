@@ -12,6 +12,7 @@ export type StudentCardReadinessStage = typeof StudentCardReadinessStage[keyof t
 export const StudentCardReadinessStage = {
   ACTIVE: 'ACTIVE',
   AWAITING_ACTIVATION: 'AWAITING_ACTIVATION',
+  ADMINISTRATIVE_LOCK: 'ADMINISTRATIVE_LOCK',
   SECURITY_LOCK: 'SECURITY_LOCK',
   RESTRICTED: 'RESTRICTED',
 } as const;

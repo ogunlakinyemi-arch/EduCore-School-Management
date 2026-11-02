@@ -10,6 +10,7 @@ const fixture = vi.hoisted(() => ({
   securityDenied: false,
   policy: "NFC_ONLY",
   loseCommitResponse: false,
+  paymentDenied:false,graceState:"NONE",expireGraceInQueue:false,cardLockedInQueue:false,
 }));
 const mocks = vi.hoisted(() => ({
   query: vi.fn(), release: vi.fn(),
@@ -27,7 +28,12 @@ vi.mock("../services/security-attendance-integration", () => ({
 }));
 vi.mock("../services/communication-service", () => ({ queueCommunicationNotification: (...args: any[]) => mocks.notifications(...args) }));
 vi.mock("../services/subscription-enforcement", () => ({ assertSubscriptionAccess: vi.fn() }));
-vi.mock("../services/student-nfc-payment-evidence", () => ({ assertVerifiedStudentNfcPayment: vi.fn() }));
+vi.mock("../services/student-nfc-payment-evidence", () => ({ assertVerifiedStudentNfcPayment: vi.fn(async()=>{
+  if(fixture.paymentDenied){
+    const {AuthError}=await import("../middlewares/auth");
+    throw new AuthError(409,"Verified current-term NFC payment required","NFC_FLUTTERWAVE_PAYMENT_REQUIRED");
+  }
+}) }));
 vi.mock("../services/student-card-replacement", () => ({ issueReplacement: vi.fn() }));
 vi.mock("./employee-nfc", async () => ({ default: (await import("express")).Router() }));
 
@@ -64,7 +70,8 @@ afterAll(async () => { await new Promise<void>((resolve, reject) => server.close
 beforeEach(() => {
   Object.assign(fixture, { direction: "ENTRY", credentials: true, active: true, card: true, available: true,
     securityDenied: false, policy: "NFC_ONLY", loseCommitResponse: false,
-    events: [], receipts: [], dates: [], diagnostics: [], queries: [], cardUids: [] });
+    events: [], receipts: [], dates: [], diagnostics: [], queries: [], cardUids: [],
+    paymentDenied:false,graceState:"NONE",expireGraceInQueue:false,cardLockedInQueue:false });
   snapshot = null;
   vi.clearAllMocks();
   mocks.security.mockImplementation(async () => {
@@ -73,6 +80,16 @@ beforeEach(() => {
   });
   mocks.query.mockImplementation(async (sql: string, values: any[] = []) => {
     fixture.queries.push(sql);
+    if(sql.includes('AS "assignmentVersion"')){
+      const details={uid:"A1B2C3D4",schoolId:10,studentId:501,cardId:700,termId:30,assignmentVersion:0,
+        restrictions:["NFC_FLUTTERWAVE_PAYMENT_REQUIRED"],
+        expiresAt:new Date(Date.now()+(fixture.graceState==="EXPIRED"?-60_000:60_000)).toISOString()};
+      return result([{version:1,assignmentVersion:0,currentUid:"A1B2C3D4",now:new Date().toISOString(),events:[],
+        latestGrace:fixture.graceState==="NONE"?null:{id:1,studentId:501,
+          action:fixture.graceState==="REVOKED"?"OWNER_GRACE_REVOKED":"OWNER_GRACE_GRANTED",
+          reason:JSON.stringify(details),actorUserId:9,createdAt:new Date().toISOString()}}]);
+    }
+    if(sql.includes('t.end_date::text AS "endDate"'))return result([{id:30,endDate:"2099-01-01"}]);
     if (!fixture.available) throw new Error("unavailable");
     if (sql === "COMMIT" && fixture.loseCommitResponse) {
       fixture.loseCommitResponse = false;
@@ -107,6 +124,7 @@ beforeEach(() => {
     if (sql.includes("INSERT INTO audit_logs")) {
       fixture.receipts.push({ metadata: JSON.parse(values[4]) }); return result([]);
     }
+    if (sql.includes("FOR SHARE OF nc"))return result(fixture.card&&!fixture.cardLockedInQueue?[{id:700}]:[]);
     if (sql.includes("FROM nfc_cards")) {
       fixture.cardUids.push(values[0]);
       return result(fixture.card ? [{ id: 700, studentId: 501 }] : []);
@@ -128,6 +146,7 @@ beforeEach(() => {
     }
     if (sql.includes("UPDATE attendance_discrepancies")) return result([]);
     if (sql.includes("FROM attendance_events") && sql.includes("BETWEEN")) {
+      if(fixture.expireGraceInQueue)fixture.graceState="EXPIRED";
       return result(fixture.events.filter(item => item.eventType === values[3] &&
         Math.abs(new Date(item.occurredAt).getTime() - new Date(values[4]).getTime()) <= Number(values[5]) * 1000));
     }
@@ -321,6 +340,41 @@ describe("vendor terminal endpoint with the existing attendance handler (mocked 
     expect((await send({}, { type: "text/plain" })).status).toBe(415);
     expect((await send("{")).status).toBe(400);
     expect((await send(JSON.stringify({ padding: "x".repeat(17_000) }))).status).toBe(413);
+  });
+});
+
+describe("terminal attendance with exact-card temporary payment grace",()=>{
+  it("accepts the unpaid card only while its selected payment grace is valid",async()=>{
+    fixture.paymentDenied=true;fixture.graceState="ACTIVE";
+    const response=await send();
+    expect(response).toMatchObject({status:200,body:{success:true,action:"ENTRY"}});
+    expect(fixture.events).toHaveLength(1);
+    expect(fixture.queries.some(sql=>/UPDATE|INSERT/.test(sql)&&/student_direct_live/.test(sql))).toBe(false);
+  });
+  it.each(["NONE","EXPIRED","REVOKED"])("denies payment when grace is %s",async state=>{
+    fixture.paymentDenied=true;fixture.graceState=state;
+    expect(await send()).toMatchObject({status:200,body:{success:false,action:"DENIED"}});
+    expect(fixture.events).toHaveLength(0);expect(mocks.notifications).not.toHaveBeenCalled();
+  });
+  it("rechecks expiry after queuing before attendance insertion",async()=>{
+    fixture.paymentDenied=true;fixture.graceState="ACTIVE";fixture.expireGraceInQueue=true;
+    expect(await send()).toMatchObject({status:200,body:{success:false,action:"DENIED"}});
+    expect(fixture.events).toHaveLength(0);
+    expect(fixture.queries).toContain("ROLLBACK TO SAVEPOINT terminal_attendance");expect(mocks.notifications).not.toHaveBeenCalled();
+  });
+  it("does not let valid grace bypass a lock committed after the first UID lookup",async()=>{
+    fixture.paymentDenied=true;fixture.graceState="ACTIVE";fixture.cardLockedInQueue=true;
+    expect(await send()).toMatchObject({status:200,body:{success:false,action:"DENIED"}});
+    expect(fixture.events).toHaveLength(0);
+    expect(mocks.notifications).not.toHaveBeenCalled();
+  });
+  it("does not bypass biometric-only policy or campus-security rejection",async()=>{
+    fixture.paymentDenied=true;fixture.graceState="ACTIVE";fixture.policy="BIOMETRIC_ONLY";
+    expect(await send()).toMatchObject({status:200,body:{success:false,action:"DENIED"}});
+    expect(fixture.events).toHaveLength(0);
+    fixture.policy="NFC_ONLY";fixture.securityDenied=true;
+    expect(await send(payload({event_id:"separate-security-rejection"}))).toMatchObject({status:200,body:{success:false,action:"DENIED"}});
+    expect(fixture.events).toHaveLength(0);expect(mocks.notifications).not.toHaveBeenCalled();
   });
 });
 

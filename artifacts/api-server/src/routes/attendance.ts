@@ -1,6 +1,7 @@
 import { teacherScoped, teacherClassScope, teacherStudentScope } from "../lib/teacher-record-scope";
 import { markClassFromGate } from "../services/gate-class-attendance";
 import {assertVerifiedStudentNfcPayment} from "../services/student-nfc-payment-evidence";
+import {assertCardPaymentRestriction} from "../services/student-card-controls";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { pool, type DatabasePoolClient } from "@workspace/db";
@@ -455,8 +456,10 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
     `SELECT id FROM students WHERE id=$1 AND school_id=$2 AND UPPER(status)='ACTIVE'`, [studentId, device.schoolId],
   );
   if (!student.rows[0]) throw new AuthError(404, "Student not found");
-  await assertSubscriptionAccess(device.schoolId, studentId, db);
-  if(method==="NFC")await assertVerifiedStudentNfcPayment(db,device.schoolId,studentId);
+  if(method==="NFC" && cardId!==null){
+    await assertCardPaymentRestriction(db,cardId,device.schoolId,studentId,()=>assertSubscriptionAccess(device.schoolId,studentId,db));
+    await assertCardPaymentRestriction(db,cardId,device.schoolId,studentId,()=>assertVerifiedStudentNfcPayment(db,device.schoolId,studentId));
+  }else await assertSubscriptionAccess(device.schoolId, studentId, db);
   await enforcePolicy(device.schoolId, studentId, method, db);
   if (!body.occurredAt) throw new AuthError(400, "occurredAt is required");
   if (method === "FINGERPRINT") {
@@ -508,6 +511,20 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
   let currentStudent: { rows: any[] };
   try {
    await transaction("BEGIN");
+   if(method==="NFC" && cardId!==null){
+     // Serialize the attendance decision with Owner lock/unlock/grace/revocation.
+     // Card first, then reader: the existing activation writer uses this order too.
+     const currentCard=await client.query(`SELECT nc.id FROM nfc_cards nc
+       JOIN students st ON st.id=nc.student_id AND st.school_id=nc.school_id
+       JOIN schools sc ON sc.id=nc.school_id
+       WHERE nc.id=$1 AND nc.school_id=$2 AND nc.student_id=$3
+         AND upper(nc.status)='ACTIVE' AND upper(st.status)='ACTIVE' AND upper(sc.status)='ACTIVE'
+         AND nc.replaced_by_card_id IS NULL AND nc.replaced_at IS NULL
+         AND (nc.expires_at IS NULL OR nc.expires_at>clock_timestamp())
+         AND NOT EXISTS(SELECT 1 FROM employee_nfc_card_bindings b WHERE b.nfc_card_id=nc.id)
+       FOR SHARE OF nc`,[cardId,device.schoolId,studentId]);
+     if(!currentCard.rows[0])throw new AuthError(403,"NFC card is invalid for this student or school");
+   }
    // Serialize ingestion with assignment/rotation so a credential cannot be
    // validated on the old school and inserted after an owner moves the device.
    const current = await client.query(
@@ -599,6 +616,14 @@ export async function handleDeviceAttendance(req: Request, res: Response, option
      await transaction("ROLLBACK");
      res.status(409).json({ error: "Duplicate event" });
      return;
+   }
+   if(method==="NFC" && cardId!==null){
+     // Use current wall-clock eligibility, never the scan's backdated occurredAt.
+     // Expired or revoked grace cannot authorize insertion after a queued scan.
+     await assertCardPaymentRestriction(client,cardId,device.schoolId,studentId,
+       ()=>assertSubscriptionAccess(device.schoolId,studentId,client));
+     await assertCardPaymentRestriction(client,cardId,device.schoolId,studentId,
+       ()=>assertVerifiedStudentNfcPayment(client,device.schoolId,studentId));
    }
    result = await client.query(
     `INSERT INTO attendance_events

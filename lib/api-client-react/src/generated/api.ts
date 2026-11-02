@@ -875,6 +875,7 @@ import type {
   StaffSubscriptionAccess,
   StatusInput,
   Student,
+  StudentCardControlInput,
   StudentCardReadiness,
   StudentCardReplacementRequest,
   StudentClassAssignment,
@@ -2259,6 +2260,95 @@ export function useGetOwnerStudentCardReadiness<TData = Awaited<ReturnType<typeo
 
 
 
+
+export const getControlOwnerStudentCardUrl = (cardId: number,) => {
+
+
+
+
+  return `/api/platform/uid-inventory/cards/${cardId}/control`
+}
+
+/**
+ * @summary Confirmed audited Owner administrative lock, unlock and temporary payment grace
+ */
+export const controlOwnerStudentCard = async (cardId: number,
+    studentCardControlInput: StudentCardControlInput, options?: Parameters<typeof customFetch>[1]): Promise<StudentCardReadiness> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StudentCardReadiness>(getControlOwnerStudentCardUrl(cardId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentCardControlInput)
+  }
+);}
+
+
+
+
+
+export const getControlOwnerStudentCardMutationKey = () => ['controlOwnerStudentCard'] as const;
+
+export const getControlOwnerStudentCardMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof controlOwnerStudentCard>>, TError,ControlOwnerStudentCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof controlOwnerStudentCard>>, TError,ControlOwnerStudentCardMutationVariables, TContext> => {
+
+const mutationKey = getControlOwnerStudentCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof controlOwnerStudentCard>>, ControlOwnerStudentCardMutationVariables> = (props) => {
+          const {cardId,data} = props ?? {};
+
+          return  controlOwnerStudentCard(cardId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ControlOwnerStudentCardMutationResult = NonNullable<Awaited<ReturnType<typeof controlOwnerStudentCard>>>
+    export type ControlOwnerStudentCardMutationBody = BodyType<StudentCardControlInput>
+    export type ControlOwnerStudentCardMutationError = ErrorType<void>
+    export type ControlOwnerStudentCardMutationVariables = {cardId: number;data: BodyType<StudentCardControlInput>}
+
+    /**
+ * @summary Confirmed audited Owner administrative lock, unlock and temporary payment grace
+ */
+export const useControlOwnerStudentCard = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof controlOwnerStudentCard>>, TError,ControlOwnerStudentCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof controlOwnerStudentCard>>,
+        TError,
+        ControlOwnerStudentCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getControlOwnerStudentCardMutationOptions(options));
+    }
 
 export const getUnlinkCardForCapturedReplacementUrl = (cardId: number,) => {
 

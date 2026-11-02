@@ -447,11 +447,115 @@ export const GetOwnerStudentCardReadinessResponse = zod.object({
   "studentId": zod.number().int(),
   "uid": zod.string(),
   "status": zod.string(),
-  "stage": zod.enum(['ACTIVE', 'AWAITING_ACTIVATION', 'SECURITY_LOCK', 'RESTRICTED']),
+  "stage": zod.enum(['ACTIVE', 'AWAITING_ACTIVATION', 'ADMINISTRATIVE_LOCK', 'SECURITY_LOCK', 'RESTRICTED']),
+  "version": zod.number().int(),
+  "canLock": zod.boolean(),
+  "canGrantGrace": zod.boolean(),
+  "canRevokeGrace": zod.boolean(),
+  "effectiveStatus": zod.string(),
+  "statusSource": zod.string(),
+  "serverNow": zod.coerce.date(),
+  "grace": zod.object({
+  "state": zod.string(),
+  "grant": zod.union([zod.object({
+  "id": zod.number().int(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actorUserId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "details": zod.record(zod.string(), zod.unknown()).nullable()
+}),zod.null()])
+}),
+  "history": zod.array(zod.object({
+  "id": zod.number().int(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actorUserId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "details": zod.record(zod.string(), zod.unknown()).nullable()
+})),
   "explanation": zod.string(),
   "canActivate": zod.boolean(),
   "canPrint": zod.boolean(),
   "restrictions": zod.array(zod.object({
+  "overridable": zod.boolean().optional(),
+  "waived": zod.boolean().optional(),
+  "code": zod.string(),
+  "message": zod.string(),
+  "resolution": zod.string()
+}))
+})
+
+
+/**
+ * @summary Confirmed audited Owner administrative lock, unlock and temporary payment grace
+ */
+
+
+
+export const ControlOwnerStudentCardParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const controlOwnerStudentCardBodyVersionMin = 0;
+
+export const controlOwnerStudentCardBodyReasonMin = 3;
+export const controlOwnerStudentCardBodyReasonMax = 480;
+
+
+
+export const ControlOwnerStudentCardBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "version": zod.number().int().min(controlOwnerStudentCardBodyVersionMin),
+  "confirm": zod.literal(true),
+  "reason": zod.string().min(controlOwnerStudentCardBodyReasonMin).max(controlOwnerStudentCardBodyReasonMax),
+  "action": zod.enum(['LOCK', 'UNLOCK', 'GRANT_GRACE', 'REVOKE_GRACE']),
+  "expiresAt": zod.coerce.date().optional(),
+  "restrictions": zod.array(zod.enum(['NFC_FLUTTERWAVE_PAYMENT_REQUIRED', 'STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED', 'SUBSCRIPTION_REQUIRED'])).optional()
+})
+
+export const ControlOwnerStudentCardResponse = zod.object({
+  "cardId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "uid": zod.string(),
+  "status": zod.string(),
+  "stage": zod.enum(['ACTIVE', 'AWAITING_ACTIVATION', 'ADMINISTRATIVE_LOCK', 'SECURITY_LOCK', 'RESTRICTED']),
+  "version": zod.number().int(),
+  "canLock": zod.boolean(),
+  "canGrantGrace": zod.boolean(),
+  "canRevokeGrace": zod.boolean(),
+  "effectiveStatus": zod.string(),
+  "statusSource": zod.string(),
+  "serverNow": zod.coerce.date(),
+  "grace": zod.object({
+  "state": zod.string(),
+  "grant": zod.union([zod.object({
+  "id": zod.number().int(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actorUserId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "details": zod.record(zod.string(), zod.unknown()).nullable()
+}),zod.null()])
+}),
+  "history": zod.array(zod.object({
+  "id": zod.number().int(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actorUserId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "details": zod.record(zod.string(), zod.unknown()).nullable()
+})),
+  "explanation": zod.string(),
+  "canActivate": zod.boolean(),
+  "canPrint": zod.boolean(),
+  "restrictions": zod.array(zod.object({
+  "overridable": zod.boolean().optional(),
+  "waived": zod.boolean().optional(),
   "code": zod.string(),
   "message": zod.string(),
   "resolution": zod.string()

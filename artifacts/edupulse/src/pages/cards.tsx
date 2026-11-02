@@ -91,9 +91,10 @@ export function CardsPage() {
   return (
     <div className="fade-up">
       {modal?.lost && <ReportLostModal card={modal.lost} onClose={() => setModal(null)} onSubmit={reportLost} />}
-      {modal?.activate && canManageCards && <Modal title="Review student card activation" onClose={()=>setModal(null)}>
+      {modal?.activate && canManageCards && <Modal title="Manage student card" onClose={()=>setModal(null)}>
         <OwnerStudentCardLifecycle key={modal.activate.id} cardId={modal.activate.id} schoolId={schoolId}
-          studentId={modal.activate.studentId} uid={modal.activate.uid} onChanged={done}/>
+          studentId={modal.activate.studentId} uid={modal.activate.uid}
+          onChanged={() => { void qc.invalidateQueries({ queryKey: getListCardsQueryKey() }); }}/>
       </Modal>}
       <PageHeading 
         eyebrow="Security / NFC Cards" 
@@ -166,8 +167,12 @@ export function CardsPage() {
                   <Button variant="outline" onClick={() => setModal({ reassign: card })} disabled={studentsQuery.isLoading || !students.length}>
                     Reassign
                   </Button>
-                  {['active','locked'].includes(String(card.status).toLowerCase()) && <Button type="button" variant="outline" onClick={() =>
-                    String(card.status).toLowerCase()==='locked'?setModal({activate:card}):handleToggle(card.id, card.status)} disabled={toggleStatus.isPending} testId={`button-card-status-${card.id}`}>
+                  {card.studentId != null && ['active','locked','restricted'].includes(String(card.status).toLowerCase()) &&
+                    <Button type="button" variant="outline" onClick={() => setModal({ activate: card })} testId={`button-manage-student-card-${card.id}`}>
+                      Manage student card
+                    </Button>}
+                  {card.studentId == null && ['active','locked'].includes(String(card.status).toLowerCase()) && <Button type="button" variant="outline" onClick={() =>
+                    handleToggle(card.id, card.status)} disabled={toggleStatus.isPending} testId={`button-card-status-${card.id}`}>
                     {String(card.status).toLowerCase() === 'active' ? 'Lock Card' : 'Unlock Card'}
                   </Button>}
                  </div>}
@@ -178,7 +183,7 @@ export function CardsPage() {
             )}
           </div>
           
-           {modal && canManageCards && (!modal.create || canProvision) && (
+           {modal && canManageCards && (modal.create || modal.reassign) && (!modal.create || canProvision) && (
             <Modal
               title={modal.create ? 'Provision NFC Card' : 'Reassign NFC Card'}
               eyebrow="Hardware Management"

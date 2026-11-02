@@ -112,6 +112,28 @@ paths:
               schema: { $ref: "#/components/schemas/StudentCardReadiness" }
         "403": { description: Platform Owner only }
         "404": { description: Assignment changed or not found }
+  /platform/uid-inventory/cards/{cardId}/control:
+    post:
+      operationId: controlOwnerStudentCard
+      tags: [platform]
+      summary: Confirmed audited Owner administrative lock, unlock and temporary payment grace
+      parameters:
+        - { name: cardId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentCardControlInput" }
+      responses:
+        "200":
+          description: Updated authoritative eligibility and append-only control history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentCardReadiness" }
+        "400": { description: "Invalid reason, confirmation, restriction or zoned expiry" }
+        "403": { description: Platform Owner only }
+        "404": { description: Assignment changed or not found }
+        "409": { description: Concurrent change or non-overridable restriction }
   /platform/uid-inventory/cards/{cardId}/unlink:
     $ref: "./owner-uid-reader.yaml#/capturedCardUnlink"
   /platform/uid-inventory/replacements/{requestId}/issue:
@@ -8494,25 +8516,69 @@ components:
       type: object
       required: [code, message, resolution]
       properties:
+        overridable: { type: boolean }
+        waived: { type: boolean }
         code: { type: string }
         message: { type: string }
         resolution: { type: string }
     StudentCardReadiness:
       type: object
-      required: [cardId, schoolId, studentId, uid, status, stage, explanation, canActivate, canPrint, restrictions]
+      required: [cardId, schoolId, studentId, uid, status, stage, explanation, canActivate, canPrint, restrictions, version, canLock, canGrantGrace, canRevokeGrace, grace, history, serverNow, effectiveStatus, statusSource]
       properties:
         cardId: { type: integer }
         schoolId: { type: integer }
         studentId: { type: integer }
         uid: { type: string }
         status: { type: string }
-        stage: { type: string, enum: [ACTIVE, AWAITING_ACTIVATION, SECURITY_LOCK, RESTRICTED] }
+        stage: { type: string, enum: [ACTIVE, AWAITING_ACTIVATION, ADMINISTRATIVE_LOCK, SECURITY_LOCK, RESTRICTED] }
+        version: { type: integer }
+        canLock: { type: boolean }
+        canGrantGrace: { type: boolean }
+        canRevokeGrace: { type: boolean }
+        effectiveStatus: { type: string }
+        statusSource: { type: string }
+        serverNow: { type: string, format: date-time }
+        grace:
+          type: object
+          required: [state, grant]
+          properties:
+            state: { type: string }
+            grant: { anyOf: [{ $ref: "#/components/schemas/StudentCardControlEvent" }, { type: "null" }] }
+        history:
+          type: array
+          items: { $ref: "#/components/schemas/StudentCardControlEvent" }
         explanation: { type: string }
         canActivate: { type: boolean }
         canPrint: { type: boolean }
         restrictions:
           type: array
           items: { $ref: "#/components/schemas/StudentCardRestriction" }
+    StudentCardControlEvent:
+      type: object
+      required: [id, action, reason, actorUserId, createdAt, details]
+      properties:
+        id: { type: integer }
+        action: { type: string }
+        reason: { type: string }
+        actorUserId: { type: [integer, "null"] }
+        createdAt: { type: string, format: date-time }
+        details:
+          type: [object, "null"]
+          additionalProperties: true
+    StudentCardControlInput:
+      type: object
+      required: [schoolId, studentId, version, confirm, reason, action]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        version: { type: integer, minimum: 0 }
+        confirm: { type: boolean, enum: [true] }
+        reason: { type: string, minLength: 3, maxLength: 480 }
+        action: { type: string, enum: [LOCK, UNLOCK, GRANT_GRACE, REVOKE_GRACE] }
+        expiresAt: { type: string, format: date-time }
+        restrictions:
+          type: array
+          items: { type: string, enum: [NFC_FLUTTERWAVE_PAYMENT_REQUIRED, STUDENT_PLATFORM_SUBSCRIPTION_REQUIRED, SUBSCRIPTION_REQUIRED] }
     CardStatusInput:
       type: object
       required: [status]

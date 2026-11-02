@@ -7,6 +7,8 @@ import { issueReplacement, requestReplacement } from "../services/student-card-r
 import { markSecurityCardLost } from "../services/school-security-core-service";
 import { detachOwnerCard } from "../services/owner-card-detach";
 import { readStudentCardReadiness } from "../services/student-card-readiness";
+import {controlStudentCard} from "../services/owner-student-card-control";
+import {ControlOwnerStudentCardBody,ControlOwnerStudentCardResponse} from "@workspace/api-zod";
 
 const router = Router();
 const positive = z.number().int().positive().max(2147483647);
@@ -14,6 +16,23 @@ const confirmed = z.object({ confirm:z.literal(true) });
 const run = (fn:(req:Request,res:Response)=>Promise<void>) =>
   (req:Request,res:Response,next:NextFunction) => void fn(req,res).catch(next);
 router.use(requireAuthentication());
+router.post("/platform/uid-inventory/cards/:cardId/control",run(async(req,res)=>{
+  assertRoles(req,["PLATFORM_OWNER"]);
+  const cardId=positive.parse(Number(req.params.cardId));
+  const b=ControlOwnerStudentCardBody.parse(req.body);
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    const result=await controlStudentCard(client,cardId,getUserContext(req).user.id,{
+      ...b,expiresAt:typeof req.body?.expiresAt==="string"?req.body.expiresAt:undefined,
+    });
+    const response=ControlOwnerStudentCardResponse.parse(result);
+    await client.query("COMMIT");
+    res.setHeader("Cache-Control","no-store");
+    res.json(response);
+  }catch(error){await client.query("ROLLBACK");throw error;}
+  finally{client.release();}
+}));
 router.get("/platform/uid-inventory/cards/:cardId/readiness",run(async(req,res)=>{
   assertRoles(req,["PLATFORM_OWNER"]);
   res.setHeader("Cache-Control","no-store");

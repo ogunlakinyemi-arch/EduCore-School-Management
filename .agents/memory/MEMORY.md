@@ -120,3 +120,4 @@
 - [Procedural schema verification](procedural-schema-verification.md) — empty structural diffs and successful ledgers do not certify functions/triggers; verify approved catalog definitions separately.
 - [Application financial boundary](financial-application-boundary.md) — Owner chose application consolidation without redesign; preserve procedural readiness gates and disclose direct-SQL bypasses.
 - [Hardware identity correction](hardware-identity-correction-policy.md) — retain primary ID/key and both histories; Production execution requires the supported serving workflow and fresh checks.
+- [Owner card grace](owner-student-card-grace-policy.md) — audited administrative controls and exact-card temporary payment permission; never settlement, activation or a safety override.

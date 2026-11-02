@@ -2,13 +2,18 @@ import {AuthError} from "../middlewares/auth";
 import {assertSchoolHasActiveNfcDevice} from "../lib/nfc-device-first";
 import {assertVerifiedStudentNfcPayment} from "./student-nfc-payment-evidence";
 import {assertSubscriptionAccess} from "./subscription-enforcement";
+import {assertCardPaymentRestriction,isGraceRestriction,readCardControlEvidence,readStudentCardGrace} from "./student-card-controls";
 
 type Db={query(sql:string,values?:any[]):Promise<{rows:any[]}>};
 
 /** The same independent prerequisites used for attendance; never changes them. */
-export async function assertStudentCardUsePrerequisites(db:Db,schoolId:number,studentId:number){
-  await assertSubscriptionAccess(schoolId,studentId,db);
-  await assertVerifiedStudentNfcPayment(db,schoolId,studentId);
+export async function assertStudentCardUsePrerequisites(db:Db,schoolId:number,studentId:number,cardId?:number){
+  const subscription=()=>assertSubscriptionAccess(schoolId,studentId,db);
+  const payment=()=>assertVerifiedStudentNfcPayment(db,schoolId,studentId);
+  if(cardId!=null){
+    await assertCardPaymentRestriction(db,cardId,schoolId,studentId,subscription);
+    await assertCardPaymentRestriction(db,cardId,schoolId,studentId,payment);
+  }else{await subscription();await payment();}
   await assertSchoolHasActiveNfcDevice(db,schoolId);
   const policy=(await db.query(`SELECT policy FROM student_identification_policies
     WHERE school_id=$1 AND student_id=$2 AND status='ACTIVE'`,[schoolId,studentId])).rows[0]?.policy;
@@ -30,7 +35,7 @@ export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:numb
     WHERE nc.id=$1 AND nc.school_id=$2`,[cardId,schoolId])).rows[0];
   if(!card || Number(card.studentId)!==studentId)throw new AuthError(404,"This is no longer the selected student's current card. Refresh the person and card list.");
   const status=String(card.status).toLowerCase();
-  const restrictions:Array<{code:string;message:string;resolution:string}>=[];
+   const restrictions:Array<{code:string;message:string;resolution:string;overridable?:boolean;waived?:boolean}>=[];
   const deny=(code:string,message:string,resolution:string)=>restrictions.push({code,message,resolution});
   if(card.employeeBindings || (["active","locked"].includes(status) && Number(card.currentCards)!==1))
     deny("ASSIGNMENT_CONFLICT","The card has conflicting or multiple current assignments.","Owner must review the retained assignment history; do not create another assignment.");
@@ -43,22 +48,47 @@ export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:numb
     FROM nfc_card_history WHERE nfc_card_id=$1 AND school_id=$2 AND lower(new_status)='locked'
     ORDER BY id DESC LIMIT 1`,[cardId,schoolId])).rows[0]:null;
   const staged=status==="locked" && ["REGISTERED","REASSIGNED","ASSIGNED"].includes(history?.action);
-  const stage=status==="active"?"ACTIVE":status==="locked"?(staged?"AWAITING_ACTIVATION":"SECURITY_LOCK"):"RESTRICTED";
+   const administrative=status==="locked" && history?.action==="OWNER_ADMIN_LOCK";
+   const stage=status==="active"?"ACTIVE":status==="locked"?(staged?"AWAITING_ACTIVATION":administrative?"ADMINISTRATIVE_LOCK":"SECURITY_LOCK"):"RESTRICTED";
   const explanation=staged
     ?"This new UID was linked successfully and deliberately staged as LOCKED pending Owner activation. It did not inherit the previous UID's lock."
-    :status==="locked"?`This card is locked by a separate status change. Recorded reason: ${history?.reason || "No reason was recorded in the legacy history; review the card history before unlocking."}`
+     :status==="locked"?`This card has an ${administrative?"Owner administrative":"independent security/legacy"} lock. Recorded reason: ${history?.reason || "No reason was recorded in the legacy history; review the card history before unlocking."}`
     :status==="active"?"This UID is active. Reader, account and attendance policy checks still apply.":`This UID is ${status}.`;
-  if(!restrictions.length){
-    try{await assertStudentCardUsePrerequisites(db,schoolId,studentId);}
-    catch(error){
-      if(!(error instanceof AuthError))throw error;
-      deny(error.eventType,error.message,error.eventType==="NFC_FLUTTERWAVE_PAYMENT_REQUIRED"
-        ?"Complete the existing student platform checkout and independent server verification for the current term. An Owner unlock cannot substitute payment."
-        :error.eventType==="NFC_DEVICE_REQUIRED"?"Link an eligible NFC reader through existing device management."
-        :"Resolve this restriction through its existing school, subscription or identification-policy workflow, then refresh. Card unlock cannot override it.");
-    }
-  }
+   const evidence=await readCardControlEvidence(db,cardId,schoolId,studentId);
+   const grace=await readStudentCardGrace(db,cardId,schoolId,studentId,evidence);
+   if(stage==="SECURITY_LOCK")deny("SECURITY_LOCK","Security/legacy locks cannot be manually overridden here.","Review the original security incident through its security resolution workflow. Payment grace never clears this lock.");
+   const checks=[
+     ()=>assertSubscriptionAccess(schoolId,studentId,db),
+     ()=>assertVerifiedStudentNfcPayment(db,schoolId,studentId),
+     ()=>assertSchoolHasActiveNfcDevice(db,schoolId),
+     async()=>{
+       const policy=(await db.query(`SELECT policy FROM student_identification_policies
+         WHERE school_id=$1 AND student_id=$2 AND status='ACTIVE'`,[schoolId,studentId])).rows[0]?.policy;
+       if(policy==="BIOMETRIC_ONLY")throw new AuthError(409,"This student's identification policy is BIOMETRIC_ONLY.","IDENTIFICATION_POLICY_RESTRICTED");
+     },
+   ];
+   for(const check of checks){
+     try{await check();}
+     catch(error){
+       if(!(error instanceof AuthError))throw error;
+       const overridable=isGraceRestriction(error);
+       const waived=!staged && overridable && grace.state==="ACTIVE" &&
+         grace.grant?.details?.restrictions?.includes(error.eventType)===true;
+       restrictions.push({code:error.eventType,message:error.message,overridable,waived,
+         resolution:overridable
+           ?"Complete the existing independently verified payment workflow. Unlock cannot substitute payment; an explicit temporary Owner grace covers only its listed restrictions."
+           :error.eventType==="NFC_DEVICE_REQUIRED"?"Link an eligible NFC reader through existing device management."
+           :"Resolve this restriction through its existing security, school, account or identification-policy workflow. Owner unlock and grace cannot override it."});
+     }
+   }
+   const blocked=restrictions.filter(r=>!r.waived);
+   const canGrace=["ACTIVE","ADMINISTRATIVE_LOCK"].includes(stage) &&
+     !restrictions.some(r=>!r.overridable) && restrictions.some(r=>r.overridable) && grace.state!=="ACTIVE";
   return {cardId,schoolId,studentId,uid:String(card.uid),status,stage,explanation,
-    canActivate:status==="locked" && restrictions.length===0,
-    canPrint:status==="active" && restrictions.length===0,restrictions};
+     canActivate:status==="locked" && stage!=="SECURITY_LOCK" && blocked.length===0,
+     canPrint:status==="active" && blocked.length===0,restrictions,
+     version:evidence.version,canLock:status==="active",canGrantGrace:canGrace,
+     canRevokeGrace:grace.state==="ACTIVE",grace,history:evidence.events,serverNow:evidence.now,
+     effectiveStatus:status!=="active"?stage:blocked.length?"INELIGIBLE":restrictions.some(r=>r.waived)?"ELIGIBLE_BY_GRACE":"ELIGIBLE",
+     statusSource:status!=="active"?"CARD_STATE":blocked.length?"RESTRICTION":restrictions.some(r=>r.waived)?"OWNER_TEMPORARY_GRACE":"NORMAL_POLICY"};
 }

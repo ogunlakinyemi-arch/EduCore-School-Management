@@ -7,6 +7,7 @@ import {
 import {Button,Field,Modal} from './shared';
 import {PrintableNfcCardDownload} from './printable-nfc-card-download';
 import {backendError} from './uid-actions';
+import {OwnerCardControls,CardStatusSummary,CardControlHistory,useExpiryClock,graceExpiry} from './owner-student-card-controls';
 
 /** Fresh readiness and preview are tied to the exact card AND selected student. */
 export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPreview=false,onChanged}:{
@@ -28,7 +29,11 @@ export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPre
   const exact=data?.cardId===cardId && data.studentId===studentId && data.schoolId===schoolId &&
     data.uid.toUpperCase()===uid.toUpperCase();
   // Do not present cached printable identities while authoritative eligibility is refreshing.
-  const printable=owner && exact && !query.isFetching && !query.isError && data.canPrint;
+  // Grace expiry is enforced on the local clock; a refetch is scheduled exactly at expiry.
+  const graceActive=!!data?.grace?.grant && data.grace.state==='ACTIVE';
+  const clock=useExpiryClock(graceActive?graceExpiry(data):null,()=>{void query.refetch();});
+  const graceExpired=graceActive && clock.expired;
+  const printable=owner && exact && !query.isFetching && !query.isError && !graceExpired && data.canPrint;
   const preview=useGetOfficialCardPreview(cardId,{schoolId},{
     query:{enabled:!!printable && view,queryKey:['owner-linked-card-preview',authorized.data?.user?.id,schoolId,studentId,cardId,uid],
       staleTime:0,gcTime:0,refetchOnWindowFocus:true},
@@ -40,24 +45,31 @@ export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPre
       qc.invalidateQueries({queryKey:getListCardsQueryKey()}),
       qc.invalidateQueries({queryKey:['owner-link-students']}),
       qc.invalidateQueries({queryKey:['owner-linked-card-preview']}),
+      qc.invalidateQueries({queryKey:['owner-student-card-readiness']}),
     ]);
     onChanged?.();
   };
   if(!owner)return null;
   return <section className="space-y-3 rounded-xl border border-[hsl(var(--border))] p-4" data-testid="owner-card-lifecycle">
     <h3 className="font-semibold">Current student e-ID · <span className="break-all font-mono">{uid}</span></h3>
-    {query.isLoading || query.isFetching?<p role="status">Checking the saved assignment and activation requirements…</p>:
+    {query.isFetching && data && <p role="status">Refreshing current eligibility…</p>}
+    {query.isLoading || (query.isFetching && !data)?<p role="status">Checking the saved assignment and activation requirements…</p>:
       query.isError?<p role="alert">{backendError(query.error)} <button type="button" className="underline" onClick={()=>query.refetch()}>Refresh readiness</button></p>:
       !exact?<p role="alert">The current card assignment changed. Refresh the person and card list; no printable card is offered.</p>:
       <>
         <p data-testid="card-lock-explanation">{data.explanation}</p>
         {data.restrictions.map(item=><div key={item.code} role="status" data-testid={`card-restriction-${item.code}`}>
-          <p className="font-semibold">{item.message}</p><p className="text-sm">{item.resolution}</p>
+          <p className="font-semibold">{item.message}{item.waived?' (waived by grace; payment not marked paid)':' (applies)'}</p><p className="text-sm">{item.resolution}</p>
         </div>)}
         {!data.canPrint && <p className="text-sm">The final printable e-ID is unavailable until this card is active and these checks pass. Linking and printing never override an NFC restriction.</p>}
-        {data.canActivate && <Button type="button" variant="outline" testId="button-owner-activate-card" onClick={()=>{
+        <CardStatusSummary data={data} graceExpired={graceExpired}/>
+        {graceExpired && <p role="alert" data-testid="text-grace-expired">Grace period has expired. Grace-dependent actions and printing are disabled while the server is rechecked.</p>}
+        <OwnerCardControls key={`${schoolId}:${studentId}:${cardId}:${uid}`} data={data} cardId={cardId} schoolId={schoolId} studentId={studentId} graceExpired={graceExpired} refreshing={query.isFetching}
+          onRefresh={refresh} onRefetch={()=>{void query.refetch();}}/>
+        <CardControlHistory history={data.history??[]}/>
+        {data.canActivate && data.stage==='AWAITING_ACTIVATION' && <Button type="button" variant="outline" testId="button-owner-activate-card" onClick={()=>{
           activate.reset();setReason('');setConfirmed(false);setOpen(true);
-        }}>{data.stage==='AWAITING_ACTIVATION'?'Activate linked card':'Review and unlock card'}</Button>}
+        }}>Activate linked card</Button>}
         {printable && <>
           {!view && <Button type="button" variant="outline" onClick={()=>setView(true)}>View final e-ID card</Button>}
           {view && (preview.isLoading || preview.isFetching?<p role="status">Loading the saved school-branded e-ID…</p>:

@@ -1642,6 +1642,13 @@ router.patch("/cards/:cardId/status", async (req, res) => {
       throw new AuthError(409, "Employee-bound cards must be managed through employee NFC controls");
     }
     const previousStatus = String(card.rows[0].status).toLowerCase();
+    if(card.rows[0].studentId!=null && (status==="locked" || (status==="active" && previousStatus==="locked"))){
+      const lock=(await client.query(`SELECT action FROM nfc_card_history
+        WHERE nfc_card_id=$1 AND school_id=$2 AND lower(new_status)='locked' ORDER BY id DESC LIMIT 1`,
+        [cardId,card.rows[0].schoolId])).rows[0];
+      if(status==="locked" || lock?.action==="OWNER_ADMIN_LOCK")
+        throw new AuthError(409,"Use the confirmed Owner student card management Lock/Unlock controls so the current state, reason and audit scope are preserved.");
+    }
     let activationReason:string|null=null;
     if(status==="active" && previousStatus!=="active"){
       if(req.body?.confirm!==true || typeof req.body?.reason!=="string" ||

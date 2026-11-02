@@ -7,6 +7,8 @@
  */
 
 export interface StudentCardRestriction4b96100 {
+  overridable?: boolean;
+  waived?: boolean;
   code: string;
   message: string;
   resolution: string;

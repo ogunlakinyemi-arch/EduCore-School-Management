@@ -10,7 +10,9 @@ export const studentNfcCardLookupSql = `
     FROM nfc_cards nc
     JOIN students st ON st.id=nc.student_id AND st.school_id=nc.school_id
    WHERE nc.uid=$1 AND nc.school_id=$2 AND nc.student_id IS NOT NULL
-     AND upper(nc.status)='ACTIVE' AND upper(st.status)='ACTIVE'`;
+     AND upper(nc.status)='ACTIVE' AND upper(st.status)='ACTIVE'
+     AND nc.replaced_by_card_id IS NULL AND nc.replaced_at IS NULL
+     AND (nc.expires_at IS NULL OR nc.expires_at>clock_timestamp())`;
 
 /** Current school is authoritative; durable bindings also retain past schools. */
 export const activeSchoolNfcDevicesSql = `
