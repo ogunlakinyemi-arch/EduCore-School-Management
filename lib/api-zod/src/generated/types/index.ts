@@ -1453,6 +1453,7 @@ export * from './ownerSubscriptionRulesOverviewStaffRulesItem';
 export * from './ownerUidInventory';
 export * from './ownerUidRead';
 export * from './ownerUidReader';
+export * from './ownerUidReaderLastFailure';
 export * from './ownerUidReaderLastReport';
 export * from './ownerUidReaderLastScan';
 export * from './ownerUidReadErrorCode';

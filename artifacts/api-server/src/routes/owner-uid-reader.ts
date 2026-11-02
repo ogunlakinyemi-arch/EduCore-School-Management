@@ -39,6 +39,7 @@ router.get("/platform/uid-inventory", run(async (req, res) => {
       AND a.action=$1 AND a.record_id=d.id
       AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier') AS "lastReadAt",
     report."timestamp" AS "lastSeenAt", report.metadata AS "lastReport",
+    failure."timestamp" AS "lastFailureAt", failure.metadata AS "lastFailure",
     (SELECT a.metadata FROM audit_logs a WHERE a.module='UIDInventory'
       AND a.action=$1 AND a.record_id=d.id
       AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier'
@@ -50,6 +51,11 @@ router.get("/platform/uid-inventory", run(async (req, res) => {
       WHERE a.module='UIDInventory' AND a.action IN ($1,$3) AND a.record_id=d.id
         AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier'
       ORDER BY a.id DESC LIMIT 1) report ON TRUE
+    LEFT JOIN LATERAL (SELECT a.metadata,a."timestamp" FROM audit_logs a
+      WHERE a.module='UIDInventory' AND a.action=$3 AND a.record_id=d.id
+        AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier'
+        AND a.metadata->>'scanStatus' IN ('UNSUPPORTED_CARD','MALFORMED_SCAN','READER_ERROR','TRANSPORT_ERROR')
+      ORDER BY a.id DESC LIMIT 1) failure ON TRUE
     WHERE d.school_id IS NULL ORDER BY d.serial_number`, [OWNER_UID_ACTION, OWNER_READER_ACTION, OWNER_READER_STATUS_ACTION]);
   const inventory = await listCapturedUids(pool, filters);
   // Never expose credential identifiers, hashes, or internal receipt fingerprints.
@@ -59,7 +65,7 @@ router.get("/platform/uid-inventory", run(async (req, res) => {
   } : null;
   res.json({ readers: readers.rows.map(({ internalCredentialIdentifier, ...r }) => ({ ...r,
     credentialVersion: ownerCredentialVersion({ credentialIdentifier: internalCredentialIdentifier }),
-    lastReport: publicReport(r.lastReport), lastScan: publicReport(r.lastScan),
+    lastReport: publicReport(r.lastReport), lastScan: publicReport(r.lastScan), lastFailure: publicReport(r.lastFailure),
   })), ...inventory });
 }));
 

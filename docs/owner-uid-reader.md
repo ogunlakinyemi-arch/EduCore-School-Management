@@ -1,5 +1,9 @@
 # Owner UID-only NFC readers
 
+For the Development credential-repair procedure, exact authentication trace,
+dedicated **Card UID Inventory** page and local protocol harness, see
+[Owner UID delivery and inventory](owner-uid-delivery-development.md).
+
 One registered NFC/HYBRID reader has exactly one operational context:
 
 * **Unassigned:** no school, no active Owner reader binding.

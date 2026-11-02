@@ -14,6 +14,8 @@ vi.mock("../middlewares/auth", () => {
     getUserContext: () => ({ user: { id: 77 } }), assertRoles: () => undefined };
 });
 import router, { ownerUidIngestionRouter } from "./owner-uid-reader";
+import { OwnerReaderProtocolHarness } from "../test/owner-reader-protocol-harness";
+import { ownerCredentialVersion, ownerReaderConfiguration } from "../services/owner-uid-reader";
 
 const socket = process.env.OWNER_UID_TEST_SOCKET;
 // Opt-in only: never consume application connection strings or a shared database.
@@ -53,6 +55,7 @@ describe.skipIf(!socket)("Owner capture SQL on disposable PostgreSQL", () => {
     app.use("/api", ownerUidIngestionRouter);
     app.use(express.json());
     app.use("/api", router);
+    app.use((e: any, _req: any, res: any, _next: any) => res.status(e.statusCode ?? 500).json({ error: e.message }));
     await new Promise<void>(resolve => { server = app.listen(0, "127.0.0.1", () => resolve()); });
     base = `http://127.0.0.1:${(server.address() as any).port}/api`;
   });
@@ -119,6 +122,11 @@ describe.skipIf(!socket)("Owner capture SQL on disposable PostgreSQL", () => {
     expect(data.readers[0].lastReport.scanStatus).toBe("UNSUPPORTED_CARD");
     expect(data.readers[0].lastScan.uid).toBe("AABBCCDD");
     expect(data.inventory).toHaveLength(1);
+    await send(scan({ event_id: "after-error-heartbeat", uid: undefined, event_type: "READER_HEARTBEAT" }));
+    const afterHeartbeat = await inventory();
+    expect(afterHeartbeat.readers[0].lastReport.scanStatus).toBe("READY");
+    expect(afterHeartbeat.readers[0].lastFailure.scanStatus).toBe("UNSUPPORTED_CARD");
+    expect(afterHeartbeat.readers[0].lastFailureAt).toBeTruthy();
   });
   it("heartbeat establishes connectivity but never populates UID inventory", async () => {
     expect((await send(scan({ uid: undefined, event_type: "READER_HEARTBEAT" }))).status).toBe(200);
@@ -155,5 +163,88 @@ describe.skipIf(!socket)("Owner capture SQL on disposable PostgreSQL", () => {
     for (const table of ["attendance_events", "payments", "security_events"]) {
       expect((await state.db.query(`SELECT count(*) FROM ${table}`)).rows[0].count).toBe("0");
     }
+  });
+  it("reproduces HTTP 401 retained, provisions this exact linked device, and delivers heartbeat then raw scan", async () => {
+    const original = (await inventory()).readers.find((r: any) => r.deviceId === 1);
+    const configuration = ownerReaderConfiguration(1);
+    const terminal = new OwnerReaderProtocolHarness(base.replace(/\/api$/, ''), configuration, "school-key.wrong-secret");
+    terminal.enqueue("retained-heartbeat", "READER_HEARTBEAT");
+    const retained = terminal.retainedEvent();
+    expect((await terminal.deliver()).status).toBe(401);
+    expect(terminal.retainedEvent()).toEqual(retained);
+    const rotation = await fetch(`${base}/platform/devices/1/owner-reader/credential`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        reason: "Fixture 401 repair", confirm: true, expectedCredentialVersion: original.credentialVersion,
+      }),
+    });
+    expect(rotation.status).toBe(200);
+    const provisioned = await rotation.json() as any;
+    expect(provisioned.configuration).toEqual(configuration);
+    terminal.loadCredential(provisioned.credential);
+    expect(await terminal.deliver()).toMatchObject({ status: 200, body: { scanStatus: "READY" } });
+    terminal.enqueue("physical-scan-fixture", "CARD_SCAN", "04a1b2c3d4e5f6");
+    expect(await terminal.deliver()).toMatchObject({ status: 200, body: {
+      uid: "04A1B2C3D4E5F6", rawUid: "04a1b2c3d4e5f6", scanStatus: "UNKNOWN_UNASSIGNED",
+    } });
+    const data = await inventory();
+    expect(data.inventory[0]).toMatchObject({ uid: "04A1B2C3D4E5F6", rawUid: "04a1b2c3d4e5f6",
+      readerDeviceId: 1, deviceName: "Reader one", scanCount: 1, assigned: false });
+    expect(data.inventory[0].firstSeenAt).toBeTruthy();
+    expect(data.inventory[0].lastSeenAt).toBeTruthy();
+    expect(data.readers[0].lastScan.uid).toBe("04A1B2C3D4E5F6");
+    expect((await send(scan(), credential)).status).toBe(401);
+    expect((await send(scan({ device_id: 2 }), provisioned.credential)).status).toBe(401);
+    for (const table of ["attendance_events", "payments", "security_events", "nfc_cards"]) {
+      expect((await state.db.query(`SELECT count(*) FROM ${table}`)).rows[0].count).toBe("0");
+    }
+  });
+  it("inventory is searchable and paginated across every capture, with first/last seen and safe duplicate counts", async () => {
+    await send(scan({ uid: "11223344" }));
+    await send(scan({ event_id: "second-uid", uid: "AABBCCDD" }));
+    const repeat = scan({ event_id: "repeat", uid: "aabbccdd" });
+    await send(repeat); await send(repeat);
+    const read = async (query: string) => (await fetch(`${base}/platform/uid-inventory?${query}`)).json() as any;
+    const all = await read("pageSize=1");
+    expect(all.total).toBe(2); expect(all.inventory).toHaveLength(1);
+    expect((await read("pageSize=1&page=2")).inventory).toHaveLength(1);
+    expect((await read("pageSize=1&page=3")).total).toBe(2);
+    const duplicates = await read("status=DUPLICATE&q=aabb");
+    expect(duplicates.total).toBe(1);
+    expect(duplicates.inventory[0]).toMatchObject({ uid: "AABBCCDD", scanCount: 2, duplicate: true, captureStatus: "UNKNOWN_UNASSIGNED" });
+    expect((await read("q=fixture-1&deviceId=1")).total).toBe(2);
+    expect((await read("q=%25")).total).toBe(0);
+    expect((await read("status=ASSIGNED")).total).toBe(0);
+  });
+  it("new Owner provisioning returns the exact endpoint and key, and school key/incorrect scheme cannot authenticate", async () => {
+    await state.db.query("TRUNCATE audit_logs");
+    const response = await fetch(`${base}/platform/devices/1/owner-reader`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "Fixture Owner provisioning" }),
+    });
+    expect(response.status).toBe(201);
+    const provisioned = await response.json() as any;
+    const binding = (await state.db.query("SELECT metadata FROM audit_logs ORDER BY id DESC LIMIT 1")).rows[0].metadata;
+    expect(provisioned.credentialVersion).toBe(ownerCredentialVersion(binding));
+    expect((await send(scan(), provisioned.credential)).status).toBe(200);
+    const wrongScheme = await fetch(`${base}/v1/owner-reader/uid-events`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Basic ${provisioned.credential}` }, body: JSON.stringify(scan()),
+    });
+    expect(wrongScheme.status).toBe(401);
+    expect((await send(scan(), credential)).status).toBe(401);
+  });
+  it("concurrent rotation cannot silently replace a newly issued Owner key", async () => {
+    const original = (await inventory()).readers.find((r: any) => r.deviceId === 1);
+    const rotate = async () => {
+      const response = await fetch(`${base}/platform/devices/1/owner-reader/credential`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+          reason: "Concurrent fixture provisioning", confirm: true, expectedCredentialVersion: original.credentialVersion,
+        }),
+      });
+      return { status: response.status, body: await response.json() as any };
+    };
+    const results = await Promise.all([rotate(), rotate()]);
+    expect(results.map(r => r.status).sort()).toEqual([200, 409]);
+    const issued = results.find(r => r.status === 200)!;
+    expect((await send(scan(), issued.body.credential)).status).toBe(200);
+    expect((await send(scan(), credential)).status).toBe(401);
   });
 });

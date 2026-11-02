@@ -97,6 +97,7 @@ const nav: NavItem[] = [
   { href: '/partners', label: 'Business Relationship Officers (BRO)', icon: Handshake, roles: ['PLATFORM_OWNER'] },
   { href: '/account-applications', label: 'New Users / Applications', icon: ClipboardCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
+  { href: '/card-uid-inventory', label: 'Card UID Inventory', icon: CreditCard, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/subscription-payment-rules', label: 'Subscription & Payment Rules', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/direct-flutterwave-live-readiness', label: 'Direct Flutterwave LIVE Readiness', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
@@ -117,7 +118,7 @@ const nav: NavItem[] = [
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/records', '/students', '/company-employees', '/users', '/partners', '/account-applications',
-  '/devices', '/subscriptions', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
+  '/devices', '/card-uid-inventory', '/subscriptions', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results', '/platform/attendance',
   '/communications',

@@ -70,6 +70,17 @@ describe('OwnerUidReaderSection', () => {
     expect(html).toContain('AABBCCDD');
     expect(html).toContain('Retry');
   });
+  it('keeps the last trusted scan failure visible after a successful heartbeat', () => {
+    const html = render({ data: { ...data, readers: [{ ...data.readers[0],
+      lastReport: { uid: null, scanStatus: 'READY' },
+      lastFailure: { uid: null, scanStatus: 'UNSUPPORTED_CARD' },
+      lastFailureAt: '2026-11-02T08:00:00Z',
+    }] } });
+    expect(html).toContain('Ready — present a compatible card');
+    expect(html).toContain('Last failed scan');
+    expect(html).toContain('Unsupported card');
+    expect(html).toContain('Retained independently of heartbeats');
+  });
   it('copies a displayed UID and reports clipboard errors without clearing the UID', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     const writeText = vi.fn().mockResolvedValue(undefined);

@@ -543,6 +543,10 @@ export const GetOwnerUidInventoryResponse = zod.object({
   "lastReadAt": zod.string().nullable(),
   "credentialVersion": zod.string().optional().describe('Non-secret optimistic rotation token; never a device credential.'),
   "lastSeenAt": zod.string().nullish(),
+  "lastFailureAt": zod.string().nullish(),
+  "lastFailure": zod.object({
+  "scanStatus": zod.string().optional()
+}).nullish(),
   "lastReport": zod.object({
   "scanStatus": zod.string().optional(),
   "uid": zod.string().nullish(),

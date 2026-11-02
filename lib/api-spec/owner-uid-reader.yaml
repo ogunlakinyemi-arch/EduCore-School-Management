@@ -314,6 +314,11 @@ components:
         lastReadAt: { type: [string, "null"] }
         credentialVersion: { type: string, description: Non-secret optimistic rotation token; never a device credential. }
         lastSeenAt: { type: [string, "null"] }
+        lastFailureAt: { type: [string, "null"] }
+        lastFailure:
+          type: [object, "null"]
+          properties:
+            scanStatus: { type: string }
         lastReport:
           type: [object, "null"]
           properties:

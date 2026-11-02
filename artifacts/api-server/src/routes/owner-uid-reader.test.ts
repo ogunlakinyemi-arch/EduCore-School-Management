@@ -1,5 +1,6 @@
 import express from "express";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
@@ -17,9 +18,13 @@ vi.mock("@workspace/db", () => {
     if (sql.includes("SELECT id,student_id FROM nfc_cards")) return rows(state.card ? [state.card] : []);
     if (sql.includes("SELECT 1 FROM audit_logs WHERE module='UIDInventory'")) return rows(state.captures.filter(c => c.uid === values[1]).map(() => ({ "?column?": 1 })));
     if (sql.includes('d.id AS "deviceId"')) return rows(state.binding ? [{
-      deviceId: 1, lastReport: state.reports.at(-1) ?? state.captures.at(-1), lastScan: state.captures.at(-1),
+      deviceId: 1, internalCredentialIdentifier: state.binding.credentialIdentifier,
+      lastReport: state.reports.at(-1) ?? state.captures.at(-1), lastScan: state.captures.at(-1),
     }] : []);
-    if (sql.includes("SELECT captured.metadata")) return rows([...new Map(state.captures.map(c => [c.uid, { uid: c.uid }])).values()]);
+    if (sql.includes("WITH capture_summary")) {
+      const inventory = [...new Map(state.captures.map(c => [c.uid, { uid: c.uid }])).values()];
+      return rows([{ total: inventory.length, inventory }]);
+    }
     if (sql.includes("FROM platform_devices WHERE id=")) return rows(values[0] === state.device.id ? [{ ...state.device }] : []);
     if (sql.includes("SELECT metadata FROM audit_logs WHERE module='Devices'")) return rows(state.binding ? [{ metadata: state.binding }] : []);
     if (sql.includes("JOIN app_users")) return rows(state.ownerActive ? [{}] : []);
@@ -43,7 +48,7 @@ vi.mock("../middlewares/auth", () => {
 });
 import router, { ownerUidIngestionRouter } from "./owner-uid-reader";
 import platformRouter from "./platform";
-import { assertNotOwnerReader, attendanceCardUidSql, parseOwnerUidEvent } from "../services/owner-uid-reader";
+import { assertNotOwnerReader, attendanceCardUidSql, parseOwnerUidEvent, ownerCredentialVersion } from "../services/owner-uid-reader";
 import { pool } from "@workspace/db";
 
 let server: ReturnType<ReturnType<typeof express>["listen"]>, base = "";
@@ -80,6 +85,37 @@ describe("Owner UID-only reader lifecycle (mock persistence, no real events)", (
     expect(state.device.schoolId).toBeNull();
     expect(state.binding.secretHash).toBe(createHash("sha256").update(r.body.credential.split(".")[1]).digest("hex"));
     expect(JSON.stringify(state.binding)).not.toContain(r.body.credential);
+    expect(r.body.configuration).toMatchObject({ endpointPath: "/api/v1/owner-reader/uid-events",
+      authenticationHeader: "Authorization", authenticationScheme: "Bearer", deviceId: "EDUCORE01" });
+    expect(r.body.credentialVersion).toBe(ownerCredentialVersion(state.binding));
+  });
+  it("rotates the exact Owner binding key without releasing ownership and rejects the old key", async () => {
+    const original = (await bind()).body;
+    const rotated = await post("/platform/devices/1/owner-reader/credential", {
+      reason: "Repair terminal key mismatch", confirm: true, expectedCredentialVersion: original.credentialVersion,
+    });
+    expect(rotated.status).toBe(200);
+    expect(rotated.body.credential).not.toBe(original.credential);
+    expect(state.binding.ownerUserId).toBe(77);
+    expect(rotated.body.configuration.deviceId).toBe("EDUCORE01");
+    expect((await post("/v1/owner-reader/uid-events", scan(), original.credential)).status).toBe(401);
+    expect((await post("/v1/owner-reader/uid-events", scan(), rotated.body.credential)).status).toBe(200);
+    expect((await post("/platform/devices/1/owner-reader/credential", {
+      reason: "Stale form", confirm: true, expectedCredentialVersion: original.credentialVersion,
+    })).status).toBe(409);
+  });
+  it("refuses cross-Owner rotation, missing confirmation and a school-bound reader", async () => {
+    const original = (await bind()).body;
+    const request = { reason: "Repair key mismatch", expectedCredentialVersion: original.credentialVersion };
+    expect((await post("/platform/devices/1/owner-reader/credential", request)).status).toBe(400);
+    state.binding.ownerUserId = 88;
+    expect((await post("/platform/devices/1/owner-reader/credential", { ...request, confirm: true })).status).toBe(403);
+    state.device.schoolId = 3;
+    expect((await post("/platform/devices/1/owner-reader/credential", { ...request, confirm: true })).status).toBe(409);
+  });
+  it.each([{ page: '0' }, { pageSize: '501' }, { status: 'fake' }, { deviceId: '-1' }, { q: 'x'.repeat(129) }])("rejects malformed inventory filters %j", async query => {
+    const response = await fetch(`${base}/platform/uid-inventory?${new URLSearchParams(Object.entries(query) as [string, string][])}`);
+    expect(response.status).toBe(400);
   });
   it("accepts a UID report only into inventory, preserves duplicate identity, never dispatches attendance", async () => {
     const { body } = await bind(), event = scan();
@@ -208,6 +244,9 @@ describe("Owner UID-only reader lifecycle (mock persistence, no real events)", (
     state.role = role;
     expect((await bind()).status).toBe(403);
     expect((await fetch(`${base}/platform/uid-inventory`)).status).toBe(403);
+    expect((await post("/platform/devices/1/owner-reader/credential", {
+      reason: "Not an Owner", confirm: true, expectedCredentialVersion: "1234567890abcdef",
+    })).status).toBe(403);
   });
   it("rejects credentials for another device, mismatched IDs, deactivated hardware or revoked Owner authority", async () => {
     const { body } = await bind();
@@ -229,6 +268,16 @@ describe("Owner UID-only reader lifecycle (mock persistence, no real events)", (
     expect((await bind()).status).toBe(409);
     expect((await post("/platform/devices/1/owner-reader/unlink", {})).status).toBe(400);
     expect(state.binding.status).toBe("ACTIVE");
+  });
+});
+describe("Owner firmware route and browser-auth isolation", () => {
+  it("mounts the exact v1 Owner callback before Clerk and human API routers", () => {
+    const app = readFileSync(new URL("../app.ts", import.meta.url), "utf8");
+    const ownerMount = app.indexOf('app.use("/api", ownerUidIngestionRouter)');
+    const browserMount = app.indexOf("clerkMiddleware((req)");
+    expect(ownerMount).toBeGreaterThan(0);
+    expect(browserMount).toBeGreaterThan(ownerMount);
+    expect(app.indexOf('app.use("/api", router)')).toBeGreaterThan(browserMount);
   });
 });
 describe("historical attendance card UID selection", () => {

@@ -15,7 +15,8 @@ export function inventoryFilters(query: Record<string, unknown>) {
     throw new AuthError(400, "Search must contain at most 128 characters");
   }
   const status = query.status ?? null;
-  if (status !== null && !["UNKNOWN_UNASSIGNED", "ASSIGNED", "RESERVED", "DUPLICATE"].includes(String(status))) {
+  if (status !== null && (typeof status !== "string" ||
+      !["UNKNOWN_UNASSIGNED", "ASSIGNED", "RESERVED", "DUPLICATE"].includes(status))) {
     throw new AuthError(400, "Invalid capture status");
   }
   return { q: String(query.q ?? "").trim(), status,

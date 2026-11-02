@@ -4,11 +4,18 @@ import { customFetch, getListPlatformDevicesQueryKey, useUpdatePlatformDevice } 
 import { Radio } from 'lucide-react';
 import { Button, EmptyState, Field, date } from '@/components/shared';
 import { AssignUidModal } from '@/components/uid-actions';
+import { OwnerReaderProvisioning } from '@/components/owner-reader-provisioning';
+import { Link } from 'wouter';
+import { Modal } from '@/components/shared';
 
 export type UidInventory = {
   readers: { deviceId: number; serialNumber: string; name: string; ownerUserId: number; lastReadAt: string | null;
-    lastSeenAt?: string | null; lastReport?: ReaderReport | null; lastScan?: ReaderReport | null }[];
-  inventory: { uid: string; readerDeviceId: number; capturedAt: string; assigned: boolean; schoolId: number | null; studentId: number | null; status: string | null }[];
+    lastSeenAt?: string | null; lastReport?: ReaderReport | null; lastScan?: ReaderReport | null; credentialVersion?: string;
+    lastFailure?: ReaderReport | null; lastFailureAt?: string | null }[];
+  inventory: { uid: string; readerDeviceId: number; capturedAt: string; assigned: boolean; schoolId: number | null; studentId: number | null; status: string | null;
+    rawUid?: string; firstSeenAt?: string; lastSeenAt?: string; scanCount?: number; duplicate?: boolean;
+    captureStatus?: string; deviceName?: string | null; serialNumber?: string | null }[];
+  total?: number; page?: number; pageSize?: number;
 };
 
 type ReaderReport = { uid: string | null; rawUid?: string | null; scanStatus: string; duplicateUid?: boolean };
@@ -32,7 +39,7 @@ export function readerConnection(reader: UidInventory['readers'][number], now = 
     : 'Authenticated reader connected';
 }
 
-function CopyUid({ uid }: { uid: string }) {
+export function CopyUid({ uid }: { uid: string }) {
   const [message, setMessage] = useState('');
   async function copy() {
     try {
@@ -53,21 +60,23 @@ export function useUidInventory() {
   return useQuery({
     queryKey: uidInventoryKey,
     queryFn: () => customFetch<UidInventory>('/api/platform/uid-inventory'),
-    refetchInterval: 10_000,
+    refetchInterval: 3_000,
   });
 }
 
 const errText = 'text-sm font-medium text-[hsl(var(--destructive))]';
 
-export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typeof useUidInventory> }) {
+export function OwnerUidReaderSection({ inventory, showInventory = true }: { inventory: ReturnType<typeof useUidInventory>; showInventory?: boolean }) {
   const { data, isLoading, isError, refetch } = inventory;
   const readers = data?.readers ?? [];
   const uids = data?.inventory ?? [];
   const [assign, setAssign] = useState<string | null>(null);
   const [unlink, setUnlink] = useState<UidInventory['readers'][number] | null>(null);
+  const [repair, setRepair] = useState<UidInventory['readers'][number] | null>(null);
   return (
     <section className="mb-8" data-testid="section-owner-uid-readers">
       <h2 className="display-font text-xl font-bold">Owner UID reader</h2>
+      <Link href="/card-uid-inventory" className="my-2 inline-block text-sm font-bold underline">Open Card UID Inventory</Link>
       <p className="mb-3 text-sm text-[hsl(var(--muted-foreground))]">Inventory hardware bound to you for capturing permanent card UIDs. It never records school attendance.</p>
       <p className="mb-3 text-sm">Present any compatible card, including an unknown, unassigned, locked or retired card. A successful read saves its UID to platform inventory only; it does not assign, activate, charge or unlock a card.</p>
       <div className="panel mb-3 p-4 text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">
@@ -85,8 +94,11 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
                   <div className="text-sm font-bold">{r.name}</div>
                   <div className="font-mono text-xs text-[hsl(var(--muted-foreground))]">{r.serialNumber} · Device ID {r.deviceId}</div>
                   <div className="mt-1 text-xs" role="status">{readerConnection(r)}</div>
-                  {r.lastReadAt && <div className="text-xs">Last authenticated read: {date(r.lastReadAt)}</div>}
+                  {r.lastReadAt && <div className="text-xs">Last authenticated read: {new Date(r.lastReadAt).toLocaleString('en-NG')}</div>}
                   {r.lastReport && <p className="mt-2 text-sm" role="status">{scanLabels[r.lastReport.scanStatus] ?? 'Authenticated reader report received'}</p>}
+                  {r.lastFailure && <p className="mt-2 text-xs text-[hsl(var(--destructive))]">
+                    Last failed scan{r.lastFailureAt ? ` (${new Date(r.lastFailureAt).toLocaleString('en-NG')})` : ''}: {scanLabels[r.lastFailure.scanStatus] ?? 'Reader error'}. Retained independently of heartbeats.
+                  </p>}
                   {r.lastScan?.uid && <div className="mt-3 space-y-2" aria-live="polite">
                     <p className="text-xs">Latest captured UID — retained even if the next scan fails</p>
                     <p className="select-all break-all font-mono text-2xl font-bold">{r.lastScan.rawUid ?? r.lastScan.uid}</p>
@@ -95,12 +107,15 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
                     <CopyUid uid={r.lastScan.rawUid ?? r.lastScan.uid} />
                   </div>}
                 </div>
-                <Button variant="outline" onClick={() => setUnlink(r)}>Release reader</Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" disabled={!r.credentialVersion} onClick={() => setRepair(r)}>Repair / rotate Owner credential</Button>
+                  <Button variant="outline" onClick={() => setUnlink(r)}>Release reader</Button>
+                </div>
               </div>
             )) : <EmptyState icon={Radio} title="No Owner UID reader bound" description="Use “Use as UID reader” on an unassigned NFC or Hybrid device." />}
           </div>
-          <div className="panel overflow-hidden">
-            <div className="border-b border-[hsl(var(--border))] px-5 py-3 text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Reader-reported UIDs · refreshes every 10s</div>
+          {showInventory && <div className="panel overflow-hidden">
+            <div className="border-b border-[hsl(var(--border))] px-5 py-3 text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Card UID Inventory · refreshes every 3s</div>
             {uids.length ? uids.map(u => {
               const reader = readers.find(r => r.deviceId === u.readerDeviceId);
               return (
@@ -113,10 +128,14 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
                 </div>
               );
             }) : <p className="px-5 py-6 text-sm text-[hsl(var(--muted-foreground))]">Waiting for authenticated reader. Captured UIDs appear only when hardware reports them.</p>}
-          </div>
+            <Link href="/card-uid-inventory" className="inline-block px-5 py-3 text-sm font-bold underline">Search and view all captured UIDs ({data?.total ?? uids.length})</Link>
+          </div>}
         </>
       )}
       {assign && <AssignUidModal uid={assign} onClose={() => setAssign(null)} />}
+      {repair && <Modal title="Repair Owner reader authentication" eyebrow={repair.serialNumber} onClose={() => setRepair(null)}>
+        <OwnerReaderProvisioning device={{ id: repair.deviceId, name: repair.name }} credentialVersion={repair.credentialVersion} onCancel={() => setRepair(null)} onDone={() => setRepair(null)} />
+      </Modal>}
       {unlink && <ReasonConfirm
         title={`Release ${unlink.name}`}
         warning="This releases the Owner reader context and revokes its credential immediately."
@@ -156,38 +175,7 @@ export function ReasonConfirm({ title, warning, confirmLabel, path, onCancel, on
 }
 
 export function BindOwnerReaderForm({ device, onCancel, onDone }: { device: { id: number; name: string }; onCancel: () => void; onDone: () => void }) {
-  const qc = useQueryClient();
-  const [reason, setReason] = useState('');
-  const [credential, setCredential] = useState<string | null>(null);
-  const m = useMutation({
-    mutationFn: () => customFetch<{ deviceId: number; purpose: string; credential: string }>(`/api/platform/devices/${device.id}/owner-reader`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: reason.trim() }) }),
-    onSuccess: async r => {
-      setCredential(r.credential);
-      await Promise.all([qc.invalidateQueries({ queryKey: getListPlatformDevicesQueryKey() }), qc.invalidateQueries({ queryKey: uidInventoryKey })]);
-    },
-  });
-  if (credential) return (
-    <div className="space-y-3">
-      <p className="text-sm font-bold">Owner reader credential — shown once</p>
-      <p className="text-xs text-[hsl(var(--muted-foreground))]">Copy it now and load it into the device firmware. It cannot be retrieved again and is not stored in this browser.</p>
-      <input aria-label="One-time owner reader credential" readOnly className="font-mono text-xs" value={credential} onFocus={e => e.currentTarget.select()} />
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => void navigator.clipboard?.writeText(credential)}>Copy</Button>
-        <Button onClick={() => { setCredential(null); onDone(); }}>Done</Button>
-      </div>
-    </div>
-  );
-  return (
-    <form className="space-y-4" onSubmit={e => { e.preventDefault(); m.mutate(); }}>
-      <p className="text-sm">Bind <strong>{device.name}</strong> as your Owner UID reader. It will stop being available for school assignment and cannot submit attendance.</p>
-      <Field label="Reason (required, min 3 characters)"><textarea required minLength={3} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-reason" /></Field>
-      {m.isError && <p role="alert" className={errText}>Could not bind this device. Only unassigned NFC or Hybrid devices qualify.</p>}
-      <div className="flex justify-end gap-3 border-t border-[hsl(var(--border))] pt-4">
-        <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={m.isPending || reason.trim().length < 3}>{m.isPending ? 'Binding…' : 'Bind as UID reader'}</Button>
-      </div>
-    </form>
-  );
+  return <OwnerReaderProvisioning device={device} onCancel={onCancel} onDone={onDone} />;
 }
 
 /** Unlink a school device via existing PATCH; credential handling is untouched. */

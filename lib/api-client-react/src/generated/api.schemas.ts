@@ -14043,6 +14043,13 @@ export interface OwnerUidRead {
 /**
  * @nullable
  */
+export type OwnerUidReaderLastFailure = {
+  scanStatus?: string;
+} | null;
+
+/**
+ * @nullable
+ */
 export type OwnerUidReaderLastReport = {
   scanStatus?: string;
   /** @nullable */
@@ -14073,6 +14080,10 @@ export interface OwnerUidReader {
   credentialVersion?: string;
   /** @nullable */
   lastSeenAt?: string | null;
+  /** @nullable */
+  lastFailureAt?: string | null;
+  /** @nullable */
+  lastFailure?: OwnerUidReaderLastFailure;
   /** @nullable */
   lastReport?: OwnerUidReaderLastReport;
   /** @nullable */

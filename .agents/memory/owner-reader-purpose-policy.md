@@ -33,6 +33,20 @@ unsupported scans, and connectivity errors. Preserve the latest valid UID across
 subsequent failures and maintain trusted-device authentication for diagnostics.
 Never claim a physical hardware fix or acceptance without firmware/device evidence.
 
+The Owner expects a clearly named, independently discoverable Card UID Inventory,
+including successful captures made before student assignment. A list hidden beneath
+device setup or absent until the first scan does not meet that requirement.
+
+**Why:** The user repeated that the terminal displays a UID but the Owner cannot
+find an inventory section. They also reported "HTTP 401 - retained"; a displayed
+physical UID does not prove successful authenticated platform delivery.
+
+**How to apply:** Keep inventory discoverable in Owner navigation and in reader
+setup, with explicit empty/error states. Pair the exact device identity, dedicated
+Owner key, Bearer scheme and versioned callback during provisioning/recovery.
+Treat screenshot-only 401 evidence as insufficient to identify the exact wire
+request or to authorize live credential rotation, publishing or physical tests.
+
 Captured UID inventory must have a complete Owner-confirmed assignment path, not
 just a read-only list. Only an available reader-captured UID may be selected in
 that path. Lost/damaged replacement requires explicit old-UID revocation and the
