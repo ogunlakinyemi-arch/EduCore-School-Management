@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { Router, type NextFunction, type Request } from "express";
 import { pool } from "@workspace/db";
+import { reusableEmployeeBindingSql } from "../services/owner-card-detach";
 import { assertSubscriptionAccess } from "../services/subscription-enforcement";
 import { joinSecurityAttendance, recordAuthenticatedNfcDenial } from "../services/security-attendance-integration";
 import {
@@ -209,7 +210,7 @@ async function employeeCardView(db: DbClient, schoolId: number, employeeId: numb
                 c.scans,c.activated_at AS "activatedAt"
            FROM employee_nfc_card_bindings b
            JOIN nfc_cards c ON c.id=b.nfc_card_id AND c.school_id=b.school_id
-          WHERE b.employee_id=e.id AND b.school_id=e.school_id
+          WHERE b.employee_id=e.id AND b.school_id=e.school_id AND c.status<>'unassigned'
           ORDER BY CASE WHEN b.status IN ('ASSIGNED','ACTIVE','LOCKED') THEN 0 ELSE 1 END,
                    b.id DESC
           LIMIT 1
@@ -386,7 +387,7 @@ router.get("/schools/:schoolId/employee-nfc/cards", run(async (req, res) => {
          SELECT b.status AS "bindingStatus",c.status AS "cardStatus"
            FROM employee_nfc_card_bindings b
            JOIN nfc_cards c ON c.id=b.nfc_card_id AND c.school_id=b.school_id
-          WHERE b.employee_id=e.id AND b.school_id=e.school_id
+          WHERE b.employee_id=e.id AND b.school_id=e.school_id AND c.status<>'unassigned'
           ORDER BY CASE WHEN b.status IN ('ASSIGNED','ACTIVE','LOCKED') THEN 0 ELSE 1 END,
                    b.id DESC
           LIMIT 1
@@ -471,9 +472,7 @@ router.post("/schools/:schoolId/employee-nfc/cards/assign", run(async (req, res)
       throw new AuthError(409, "Only a prepared, unassigned NFC card may be assigned");
     }
     const binding = await client.query(
-      `INSERT INTO employee_nfc_card_bindings(school_id,nfc_card_id,employee_id,status,created_by_user_id)
-       VALUES($1,$2,$3,'ASSIGNED',$4)
-       RETURNING id`,
+      reusableEmployeeBindingSql,
       [schoolId, card.rows[0].id, employeeId, context.user.id],
     );
     if (!binding.rows[0]) throw new AuthError(409, "Could not assign the employee NFC card");
@@ -749,7 +748,7 @@ async function getEmployeeNfcIdentity(
                 c.scans,c.activated_at AS "activatedAt"
            FROM employee_nfc_card_bindings b
            JOIN nfc_cards c ON c.id=b.nfc_card_id AND c.school_id=b.school_id
-          WHERE b.employee_id=e.id AND b.school_id=e.school_id
+          WHERE b.employee_id=e.id AND b.school_id=e.school_id AND c.status<>'unassigned'
           ORDER BY CASE WHEN b.status IN ('ASSIGNED','ACTIVE','LOCKED') THEN 0 ELSE 1 END,
                    b.id DESC
           LIMIT 1

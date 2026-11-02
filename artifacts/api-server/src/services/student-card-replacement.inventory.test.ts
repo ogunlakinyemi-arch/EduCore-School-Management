@@ -12,6 +12,9 @@ vi.mock("@workspace/db",()=>{
     if(sql.includes("FROM schools"))return rows([{id:2}]);
     if(sql.includes("FROM platform_devices"))return rows([{id:7}]);
     if(sql.includes("SELECT id FROM students"))return rows([{id:3}]);
+    // This fixture supplies existing, verified NFC entitlement independently of
+    // the replacement invoice evidence under test. Keep both production gates.
+    if(sql.includes("AS nfc_payment_verified"))return rows([{nfc_payment_verified:true}]);
     if(sql.includes("SELECT id FROM audit_logs"))return rows(state.captured?[{id:10}]:[]);
     if(sql.includes("SELECT id FROM nfc_cards WHERE lower"))return rows(state.reserved?[{id:20}]:[]);
     if(sql.includes("INSERT INTO nfc_cards")){state.created=true;return rows([{id:9,uid:"11223344",school_id:2}]);}

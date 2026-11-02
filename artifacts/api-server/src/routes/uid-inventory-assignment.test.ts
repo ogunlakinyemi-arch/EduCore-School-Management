@@ -1,7 +1,8 @@
 import express from "express";
 import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from "vitest";
 const state=vi.hoisted(()=>({role:"PLATFORM_OWNER",card:{id:5,school_id:2,student_id:3 as number|null,uid:"AABBCCDD",status:"active",replaced_by_card_id:null as number|null}}));
-const mocks=vi.hoisted(()=>({assign:vi.fn(),revoke:vi.fn(),request:vi.fn(),issue:vi.fn()}));
+const mocks=vi.hoisted(()=>({assign:vi.fn(),revoke:vi.fn(),request:vi.fn(),issue:vi.fn(),detach:vi.fn()}));
+vi.mock("../services/owner-card-detach",()=>({detachOwnerCard:mocks.detach}));
 vi.mock("@workspace/db",()=>({pool:{query:async()=>({rows:[state.card]})}}));
 vi.mock("../middlewares/auth",()=>({
   AuthError:class extends Error{constructor(public statusCode:number,message:string){super(message);}},
@@ -27,6 +28,23 @@ beforeEach(()=>{
 });
 const post=(path:string,body:unknown)=>fetch(base+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
 describe("Owner confirmed UID assignment/replacement API",()=>{
+  it("dispatches ordinary detachment separately without loss or replacement",async()=>{
+    mocks.detach.mockResolvedValue({detached:true,status:"unassigned"});
+    const body={kind:"DETACH",schoolId:2,personType:"STUDENT",personId:3,reason:"Returned card",confirm:true};
+    const r=await post("/platform/uid-inventory/cards/5/unlink",body);
+    expect(r.status).toBe(200);expect(await r.json()).toMatchObject({detached:true,status:"unassigned"});
+    expect(mocks.detach).toHaveBeenCalledWith(expect.anything(),5,body);
+    expect(mocks.revoke).not.toHaveBeenCalled();expect(mocks.request).not.toHaveBeenCalled();
+  });
+  it.each(["SCHOOL_ADMIN","TEACHER","STAFF","PARENT","STUDENT","PARTNER"])("denies %s ordinary detachment",async role=>{
+    state.role=role;
+    expect((await post("/platform/uid-inventory/cards/5/unlink",{kind:"DETACH",schoolId:2,personType:"STUDENT",personId:3,reason:"Correction",confirm:true})).status).toBe(403);
+    expect(mocks.detach).not.toHaveBeenCalled();
+  });
+  it.each([{confirm:false},{reason:" "},{personId:undefined},{schoolId:undefined},{personType:"OWNER"}])("rejects invalid detach confirmation or person %j",async override=>{
+    expect((await post("/platform/uid-inventory/cards/5/unlink",{kind:"DETACH",schoolId:2,personType:"STUDENT",personId:3,reason:"Correction",confirm:true,...override})).status).toBe(400);
+    expect(mocks.detach).not.toHaveBeenCalled();
+  });
   it("requires confirmation before assignment",async()=>{
     expect((await post("/platform/uid-inventory/assign",{uid:"AABBCCDD",schoolId:2,studentId:3})).status).toBe(400);
     expect(mocks.assign).not.toHaveBeenCalled();

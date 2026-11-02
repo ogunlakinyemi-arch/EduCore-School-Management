@@ -602,6 +602,7 @@ import type {
   OwnerAttendanceClass,
   OwnerAttendanceReport,
   OwnerBankCreditConfirmation,
+  OwnerCardUnlinkInput,
   OwnerHardwareCorrectionInput,
   OwnerPaymentAssistanceInput,
   OwnerPaymentAssistanceResult,
@@ -934,7 +935,6 @@ import type {
   TransportStudentOption,
   TransportTermInvoiceGeneration,
   UnauthenticatedResponse,
-  UnlinkCardForCapturedReplacementBody,
   UnlinkTelegram200,
   UpdateAcademicAssessmentParams,
   UpdateAcademicAssignmentParams,
@@ -2178,10 +2178,10 @@ export const getUnlinkCardForCapturedReplacementUrl = (cardId: number,) => {
 }
 
 /**
- * @summary Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+ * @summary Owner confirms ordinary card detachment or existing lost/damaged revocation
  */
 export const unlinkCardForCapturedReplacement = async (cardId: number,
-    unlinkCardForCapturedReplacementBody: UnlinkCardForCapturedReplacementBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+    ownerCardUnlinkInput: OwnerCardUnlinkInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -2202,7 +2202,7 @@ return customFetch<void>(getUnlinkCardForCapturedReplacementUrl(cardId),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(unlinkCardForCapturedReplacementBody)
+    body: JSON.stringify(ownerCardUnlinkInput)
   }
 );}
 
@@ -2240,12 +2240,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type UnlinkCardForCapturedReplacementMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>>
-    export type UnlinkCardForCapturedReplacementMutationBody = BodyType<UnlinkCardForCapturedReplacementBody>
+    export type UnlinkCardForCapturedReplacementMutationBody = BodyType<OwnerCardUnlinkInput>
     export type UnlinkCardForCapturedReplacementMutationError = ErrorType<void>
-    export type UnlinkCardForCapturedReplacementMutationVariables = {cardId: number;data: BodyType<UnlinkCardForCapturedReplacementBody>}
+    export type UnlinkCardForCapturedReplacementMutationVariables = {cardId: number;data: BodyType<OwnerCardUnlinkInput>}
 
     /**
- * @summary Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+ * @summary Owner confirms ordinary card detachment or existing lost/damaged revocation
  */
 export const useUnlinkCardForCapturedReplacement = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkCardForCapturedReplacement>>, TError,UnlinkCardForCapturedReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

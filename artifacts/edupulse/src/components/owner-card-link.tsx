@@ -7,6 +7,7 @@ import {
 } from '@workspace/api-client-react';
 import { Button, Field, Info, StatusPill } from '@/components/shared';
 import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
+import { OwnerDetachCard } from '@/components/owner-detach-card';
 import {
   buildLinkRequest, scopedCardsParams, validSchoolId, employeeMatchesType, findCurrentCard, linkErrorMessage, personDetails, personName, accountStatus,
   type LinkPersonType, type Person,
@@ -141,6 +142,9 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
           </Field>
           {!isStudent && <p className="text-xs text-[hsl(var(--muted-foreground))]">Card status, history and replacement are managed on <Link href="/employee-nfc" className="underline">Employee NFC</Link>.</p>}
           {card && <p className="text-xs text-[hsl(var(--muted-foreground))]">This person already has a card; the server decides whether linking another is allowed.</p>}
+          {card && <OwnerDetachCard key={`${schoolId}:${type}:${person.id}:${card.id}`} schoolId={schoolId} personId={person.id}
+            personType={type} personName={personName(person)} card={card as {id:number;uid:string;status:string}}
+            onDetached={() => { setUid('');setErr('');setPrintedAssignment(null);setMsg(`Card unlinked from ${personName(person)}. Inventory and history preserved.`);onDone?.(); }} />}
         </>
       )}
       {msg && <p role="status" className="text-sm font-semibold text-emerald-600" data-testid="link-success">{msg}</p>}

@@ -55,6 +55,7 @@
 - [Termly school enforcement policy](termly-school-enforcement-policy.md) — seven-day term grace, reversible independent locks, verified restoration, and child-school isolation.
 - [Parent relationship semantics](parent-relationship-semantics.md) — save profile defaults without replacing authoritative relationships for existing linked children.
 - [Card replacement policy](student-card-replacement-policy.md) — Student/Teacher/Staff NGN 2,000 replacements; School Admin pays employee requests, Owner issues, old UID stays revoked.
+- [Ordinary card unlink](ordinary-card-unlink-policy.md) — confirmed Owner detachment is not loss/replacement; preserve history and same-UID assignment safeguards.
 - [Academic API boundaries](academic-api-boundaries.md) — DTO fixtures, full assignment eligibility, date/remark boundaries and genuine School Admin timetable acceptance.
 - [Assessment provenance](assessment-provenance.md) — an administrator can create a teacher-owned assessment; instructional ownership is not audit authorship.
 - [Cold workflow restarts](cold-workflow-restarts.md) — inspect unfinished cold builds before changing valid managed ports; bounded longer deadlines can resolve startup timeouts.

@@ -214,7 +214,7 @@ capturedCardUnlink:
   post:
     operationId: unlinkCardForCapturedReplacement
     tags: [platform]
-    summary: Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+    summary: Owner confirms ordinary card detachment or existing lost/damaged revocation
     parameters:
       - { name: cardId, in: path, required: true, schema: { type: integer, minimum: 1 } }
     requestBody:
@@ -222,14 +222,9 @@ capturedCardUnlink:
       content:
         application/json:
           schema:
-            type: object
-            required: [kind, reason, confirm]
-            properties:
-              kind: { type: string, enum: [LOST, DAMAGED] }
-              reason: { type: string, minLength: 3, maxLength: 480 }
-              confirm: { type: boolean, enum: [true] }
+            $ref: '#/components/schemas/OwnerCardUnlinkInput'
     responses:
-      "200": { description: "Existing replacement request/invoice, or employee revocation with requiresSchoolAdminRequest true" }
+      "200": { description: "DETACH returns cardId, schoolId, uid, detached true and status unassigned without replacement. LOST/DAMAGED retains existing replacement behavior." }
       "409": { description: Card cannot be replaced; revocation may already have committed before invoice failure }
 capturedReplacementIssue:
   post:
@@ -314,6 +309,17 @@ components:
       scheme: bearer
       description: Dedicated Owner UID-reader device credential, revoked on unlink.
   schemas:
+    OwnerCardUnlinkInput:
+      type: object
+      required: [kind, reason, confirm]
+      description: DETACH additionally requires schoolId, personId and personType to protect against stale selected-person state.
+      properties:
+        kind: { type: string, enum: [LOST, DAMAGED, DETACH] }
+        reason: { type: string, minLength: 3, maxLength: 480 }
+        confirm: { type: boolean, enum: [true] }
+        schoolId: { type: integer, minimum: 1 }
+        personId: { type: integer, minimum: 1 }
+        personType: { type: string, enum: [STUDENT, TEACHER, STAFF] }
     OwnerHardwareIdentity:
       type: object
       required: [deviceId, serialNumber, status]

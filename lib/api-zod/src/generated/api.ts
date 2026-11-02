@@ -423,7 +423,7 @@ export const AssignCapturedUidToStudentResponse = zod.object({
 
 
 /**
- * @summary Owner explicitly revokes lost/damaged UID before replacement selection; never bypasses payment
+ * @summary Owner confirms ordinary card detachment or existing lost/damaged revocation
  */
 
 
@@ -437,11 +437,16 @@ export const unlinkCardForCapturedReplacementBodyReasonMax = 480;
 
 
 
+
+
 export const UnlinkCardForCapturedReplacementBody = zod.object({
-  "kind": zod.enum(['LOST', 'DAMAGED']),
+  "kind": zod.enum(['LOST', 'DAMAGED', 'DETACH']),
   "reason": zod.string().min(unlinkCardForCapturedReplacementBodyReasonMin).max(unlinkCardForCapturedReplacementBodyReasonMax),
-  "confirm": zod.literal(true)
-})
+  "confirm": zod.literal(true),
+  "schoolId": zod.number().int().min(1).optional(),
+  "personId": zod.number().int().min(1).optional(),
+  "personType": zod.enum(['STUDENT', 'TEACHER', 'STAFF']).optional()
+}).describe('DETACH additionally requires schoolId, personId and personType to protect against stale selected-person state.')
 
 export const UnlinkCardForCapturedReplacementResponse = zod.unknown()
 

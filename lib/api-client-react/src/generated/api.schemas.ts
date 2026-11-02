@@ -13950,6 +13950,42 @@ export interface LiveAllocationReviewInput {
   source: LiveAllocationReviewInputSource;
 }
 
+export type OwnerCardUnlinkInputKind = typeof OwnerCardUnlinkInputKind[keyof typeof OwnerCardUnlinkInputKind];
+
+
+export const OwnerCardUnlinkInputKind = {
+  LOST: 'LOST',
+  DAMAGED: 'DAMAGED',
+  DETACH: 'DETACH',
+} as const;
+
+export type OwnerCardUnlinkInputPersonType = typeof OwnerCardUnlinkInputPersonType[keyof typeof OwnerCardUnlinkInputPersonType];
+
+
+export const OwnerCardUnlinkInputPersonType = {
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+/**
+ * DETACH additionally requires schoolId, personId and personType to protect against stale selected-person state.
+ */
+export interface OwnerCardUnlinkInput {
+  kind: OwnerCardUnlinkInputKind;
+  /**
+     * @minLength 3
+     * @maxLength 480
+     */
+  reason: string;
+  confirm: true;
+  /** @minimum 1 */
+  schoolId?: number;
+  /** @minimum 1 */
+  personId?: number;
+  personType?: OwnerCardUnlinkInputPersonType;
+}
+
 export interface OwnerHardwareIdentity {
   deviceId: number;
   /** Empty only on the retained inactive historical Device 4 after this exact correction. */
@@ -24180,24 +24216,6 @@ export type AssignCapturedUidToStudent201 = {
   schoolId: number;
   studentId: number;
   status: AssignCapturedUidToStudent201Status;
-};
-
-export type UnlinkCardForCapturedReplacementBodyKind = typeof UnlinkCardForCapturedReplacementBodyKind[keyof typeof UnlinkCardForCapturedReplacementBodyKind];
-
-
-export const UnlinkCardForCapturedReplacementBodyKind = {
-  LOST: 'LOST',
-  DAMAGED: 'DAMAGED',
-} as const;
-
-export type UnlinkCardForCapturedReplacementBody = {
-  kind: UnlinkCardForCapturedReplacementBodyKind;
-  /**
-     * @minLength 3
-     * @maxLength 480
-     */
-  reason: string;
-  confirm: true;
 };
 
 export type IssueCapturedUidReplacementBody = {

@@ -6,10 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type UnlinkCardForCapturedReplacementBodyKind = typeof UnlinkCardForCapturedReplacementBodyKind[keyof typeof UnlinkCardForCapturedReplacementBodyKind];
+export type OwnerCardUnlinkInputKind = typeof OwnerCardUnlinkInputKind[keyof typeof OwnerCardUnlinkInputKind];
 
 
-export const UnlinkCardForCapturedReplacementBodyKind = {
+export const OwnerCardUnlinkInputKind = {
   LOST: 'LOST',
   DAMAGED: 'DAMAGED',
+  DETACH: 'DETACH',
 } as const;

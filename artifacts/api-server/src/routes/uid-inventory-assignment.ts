@@ -5,6 +5,7 @@ import { assertRoles, requireAuthentication, AuthError, getUserContext } from ".
 import { assignCapturedUid } from "../services/uid-inventory-assignment";
 import { issueReplacement, requestReplacement } from "../services/student-card-replacement";
 import { markSecurityCardLost } from "../services/school-security-core-service";
+import { detachOwnerCard } from "../services/owner-card-detach";
 
 const router = Router();
 const positive = z.number().int().positive().max(2147483647);
@@ -38,6 +39,11 @@ router.post("/platform/uid-inventory/assign",run(async(req,res)=>{
 router.post("/platform/uid-inventory/cards/:cardId/unlink",run(async(req,res)=>{
   assertRoles(req,["PLATFORM_OWNER"]);
   const cardId=positive.parse(Number(req.params.cardId));
+  if(req.body?.kind==="DETACH") {
+    const b=confirmed.extend({kind:z.literal("DETACH"),reason:z.string().trim().min(3).max(480),
+      schoolId:positive,personId:positive,personType:z.enum(["STUDENT","TEACHER","STAFF"])}).strict().parse(req.body);
+    res.json(await detachOwnerCard(req,cardId,b));return;
+  }
   const b=confirmed.extend({kind:z.enum(["LOST","DAMAGED"]),reason:z.string().trim().min(3).max(480)}).parse(req.body);
   const card=(await pool.query(`SELECT id,school_id,student_id,uid,status,replaced_by_card_id FROM nfc_cards WHERE id=$1`,[cardId])).rows[0];
   if(!card) throw new AuthError(404,"Card not found");
