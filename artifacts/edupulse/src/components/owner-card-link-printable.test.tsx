@@ -127,6 +127,15 @@ describe('OwnerCardLink printable card assignment result', () => {
     expect(host.querySelector('[data-testid="student-card-lifecycle"]')?.getAttribute('data-auto-preview')).toBe('true');
     expect(regMutate).toHaveBeenCalledOnce();
   });
+  it('clears an old successful preview when a later link attempt fails',async()=>{
+    await linkExisting('STUDENT');
+    expect(host.querySelector('[data-testid="student-card-lifecycle"]')).not.toBeNull();
+    regMutate.mockImplementation((_variables:any,options:any)=>options.onError(new Error('Link transaction failed')));
+    await changeValue(host.querySelector('[data-testid="input-link-uid"]')!,'DIFFERENT99');
+    await act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+    expect(host.querySelector('[data-testid="student-card-lifecycle"]')).toBeNull();
+    expect(host.textContent).toContain('Link transaction failed');
+  });
 
   it('automatically displays every linked Device ID as read-only and never submits device IDs',async()=>{
     mocks.useListActivationDevices.mockReturnValue({data:[{id:501,serialNumber:'DEVICE-001'},{id:502,serialNumber:'DEVICE-002'}],isSuccess:true,isFetching:false});

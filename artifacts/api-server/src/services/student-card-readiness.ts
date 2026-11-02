@@ -32,7 +32,8 @@ export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:numb
   const status=String(card.status).toLowerCase();
   const restrictions:Array<{code:string;message:string;resolution:string}>=[];
   const deny=(code:string,message:string,resolution:string)=>restrictions.push({code,message,resolution});
-  if(card.employeeBindings || Number(card.currentCards)!==1)deny("ASSIGNMENT_CONFLICT","The card has conflicting or multiple current assignments.","Owner must review the retained assignment history; do not create another assignment.");
+  if(card.employeeBindings || (["active","locked"].includes(status) && Number(card.currentCards)!==1))
+    deny("ASSIGNMENT_CONFLICT","The card has conflicting or multiple current assignments.","Owner must review the retained assignment history; do not create another assignment.");
   if(String(card.studentStatus).toUpperCase()!=="ACTIVE")deny("STUDENT_INACTIVE","The selected student's account is not ACTIVE.","Resolve the student's account status through the existing school administration workflow.");
   if(String(card.schoolStatus).toUpperCase()!=="ACTIVE")deny("SCHOOL_INACTIVE","The school is not ACTIVE.","Resolve the school restriction through existing Owner school controls.");
   if(card.replacedByCardId!=null || card.replacedAt!=null)deny("CARD_REPLACED","This UID has been replaced and must not be reactivated.","Use the retained replacement request and its new UID.");

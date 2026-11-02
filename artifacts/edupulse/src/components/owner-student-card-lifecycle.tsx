@@ -20,7 +20,7 @@ export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPre
   const [confirmed,setConfirmed]=useState(false);
   const [view,setView]=useState(autoPreview);
   const [success,setSuccess]=useState('');
-  const key=['owner-student-card-readiness',schoolId,studentId,cardId,uid];
+  const key=['owner-student-card-readiness',authorized.data?.user?.id,schoolId,studentId,cardId,uid];
   const query=useGetOwnerStudentCardReadiness(cardId,{schoolId,studentId},{
     query:{enabled:owner,queryKey:key,staleTime:0,refetchOnWindowFocus:true,refetchInterval:15000},
   });
@@ -30,7 +30,7 @@ export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPre
   // Do not present cached printable identities while authoritative eligibility is refreshing.
   const printable=owner && exact && !query.isFetching && !query.isError && data.canPrint;
   const preview=useGetOfficialCardPreview(cardId,{schoolId},{
-    query:{enabled:!!printable && view,queryKey:['owner-linked-card-preview',schoolId,studentId,cardId,uid],
+    query:{enabled:!!printable && view,queryKey:['owner-linked-card-preview',authorized.data?.user?.id,schoolId,studentId,cardId,uid],
       staleTime:0,gcTime:0,refetchOnWindowFocus:true},
   });
   const activate=useUpdateCardStatus();

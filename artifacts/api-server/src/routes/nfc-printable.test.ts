@@ -109,6 +109,22 @@ beforeEach(() => {
 });
 
 describe("GET /cards/:cardId/printable", () => {
+  it("renders the new saved UID after relinking, preserving permanent identity and CR80 dimensions",async()=>{
+    state.snapshot={...studentCard(),cardUid:"11223344"};
+    const response=await fetch(`${baseUrl}/cards/41/printable?schoolId=9`);
+    expect(response.status).toBe(200);
+    const pdf=Buffer.from(await response.arrayBuffer()).toString("latin1");
+    const front=printableFrontText(pdf);
+    expect(front).toContain("11223344");
+    expect(front).toContain("Amina Example");
+    expect(front).toContain("PERM-101");
+    expect(front).not.toContain("04A1B2C3D4E5F6");
+    expect(pdf).toContain("/MediaBox [0 0 242.6457 153.0142]");
+  });
+  it.each([{expiresAt:"2020-01-01"},{replacedAt:"2026-01-01"},{replacedByCardId:51}])("refuses a retired/expired saved identity %j",async restriction=>{
+    state.snapshot={...studentCard(),...restriction};
+    expect((await fetch(`${baseUrl}/cards/41/printable?schoolId=9`)).status).toBe(409);
+  });
   beforeEach(()=>vi.stubEnv("SESSION_SECRET","test-only-id-card-key-not-a-real-secret"));
   afterAll(()=>vi.unstubAllEnvs());
   it.each(["student", "TEACHER", "STAFF"])("embeds the matched %s saved photo in the actual printable PDF renderer", async kind => {

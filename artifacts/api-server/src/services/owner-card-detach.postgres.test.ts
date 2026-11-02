@@ -11,6 +11,9 @@ vi.mock("../middlewares/auth",async original=>{
 });
 import {detachOwnerCard,reusableEmployeeBindingSql} from "./owner-card-detach";
 import {assignAvailableStudentCard} from "./student-card-assignment";
+import {studentNfcCardLookupSql} from "../lib/nfc-device-first";
+import {scanReason} from "./nfc-scan-audit";
+import {AuthError} from "../middlewares/auth";
 const socket=process.env.OWNER_DETACH_TEST_SOCKET;
 describe.skipIf(!socket)("ordinary card detach on disposable PostgreSQL",()=>{
   let db:Pool;
@@ -116,6 +119,35 @@ describe.skipIf(!socket)("ordinary card detach on disposable PostgreSQL",()=>{
     } finally {client.release();}
     expect((await db.query("SELECT * FROM attendance_events")).rows).toEqual(original);
     expect((await db.query("SELECT count(*) FROM nfc_cards")).rows[0].count).toBe("1");
+  });
+  it("unlink then different UID creates independent staged status without inheriting scan or activation state",async()=>{
+    await db.query(`UPDATE nfc_cards SET status='locked';
+      INSERT INTO nfc_card_history(school_id,nfc_card_id,student_id,action,previous_status,new_status,reason)
+      VALUES(2,5,3,'STATUS_CHANGED','active','locked','Original UID security review')`);
+    const original=(await db.query("SELECT * FROM nfc_card_history ORDER BY id")).rows;
+    await detachOwnerCard(req,5,input());
+    const client=await db.connect();
+    let newId:number;
+    try{
+      await client.query("BEGIN");
+      const assigned=await assignAvailableStudentCard(client,{schoolId:2,studentId:3,cardNumber:"11223344"});
+      expect(assigned.card).toMatchObject({studentId:3,uid:"11223344",status:"locked",scans:0,lastScan:null,activatedAt:null});
+      newId=assigned.card.id;
+      expect(newId).not.toBe(5);
+      await client.query(`INSERT INTO nfc_card_history(school_id,nfc_card_id,student_id,action,new_status,actor_user_id)
+        VALUES(2,$1,3,'REGISTERED','locked',9)`,[newId]);
+      await client.query("COMMIT");
+    }finally{client.release();}
+    expect((await db.query("SELECT * FROM nfc_card_history ORDER BY id")).rows.slice(0,2)).toEqual(original);
+    expect((await db.query("SELECT status,student_id FROM nfc_cards WHERE id=5")).rows).toEqual([{status:"unassigned",student_id:null}]);
+    // Exercise the unmodified attendance lookup: registered alone is not eligible.
+    expect((await db.query(studentNfcCardLookupSql,["11223344",2])).rows).toHaveLength(0);
+    expect(scanReason(new AuthError(403,"NFC card is invalid for this student or school"))).toBe("CARD_INELIGIBLE");
+    // Fixture-only transition; routed Owner authorization/payment/audit is tested separately.
+    await db.query("UPDATE nfc_cards SET status='active' WHERE id=$1",[newId!]);
+    expect((await db.query(studentNfcCardLookupSql,["11223344",2])).rows).toMatchObject([{id:newId!,studentId:3}]);
+    expect((await db.query(studentNfcCardLookupSql,["AABBCCDD",2])).rows).toHaveLength(0);
+    expect((await db.query("SELECT student_id,nfc_card_id FROM attendance_events")).rows).toEqual([{student_id:3,nfc_card_id:5}]);
   });
   it.each(["TEACHER","STAFF"] as const)("preserves employee snapshots and allows explicit %s binding reuse without deleting rows",async type=>{
     await db.query("UPDATE employees SET employee_type=$1 WHERE id=7",[type]);

@@ -55,3 +55,15 @@ An active student's current assigned identity can be previewed before the physic
 **Why:** The Owner's assignment-to-view workflow must work while NFC access is still locked; the requested correction explicitly preserves existing printing permissions and unrelated activation behavior.
 
 **How to apply:** Validate the actual current school/person/card relationship, permit read-only viewing independently of activation, and retain revoked/inactive/conflicting-assignment denials. Treat changes to printing eligibility as a separate request.
+
+The automatic **final** Student e-ID in the Owner unlink/relink workflow must
+wait for current activation and eligibility. If blocked, explain the actual
+restriction and its resolution instead of offering printable output. Any
+permitted unlock requires explicit Owner confirmation and an audited reason.
+
+**Why:** The user specifically required the final relink preview not to imply
+that a genuinely locked or ineligible card is ready for printing or scans.
+
+**How to apply:** Keep this final-print stage distinct from existing view-only
+pre-activation previews. Never treat registration, printing or a different UID
+as a substitute for payment, reader, account, expiry or security checks.

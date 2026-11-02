@@ -1722,6 +1722,8 @@ router.patch("/cards/:cardId/status", async (req, res) => {
       newStatus: status,
       reason:activationReason,
       confirmed:activationReason!==null,
+      studentId:result.rows[0].studentId,
+      uid:result.rows[0].uid,
     }, client);
     await client.query("COMMIT");
     res.json({ ...result.rows[0], studentName: null, lastScan: dateString(result.rows[0].lastScan) });

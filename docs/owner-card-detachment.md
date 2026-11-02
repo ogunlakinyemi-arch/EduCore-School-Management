@@ -50,6 +50,20 @@ its existing school, active-person, reader and duplicate-card rules. It returns
 to locked provisioning, not automatic activation. Lost-card paid replacement
 gates remain separate and cannot be bypassed through DETACH.
 
+The Owner link panel now explains this staged state using fresh, exact
+school/student/card readiness. An eligible staged card offers explicit activation;
+a separately locked card offers reasoned Owner review. Activation requires
+confirmation and a mandatory reason retained in card history and audit metadata,
+and rechecks the current student, subscription, verified NFC payment, school
+reader, identification policy, expiry, retirement and duplicate-assignment gates.
+No scan eligibility rule is loosened. Unresolved restrictions show their actual
+reason and existing resolution instead of an unlock or printable card.
+
+After eligible activation, the panel automatically loads the existing official
+front/back preview and offers the supported CR80 PDF download for the newly saved
+UID. Failed links clear prior printable-result state. Preview and download remain
+read-only, with current-assignment and expired/replaced-card validation.
+
 After success, card inventory, selected-person lists, current cards and employee
 NFC queries are invalidated. The selected person remains selected, its summary
 shows no linked card, stale printable-assignment state is removed, and the direct

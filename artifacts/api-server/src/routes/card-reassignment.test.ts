@@ -13,15 +13,19 @@ const state = vi.hoisted(() => ({
   paymentVerified:true,schoolRestricted:false,lockAction:"REGISTERED",lockReason:null as string|null,
 }));
 vi.mock("../services/student-nfc-payment-evidence",async()=>{
-  const {AuthError}=await import("../middlewares/auth");
   return {assertVerifiedStudentNfcPayment:vi.fn(async()=>{
-    if(!state.paymentVerified)throw new AuthError(409,"Verified current-term NFC checkout required","NFC_FLUTTERWAVE_PAYMENT_REQUIRED");
+    if(!state.paymentVerified){
+      const {AuthError}=await import("../middlewares/auth");
+      throw new AuthError(409,"Verified current-term NFC checkout required","NFC_FLUTTERWAVE_PAYMENT_REQUIRED");
+    }
   })};
 });
 vi.mock("../services/subscription-enforcement",async()=>{
-  const {AuthError}=await import("../middlewares/auth");
   return {assertSubscriptionAccess:vi.fn(async()=>{
-    if(state.schoolRestricted)throw new AuthError(403,"School manually locked","SCHOOL_SUBSCRIPTION_LOCKED");
+    if(state.schoolRestricted){
+      const {AuthError}=await import("../middlewares/auth");
+      throw new AuthError(403,"School manually locked","SCHOOL_SUBSCRIPTION_LOCKED");
+    }
   })};
 });
 
@@ -153,6 +157,52 @@ beforeEach(() => {
   state.paymentVerified=true;state.schoolRestricted=false;state.lockAction="REGISTERED";state.lockReason=null;
   poolMock.query.mockClear();
   poolMock.connect.mockClear();
+});
+
+const activate=(body:unknown)=>fetch(`${baseUrl}/cards/31/status`,{
+  method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(body),
+});
+const activation={status:"active",studentId:10,confirm:true,reason:"Reviewed new UID and eligibility"};
+describe("confirmed Owner activation does not bypass NFC restrictions",()=>{
+  it.each(["SCHOOL_ADMIN","TEACHER","STAFF","PARENT","STUDENT","PARTNER","DEVICE_ACTIVATION_OFFICER","COMPANY_ACCOUNTANT"])("denies %s",async role=>{
+    state.role=role;expect((await activate(activation)).status).toBe(403);
+    expect(state.queries.some(q=>q.sql.includes("UPDATE nfc_cards"))).toBe(false);
+  });
+  it.each([{confirm:false},{reason:" "},{reason:undefined},{studentId:11}])("rejects missing confirmation/reason or stale student %j",async override=>{
+    expect([400,409]).toContain((await activate({...activation,...override})).status);
+    expect(state.queries.some(q=>q.sql.includes("UPDATE nfc_cards"))).toBe(false);
+  });
+  it.each(["lost","stolen","blocked","suspended","expired","replaced","inactive","unassigned"])("cannot reactivate %s",async status=>{
+    state.card.status=status;
+    expect((await activate(activation)).status).toBe(409);
+    expect(state.queries.some(q=>q.sql.includes("UPDATE nfc_cards"))).toBe(false);
+  });
+  it("requires independent payment and does not turn a school-wide lock into a card unlock",async()=>{
+    state.paymentVerified=false;
+    expect((await activate(activation)).status).toBe(409);
+    state.paymentVerified=true;state.schoolRestricted=true;
+    const blocked=await activate(activation);
+    expect({status:blocked.status,payload:await blocked.json()}).toEqual({status:409,payload:expect.objectContaining({error:"School manually locked"})});
+    expect(state.queries.some(q=>q.sql.includes("UPDATE nfc_cards"))).toBe(false);
+  });
+  it("activates only the current card and appends the confirmed reason to card and audit history",async()=>{
+    const result=await activate(activation);expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({id:31,uid:"NFC-31",studentId:10,status:"active"});
+    const history=state.queries.find(q=>q.sql.includes("INSERT INTO nfc_card_history"))!;
+    expect(history.values).toEqual([1,31,10,"locked","active",12,activation.reason]);
+    const audit=state.queries.find(q=>q.sql.includes("INSERT INTO audit_logs"))!;
+    expect(audit.values[11]).toMatchObject({
+      previousStatus:"locked",newStatus:"active",reason:activation.reason,confirmed:true,studentId:10,uid:"NFC-31",
+    });
+  });
+  it("retains a recorded security lock until a reasoned explicit Owner review",async()=>{
+    state.lockAction="STATUS_CHANGED";state.lockReason="Security review of card possession";
+    expect(state.card.status).toBe("locked");
+    const result=await activate({...activation,reason:"Security review completed; holder verified"});
+    expect(result.status).toBe(200);
+    const history=state.queries.find(q=>q.sql.includes("INSERT INTO nfc_card_history"))!;
+    expect(history.values[6]).toBe("Security review completed; holder verified");
+  });
 });
 
 async function reassign(studentId: number) {
