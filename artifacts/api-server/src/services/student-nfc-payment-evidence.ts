@@ -1,14 +1,22 @@
 import {AuthError} from "../middlewares/auth";
-import {lagosDate} from "./student-platform-rollout";
+import {lagosDate,readStudentRollout} from "./student-platform-rollout";
 type Sql={query(sql:string,values?:any[]):Promise<{rows:any[]}>};
 
-/** Strict independent payment evidence: never treats grace or manual receipts as payment.
- * Attendance may separately apply an explicitly audited, exact-card temporary grace;
- * initial activation and replacement issuance still call this strict check.
+/** Shared activation/attendance/replacement subscription boundary.
+ * All card assignments are free until the school's configured January 2027
+ * second term begins. Missing/ambiguous rollout dates never authorize billing.
+ * Free access is not payment evidence and never writes a financial record.
+ * Strict independent payment evidence: never treats grace or manual receipts as payment.
+ * During chargeable terms attendance may separately apply an explicitly audited,
+ * exact-card temporary grace; initial activation and replacement issuance require
+ * independently verified payment only when this shared rollout requires payment.
  * Ordinary app access retains its separate rollout policy. The reference binds
  * the server-created checkout to one immutable school/student/term obligation.
  */
 export async function assertVerifiedStudentNfcPayment(db:Sql,schoolId:number,studentId:number){
+  const today=lagosDate();
+  const rollout=await readStudentRollout(db,schoolId,undefined,today);
+  if(!rollout.chargeable)return;
   const result=await db.query(`SELECT EXISTS(
     SELECT 1 FROM student_direct_live_obligations o
     JOIN student_direct_live_attempts a ON a.obligation_id=o.id
@@ -30,7 +38,7 @@ export async function assertVerifiedStudentNfcPayment(db:Sql,schoolId:number,stu
       AND a.provider_fee_minor+a.additional_fee_minor<320000
       AND EXISTS(SELECT 1 FROM student_direct_live_events ev WHERE ev.attempt_id=a.id
         AND ev.kind='PROVIDER_PAYMENT_VERIFIED' AND ev.details->>'transactionId'=a.provider_transaction_id)
-    ) AS nfc_payment_verified`,[schoolId,studentId,lagosDate()]);
+    ) AS nfc_payment_verified`,[schoolId,studentId,today]);
   if(result.rows[0]?.nfc_payment_verified!==true)throw new AuthError(409,
     "NFC activation requires a successful, independently server-verified ₦3,200 Flutterwave checkout for this student and current term. Cash, company-account transfers and assistance receipts do not activate NFC.",
     "NFC_FLUTTERWAVE_PAYMENT_REQUIRED");

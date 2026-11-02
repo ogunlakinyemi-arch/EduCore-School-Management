@@ -115,7 +115,8 @@ export function OwnerCardControls({data,cardId,schoolId,studentId,graceExpired,r
       :'The server does not permit grace for this card’s current state. Grace requires an eligible exact student/card assignment and current academic term.';
     return 'Grace has expired; wait for server eligibility to be rechecked.';
   };
-  const shown:ControlAction[]=['LOCK','UNLOCK','GRANT_GRACE'];
+  const shown:ControlAction[]=['LOCK','UNLOCK'];
+  if(data.subscriptionPolicy?.paymentRequired!==false||available.includes('GRANT_GRACE'))shown.push('GRANT_GRACE');
   if(data.canRevokeGrace&&data.grace?.state==='ACTIVE')shown.push('REVOKE_GRACE');
   const open=(a:ControlAction)=>{control.reset();setAction(a);setVersion(data.version);setReason('');setConfirmed(false);setExpiry('');setSelected([]);setConflict('');};
   const trimmed=reason.trim();

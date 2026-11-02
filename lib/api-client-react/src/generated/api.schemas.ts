@@ -4370,6 +4370,18 @@ export interface StudentCardRestriction {
   resolution: string;
 }
 
+export type StudentCardReadinessSubscriptionPolicy = {
+  paymentRequired: boolean;
+  /** @nullable */
+  collectionStartDate: string | null;
+  /** @nullable */
+  launchTermId: number | null;
+  /** @nullable */
+  termId: number | null;
+  reason: string;
+  earliestCollectionDate: string;
+};
+
 export type StudentCardReadinessStage = typeof StudentCardReadinessStage[keyof typeof StudentCardReadinessStage];
 
 
@@ -4403,6 +4415,7 @@ export type StudentCardReadinessGrace = {
 };
 
 export interface StudentCardReadiness {
+  subscriptionPolicy?: StudentCardReadinessSubscriptionPolicy;
   cardId: number;
   schoolId: number;
   studentId: number;
@@ -20084,6 +20097,18 @@ export interface StudentCardRestriction4b96100 {
   resolution: string;
 }
 
+export type StudentCardReadiness4b96100SubscriptionPolicy = {
+  paymentRequired: boolean;
+  /** @nullable */
+  collectionStartDate: string | null;
+  /** @nullable */
+  launchTermId: number | null;
+  /** @nullable */
+  termId: number | null;
+  reason: string;
+  earliestCollectionDate: string;
+};
+
 export type StudentCardReadiness4b96100Stage = typeof StudentCardReadiness4b96100Stage[keyof typeof StudentCardReadiness4b96100Stage];
 
 
@@ -20117,6 +20142,7 @@ export type StudentCardReadiness4b96100Grace = {
 };
 
 export interface StudentCardReadiness4b96100 {
+  subscriptionPolicy?: StudentCardReadiness4b96100SubscriptionPolicy;
   cardId: number;
   schoolId: number;
   studentId: number;

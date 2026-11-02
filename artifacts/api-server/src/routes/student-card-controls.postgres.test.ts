@@ -60,7 +60,7 @@ describe.skipIf(!socket)("Owner card controls on an isolated PostgreSQL fixture"
       CREATE TABLE device_school_bindings(device_id int,school_id int);
       CREATE TABLE academic_sessions(id int PRIMARY KEY,school_id int,status text,is_current boolean);
       CREATE TABLE academic_terms(id int PRIMARY KEY,school_id int,academic_session_id int REFERENCES academic_sessions(id),
-        status text,is_current boolean,start_date date,end_date date);
+        status text,is_current boolean,start_date date,end_date date,name text DEFAULT 'First Term');
       CREATE TABLE audit_logs(id serial PRIMARY KEY,"user" text,role text,actor_user_id int,school_id int,action text,module text,
         record_id int,event_type text,result text,metadata jsonb);
       CREATE TABLE student_direct_live_obligations(id int PRIMARY KEY,payload jsonb);

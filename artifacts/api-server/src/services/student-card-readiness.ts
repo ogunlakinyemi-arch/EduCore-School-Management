@@ -2,6 +2,7 @@ import {AuthError} from "../middlewares/auth";
 import {assertSchoolHasActiveNfcDevice} from "../lib/nfc-device-first";
 import {assertVerifiedStudentNfcPayment} from "./student-nfc-payment-evidence";
 import {assertSubscriptionAccess} from "./subscription-enforcement";
+import {readStudentRollout} from "./student-platform-rollout";
 import {assertCardPaymentRestriction,isGraceRestriction,readCardControlEvidence,readStudentCardGrace} from "./student-card-controls";
 
 type Db={query(sql:string,values?:any[]):Promise<{rows:any[]}>};
@@ -24,6 +25,7 @@ export async function assertStudentCardUsePrerequisites(db:Db,schoolId:number,st
 
 /** Read-only explanation for one exact current assignment, not a person-level lock. */
 export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:number,studentId:number){
+  const rollout=await readStudentRollout(db,schoolId);
   const card=(await db.query(`SELECT nc.id,nc.uid,nc.status,nc.student_id AS "studentId",
       nc.replaced_by_card_id AS "replacedByCardId",nc.replaced_at AS "replacedAt",nc.expires_at AS "expiresAt",
       st.status AS "studentStatus",sc.status AS "schoolStatus",
@@ -51,7 +53,8 @@ export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:numb
    const administrative=status==="locked" && history?.action==="OWNER_ADMIN_LOCK";
    const stage=status==="active"?"ACTIVE":status==="locked"?(staged?"AWAITING_ACTIVATION":administrative?"ADMINISTRATIVE_LOCK":"SECURITY_LOCK"):"RESTRICTED";
   const explanation=staged
-    ?"This new UID was linked successfully and deliberately staged as LOCKED pending Owner activation. It did not inherit the previous UID's lock."
+    ?rollout.chargeable?"This linked card is awaiting initial Owner activation. Current-term subscription and non-payment safeguards apply."
+      :"This linked card is awaiting Owner activation. Activation is free for the current pre-subscription term, including newly assigned and reassigned cards."
      :status==="locked"?`This card has an ${administrative?"Owner administrative":"independent security/legacy"} lock. Recorded reason: ${history?.reason || "No reason was recorded in the legacy history; review the card history before unlocking."}`
     :status==="active"?"This UID is active. Reader, account and attendance policy checks still apply.":`This UID is ${status}.`;
    const evidence=await readCardControlEvidence(db,cardId,schoolId,studentId);
@@ -85,6 +88,8 @@ export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:numb
    const canGrace=["ACTIVE","ADMINISTRATIVE_LOCK"].includes(stage) &&
      !restrictions.some(r=>!r.overridable) && restrictions.some(r=>r.overridable) && grace.state!=="ACTIVE";
   return {cardId,schoolId,studentId,uid:String(card.uid),status,stage,explanation,
+     subscriptionPolicy:{paymentRequired:rollout.chargeable,collectionStartDate:rollout.collectionStartDate,
+       launchTermId:rollout.launchTermId,termId:rollout.termId,reason:rollout.reason,earliestCollectionDate:`${rollout.policy.anchorMonth}-01`},
      canActivate:status==="locked" && stage!=="SECURITY_LOCK" && blocked.length===0,
      canPrint:status==="active" && blocked.length===0,restrictions,
      version:evidence.version,canLock:status==="active",canGrantGrace:canGrace,

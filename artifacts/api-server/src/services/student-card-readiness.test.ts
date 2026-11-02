@@ -10,6 +10,7 @@ const query=vi.fn(async(sql:string)=>{
   if(sql.includes('AS "currentCards"'))return {rows:card?[card]:[]};
   if(sql.includes("SELECT action,reason"))return {rows:history?[history]:[]};
   if(sql.includes("student_identification_policies"))return {rows:[{policy}]};
+  if(sql.includes('s.status AS "sessionStatus"'))return {rows:[]};
   if(sql.includes('AS "assignmentVersion"'))return {rows:[{version:1,assignmentVersion:1,now:new Date().toISOString(),events:[],latestGrace:null}]};
   throw Error("Unexpected SQL: "+sql);
 });

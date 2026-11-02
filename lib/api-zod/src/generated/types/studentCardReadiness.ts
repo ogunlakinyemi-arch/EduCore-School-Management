@@ -8,9 +8,11 @@
 import type { StudentCardControlEvent } from './studentCardControlEvent';
 import type { StudentCardReadinessGrace } from './studentCardReadinessGrace';
 import type { StudentCardReadinessStage } from './studentCardReadinessStage';
+import type { StudentCardReadinessSubscriptionPolicy } from './studentCardReadinessSubscriptionPolicy';
 import type { StudentCardRestriction } from './studentCardRestriction';
 
 export interface StudentCardReadiness {
+  subscriptionPolicy?: StudentCardReadinessSubscriptionPolicy;
   cardId: number;
   schoolId: number;
   studentId: number;

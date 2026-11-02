@@ -442,6 +442,14 @@ export const GetOwnerStudentCardReadinessQueryParams = zod.object({
 })
 
 export const GetOwnerStudentCardReadinessResponse = zod.object({
+  "subscriptionPolicy": zod.object({
+  "paymentRequired": zod.boolean(),
+  "collectionStartDate": zod.coerce.date().nullable(),
+  "launchTermId": zod.number().int().nullable(),
+  "termId": zod.number().int().nullable(),
+  "reason": zod.string(),
+  "earliestCollectionDate": zod.coerce.date()
+}).optional(),
   "cardId": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
@@ -518,6 +526,14 @@ export const ControlOwnerStudentCardBody = zod.object({
 })
 
 export const ControlOwnerStudentCardResponse = zod.object({
+  "subscriptionPolicy": zod.object({
+  "paymentRequired": zod.boolean(),
+  "collectionStartDate": zod.coerce.date().nullable(),
+  "launchTermId": zod.number().int().nullable(),
+  "termId": zod.number().int().nullable(),
+  "reason": zod.string(),
+  "earliestCollectionDate": zod.coerce.date()
+}).optional(),
   "cardId": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),

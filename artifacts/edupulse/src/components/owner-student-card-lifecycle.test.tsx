@@ -54,29 +54,47 @@ it('explains a staged lock and never offers a printable student card before acti
   expect(q('button-download-nfc-card-101')).toBeNull();
   expect(state.preview.mock.calls.at(-1)![2].query.enabled).toBe(false);
 });
-it('shows Actions and exact disabled policy explanations for UID 6C98EABE awaiting activation from CARD_STATE',async()=>{
-  state.data={...state.data,uid:'6C98EABE',effectiveStatus:'AWAITING_ACTIVATION',statusSource:'CARD_STATE',canActivate:false,
-    restrictions:[{code:'NFC_FLUTTERWAVE_PAYMENT_REQUIRED',message:'Independently verified NFC payment is required.',
-      resolution:'Complete verified payment.',overridable:true,waived:false}]};
+it('offers free initial activation for UID 6C98EABE without misleading Unlock or Grace controls',async()=>{
+  state.data={...state.data,uid:'6C98EABE',effectiveStatus:'AWAITING_ACTIVATION',statusSource:'CARD_STATE',canActivate:true,
+    subscriptionPolicy:{paymentRequired:false,collectionStartDate:'2027-01-18',earliestCollectionDate:'2027-01-01',
+      launchTermId:20,termId:19,reason:'CURRENT_TERM_FREE'},restrictions:[]};
   await mount({uid:'6C98EABE'});
-  expect(q('owner-card-controls')!.textContent).toContain('Actions');
+  expect(q('card-activation-actions')!.textContent).toContain('Actions');
   expect(q('text-effective-status')!.textContent).toBe('AWAITING_ACTIVATION');
   expect(q('text-status-source')!.textContent).toBe('CARD_STATE');
-  for(const action of ['lock','unlock','grant-grace']){
-    expect((q(`button-card-${action}`) as HTMLButtonElement).disabled).toBe(true);
-    expect(q(`reason-card-${action}`)!.textContent!.length).toBeGreaterThan(20);
-    await click(`button-card-${action}`);
-  }
-  expect(q('reason-card-lock')!.textContent).toContain('already locked pending initial activation');
-  expect(q('reason-card-unlock')!.textContent).toContain('NFC_FLUTTERWAVE_PAYMENT_REQUIRED');
-  expect(q('reason-card-grant-grace')!.textContent).toContain('Non-overrideable initial activation requirement');
-  expect(q('reason-card-grant-grace')!.textContent).toContain('independently verified NFC payment');
+  expect(q('button-card-lock')).toBeNull();expect(q('button-card-unlock')).toBeNull();
+  expect(q('button-card-grant-grace')).toBeNull();
   expect(q('button-card-revoke-grace')).toBeNull();
-  expect(q('button-owner-activate-card')).toBeNull();
-  expect(q('submit-card-control')).toBeNull();
-  expect(state.control).not.toHaveBeenCalled();expect(state.mutate).not.toHaveBeenCalled();
-  const section=q('owner-card-controls')!;
+  expect(q('button-owner-activate-card')!.textContent).toBe('Activate card (free for the current term)');
+  expect((q('button-owner-activate-card') as HTMLButtonElement).disabled).toBe(false);
+  expect(q('text-card-subscription-policy')!.textContent).toContain('2027-01-18');
+  await click('button-owner-activate-card');
+  expect(host.querySelector('[role=dialog]')!.getAttribute('aria-label')).toBe('Confirm card activation');
+  expect((q('submit-card-activation') as HTMLButtonElement).disabled).toBe(true);
+  await input('input-card-activation-reason','Launch demo reviewed');
+  await click('confirm-card-activation');await click('submit-card-activation');
+  expect(state.mutate).toHaveBeenCalledWith({cardId:101,data:{status:'active',studentId:3,confirm:true,reason:'Launch demo reviewed'}},expect.anything());
+  expect(state.control).not.toHaveBeenCalled();
+  const section=q('card-activation-actions')!;
   expect(section.compareDocumentPosition(q('card-control-history')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+it('keeps free-term initial activation disabled for genuine non-payment restrictions',async()=>{
+  state.data={...state.data,canActivate:false,restrictions:[{code:'NFC_DEVICE_REQUIRED',message:'Link an eligible reader.',resolution:'Review school devices.'}],
+    subscriptionPolicy:{paymentRequired:false,collectionStartDate:null}};
+  await mount();
+  expect((q('button-owner-activate-card') as HTMLButtonElement).disabled).toBe(true);
+  expect(q('card-restriction-NFC_DEVICE_REQUIRED')!.textContent).toContain('Link an eligible reader.');
+  expect(q('text-card-subscription-policy')!.textContent).toContain('January 2027');
+  expect(host.textContent).not.toContain('NFC activation requires');
+});
+it('retains administrative Lock/Unlock without irrelevant disabled Grace on an active free-term card',async()=>{
+  state.data={...state.data,stage:'ACTIVE',status:'active',canActivate:false,canLock:true,
+    subscriptionPolicy:{paymentRequired:false,collectionStartDate:'2027-01-18'}};
+  await mount();
+  expect((q('button-card-lock') as HTMLButtonElement).disabled).toBe(false);
+  expect((q('button-card-unlock') as HTMLButtonElement).disabled).toBe(true);
+  expect(q('button-card-grant-grace')).toBeNull();
+  expect(q('button-owner-activate-card')).toBeNull();
 });
 it('requires confirmation and a meaningful reason; cancelling changes nothing',async()=>{
   await mount();await click('button-owner-activate-card');

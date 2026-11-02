@@ -10,15 +10,12 @@ const state = vi.hoisted(() => ({
   deviceAvailable: true,
   schoolExists: true,
   queries: [] as Array<{ sql: string; values: unknown[] }>,
-  paymentVerified:true,schoolRestricted:false,lockAction:"REGISTERED",lockReason:null as string|null,
+  paymentVerified:true,schoolRestricted:false,lockAction:"REGISTERED",lockReason:null as string|null,today:"2027-01-18",
 }));
-vi.mock("../services/student-nfc-payment-evidence",async()=>{
-  return {assertVerifiedStudentNfcPayment:vi.fn(async()=>{
-    if(!state.paymentVerified){
-      const {AuthError}=await import("../middlewares/auth");
-      throw new AuthError(409,"Verified current-term NFC checkout required","NFC_FLUTTERWAVE_PAYMENT_REQUIRED");
-    }
-  })};
+vi.mock("../services/student-platform-rollout",async original=>{
+  const actual=await original<typeof import("../services/student-platform-rollout")>();
+  return {...actual,lagosDate:()=>state.today,
+    readStudentRollout:(db:any,schoolId:number,termId?:number,today=state.today)=>actual.readStudentRollout(db,schoolId,termId,today)};
 });
 vi.mock("../services/subscription-enforcement",async()=>{
   return {assertSubscriptionAccess:vi.fn(async()=>{
@@ -37,6 +34,13 @@ const poolMock = vi.hoisted(() => {
   const connect = vi.fn(async () => ({
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
+      if(sql.includes('s.status AS "sessionStatus"'))return {rows:[
+        {id:19,schoolId:1,name:"First Term",startDate:"2026-09-01",endDate:"2026-12-20",
+          isCurrent:state.today<"2027-01-18",status:"ACTIVE",sessionStatus:"ACTIVE"},
+        {id:20,schoolId:1,name:"Second Term",startDate:"2027-01-18",endDate:"2027-04-09",
+          isCurrent:state.today>="2027-01-18",status:"ACTIVE",sessionStatus:"ACTIVE"},
+      ]};
+      if(sql.includes("AS nfc_payment_verified"))return {rows:[{nfc_payment_verified:state.paymentVerified}]};
       if(sql.includes('AS "assignmentVersion"'))return {rows:[{version:1,assignmentVersion:1,now:new Date().toISOString(),events:[],latestGrace:null}]};
       if(sql.includes('nc.student_id AS "studentId"') && sql.includes('AS "currentCards"'))
         return {rows:[{...state.card,studentStatus:"ACTIVE",schoolStatus:"ACTIVE",employeeBindings:0,currentCards:1}]};
@@ -155,13 +159,28 @@ beforeEach(() => {
   state.deviceAvailable = true;
   state.schoolExists = true;
   state.queries.length = 0;
-  state.paymentVerified=true;state.schoolRestricted=false;state.lockAction="REGISTERED";state.lockReason=null;
+  state.paymentVerified=true;state.schoolRestricted=false;state.lockAction="REGISTERED";state.lockReason=null;state.today="2027-01-18";
   poolMock.query.mockClear();
   poolMock.connect.mockClear();
 });
 
 const activate=(body:unknown)=>fetch(`${baseUrl}/cards/31/status`,{
   method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(body),
+});
+it.each(["REGISTERED","ASSIGNED","REASSIGNED"])("activates unpaid %s cards through the Owner API in the free term",async action=>{
+  state.today="2026-11-02";state.lockAction=action;state.paymentVerified=false;
+  state.card.uid="6C98EABE";
+  const response=await activate({status:"active",studentId:10,confirm:true,reason:"Free current-term launch activation"});
+  expect(response.status).toBe(200);
+  expect(state.card.status).toBe("active");
+  expect(state.queries.some(q=>q.sql.includes("AS nfc_payment_verified"))).toBe(false);
+  expect(state.queries.some(q=>/\b(INSERT|UPDATE|DELETE)\b/i.test(q.sql)&&/student_direct_live_|payment_receipts|fee_payments/.test(q.sql))).toBe(false);
+  expect(state.queries.some(q=>q.sql.includes("INSERT INTO nfc_card_history"))).toBe(true);
+});
+it.each(["SCHOOL_ADMIN","TEACHER","STAFF"])("does not extend free activation authority to %s",async role=>{
+  state.today="2026-11-02";state.role=role;state.paymentVerified=false;
+  expect((await activate({status:"active",studentId:10,confirm:true,reason:"Unauthorized launch activation"})).status).toBe(403);
+  expect(state.card.status).toBe("locked");
 });
 const activation={status:"active",studentId:10,confirm:true,reason:"Reviewed new UID and eligibility"};
 describe("confirmed Owner activation does not bypass NFC restrictions",()=>{

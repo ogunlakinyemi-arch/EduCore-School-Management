@@ -8525,6 +8525,16 @@ components:
       type: object
       required: [cardId, schoolId, studentId, uid, status, stage, explanation, canActivate, canPrint, restrictions, version, canLock, canGrantGrace, canRevokeGrace, grace, history, serverNow, effectiveStatus, statusSource]
       properties:
+        subscriptionPolicy:
+          type: object
+          required: [paymentRequired, collectionStartDate, launchTermId, termId, reason, earliestCollectionDate]
+          properties:
+            paymentRequired: { type: boolean }
+            collectionStartDate: { type: [string, "null"], format: date }
+            launchTermId: { type: [integer, "null"] }
+            termId: { type: [integer, "null"] }
+            reason: { type: string }
+            earliestCollectionDate: { type: string, format: date }
         cardId: { type: integer }
         schoolId: { type: integer }
         studentId: { type: integer }

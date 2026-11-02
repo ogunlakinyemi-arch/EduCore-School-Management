@@ -15,6 +15,11 @@ Collection starts only from each school's actual configured second academic
 term beginning in January 2027, and later terms. Never substitute a universal
 January start date. Missing or ambiguous calendar evidence cannot authorize
 billing; keep ordinary access available while configuration is resolved.
+This also governs ALL NFC activation and attendance subscription checks,
+including newly assigned, reassigned and replacement student cards. There is
+no interim activation fee; free activation is permission, not a settled payment.
+Owner initial activation still requires confirmation and an audit reason, and
+all genuine non-payment safeguards remain independent.
 The ₦150 liability requires eligible, independently verified exact-student/term
 ₦3,200 direct payment for an eligible collection term. It is not a school/BRO
 split, and current-term, unpaid, legacy and review records cannot earn it.
@@ -22,6 +27,8 @@ split, and current-term, unpaid, legacy and review records cannot earn it.
 **Why:** The user explicitly deferred subscriptions because the current term
 had progressed too far and NFC devices/cards will not yet be distributed.
 They approved the policies on 27 October, not immediate collection.
+They subsequently clarified that all current-term activations, including
+reassigned cards, are free; NFC-specific checks must not contradict this rule.
 
 **How to apply:** Separate business effective date, school calendar collection
 start, financial activation/release and actual payment verification. Preserve
@@ -50,8 +57,9 @@ fixed platform obligation while preserving existing records and working flows.
 Do not infer permission to reprice an already initiated checkout. Reuse existing
 fee receipts, private evidence, reversals and role controls. School assistance
 requires independent Owner verification of actual bank receipt before checkout;
-keep that verification after a failed provider attempt. Only verified Flutterwave
-success for the student/term plus existing security checks grants card eligibility.
+keep that verification after a failed provider attempt. In chargeable terms, only
+verified Flutterwave success for the student/term plus existing security checks
+grants card eligibility; the current pre-subscription term remains free.
 BRO entitlement remains separately idempotent and subject to existing eligibility;
 staff/teacher payments remain separate. Implementation authorizes neither
 Production data/secrets changes, live transactions nor publishing.

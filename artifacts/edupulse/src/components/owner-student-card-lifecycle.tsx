@@ -58,18 +58,29 @@ export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPre
       !exact?<p role="alert">The current card assignment changed. Refresh the person and card list; no printable card is offered.</p>:
       <>
         <p data-testid="card-lock-explanation">{data.explanation}</p>
+        {data.subscriptionPolicy&&<p className="text-sm" data-testid="text-card-subscription-policy">
+          {data.subscriptionPolicy.paymentRequired?'Current-term subscription payment is required.':'Card activation is free for the current term. No activation checkout is required.'}
+          {' '}Subscriptions start {data.subscriptionPolicy.collectionStartDate
+            ?`${data.subscriptionPolicy.collectionStartDate} (Africa/Lagos), the school’s configured January 2027 second-term start.`
+            :'with the school’s second term in January 2027; its exact start date is not yet configured unambiguously. No interim activation fee applies.'}
+        </p>}
         <CardStatusSummary data={data} graceExpired={graceExpired}/>
         {graceExpired && <p role="alert" data-testid="text-grace-expired">Grace period has expired. Grace-dependent actions and printing are disabled while the server is rechecked.</p>}
-        <OwnerCardControls key={`${schoolId}:${studentId}:${cardId}:${uid}`} data={data} cardId={cardId} schoolId={schoolId} studentId={studentId} graceExpired={graceExpired} refreshing={query.isFetching}
-          onRefresh={refresh} onRefetch={()=>{void query.refetch();}}/>
+        {data.stage==='AWAITING_ACTIVATION'?<section className="space-y-2" aria-label="Initial card activation" data-testid="card-activation-actions">
+          <h4 className="font-semibold">Actions</h4>
+          <Button type="button" variant="outline" disabled={!data.canActivate||query.isFetching||activate.isPending}
+            testId="button-owner-activate-card" onClick={()=>{
+              activate.reset();setReason('');setConfirmed(false);setOpen(true);
+            }}>{data.subscriptionPolicy?.paymentRequired===false?'Activate card (free for the current term)':'Activate card'}</Button>
+          <p className="text-sm">{data.canActivate?'Confirm the selected UID and provide an audit reason to activate.':
+            'Activation is unavailable until the restrictions below are resolved.'}</p>
+        </section>:<OwnerCardControls key={`${schoolId}:${studentId}:${cardId}:${uid}`} data={data} cardId={cardId} schoolId={schoolId} studentId={studentId} graceExpired={graceExpired} refreshing={query.isFetching}
+          onRefresh={refresh} onRefetch={()=>{void query.refetch();}}/>}
         {data.restrictions.map(item=><div key={item.code} role="status" data-testid={`card-restriction-${item.code}`}>
           <p className="font-semibold">{item.message}{item.waived?' (waived by grace; payment not marked paid)':' (applies)'}</p><p className="text-sm">{item.resolution}</p>
         </div>)}
         {!data.canPrint && <p className="text-sm">The final printable e-ID is unavailable until this card is active and these checks pass. Linking and printing never override an NFC restriction.</p>}
         <CardControlHistory history={data.history??[]}/>
-        {data.canActivate && data.stage==='AWAITING_ACTIVATION' && <Button type="button" variant="outline" testId="button-owner-activate-card" onClick={()=>{
-          activate.reset();setReason('');setConfirmed(false);setOpen(true);
-        }}>Activate linked card</Button>}
         {printable && <>
           {!view && <Button type="button" variant="outline" onClick={()=>setView(true)}>View final e-ID card</Button>}
           {view && (preview.isLoading || preview.isFetching?<p role="status">Loading the saved school-branded e-ID…</p>:
@@ -84,17 +95,18 @@ export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPre
         </>}
       </>}
     {success && <p role="status">{success}</p>}
-    {open && <Modal title="Confirm card activation / unlock" eyebrow="Platform Owner · exact current UID" onClose={()=>{if(!activate.isPending)setOpen(false);}}>
+    {open && <Modal title="Confirm card activation" eyebrow="Platform Owner · exact current UID" onClose={()=>{if(!activate.isPending)setOpen(false);}}>
       <div className="space-y-4">
-        <p>Activate UID <strong className="break-all font-mono">{uid}</strong> for the selected student? All eligibility checks run again on the server. This cannot clear lost/stolen, expiry, account, school or payment restrictions.</p>
-        <Field label="Activation / unlock reason (required)">
+        <p>Activate UID <strong className="break-all font-mono">{uid}</strong> for the selected student? All eligibility checks run again on the server. This cannot clear security, lost/stolen, expiry, identity, school or reader restrictions.</p>
+        {data?.subscriptionPolicy?.paymentRequired===false&&<p>No activation fee or checkout is required for this free term. This action does not record a payment.</p>}
+        <Field label="Activation reason (required)">
           <input value={reason} maxLength={480} disabled={activate.isPending} onChange={e=>setReason(e.target.value)} data-testid="input-card-activation-reason"/>
         </Field>
         <label className="flex gap-2"><input type="checkbox" className="!w-auto" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} disabled={activate.isPending} data-testid="confirm-card-activation"/>I reviewed this UID and its restriction history.</label>
         {activate.isError && <p role="alert">{backendError(activate.error)}</p>}
         <div className="flex flex-wrap justify-end gap-3">
           <Button type="button" variant="outline" disabled={activate.isPending} onClick={()=>setOpen(false)}>Cancel</Button>
-          <Button type="button" disabled={!confirmed || reason.trim().length<3 || activate.isPending}
+          <Button type="button" disabled={!confirmed || reason.trim().length<3 || activate.isPending || query.isFetching || !exact || !data?.canActivate}
             testId="submit-card-activation" onClick={()=>activate.mutate({
               cardId,data:{status:'active',confirm:true,studentId,reason:reason.trim()},
             },{onSuccess:async()=>{

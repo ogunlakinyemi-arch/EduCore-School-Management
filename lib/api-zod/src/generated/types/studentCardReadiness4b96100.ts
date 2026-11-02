@@ -8,9 +8,11 @@
 import type { StudentCardControlEvent4b96100 } from './studentCardControlEvent4b96100';
 import type { StudentCardReadiness4b96100Grace } from './studentCardReadiness4b96100Grace';
 import type { StudentCardReadiness4b96100Stage } from './studentCardReadiness4b96100Stage';
+import type { StudentCardReadiness4b96100SubscriptionPolicy } from './studentCardReadiness4b96100SubscriptionPolicy';
 import type { StudentCardRestriction4b96100 } from './studentCardRestriction4b96100';
 
 export interface StudentCardReadiness4b96100 {
+  subscriptionPolicy?: StudentCardReadiness4b96100SubscriptionPolicy;
   cardId: number;
   schoolId: number;
   studentId: number;

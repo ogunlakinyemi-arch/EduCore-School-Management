@@ -1,6 +1,15 @@
-import {describe,expect,it,vi} from "vitest";
+import {beforeEach,describe,expect,it,vi} from "vitest";
+const policy=vi.hoisted(()=>({chargeable:true}));
+vi.mock("./student-platform-rollout",()=>({lagosDate:()=> "2027-01-18",readStudentRollout:async()=>policy}));
 import {assertVerifiedStudentNfcPayment} from "./student-nfc-payment-evidence";
+beforeEach(()=>{policy.chargeable=true;});
 describe("student NFC activation evidence boundary",()=>{
+  it("does not query or write payment evidence in the free term, for every card assignment",async()=>{
+    policy.chargeable=false;
+    const query=vi.fn();
+    await expect(assertVerifiedStudentNfcPayment({query},7,31)).resolves.toBeUndefined();
+    expect(query).not.toHaveBeenCalled();
+  });
   it.each(["CASH","BANK_TRANSFER","BANK_VERIFIED","REQUESTED","FAILED","PENDING","UNVERIFIED","MISMATCHED"])(
     "rejects %s without independent direct checkout evidence",async channel=>{
       const query=vi.fn(async()=>({rows:[{nfc_payment_verified:false,channel}]}));
