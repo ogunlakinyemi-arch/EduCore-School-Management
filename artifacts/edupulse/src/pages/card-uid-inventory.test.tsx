@@ -90,7 +90,7 @@ it('copies a raw UID and only opens the explicit confirmation workflow on regist
   await mount(); await click('Copy UID');
   expect(writeText).toHaveBeenCalledWith('aabbccdd');
   expect(container.textContent).toContain('UID copied');
-  await click('Register / assign with confirmation');
+  await click('Add to Registration');
   expect(container.querySelector('[role="dialog"]')?.textContent).toContain('AABBCCDD');
   expect(request.mock.calls.every(([path]) => String(path).startsWith('/api/platform/uid-inventory?'))).toBe(true);
 });

@@ -35,7 +35,7 @@ export function AssignUidModal({ uid, onClose }: { uid: string; onClose: () => v
     mutationFn: () => customFetch<{schoolId:number;studentId:number;status:string}>('/api/platform/uid-inventory/assign', json({ uid, schoolId: Number(schoolId), studentId: Number(studentId), confirm: true })),
     onSuccess: async result => {
       qc.setQueryData(uidInventoryKey,(old:any)=>old?{...old,inventory:old.inventory.map((row:any)=>row.uid===uid?{...row,assigned:true,schoolId:result.schoolId,studentId:result.studentId,status:result.status}:row)}:old);
-      onClose(); await invalidate();
+      onClose(); await Promise.all([invalidate(), qc.invalidateQueries({ queryKey: [...uidInventoryKey, 'scans'] })]);
     },
   });
   const schoolList = ((schools.data ?? []) as any[]);

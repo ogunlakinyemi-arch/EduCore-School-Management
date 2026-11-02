@@ -35,13 +35,14 @@ describe.skipIf(!socket)("Owner capture SQL on disposable PostgreSQL", () => {
     }
     await state.db.query(`
       DROP TABLE IF EXISTS platform_devices,device_credentials,app_users,school_memberships,
-        nfc_cards,audit_logs,attendance_events,payments,security_events;
+        nfc_cards,audit_logs,attendance_events,payments,security_events,schools;
+      CREATE TABLE schools(id int PRIMARY KEY,name text);
       CREATE TABLE platform_devices(id int PRIMARY KEY,school_id int,device_type text,status text,serial_number text,name text);
       CREATE TABLE device_credentials(device_id int,status text,revoked_at timestamptz);
       CREATE TABLE app_users(id int PRIMARY KEY);
       CREATE TABLE school_memberships(user_id int,role text,status text,school_id int);
       CREATE TABLE nfc_cards(id serial PRIMARY KEY,uid text,school_id int,student_id int,status text);
-      CREATE TABLE audit_logs(id serial PRIMARY KEY,"user" text,role text,actor_user_id int,action text,
+      CREATE TABLE audit_logs(id serial PRIMARY KEY,"user" text,role text,actor_user_id int,school_id int,action text,
         module text,record_id int,event_type text,result text,metadata jsonb,"timestamp" timestamptz DEFAULT now());
       CREATE TABLE attendance_events(id serial PRIMARY KEY);
       CREATE TABLE payments(id serial PRIMARY KEY);

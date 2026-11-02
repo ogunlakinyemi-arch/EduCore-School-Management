@@ -6,9 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CapturedUid } from './capturedUid';
+import type { NfcScanAuditRow } from './nfcScanAuditRow';
 import type { OwnerUidReader } from './ownerUidReader';
 
 export interface OwnerUidInventory {
+  rows?: NfcScanAuditRow[];
+  scanTotal?: number;
   total?: number;
   page?: number;
   pageSize?: number;

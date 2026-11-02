@@ -21,7 +21,7 @@ vi.mock("@workspace/db", () => {
       deviceId: 1, internalCredentialIdentifier: state.binding.credentialIdentifier,
       lastReport: state.reports.at(-1) ?? state.captures.at(-1), lastScan: state.captures.at(-1),
     }] : []);
-    if (sql.includes("WITH capture_summary")) {
+    if (sql.includes("capture_summary AS")) {
       const inventory = [...new Map(state.captures.map(c => [c.uid, { uid: c.uid }])).values()];
       return rows([{ total: inventory.length, inventory }]);
     }
@@ -31,6 +31,7 @@ vi.mock("@workspace/db", () => {
     if (sql.includes("SELECT metadata FROM audit_logs WHERE module='UIDInventory'")) return rows([...state.captures, ...state.reports]
       .filter(c => c.deviceId === values[1] && c.eventId === values[2] && c.credentialIdentifier === values[3]).map(metadata => ({ metadata })));
     if (sql.includes("UPDATE device_credentials SET status='REVOKED'")) return rows();
+    if (sql.includes("'NFC_SCAN_DIAGNOSTIC'")) return rows();
     if (sql.includes("INSERT INTO audit_logs") && sql.includes("'Devices'")) { state.binding = JSON.parse(values[3]); return rows(); }
     if (sql.includes("INSERT INTO audit_logs") && sql.includes("'UIDInventory'")) {
       (values[1] === "Owner reader UID captured" ? state.captures : state.reports)
@@ -78,6 +79,14 @@ const scan = (overrides = {}) => ({ event_id: "read-1", device_id: "EDUCORE01", 
 const bind = () => post("/platform/devices/1/owner-reader", { reason: "Register inventory desk reader" });
 
 describe("Owner UID-only reader lifecycle (mock persistence, no real events)", () => {
+  it.each(["SCHOOL_ADMIN","TEACHER","PARENT","STUDENT","PARTNER","STAFF"])("denies %s all raw cross-school audit views and exports", async role => {
+    state.role=role;
+    for(const suffix of ["?view=scans","?view=scans&schoolId=1","?view=scans&format=CSV","?page=1"]) {
+      const response=await fetch(`${base}/platform/uid-inventory${suffix}`);
+      expect(response.status).toBe(403);
+    }
+    expect(state.queries).toHaveLength(0);
+  });
   it("binds to the current Owner without school assignment, stores only a credential hash", async () => {
     const r = await bind();
     expect(r.status).toBe(201);

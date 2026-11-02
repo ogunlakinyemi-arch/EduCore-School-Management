@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CapturedUidCaptureStatus } from './capturedUidCaptureStatus';
+import type { CapturedUidSource } from './capturedUidSource';
 
 export interface CapturedUid {
   uid: string;
@@ -28,4 +29,10 @@ export interface CapturedUid {
   studentId: number | null;
   /** @nullable */
   status: string | null;
+  source?: CapturedUidSource;
+  /** @nullable */
+  sourceSchoolId?: number | null;
+  /** @nullable */
+  sourceSchoolName?: string | null;
+  registrationStatus?: string;
 }

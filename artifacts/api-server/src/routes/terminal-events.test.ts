@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const fixture = vi.hoisted(() => ({
   direction: "ENTRY" as string | null,
   credentials: true, active: true, card: true, available: true,
-  events: [] as any[], receipts: [] as any[], dates: [] as string[],
+  events: [] as any[], receipts: [] as any[], dates: [] as string[], diagnostics: [] as any[],
   queries: [] as string[], cardUids: [] as string[],
   securityDenied: false,
   policy: "NFC_ONLY",
@@ -27,6 +27,7 @@ vi.mock("../services/security-attendance-integration", () => ({
 }));
 vi.mock("../services/communication-service", () => ({ queueCommunicationNotification: (...args: any[]) => mocks.notifications(...args) }));
 vi.mock("../services/subscription-enforcement", () => ({ assertSubscriptionAccess: vi.fn() }));
+vi.mock("../services/student-nfc-payment-evidence", () => ({ assertVerifiedStudentNfcPayment: vi.fn() }));
 vi.mock("../services/student-card-replacement", () => ({ issueReplacement: vi.fn() }));
 vi.mock("./employee-nfc", async () => ({ default: (await import("express")).Router() }));
 
@@ -63,7 +64,7 @@ afterAll(async () => { await new Promise<void>((resolve, reject) => server.close
 beforeEach(() => {
   Object.assign(fixture, { direction: "ENTRY", credentials: true, active: true, card: true, available: true,
     securityDenied: false, policy: "NFC_ONLY", loseCommitResponse: false,
-    events: [], receipts: [], dates: [], queries: [], cardUids: [] });
+    events: [], receipts: [], dates: [], diagnostics: [], queries: [], cardUids: [] });
   snapshot = null;
   vi.clearAllMocks();
   mocks.security.mockImplementation(async () => {
@@ -98,6 +99,11 @@ beforeEach(() => {
     if (sql.includes('SELECT metadata,"timestamp" AS "effectiveAt" FROM audit_logs')) return result([]);
     if (sql.includes("SELECT metadata FROM audit_logs")) return result(fixture.receipts
       .filter(item => item.metadata.eventKey === values[2]).map(item => ({ metadata: item.metadata })));
+    if (sql.includes("'NFC_SCAN_DIAGNOSTIC'")) {
+      fixture.diagnostics.push(JSON.parse(values[3])); return result([]);
+    }
+    if (sql.includes('s.name AS "schoolName"')) return result([{ deviceName: "Fixture terminal",
+      schoolName: "Fixture school", registeredAtScan: fixture.card }]);
     if (sql.includes("INSERT INTO audit_logs")) {
       fixture.receipts.push({ metadata: JSON.parse(values[4]) }); return result([]);
     }
@@ -138,10 +144,43 @@ beforeEach(() => {
 });
 
 describe("vendor terminal endpoint with the existing attendance handler (mocked persistence)", () => {
+  it("discovers unknown school UIDs with no attendance, notices or security effects", async () => {
+    fixture.card=false;
+    const response=await send(payload());
+    expect(response).toMatchObject({status:200,body:{success:false,action:"DENIED"}});
+    expect(fixture.events).toHaveLength(0);
+    expect(mocks.notifications).not.toHaveBeenCalled();
+    expect(mocks.security).not.toHaveBeenCalled();
+    expect(fixture.receipts[0].metadata.scan).toMatchObject({
+      uid:"A1B2C3D4",registeredAtScan:false,reason:"CARD_INELIGIBLE",schoolName:"Fixture school"});
+    expect(fixture.queries.filter(s=>/INSERT INTO nfc_cards|UPDATE nfc_cards|INSERT INTO students/.test(s))).toHaveLength(0);
+  });
+  it("distinguishes unknown-card retries from separate physical taps and conflicting identity", async () => {
+    fixture.card=false;
+    const request=payload();
+    await send(request);
+    await send(request);
+    expect(fixture.receipts).toHaveLength(1);
+    expect(fixture.diagnostics).toMatchObject([{kind:"RETRY",reason:"EXACT_RETRY"}]);
+    await send({...request,event_id:"new-tap"});
+    expect(fixture.receipts).toHaveLength(2);
+    expect((await send({...request,uid:"11223344"})).status).toBe(409);
+    expect(fixture.receipts).toHaveLength(2);
+    expect(fixture.receipts[0].metadata.scan.uid).toBe("A1B2C3D4");
+  });
+  it("keeps malformed diagnostics bounded and requires authenticated attribution", async () => {
+    expect((await send(payload({uid:"invalid"}))).status).toBe(400);
+    expect(fixture.receipts).toHaveLength(0);
+    expect(fixture.diagnostics).toMatchObject([{kind:"MALFORMED",uid:null}]);
+    fixture.diagnostics=[];
+    await send(payload({uid:"invalid"}),{key:"wrong.secret"});
+    await send(payload({uid:"invalid",school_id:99}));
+    expect(fixture.diagnostics).toHaveLength(0);
+  });
   it("maps string identifiers to the authenticated numeric device and school", async () => {
     const response = await send(payload({ device_id: "EDUCORE100", school_id: "SCH10" }));
     expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
+    expect(response.body.success, JSON.stringify(response.body)).toBe(true);
     expect(fixture.events).toHaveLength(1);
     expect(fixture.events[0]).toMatchObject({ deviceId: 100, schoolId: 10 });
   });

@@ -75,6 +75,7 @@ import { AuditPage } from '@/pages/audit';
 import { SettingsPage } from '@/pages/settings';
 import { DevicesPage } from '@/pages/devices';
 import { CardUidInventoryPage } from '@/pages/card-uid-inventory';
+import { NfcScanAuditPage } from '@/pages/nfc-scan-audit';
 import { NotificationsPage } from '@/pages/notifications';
 import { AttendancePage } from '@/pages/attendance';
 import { AttendanceSchedulePage } from '@/pages/attendance-schedule';
@@ -413,6 +414,9 @@ export function ProtectedRoutes() {
           </Route>
           <Route path="/devices">
             <RoleGuard isPlatformOwnerOnly><DevicesPage /></RoleGuard>
+          </Route>
+          <Route path="/nfc-scan-audit">
+            <RoleGuard isPlatformOwnerOnly><NfcScanAuditPage /></RoleGuard>
           </Route>
           <Route path="/card-uid-inventory">
             <RoleGuard isPlatformOwnerOnly><CardUidInventoryPage /></RoleGuard>

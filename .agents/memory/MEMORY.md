@@ -106,6 +106,7 @@
 - [Parent publication notices](parent-notification-publication-policy.md) — publication and notice intent are atomic; corrected republications differ from retries.
 - [Notification selections](notification-selection-policy.md) — Allowed never implies send; exact event selections, Owner ceilings and current preferences govern delivery.
 - [Owner UID reader purpose](owner-reader-purpose-policy.md) — same hardware, exclusive Owner inventory versus school attendance contexts; preserve event-time UIDs.
+- [NFC discovery policy](nfc-discovery-policy.md) — discover received school scans without changing working hardware mode, keys or attendance eligibility.
 - [Test-account archives](test-account-archive-policy.md) — revoke existing test access and re-entry, preserve Owner/history, and refuse mixed legitimate-tenant identities.
 - [BRO terminology boundary](bro-terminology-boundary.md) — user-facing Business Relationship Officer (BRO) wording is a copy-only rename; preserve Partner identifiers and the same functionality and payments.
 - [Managed role lifecycle](managed-role-lifecycle.md) — custom-role upgrade support is not a Publish ACL contract; separate local permission proof from platform provisioning and credential lifecycle.

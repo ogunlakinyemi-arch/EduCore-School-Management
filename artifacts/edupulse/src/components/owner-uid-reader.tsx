@@ -14,7 +14,8 @@ export type UidInventory = {
     lastFailure?: ReaderReport | null; lastFailureAt?: string | null }[];
   inventory: { uid: string; readerDeviceId: number; capturedAt: string; assigned: boolean; schoolId: number | null; studentId: number | null; status: string | null;
     rawUid?: string; firstSeenAt?: string; lastSeenAt?: string; scanCount?: number; duplicate?: boolean;
-    captureStatus?: string; deviceName?: string | null; serialNumber?: string | null }[];
+    captureStatus?: string; deviceName?: string | null; serialNumber?: string | null;
+    source?: 'SCHOOL' | 'OWNER' | string | null; sourceSchoolId?: number | null; sourceSchoolName?: string | null; registrationStatus?: string | null }[];
   total?: number; page?: number; pageSize?: number;
 };
 

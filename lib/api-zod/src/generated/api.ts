@@ -516,6 +516,9 @@ export const VerifyOfficialCardQrResponse = zod.object({
 export const getOwnerUidInventoryQueryQMax = 128;
 
 
+export const getOwnerUidInventoryQueryResultMax = 80;
+
+
 export const getOwnerUidInventoryQueryPageDefault = 1;
 
 export const getOwnerUidInventoryQueryPageSizeDefault = 500;
@@ -525,6 +528,15 @@ export const getOwnerUidInventoryQueryPageSizeMax = 500;
 
 export const GetOwnerUidInventoryQueryParams = zod.object({
   "q": zod.coerce.string().max(getOwnerUidInventoryQueryQMax).optional(),
+  "view": zod.enum(['scans']).optional(),
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "source": zod.enum(['SCHOOL', 'OWNER']).optional(),
+  "registration": zod.enum(['REGISTERED', 'UNREGISTERED', 'UNAVAILABLE']).optional(),
+  "result": zod.coerce.string().max(getOwnerUidInventoryQueryResultMax).optional(),
+  "kind": zod.enum(['SCAN', 'RETRY', 'HEARTBEAT', 'MALFORMED', 'ERROR']).optional(),
+  "format": zod.enum(['JSON', 'CSV']).optional(),
   "deviceId": zod.coerce.number().int().min(1).optional(),
   "status": zod.enum(['UNKNOWN_UNASSIGNED', 'ASSIGNED', 'RESERVED', 'DUPLICATE']).optional(),
   "page": zod.coerce.number().int().min(1).default(getOwnerUidInventoryQueryPageDefault),
@@ -532,6 +544,24 @@ export const GetOwnerUidInventoryQueryParams = zod.object({
 })
 
 export const GetOwnerUidInventoryResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "id": zod.number().int(),
+  "deviceId": zod.number().int(),
+  "deviceName": zod.string().nullish(),
+  "schoolId": zod.number().int().nullish(),
+  "schoolName": zod.string().nullish(),
+  "source": zod.enum(['SCHOOL', 'OWNER']),
+  "kind": zod.enum(['SCAN', 'RETRY', 'HEARTBEAT', 'MALFORMED', 'ERROR']),
+  "uid": zod.string().nullish(),
+  "occurredAt": zod.string().nullish(),
+  "receivedAt": zod.string(),
+  "eventId": zod.string().nullish(),
+  "registration": zod.enum(['REGISTERED', 'UNREGISTERED', 'UNAVAILABLE']),
+  "registeredAtScan": zod.boolean().nullish(),
+  "outcome": zod.string(),
+  "reason": zod.string().nullish()
+})).optional(),
+  "scanTotal": zod.number().int().optional(),
   "total": zod.number().int().optional(),
   "page": zod.number().int().optional(),
   "pageSize": zod.number().int().optional(),
@@ -575,7 +605,11 @@ export const GetOwnerUidInventoryResponse = zod.object({
   "assigned": zod.boolean(),
   "schoolId": zod.number().int().nullable(),
   "studentId": zod.number().int().nullable(),
-  "status": zod.string().nullable()
+  "status": zod.string().nullable(),
+  "source": zod.enum(['SCHOOL', 'OWNER']).optional(),
+  "sourceSchoolId": zod.number().int().nullish(),
+  "sourceSchoolName": zod.string().nullish(),
+  "registrationStatus": zod.string().optional()
 }))
 })
 

@@ -28,7 +28,7 @@ export function CardUidInventoryPage() {
   return <div className="fade-up">
     <PageHeading eyebrow="Platform Owner / NFC hardware" title="Card UID Inventory"
       description="Permanent UIDs reported by your authenticated readers, including cards not connected to a student."
-      action={<Link href="/devices" className="text-sm font-bold underline">Manage readers & credentials</Link>} />
+      action={<span className="flex flex-wrap gap-4"><Link href="/nfc-scan-audit" className="text-sm font-bold underline" data-testid="link-nfc-scan-audit">NFC Card Scan Audit</Link><Link href="/devices" className="text-sm font-bold underline">Manage readers & credentials</Link></span>} />
     <div className="panel mb-6 p-5 text-sm">
       <p className="font-bold">Capture is not assignment or activation.</p>
       <p className="mt-1 text-[hsl(var(--muted-foreground))]">Every successful UID read is saved here. Unknown cards need no student connection. Registration is a separate, confirmed action. No attendance, access, subscription or payment action occurs during capture.</p>
@@ -70,18 +70,19 @@ export function CardUidInventoryPage() {
           <div>
             <h3 className="select-all break-all font-mono text-xl font-bold">{row.rawUid ?? row.uid}</h3>
             {row.rawUid && row.rawUid !== row.uid && <p className="mt-1 text-xs">Inventory UID: <span className="select-all font-mono">{row.uid}</span></p>}
-            <p className="my-2 text-sm font-bold">{!row.assigned ? 'Unknown / unassigned — UID captured' : row.studentId ? 'Assigned — UID captured' : 'Registered / reserved — UID captured'}</p>
+            <p className="my-2 text-sm font-bold" data-testid={`status-inventory-${row.uid}`}>{!row.assigned && (row.source === 'SCHOOL' || /PENDING/i.test(row.registrationStatus ?? '')) ? `Pending Registration — discovered on ${row.source === 'SCHOOL' ? 'school' : 'Owner'} reader` : !row.assigned ? 'Unknown / unassigned — UID captured' : row.studentId ? 'Assigned — UID captured' : 'Registered / reserved — UID captured'}</p>
             {row.duplicate && <p className="mb-2 text-xs">Duplicate UID · already in inventory / registration. No duplicate card record created.</p>}
             <CopyUid uid={row.rawUid ?? row.uid} />
           </div>
           <dl className="space-y-2 text-sm">
             <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Latest source device</dt><dd>{row.deviceName ?? `Device #${row.readerDeviceId}`} {row.serialNumber ? `(${row.serialNumber})` : ''}</dd><dd className="text-xs">Device ID {row.readerDeviceId}</dd></div>
+            <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Discovery source</dt><dd>{row.source === 'SCHOOL' ? 'School reader' : row.source === 'OWNER' ? 'Owner reader' : 'Owner reader'}</dd>{row.sourceSchoolId != null && <dd className="text-xs">{row.sourceSchoolName ?? 'School'} (ID {row.sourceSchoolId})</dd>}</div>
             <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Successful physical reports</dt><dd>{row.scanCount ?? 1} · transport retries excluded</dd></div>
           </dl>
           <div className="space-y-2 text-sm">
             <p><span className="block text-xs text-[hsl(var(--muted-foreground))]">First seen</span>{time(row.firstSeenAt ?? row.capturedAt)}</p>
             <p><span className="block text-xs text-[hsl(var(--muted-foreground))]">Last seen</span>{time(row.lastSeenAt ?? row.capturedAt)}</p>
-            {!row.assigned ? <Button variant="outline" onClick={() => setAssign(row.uid)}>Register / assign with confirmation</Button>
+            {!row.assigned ? <Button variant="outline" onClick={() => setAssign(row.uid)}>Add to Registration</Button>
               : <Link href="/cards" className="inline-block text-sm font-bold underline">View existing card inventory</Link>}
           </div>
         </article>) : !inventory.isError && <EmptyState icon={Radio}

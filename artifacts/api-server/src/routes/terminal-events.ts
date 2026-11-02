@@ -5,7 +5,9 @@ import { deviceAuth, handleDeviceAttendance } from "./attendance";
 import {
   lagosDate, parseTerminalEvent, TERMINAL_MAX_AGE_MS, TERMINAL_RECEIPT_ACTION,
   terminalDirectionSql, type TerminalDirection, type TerminalReceipt,
+  terminalInternalId,
 } from "../lib/terminal-contract";
+import { recordNfcDiagnostic, scanReason } from "../services/nfc-scan-audit";
 
 const router = Router();
 const path = "/v1/terminal/events";
@@ -27,12 +29,46 @@ router.post(path, express.json({ limit: "16kb", strict: true }), async (req, res
   try { await ingestTerminalEvent(req, res); } catch (error) { next(error); }
 });
 
+async function diagnostic(client: { query: (sql: string, values?: any[]) => Promise<any> },
+  device: { deviceId: number; schoolId: number; credentialId: number },
+  body: any, kind: "MALFORMED" | "ERROR", reason: string) {
+  await client.query("BEGIN");
+  try {
+    // Recheck under the same row lock as reassignment/revocation; never log a
+    // submitted school's identity after its credential has ceased to authorize it.
+    const current = await client.query(`SELECT d.id FROM platform_devices d JOIN device_credentials c ON c.device_id=d.id
+      WHERE d.id=$1 AND d.school_id=$2 AND c.id=$3 AND c.school_id=d.school_id
+        AND d.status='ACTIVE' AND d.configuration_status='CONFIGURED' AND c.status='ACTIVE'
+        AND (c.expires_at IS NULL OR c.expires_at>NOW()) FOR UPDATE OF d`,
+    [device.deviceId, device.schoolId, device.credentialId]);
+    if (current.rows[0]) await recordNfcDiagnostic(client, { ...device, source: "SCHOOL", kind, reason,
+      eventId: body?.event_id, occurredAt: body?.timestamp, uid: kind === "ERROR" ? body?.uid : null });
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+}
+
 export async function ingestTerminalEvent(req: Request, res: Response) {
   const authorization = req.header("Authorization");
   const match = /^Bearer ([^\s]+)$/i.exec(authorization ?? "");
   if (!match) throw new AuthError(401, "Bearer device credential required");
   const now = Date.now();
-  const parsed = parseTerminalEvent(req.body, now);
+  let parsed: ReturnType<typeof parseTerminalEvent>;
+  try { parsed = parseTerminalEvent(req.body, now); }
+  catch (originalError) {
+    // Preserve parsing status/response. Never attribute caller-provided identities
+    // until a genuine credential and both IDs have independently matched.
+    try {
+      const id = terminalInternalId(req.body?.device_id, "device");
+      const schoolId = terminalInternalId(req.body?.school_id, "school");
+      const device = await deviceAuth(req, match[1]);
+      if (device.deviceId === id && device.schoolId === schoolId) {
+        const client = await pool.connect();
+        try { await diagnostic(client, device, req.body, "MALFORMED", "MALFORMED_REPORT"); }
+        finally { client.release(); }
+      }
+    } catch { /* No diagnostic can authorize a report or replace its original response. */ }
+    throw originalError;
+  }
   const device = await deviceAuth(req, match[1]);
   if (parsed.event.school_id !== device.schoolId || parsed.event.device_id !== device.deviceId) {
     throw new AuthError(403, "Device and school must match the registered device");
@@ -65,6 +101,9 @@ export async function ingestTerminalEvent(req: Request, res: Response) {
       throw new AuthError(409, "event_id belongs to a previous school assignment", "TERMINAL_EVENT_CONFLICT");
     }
     if (saved && saved.receipt.success === false) {
+      await recordNfcDiagnostic(client, { deviceId: device.deviceId, schoolId: device.schoolId,
+        source: "SCHOOL", kind: "RETRY", reason: "EXACT_RETRY",
+        eventId: parsed.event.event_id, occurredAt: parsed.event.timestamp, uid: parsed.event.uid });
       await client.query("COMMIT");
       res.status(200).json({ ...saved.receipt, duplicate: true }); return;
     }
@@ -122,8 +161,13 @@ export async function ingestTerminalEvent(req: Request, res: Response) {
     }
     await client.query("RELEASE SAVEPOINT terminal_attendance");
     if (!saved) {
+      const context = (await client.query(`SELECT d.name AS "deviceName",s.name AS "schoolName",
+        EXISTS(SELECT 1 FROM nfc_cards c WHERE upper(c.uid)=$2) AS "registeredAtScan"
+        FROM platform_devices d JOIN schools s ON s.id=d.school_id
+        WHERE d.id=$1 AND d.school_id=$3`,
+      [device.deviceId, parsed.event.uid, device.schoolId])).rows[0];
       // Durable protocol receipts live in the existing audit store; attendance remains authoritative.
-      // Persist the original ID/time, but never raw UID, bearer key or the full personal payload.
+      // Owner-only projection exposes restricted canonical scan evidence, never keys/person payloads.
       await client.query(
         `INSERT INTO audit_logs ("user",role,school_id,action,module,record_id,event_type,result,metadata)
          VALUES('NFC terminal','DEVICE',$1,$2,'Attendance',$3,'NFC_TERMINAL_EVENT',$4,$5::jsonb)`,
@@ -132,13 +176,24 @@ export async function ingestTerminalEvent(req: Request, res: Response) {
             eventKey: parsed.eventKey, eventId: parsed.event.event_id, fingerprint: parsed.fingerprint,
             originalTimestamp: parsed.event.timestamp, occurredAt: parsed.occurredAt.toISOString(),
             schoolId: device.schoolId, direction, attendanceEventId: body.id ?? null, receipt,
+            scan: { uid: parsed.event.uid, occurredAt: parsed.occurredAt.toISOString(),
+              receivedAt: new Date(now).toISOString(),
+              deviceName: context?.deviceName ?? null, schoolName: context?.schoolName ?? null,
+              registeredAtScan: context?.registeredAtScan ?? null,
+              reason: denial ? scanReason(denial) : "ATTENDANCE_ACCEPTED" },
           })],
       );
+    } else {
+      await recordNfcDiagnostic(client, { deviceId: device.deviceId, schoolId: device.schoolId,
+        source: "SCHOOL", kind: "RETRY", reason: "EXACT_RETRY",
+        eventId: parsed.event.event_id, occurredAt: parsed.event.timestamp, uid: parsed.event.uid });
     }
     await client.query("COMMIT");
     res.status(200).json(saved && !denial ? { ...saved.receipt, duplicate: true } : receipt);
   } catch (error) {
     await client.query("ROLLBACK");
+    try { await diagnostic(client, device, req.body, "ERROR", scanReason(error)); }
+    catch { /* Diagnostics do not change an existing protocol error response. */ }
     throw error;
   } finally { client.release(); }
 }

@@ -1,5 +1,6 @@
 import { AuthError } from "../middlewares/auth";
 import { OWNER_UID_ACTION, type ReaderDb } from "./owner-uid-reader";
+import { scanEvidenceSql } from "./nfc-scan-audit";
 
 export function inventoryFilters(query: Record<string, unknown>) {
   const integer = (key: string, fallback: number | null, max: number) => {
@@ -28,38 +29,42 @@ export function inventoryFilters(query: Record<string, unknown>) {
  * No card/person/financial state is written by this SELECT-only projection. */
 export async function listCapturedUids(db: ReaderDb, filters: ReturnType<typeof inventoryFilters>) {
   const { q, status, deviceId, page, pageSize } = filters;
-  const result = await db.query(`WITH capture_summary AS (
-    SELECT metadata->>'uid' AS uid,min("timestamp") AS "firstSeenAt",
-      max("timestamp") AS "lastSeenAt",count(*)::int AS "scanCount",
-      array_agg(DISTINCT record_id) AS sources
-    FROM audit_logs WHERE module='UIDInventory' AND action=$1
-      AND metadata->>'uid' IS NOT NULL GROUP BY metadata->>'uid'
+  const result = await db.query(`WITH evidence AS (${scanEvidenceSql}), captures AS (
+    SELECT * FROM evidence WHERE kind='SCAN' AND uid IS NOT NULL
+  ), capture_summary AS (
+    SELECT uid,min(received_at) AS "firstSeenAt",
+      max(received_at) AS "lastSeenAt",count(*)::int AS "scanCount",
+      array_agg(DISTINCT device_id) AS sources
+    FROM captures GROUP BY uid
   ), projected AS (
-    SELECT s.uid,coalesce(latest.metadata->>'rawUid',s.uid) AS "rawUid",
-      latest.record_id AS "readerDeviceId",latest."timestamp" AS "capturedAt",
+    SELECT s.uid,coalesce(latest.raw_uid,s.uid) AS "rawUid",
+      latest.device_id AS "readerDeviceId",latest.received_at AS "capturedAt",
       s."firstSeenAt",s."lastSeenAt",s."scanCount",
-      (s."scanCount">1 OR latest.metadata->>'duplicateUid'='true') IS TRUE AS duplicate,
+      (s."scanCount">1) IS TRUE AS duplicate,
       (card.id IS NOT NULL) AS assigned,card.school_id AS "schoolId",
       card.student_id AS "studentId",card.status,d.name AS "deviceName",d.serial_number AS "serialNumber",
       CASE WHEN card.student_id IS NOT NULL THEN 'ASSIGNED'
         WHEN card.id IS NOT NULL THEN 'RESERVED' ELSE 'UNKNOWN_UNASSIGNED' END AS "captureStatus",
+      CASE WHEN card.id IS NULL THEN 'Pending Registration' ELSE card.status END AS "registrationStatus",
+      latest.source AS "source",latest.school_id AS "sourceSchoolId",
+      latest.school_name AS "sourceSchoolName",
       s.sources
     FROM capture_summary s JOIN LATERAL (
-      SELECT metadata,record_id,"timestamp" FROM audit_logs
-      WHERE module='UIDInventory' AND action=$1 AND metadata->>'uid'=s.uid ORDER BY id DESC LIMIT 1
+      SELECT * FROM captures WHERE uid=s.uid ORDER BY id DESC LIMIT 1
     ) latest ON TRUE
-    LEFT JOIN platform_devices d ON d.id=latest.record_id
+    LEFT JOIN platform_devices d ON d.id=latest.device_id
     LEFT JOIN LATERAL (SELECT id,school_id,student_id,status FROM nfc_cards
       WHERE upper(uid)=s.uid ORDER BY CASE WHEN student_id IS NOT NULL THEN 0 ELSE 1 END,id DESC LIMIT 1) card ON TRUE
   ), filtered AS (
-    SELECT * FROM projected WHERE ($2='' OR uid ILIKE $2 OR "deviceName" ILIKE $2 OR "serialNumber" ILIKE $2)
+    SELECT * FROM projected WHERE ($1::text IS NOT NULL) AND ($2='' OR uid ILIKE $2 OR "deviceName" ILIKE $2 OR "serialNumber" ILIKE $2)
       AND ($3::bigint IS NULL OR $3=ANY(sources))
       AND ($4::text IS NULL OR "captureStatus"=$4 OR ($4='DUPLICATE' AND duplicate))
   )
   SELECT (SELECT count(*)::int FROM filtered) AS total,
     coalesce((SELECT json_agg(p) FROM (
       SELECT uid,"rawUid","readerDeviceId","capturedAt","firstSeenAt","lastSeenAt","scanCount",
-        duplicate,assigned,"schoolId","studentId",status,"deviceName","serialNumber","captureStatus"
+        duplicate,assigned,"schoolId","studentId",status,"deviceName","serialNumber","captureStatus",
+        "registrationStatus",source,"sourceSchoolId","sourceSchoolName"
       FROM filtered ORDER BY "lastSeenAt" DESC,uid LIMIT $5 OFFSET $6
     ) p),'[]'::json) AS inventory`,
   [OWNER_UID_ACTION, q ? `%${q.replace(/[\\%_]/g, "\\$&")}%` : "", deviceId, status, pageSize, (page - 1) * pageSize]);

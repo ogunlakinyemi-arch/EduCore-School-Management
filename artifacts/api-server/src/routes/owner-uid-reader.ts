@@ -7,6 +7,7 @@ import { ownerReaderBinding, parseOwnerUidEvent, verifyOwnerReaderSecret,
   ownerReaderConfiguration, type ReaderDb } from "../services/owner-uid-reader";
 import { terminalInternalId } from "../lib/terminal-contract";
 import { inventoryFilters, listCapturedUids } from "../services/owner-uid-inventory";
+import { listScanAudit, recordScanAccess, recordNfcDiagnostic, scanAuditFilters, scanReason } from "../services/nfc-scan-audit";
 
 const run = (fn: (req: Request, res: Response) => Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => void fn(req, res).catch(next);
@@ -31,6 +32,22 @@ async function recordBinding(db: ReaderDb, actor: number, id: number, metadata: 
 
 router.get("/platform/uid-inventory", run(async (req, res) => {
   assertRoles(req, ["PLATFORM_OWNER"]);
+  res.set("Cache-Control", "no-store");
+  if (req.query.view === "scans") {
+    const parsed = scanAuditFilters.safeParse(req.query);
+    if (!parsed.success) throw new AuthError(400, "Invalid scan audit filters");
+    const data = await listScanAudit(pool, parsed.data);
+    const csv = parsed.data.format === "CSV";
+    await recordScanAccess(pool, getUserContext(req).user.id, csv, data.rows.length);
+    if (csv) {
+      const fields = ["uid","occurredAt","receivedAt","deviceId","deviceName","schoolId","schoolName",
+        "source","kind","registration","registeredAtScan","outcome","reason"];
+      const cell = (v: unknown) => `"${String(v ?? "").replace(/^(?:[=+@\-\t\r\n]|\s+[=+@-])/, "'$&").replace(/"/g, '""')}"`;
+      res.set("Content-Disposition", 'attachment; filename="nfc-scan-audit.csv"').type("text/csv")
+        .send([fields.join(","), ...data.rows.map((r: Record<string, unknown>) => fields.map(f => cell(r[f])).join(","))].join("\r\n"));
+    } else res.json({ ...data, readers: [], inventory: [] });
+    return;
+  }
   const filters = inventoryFilters(req.query);
   const readers = await pool.query(`SELECT d.id AS "deviceId",d.serial_number AS "serialNumber",d.name,
     binding.metadata->>'credentialIdentifier' AS "internalCredentialIdentifier",
@@ -152,10 +169,12 @@ router.post("/platform/devices/:deviceId/owner-reader/unlink", run(async (req, r
 /** Deliberately separate from Clerk sessions AND from attendance ingestion. */
 export const ownerUidIngestionRouter = Router();
 ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit: "16kb", strict: true }), run(async (req, res) => {
+  const receivedAt = new Date().toISOString();
   const token = /^Bearer ([^\s]+)$/i.exec(req.header("Authorization") ?? "")?.[1];
   if (!token) throw new AuthError(401, "Authorization: Bearer <dedicated Owner reader credential> required. Do not use a school key or browser session");
   const id = terminalInternalId(req.body?.device_id, "device");
   const client = await pool.connect();
+  let authenticatedIdentifier: string | null = null;
   try {
     await client.query("BEGIN");
     const device = await client.query(`SELECT id,school_id AS "schoolId",device_type AS "deviceType",status
@@ -168,6 +187,7 @@ ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit
     const owner = await client.query(`SELECT 1 FROM school_memberships m JOIN app_users u ON u.id=m.user_id
       WHERE m.user_id=$1 AND m.role='PLATFORM_OWNER' AND m.status='ACTIVE' AND m.school_id IS NULL`, [binding.ownerUserId]);
     if (!owner.rows[0]) throw new AuthError(403, "Assigned Owner no longer has active platform authority");
+    authenticatedIdentifier = binding.credentialIdentifier;
     let event: ReturnType<typeof parseOwnerUidEvent>;
     try { event = parseOwnerUidEvent(req.body); }
     catch (e) {
@@ -193,6 +213,8 @@ ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit
       throw new AuthError(409, "event_id was already used for another UID read");
     }
     let receipt = prior.rows[0]?.metadata;
+    if (receipt) await recordNfcDiagnostic(client, { deviceId: id, schoolId: null, source: "OWNER",
+      kind: "RETRY", reason: "EXACT_RETRY", eventId: event.eventId, occurredAt: event.timestamp, uid: event.uid });
     if (!receipt) {
       let scanStatus = event.scanStatus, duplicateUid = false;
       if (event.uid) {
@@ -209,6 +231,8 @@ ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit
         eventId: event.eventId, fingerprint: event.fingerprint,
         credentialIdentifier: binding.credentialIdentifier, ownerUserId: binding.ownerUserId,
         occurredAt: event.timestamp, purpose: "UID_INVENTORY_ONLY",
+        receivedAt,
+        registeredAtScan: scanStatus === "ASSIGNED" || scanStatus === "RESERVED",
       };
       await client.query(`INSERT INTO audit_logs
         ("user",role,actor_user_id,action,module,record_id,event_type,result,metadata)
@@ -219,7 +243,27 @@ ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit
     res.json({ success: true, uid: receipt.uid, rawUid: receipt.rawUid ?? receipt.uid,
       scanStatus: receipt.scanStatus ?? "CAPTURED", duplicateUid: receipt.duplicateUid === true,
       duplicate: Boolean(prior.rows[0]), purpose: "UID_INVENTORY_ONLY" });
-  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  } catch (e) {
+    await client.query("ROLLBACK");
+    if (authenticatedIdentifier) {
+      try {
+        await client.query("BEGIN");
+        const currentDevice = (await client.query(`SELECT id,school_id AS "schoolId",device_type AS "deviceType",status
+          FROM platform_devices WHERE id=$1 FOR UPDATE`, [id])).rows[0];
+        const currentBinding = await ownerReaderBinding(client, id);
+        const authority = currentBinding && await client.query(`SELECT 1 FROM school_memberships m JOIN app_users u ON u.id=m.user_id
+          WHERE m.user_id=$1 AND m.role='PLATFORM_OWNER' AND m.status='ACTIVE' AND m.school_id IS NULL`, [currentBinding.ownerUserId]);
+        if (currentDevice?.status === "ACTIVE" && currentDevice.schoolId == null &&
+            currentBinding?.credentialIdentifier === authenticatedIdentifier && authority?.rows[0]) {
+          await recordNfcDiagnostic(client, { deviceId: id, schoolId: null, source: "OWNER",
+            kind: "ERROR", reason: scanReason(e), eventId: req.body?.event_id,
+            occurredAt: req.body?.timestamp, uid: req.body?.uid });
+        }
+        await client.query("COMMIT");
+      } catch { await client.query("ROLLBACK"); }
+    }
+    throw e;
+  }
   finally { client.release(); }
 }));
 ownerUidIngestionRouter.use((e: any, _req: Request, res: Response, _next: NextFunction) => {

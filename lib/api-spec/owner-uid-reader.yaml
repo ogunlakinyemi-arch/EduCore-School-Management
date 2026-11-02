@@ -50,6 +50,15 @@ ownerUidInventory:
     summary: Read Owner UID-only reader bindings and captured UID inventory
     parameters:
       - { name: q, in: query, schema: { type: string, maxLength: 128 } }
+      - { name: view, in: query, schema: { type: string, enum: [scans] } }
+      - { name: schoolId, in: query, schema: { type: integer, minimum: 1 } }
+      - { name: from, in: query, schema: { type: string, format: date-time } }
+      - { name: to, in: query, schema: { type: string, format: date-time } }
+      - { name: source, in: query, schema: { type: string, enum: [SCHOOL, OWNER] } }
+      - { name: registration, in: query, schema: { type: string, enum: [REGISTERED, UNREGISTERED, UNAVAILABLE] } }
+      - { name: result, in: query, schema: { type: string, maxLength: 80 } }
+      - { name: kind, in: query, schema: { type: string, enum: [SCAN, RETRY, HEARTBEAT, MALFORMED, ERROR] } }
+      - { name: format, in: query, schema: { type: string, enum: [JSON, CSV] } }
       - { name: deviceId, in: query, schema: { type: integer, minimum: 1 } }
       - { name: status, in: query, schema: { type: string, enum: [UNKNOWN_UNASSIGNED, ASSIGNED, RESERVED, DUPLICATE] } }
       - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
@@ -354,6 +363,10 @@ components:
       type: object
       required: [readers, inventory]
       properties:
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/NfcScanAuditRow" }
+        scanTotal: { type: integer }
         total: { type: integer }
         page: { type: integer }
         pageSize: { type: integer }
@@ -363,6 +376,25 @@ components:
         inventory:
           type: array
           items: { $ref: "#/components/schemas/CapturedUid" }
+    NfcScanAuditRow:
+      type: object
+      required: [id, deviceId, source, kind, receivedAt, registration, outcome]
+      properties:
+        id: { type: integer }
+        deviceId: { type: integer }
+        deviceName: { type: [string, "null"] }
+        schoolId: { type: [integer, "null"] }
+        schoolName: { type: [string, "null"] }
+        source: { type: string, enum: [SCHOOL, OWNER] }
+        kind: { type: string, enum: [SCAN, RETRY, HEARTBEAT, MALFORMED, ERROR] }
+        uid: { type: [string, "null"] }
+        occurredAt: { type: [string, "null"] }
+        receivedAt: { type: string }
+        eventId: { type: [string, "null"] }
+        registration: { type: string, enum: [REGISTERED, UNREGISTERED, UNAVAILABLE] }
+        registeredAtScan: { type: [boolean, "null"] }
+        outcome: { type: string }
+        reason: { type: [string, "null"] }
     OwnerUidReader:
       type: object
       required: [deviceId, serialNumber, name, ownerUserId, lastReadAt]
@@ -412,3 +444,7 @@ components:
         schoolId: { type: [integer, "null"] }
         studentId: { type: [integer, "null"] }
         status: { type: [string, "null"] }
+        source: { type: string, enum: [SCHOOL, OWNER] }
+        sourceSchoolId: { type: [integer, "null"] }
+        sourceSchoolName: { type: [string, "null"] }
+        registrationStatus: { type: string }

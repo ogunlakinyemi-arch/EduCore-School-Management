@@ -14,10 +14,13 @@ export function capturedUid(value: unknown) {
 export async function prepareCapturedUid(db: ReaderDb, value: unknown, schoolId: number) {
   const uid = capturedUid(value);
   await db.query("SELECT pg_advisory_xact_lock(hashtext(LOWER($1)))", [uid]);
-  const capture = await db.query(`SELECT id FROM audit_logs WHERE module='UIDInventory'
-    AND action=$1 AND metadata->>'uid'=$2 AND event_type='OWNER_UID_CAPTURE' AND result='SUCCESS'
+  const capture = await db.query(`SELECT id FROM audit_logs WHERE (
+    (module='UIDInventory' AND action=$1 AND metadata->>'uid'=$2 AND result='SUCCESS'
+      AND event_type IN ('OWNER_UID_CAPTURE','OWNER_UID_READER_REPORT'))
+    OR (module='Attendance' AND action='NFC terminal event receipt' AND event_type='NFC_TERMINAL_EVENT'
+      AND metadata->'scan'->>'uid'=$2 AND result IN ('SUCCESS','DENIED')))
     ORDER BY id DESC LIMIT 1`, [OWNER_UID_ACTION, uid]);
-  if (!capture.rows[0]) throw new AuthError(409, "UID has not been captured by an authenticated Owner reader");
+  if (!capture.rows[0]) throw new AuthError(409, "UID has not been discovered by an authenticated NFC reader");
   const prior = await db.query("SELECT id FROM nfc_cards WHERE lower(uid)=lower($1) FOR UPDATE", [uid]);
   if (prior.rows[0]) throw new AuthError(409, "UID is assigned, reserved or retired; select another available captured UID");
   const result = await db.query(`INSERT INTO nfc_cards(school_id,uid,status)
@@ -45,7 +48,7 @@ export async function assignCapturedUid(req: Request, schoolId: number, studentI
       VALUES($1,$2,$3,'ASSIGNED','unassigned','locked','Confirmed captured UID assignment',$4)`, [schoolId,card.id,studentId,actor]);
     await db.query(`INSERT INTO audit_logs("user",role,actor_user_id,school_id,action,module,record_id,event_type,result,metadata)
       VALUES('Platform Owner','PLATFORM_OWNER',$1,$2,'Captured UID assigned','Cards',$3,'CAPTURED_UID_ASSIGNED','SUCCESS',$4::jsonb)`,
-    [actor,schoolId,card.id,JSON.stringify({uid:card.uid,studentId,schoolId,source:"AUTHENTICATED_OWNER_READER",confirmed:true})]);
+    [actor,schoolId,card.id,JSON.stringify({uid:card.uid,studentId,schoolId,source:"AUTHENTICATED_NFC_DISCOVERY",confirmed:true})]);
     await db.query("COMMIT");
     return { cardId:card.id,uid:card.uid,schoolId,studentId,status:"locked" };
   } catch (e) { await db.query("ROLLBACK"); throw e; }

@@ -14059,6 +14059,60 @@ export interface OwnerUidRead {
   timestamp: string;
 }
 
+export type NfcScanAuditRowSource = typeof NfcScanAuditRowSource[keyof typeof NfcScanAuditRowSource];
+
+
+export const NfcScanAuditRowSource = {
+  SCHOOL: 'SCHOOL',
+  OWNER: 'OWNER',
+} as const;
+
+export type NfcScanAuditRowKind = typeof NfcScanAuditRowKind[keyof typeof NfcScanAuditRowKind];
+
+
+export const NfcScanAuditRowKind = {
+  SCAN: 'SCAN',
+  RETRY: 'RETRY',
+  HEARTBEAT: 'HEARTBEAT',
+  MALFORMED: 'MALFORMED',
+  ERROR: 'ERROR',
+} as const;
+
+export type NfcScanAuditRowRegistration = typeof NfcScanAuditRowRegistration[keyof typeof NfcScanAuditRowRegistration];
+
+
+export const NfcScanAuditRowRegistration = {
+  REGISTERED: 'REGISTERED',
+  UNREGISTERED: 'UNREGISTERED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface NfcScanAuditRow {
+  id: number;
+  deviceId: number;
+  /** @nullable */
+  deviceName?: string | null;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @nullable */
+  schoolName?: string | null;
+  source: NfcScanAuditRowSource;
+  kind: NfcScanAuditRowKind;
+  /** @nullable */
+  uid?: string | null;
+  /** @nullable */
+  occurredAt?: string | null;
+  receivedAt: string;
+  /** @nullable */
+  eventId?: string | null;
+  registration: NfcScanAuditRowRegistration;
+  /** @nullable */
+  registeredAtScan?: boolean | null;
+  outcome: string;
+  /** @nullable */
+  reason?: string | null;
+}
+
 /**
  * @nullable
  */
@@ -14118,6 +14172,14 @@ export const CapturedUidCaptureStatus = {
   RESERVED: 'RESERVED',
 } as const;
 
+export type CapturedUidSource = typeof CapturedUidSource[keyof typeof CapturedUidSource];
+
+
+export const CapturedUidSource = {
+  SCHOOL: 'SCHOOL',
+  OWNER: 'OWNER',
+} as const;
+
 export interface CapturedUid {
   uid: string;
   rawUid?: string;
@@ -14139,9 +14201,17 @@ export interface CapturedUid {
   studentId: number | null;
   /** @nullable */
   status: string | null;
+  source?: CapturedUidSource;
+  /** @nullable */
+  sourceSchoolId?: number | null;
+  /** @nullable */
+  sourceSchoolName?: string | null;
+  registrationStatus?: string;
 }
 
 export interface OwnerUidInventory {
+  rows?: NfcScanAuditRow[];
+  scanTotal?: number;
   total?: number;
   page?: number;
   pageSize?: number;
@@ -24164,6 +24234,21 @@ export type GetOwnerUidInventoryParams = {
  * @maxLength 128
  */
 q?: string;
+view?: GetOwnerUidInventoryView;
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+from?: string;
+to?: string;
+source?: GetOwnerUidInventorySource;
+registration?: GetOwnerUidInventoryRegistration;
+/**
+ * @maxLength 80
+ */
+result?: string;
+kind?: GetOwnerUidInventoryKind;
+format?: GetOwnerUidInventoryFormat;
 /**
  * @minimum 1
  */
@@ -24179,6 +24264,49 @@ page?: number;
  */
 pageSize?: number;
 };
+
+export type GetOwnerUidInventoryView = typeof GetOwnerUidInventoryView[keyof typeof GetOwnerUidInventoryView];
+
+
+export const GetOwnerUidInventoryView = {
+  scans: 'scans',
+} as const;
+
+export type GetOwnerUidInventorySource = typeof GetOwnerUidInventorySource[keyof typeof GetOwnerUidInventorySource];
+
+
+export const GetOwnerUidInventorySource = {
+  SCHOOL: 'SCHOOL',
+  OWNER: 'OWNER',
+} as const;
+
+export type GetOwnerUidInventoryRegistration = typeof GetOwnerUidInventoryRegistration[keyof typeof GetOwnerUidInventoryRegistration];
+
+
+export const GetOwnerUidInventoryRegistration = {
+  REGISTERED: 'REGISTERED',
+  UNREGISTERED: 'UNREGISTERED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export type GetOwnerUidInventoryKind = typeof GetOwnerUidInventoryKind[keyof typeof GetOwnerUidInventoryKind];
+
+
+export const GetOwnerUidInventoryKind = {
+  SCAN: 'SCAN',
+  RETRY: 'RETRY',
+  HEARTBEAT: 'HEARTBEAT',
+  MALFORMED: 'MALFORMED',
+  ERROR: 'ERROR',
+} as const;
+
+export type GetOwnerUidInventoryFormat = typeof GetOwnerUidInventoryFormat[keyof typeof GetOwnerUidInventoryFormat];
+
+
+export const GetOwnerUidInventoryFormat = {
+  JSON: 'JSON',
+  CSV: 'CSV',
+} as const;
 
 export type GetOwnerUidInventoryStatus = typeof GetOwnerUidInventoryStatus[keyof typeof GetOwnerUidInventoryStatus];
 
