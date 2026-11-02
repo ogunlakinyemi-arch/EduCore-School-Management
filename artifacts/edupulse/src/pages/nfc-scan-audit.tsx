@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { customFetch, type NfcScanAuditRow, type OwnerUidInventory } from '@workspace/api-client-react';
+import { customFetch, type NfcScanAuditRow, type OwnerUidInventory, type PlatformDevice } from '@workspace/api-client-react';
 import { Download, Radio, Search } from 'lucide-react';
 import { Button, EmptyState, PageHeading } from '@/components/shared';
 import { uidInventoryKey } from '@/components/owner-uid-reader';
 import { AssignUidModal, backendError } from '@/components/uid-actions';
+import { AuditFilterSelect } from '@/components/audit-filter-select';
 
 export const nfcScanAuditKey = [...uidInventoryKey, 'scans'] as const;
 const PAGE_SIZE = 50;
@@ -41,7 +42,7 @@ export function buildAuditParams(f: AuditFilters, page: number) {
   return p;
 }
 
-const posInt = (v: string) => v === '' || /^[1-9]\d*$/.test(v);
+type AuditSchool = { id: number; name: string; code?: string | null };
 
 export function NfcScanAuditPage() {
   const [f, setF] = useState<AuditFilters>(emptyFilters);
@@ -53,6 +54,31 @@ export function NfcScanAuditPage() {
   const [pollingStopped, setPollingStopped] = useState(false);
   const params = buildAuditParams(f, page);
   const set = (k: keyof AuditFilters, v: string) => { setF(prev => ({ ...prev, [k]: v })); setPage(1); polls.current = 0; setPollingStopped(false); };
+  const schools = useQuery({
+    queryKey: ['nfc-scan-audit-school-options'],
+    queryFn: () => customFetch<{ schools: AuditSchool[] }>('/api/platform/schools/directory?status=all'),
+    staleTime: 60_000,
+  });
+  const devices = useQuery({
+    queryKey: ['nfc-scan-audit-device-options'],
+    queryFn: () => customFetch<PlatformDevice[]>('/api/platform/devices'),
+    staleTime: 60_000,
+  });
+  const schoolOptions = (schools.data?.schools ?? []).map(school => ({
+    value: String(school.id), label: `${school.name}${school.code ? ` · ${school.code}` : ''} (#${school.id})`,
+  })).sort((a, b) => a.label.localeCompare(b.label));
+  const deviceOptions = (devices.data ?? []).filter(device => !f.schoolId || String(device.schoolId) === f.schoolId)
+    .map(device => ({ value: String(device.id),
+      label: `${device.name || 'Unnamed device'} (#${device.id})${device.serialNumber ? ` · ${device.serialNumber}` : ''}${device.schoolName ? ` · ${device.schoolName}` : device.schoolId == null ? ' · No school / Owner hardware' : ''}`,
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  const selectSchool = (schoolId: string) => {
+    // Clear a device that no longer belongs to the chosen school atomically:
+    // never issue a transient mismatched school/device audit request.
+    const device = devices.data?.find(device => String(device.id) === f.deviceId);
+    const deviceId = !schoolId || String(device?.schoolId) === schoolId ? f.deviceId : '';
+    setF(prev => ({ ...prev, schoolId, deviceId }));
+    setPage(1); polls.current = 0; setPollingStopped(false);
+  };
 
   const audit = useQuery({
     queryKey: [...nfcScanAuditKey, params.toString()],
@@ -114,12 +140,10 @@ export function NfcScanAuditPage() {
             <span className="relative mt-1 block"><Search className="absolute left-3 top-3" size={16} />
               <input aria-label="Search UID" data-testid="input-audit-q" className="w-full pl-9" maxLength={128} value={f.q} placeholder="UID" onChange={e => set('q', e.target.value)} /></span>
           </label>
-          <label className="text-sm">School ID
-            <input aria-label="School ID" data-testid="input-audit-school" className="mt-1 w-full" inputMode="numeric" value={f.schoolId} placeholder="All schools" onChange={e => posInt(e.target.value) && set('schoolId', e.target.value)} />
-          </label>
-          <label className="text-sm">Device ID
-            <input aria-label="Device ID" data-testid="input-audit-device" className="mt-1 w-full" inputMode="numeric" value={f.deviceId} placeholder="All devices" onChange={e => posInt(e.target.value) && set('deviceId', e.target.value)} />
-          </label>
+          <AuditFilterSelect label="School" value={f.schoolId} options={schoolOptions} allLabel="All schools"
+            loading={schools.isPending} error={schools.isError} onRetry={() => void schools.refetch()} onChange={selectSchool} />
+          <AuditFilterSelect key={f.schoolId} label="Device" value={f.deviceId} options={deviceOptions} allLabel="All devices"
+            loading={devices.isPending} error={devices.isError} onRetry={() => void devices.refetch()} onChange={value => set('deviceId', value)} />
           <label className="text-sm">Registration
             <select aria-label="Registration" data-testid="select-audit-registration" className="mt-1 w-full" value={f.registration} onChange={e => set('registration', e.target.value)}>
               <option value="">Any registration</option><option value="REGISTERED">Registered</option><option value="UNREGISTERED">Pending Registration</option><option value="UNAVAILABLE">Unavailable</option>
