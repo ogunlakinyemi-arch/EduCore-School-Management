@@ -13963,18 +13963,59 @@ export type OwnerUidReadEventType = typeof OwnerUidReadEventType[keyof typeof Ow
 
 export const OwnerUidReadEventType = {
   CARD_SCAN: 'CARD_SCAN',
+  READER_HEARTBEAT: 'READER_HEARTBEAT',
+  CARD_SCAN_ERROR: 'CARD_SCAN_ERROR',
+} as const;
+
+/**
+ * Required only for CARD_SCAN_ERROR. Never submit school attendance decisions.
+ */
+export type OwnerUidReadErrorCode = typeof OwnerUidReadErrorCode[keyof typeof OwnerUidReadErrorCode];
+
+
+export const OwnerUidReadErrorCode = {
+  UNSUPPORTED_CARD: 'UNSUPPORTED_CARD',
+  READER_ERROR: 'READER_ERROR',
+  TRANSPORT_ERROR: 'TRANSPORT_ERROR',
 } as const;
 
 export interface OwnerUidRead {
   /** @pattern ^[A-Za-z0-9_.:-]{1,128}$ */
   event_id: string;
   device_id: string | number;
-  /** @pattern ^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$ */
-  uid: string;
+  /**
+     * Required for CARD_SCAN only. Send raw UID bytes in reader order, zero-padded hex; never check attendance eligibility before reporting.
+     * @pattern ^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$
+     */
+  uid?: string;
   event_type: OwnerUidReadEventType;
+  /** Required only for CARD_SCAN_ERROR. Never submit school attendance decisions. */
+  error_code?: OwnerUidReadErrorCode;
   /** Actual scan ISO timestamp within five minutes; retry unchanged. */
   timestamp: string;
 }
+
+/**
+ * @nullable
+ */
+export type OwnerUidReaderLastReport = {
+  scanStatus?: string;
+  /** @nullable */
+  uid?: string | null;
+  /** @nullable */
+  rawUid?: string | null;
+  duplicateUid?: boolean;
+} | null;
+
+/**
+ * @nullable
+ */
+export type OwnerUidReaderLastScan = {
+  scanStatus?: string;
+  uid?: string;
+  rawUid?: string;
+  duplicateUid?: boolean;
+} | null;
 
 export interface OwnerUidReader {
   deviceId: number;
@@ -13983,6 +14024,12 @@ export interface OwnerUidReader {
   ownerUserId: number;
   /** @nullable */
   lastReadAt: string | null;
+  /** @nullable */
+  lastSeenAt?: string | null;
+  /** @nullable */
+  lastReport?: OwnerUidReaderLastReport;
+  /** @nullable */
+  lastScan?: OwnerUidReaderLastScan;
 }
 
 export interface CapturedUid {
@@ -24026,6 +24073,20 @@ export type BindOwnerUidReader201 = {
   credential: string;
 };
 
+export type IngestOwnerUidRead200ScanStatus = typeof IngestOwnerUidRead200ScanStatus[keyof typeof IngestOwnerUidRead200ScanStatus];
+
+
+export const IngestOwnerUidRead200ScanStatus = {
+  CAPTURED: 'CAPTURED',
+  READY: 'READY',
+  UNKNOWN_UNASSIGNED: 'UNKNOWN_UNASSIGNED',
+  ASSIGNED: 'ASSIGNED',
+  RESERVED: 'RESERVED',
+  UNSUPPORTED_CARD: 'UNSUPPORTED_CARD',
+  READER_ERROR: 'READER_ERROR',
+  TRANSPORT_ERROR: 'TRANSPORT_ERROR',
+} as const;
+
 export type IngestOwnerUidRead200Purpose = typeof IngestOwnerUidRead200Purpose[keyof typeof IngestOwnerUidRead200Purpose];
 
 
@@ -24035,7 +24096,16 @@ export const IngestOwnerUidRead200Purpose = {
 
 export type IngestOwnerUidRead200 = {
   success: boolean;
-  uid: string;
+  /** @nullable */
+  uid: string | null;
+  /**
+     * Original reader hex representation; canonical inventory UID uses uppercase without changing byte order.
+     * @nullable
+     */
+  rawUid?: string | null;
+  scanStatus?: IngestOwnerUidRead200ScanStatus;
+  /** UID already captured or registered; does not suppress the raw result. */
+  duplicateUid?: boolean;
   duplicate: boolean;
   purpose: IngestOwnerUidRead200Purpose;
 };

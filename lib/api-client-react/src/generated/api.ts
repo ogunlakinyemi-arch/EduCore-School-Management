@@ -2875,7 +2875,7 @@ return customFetch<IngestOwnerUidRead200>(getIngestOwnerUidReadUrl(),
 
 export const getIngestOwnerUidReadMutationKey = () => ['ingestOwnerUidRead'] as const;
 
-export const getIngestOwnerUidReadMutationOptions = <TError = ErrorType<unknown>,
+export const getIngestOwnerUidReadMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestOwnerUidRead>>, TError,IngestOwnerUidReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof ingestOwnerUidRead>>, TError,IngestOwnerUidReadMutationVariables, TContext> => {
 
@@ -2904,13 +2904,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type IngestOwnerUidReadMutationResult = NonNullable<Awaited<ReturnType<typeof ingestOwnerUidRead>>>
     export type IngestOwnerUidReadMutationBody = BodyType<OwnerUidRead>
-    export type IngestOwnerUidReadMutationError = ErrorType<unknown>
+    export type IngestOwnerUidReadMutationError = ErrorType<void>
     export type IngestOwnerUidReadMutationVariables = {data: BodyType<OwnerUidRead>}
 
     /**
  * @summary Authenticated physical reader UID report; never dispatches attendance
  */
-export const useIngestOwnerUidRead = <TError = ErrorType<unknown>,
+export const useIngestOwnerUidRead = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestOwnerUidRead>>, TError,IngestOwnerUidReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof ingestOwnerUidRead>>,

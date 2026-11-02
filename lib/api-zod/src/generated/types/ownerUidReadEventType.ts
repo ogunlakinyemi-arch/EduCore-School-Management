@@ -11,4 +11,6 @@ export type OwnerUidReadEventType = typeof OwnerUidReadEventType[keyof typeof Ow
 
 export const OwnerUidReadEventType = {
   CARD_SCAN: 'CARD_SCAN',
+  READER_HEARTBEAT: 'READER_HEARTBEAT',
+  CARD_SCAN_ERROR: 'CARD_SCAN_ERROR',
 } as const;

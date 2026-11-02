@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { OwnerUidReaderSection, type UidInventory } from './owner-uid-reader';
+import { OwnerUidReaderSection, readerConnection, type UidInventory } from './owner-uid-reader';
 
 const render = (state: Record<string, unknown>) =>
   renderToStaticMarkup(<OwnerUidReaderSection inventory={{ isLoading: false, isError: false, refetch: () => undefined, data: undefined, ...state } as any} />);
@@ -36,5 +39,53 @@ describe('OwnerUidReaderSection', () => {
     const html = render({ data });
     expect(html).not.toContain('<input');
     expect(html).not.toMatch(/simulate|manual scan/i);
+  });
+  it('shows unknown raw UIDs and duplicates independently of attendance or inventory assignment', () => {
+    const reader = { ...data.readers[0], lastSeenAt: new Date().toISOString(),
+      lastReport: { uid: 'AABBCCDD', scanStatus: 'UNKNOWN_UNASSIGNED' },
+      lastScan: { uid: 'AABBCCDD', rawUid: 'aabbccdd', scanStatus: 'UNKNOWN_UNASSIGNED', duplicateUid: true } };
+    const html = render({ data: { ...data, readers: [reader] } });
+    expect(html).toContain('Unknown / unassigned card — UID captured');
+    expect(html).toContain('aabbccdd');
+    expect(html).toContain('Copy UID');
+    expect(html).toContain('Duplicate UID');
+    expect(html).toContain('Authenticated reader connected');
+  });
+  it.each(['UNSUPPORTED_CARD', 'MALFORMED_SCAN', 'READER_ERROR', 'TRANSPORT_ERROR'])('keeps the last raw result visible after %s', scanStatus => {
+    const html = render({ data: { ...data, readers: [{ ...data.readers[0],
+      lastReport: { uid: null, scanStatus }, lastScan: { uid: 'AABBCCDD', scanStatus: 'UNKNOWN_UNASSIGNED' },
+    }] } });
+    expect(html).toContain('Latest captured UID');
+    expect(html).toContain('AABBCCDD');
+    expect(html).toContain({
+      UNSUPPORTED_CARD: 'Unsupported card', MALFORMED_SCAN: 'Malformed scan',
+      READER_ERROR: 'Reader error', TRANSPORT_ERROR: 'Reader transport error',
+    }[scanStatus]);
+  });
+  it('does not confuse an offline reader with missing assignment or a dashboard transport failure', () => {
+    expect(readerConnection(data.readers[0], Date.now())).toBe('Waiting for authenticated reader');
+    expect(readerConnection({ ...data.readers[0], lastSeenAt: new Date(Date.now() - 91_000).toISOString() })).toContain('offline');
+    const html = render({ data, isError: true });
+    expect(html).toContain('Dashboard transport error');
+    expect(html).toContain('AABBCCDD');
+    expect(html).toContain('Retry');
+  });
+  it('copies a displayed UID and reports clipboard errors without clearing the UID', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    try {
+      await act(async () => { root.render(<OwnerUidReaderSection inventory={{ data, refetch: vi.fn() } as any} />); });
+      const copy = [...container.querySelectorAll('button')].find(b => b.textContent === 'Copy UID')!;
+      await act(async () => { copy.click(); });
+      expect(writeText).toHaveBeenCalledWith('AABBCCDD');
+      expect(container.textContent).toContain('UID copied');
+      writeText.mockRejectedValueOnce(new Error('Permission denied'));
+      await act(async () => { copy.click(); });
+      expect(container.textContent).toContain('Copy failed');
+      expect(container.textContent).toContain('AABBCCDD');
+    } finally { await act(async () => root.unmount()); }
   });
 });

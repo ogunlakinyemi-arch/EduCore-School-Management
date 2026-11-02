@@ -63,7 +63,7 @@ ownerUidEvent:
           schema: { $ref: "#/components/schemas/OwnerUidRead" }
     responses:
       "200":
-        description: Captured inventory UID or identical retry; never an attendance receipt
+        description: Captured inventory UID, authenticated heartbeat/error or identical retry; never an attendance receipt
         content:
           application/json:
             schema:
@@ -71,9 +71,17 @@ ownerUidEvent:
               required: [success, uid, duplicate, purpose]
               properties:
                 success: { type: boolean }
-                uid: { type: string }
+                uid: { type: [string, "null"] }
+                rawUid: { type: [string, "null"], description: Original reader hex representation; canonical inventory UID uses uppercase without changing byte order. }
+                scanStatus: { type: string, enum: [CAPTURED, READY, UNKNOWN_UNASSIGNED, ASSIGNED, RESERVED, UNSUPPORTED_CARD, READER_ERROR, TRANSPORT_ERROR] }
+                duplicateUid: { type: boolean, description: UID already captured or registered; does not suppress the raw result. }
                 duplicate: { type: boolean }
                 purpose: { type: string, enum: [UID_INVENTORY_ONLY] }
+      "400": { description: Malformed scan; authenticated attributable errors update reader status but never inventory. }
+      "401": { description: "Missing, revoked or wrong reader credential, or device not actively Owner-linked." }
+      "403": { description: Owner authority revoked. }
+      "409": { description: Event ID reused for a different report. }
+      "503": { description: Transport/service failure; no confirmed capture. Retry unchanged event ID and timestamp within the five-minute window. }
 capturedUidAssignment:
   post:
     operationId: assignCapturedUidToStudent
@@ -218,7 +226,7 @@ components:
     OwnerUidRead:
       type: object
       additionalProperties: false
-      required: [event_id, device_id, uid, event_type, timestamp]
+      required: [event_id, device_id, event_type, timestamp]
       properties:
         event_id: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,128}$' }
         device_id:
@@ -226,8 +234,9 @@ components:
             - { type: string, pattern: '^EDUCORE(?:0[1-9]|[1-9][0-9]+)$' }
             - { type: integer, minimum: 1, maximum: 9007199254740991, deprecated: true }
             - { type: string, pattern: '^[1-9][0-9]*$', deprecated: true }
-        uid: { type: string, pattern: '^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$' }
-        event_type: { type: string, enum: [CARD_SCAN] }
+        uid: { type: string, pattern: '^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$', description: "Required for CARD_SCAN only. Send raw UID bytes in reader order, zero-padded hex; never check attendance eligibility before reporting." }
+        event_type: { type: string, enum: [CARD_SCAN, READER_HEARTBEAT, CARD_SCAN_ERROR] }
+        error_code: { type: string, enum: [UNSUPPORTED_CARD, READER_ERROR, TRANSPORT_ERROR], description: Required only for CARD_SCAN_ERROR. Never submit school attendance decisions. }
         timestamp: { type: string, description: Actual scan ISO timestamp within five minutes; retry unchanged. }
     OwnerUidInventory:
       type: object
@@ -248,6 +257,21 @@ components:
         name: { type: string }
         ownerUserId: { type: integer }
         lastReadAt: { type: [string, "null"] }
+        lastSeenAt: { type: [string, "null"] }
+        lastReport:
+          type: [object, "null"]
+          properties:
+            scanStatus: { type: string }
+            uid: { type: [string, "null"] }
+            rawUid: { type: [string, "null"] }
+            duplicateUid: { type: boolean }
+        lastScan:
+          type: [object, "null"]
+          properties:
+            scanStatus: { type: string }
+            uid: { type: string }
+            rawUid: { type: string }
+            duplicateUid: { type: boolean }
     CapturedUid:
       type: object
       required: [uid, readerDeviceId, capturedAt, assigned, schoolId, studentId, status]

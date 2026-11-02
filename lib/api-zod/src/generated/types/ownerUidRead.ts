@@ -5,15 +5,21 @@
  * Multi-tenant Yetenia EduCore API. Student platform collection is a separate School Admin initiated NGN 3200 per student per term payment entirely to the Platform Owner merchant, without subaccounts or split instructions. Parents pay schools directly. Eligible BRO NGN 150 entitlements are internal only; no eligible BRO means no ledger row or liability. Legacy split/hosted checkout, subaccount onboarding, simulation and SCV3 release approval operations retained in this compatibility specification are retired and return HTTP 410. Historical authenticated reads and separately authorized reconciliation remain available; their presence never authorizes new payment issuance or LIVE activation.
  * OpenAPI spec version: 0.1.0
  */
+import type { OwnerUidReadErrorCode } from './ownerUidReadErrorCode';
 import type { OwnerUidReadEventType } from './ownerUidReadEventType';
 
 export interface OwnerUidRead {
   /** @pattern ^[A-Za-z0-9_.:-]{1,128}$ */
   event_id: string;
   device_id: string | number;
-  /** @pattern ^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$ */
-  uid: string;
+  /**
+     * Required for CARD_SCAN only. Send raw UID bytes in reader order, zero-padded hex; never check attendance eligibility before reporting.
+     * @pattern ^(?:[a-fA-F0-9]{8}|[a-fA-F0-9]{14}|[a-fA-F0-9]{20})$
+     */
+  uid?: string;
   event_type: OwnerUidReadEventType;
+  /** Required only for CARD_SCAN_ERROR. Never submit school attendance decisions. */
+  error_code?: OwnerUidReadErrorCode;
   /** Actual scan ISO timestamp within five minutes; retry unchanged. */
   timestamp: string;
 }

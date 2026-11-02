@@ -52,11 +52,60 @@ Illustrative body only—do not submit placeholders:
 ```
 
 Only genuine reader-reported 8/14/20-character hexadecimal UIDs are accepted.
+These represent the 4/7/10 UID bytes in antenna/reader order, zero-padded hex.
+Capture does not generate a new identifier, reverse bytes, authenticate card
+memory or require student enrollment. Firmware in explicit Owner capture mode
+must read/report the anticollision UID **before** any attendance, roster, card
+inventory, access, subscription or payment validation. Report even a card which
+school attendance would reject (unknown, unassigned, locked, revoked, expired,
+assigned to another school). Do not send attendance rejection fields to this
+endpoint, and do not fall back to a school endpoint on failure.
+
+Successful capture retains `rawUid` exactly as sent and uses uppercase `uid` as
+the inventory key. The response includes `scanStatus` (`UNKNOWN_UNASSIGNED`,
+`ASSIGNED` or `RESERVED`), `duplicateUid` (already captured or registered),
+`duplicate` (same event retry), and `purpose: UID_INVENTORY_ONLY`. A duplicate
+never suppresses the raw UID. Inventory lists one row per canonical UID, but
+separate genuine taps retain separate receipts. Captures from multiple readers
+serialize per UID; requests from one reader serialize with linking/unlinking.
+
 Use the actual scan timestamp within five minutes of server time; preserve it
 and the event ID on retries. Identical retries do not duplicate inventory audit
-records; conflicting reuse returns 409. School IDs, attendance fields, changed
+records; conflicting reuse returns 409. School IDs, attendance fields, unsupported
 event types and extra properties are rejected. Suspended devices, released
 bindings, mismatched device credentials and inactive Owner authority fail closed.
+
+### Connectivity and reader errors
+
+Use the **same authenticated callback and dedicated credential** for:
+
+* `READER_HEARTBEAT`: `event_id`, `device_id`, `event_type`, `timestamp`; no UID
+  or error code. Send every 30 seconds with a fresh event ID/timestamp per report.
+* `CARD_SCAN_ERROR`: the same envelope plus `error_code`, one of
+  `UNSUPPORTED_CARD`, `READER_ERROR`, `TRANSPORT_ERROR`; no UID. Use this only when
+  the hardware cannot obtain a valid UID, never for unknown/unassigned cards.
+  If a valid UID was obtained, send `CARD_SCAN` instead, irrespective of any
+  attendance decision.
+
+The panel distinguishes waiting for a first authenticated report, connected
+within 90 seconds, and offline/no recent report. This is a liveness indication,
+not proof of a physical outage. Legacy firmware without heartbeats cannot prove
+idle connectivity. Releasing and rebinding starts fresh connectivity evidence
+without deleting historical UID inventory.
+
+Malformed attributable payloads from an authenticated linked reader return 400
+`MALFORMED_SCAN` and update diagnostics, but never add a UID. Invalid credentials
+return 401/403 and cannot update diagnostics. Invalid JSON or invalid device
+identifiers cannot be attributed safely to hardware and do not update its panel.
+503 `TRANSPORT_ERROR` means no confirmed capture: retry the original envelope
+within the five-minute window. A terminal which is fully disconnected cannot
+report its own transport failure; no recent heartbeat and dashboard fetch errors
+are shown separately. Do not claim a server-supplied success while disconnected.
+
+The most recent successful raw UID remains visible with a copy action even after
+a later unsupported/malformed scan or dashboard fetch failure. The existing
+explicit **Assign to Student** confirmation is a separate registration action.
+Capturing alone never invokes it, activates cards, or changes subscriptions.
 
 This handler has no attendance/security/notification dispatch path. The Owner
 dashboard only reads the inventory—it does not simulate taps or post manual reads.
@@ -64,9 +113,30 @@ Registration alone is not physical connectivity. A received UID establishes an
 authenticated device report, not hardware attestation or vendor acceptance.
 
 The same reader model must support configuring this callback and dedicated
-credential. Until firmware is configured and a card is genuinely tapped, show
-**Waiting for authenticated reader**. No USB/browser driver or vendor API is
-invented; vendor firmware changes may be required for the separate callback.
+credential. Until firmware reports, show **Waiting for authenticated reader**.
+No USB/browser driver or vendor API is invented; vendor firmware changes may be
+required for the separate callback. The repository contains integration protocol
+documentation, not the terminal's firmware source. A hardware photo and a linked
+device do not establish installed firmware compatibility or physical acceptance.
+
+Authenticated heartbeat/error receipts use the operational audit action
+`Owner reader status reported`. Retain these alongside bindings and capture
+receipts. Never use arbitrary client-provided diagnostics as an authentication
+substitute; the same device lock, active binding, secret verification and current
+Owner-authority checks run before accepting a diagnostic.
+
+### Focused Development verification
+
+Route tests cover authorization, raw unknown and assigned UID capture, duplicates,
+malformed/unsupported/error reports and write isolation. The opt-in
+`owner-uid-reader.postgres.test.ts` additionally exercises real SQL list queries,
+concurrent readers, concurrent retries, status retention and zero attendance/
+payment/security writes. It only accepts a verified disposable Unix-socket
+cluster under `/tmp/educore-owner-uid-*`, role/database `owner_uid_fixture`, port
+55441, through `OWNER_UID_TEST_SOCKET`. It never reads application connection
+strings. UI tests cover statuses, preserved raw results, copy success/failure and
+dashboard transport errors. These are software checks, not a genuine terminal
+or authenticated dashboard acceptance claim.
 
 Inventory marks a UID already present in card records as assigned/reserved,
 including retired card records; capture never assigns or activates a student card.

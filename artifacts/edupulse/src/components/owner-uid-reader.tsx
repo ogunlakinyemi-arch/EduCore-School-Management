@@ -6,9 +6,46 @@ import { Button, EmptyState, Field, date } from '@/components/shared';
 import { AssignUidModal } from '@/components/uid-actions';
 
 export type UidInventory = {
-  readers: { deviceId: number; serialNumber: string; name: string; ownerUserId: number; lastReadAt: string | null }[];
+  readers: { deviceId: number; serialNumber: string; name: string; ownerUserId: number; lastReadAt: string | null;
+    lastSeenAt?: string | null; lastReport?: ReaderReport | null; lastScan?: ReaderReport | null }[];
   inventory: { uid: string; readerDeviceId: number; capturedAt: string; assigned: boolean; schoolId: number | null; studentId: number | null; status: string | null }[];
 };
+
+type ReaderReport = { uid: string | null; rawUid?: string | null; scanStatus: string; duplicateUid?: boolean };
+const scanLabels: Record<string, string> = {
+  READY: 'Ready — present a compatible card',
+  CAPTURED: 'UID captured',
+  UNKNOWN_UNASSIGNED: 'Unknown / unassigned card — UID captured',
+  ASSIGNED: 'Assigned card — UID captured (no attendance)',
+  RESERVED: 'Registered / reserved card — UID captured',
+  UNSUPPORTED_CARD: 'Unsupported card — reader could not obtain a compatible UID',
+  MALFORMED_SCAN: 'Malformed scan — check the reader payload and timestamp',
+  READER_ERROR: 'Reader error — check the antenna and terminal',
+  TRANSPORT_ERROR: 'Reader transport error — check terminal connectivity',
+};
+
+export function readerConnection(reader: UidInventory['readers'][number], now = Date.now()) {
+  const seen = reader.lastSeenAt ?? reader.lastReadAt;
+  if (!seen) return 'Waiting for authenticated reader';
+  return now - new Date(seen).getTime() > 90_000
+    ? 'Reader offline or no recent authenticated report'
+    : 'Authenticated reader connected';
+}
+
+function CopyUid({ uid }: { uid: string }) {
+  const [message, setMessage] = useState('');
+  async function copy() {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(uid);
+      setMessage('UID copied');
+    } catch { setMessage('Copy failed — select the UID and copy it manually'); }
+  }
+  return <span className="inline-flex flex-wrap items-center gap-2">
+    <Button variant="outline" onClick={() => void copy()} title={`Copy UID ${uid}`}>Copy UID</Button>
+    <span role="status" className="text-xs">{message}</span>
+  </span>;
+}
 
 export const uidInventoryKey = ['platform-uid-inventory'] as const;
 
@@ -32,10 +69,12 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
     <section className="mb-8" data-testid="section-owner-uid-readers">
       <h2 className="display-font text-xl font-bold">Owner UID reader</h2>
       <p className="mb-3 text-sm text-[hsl(var(--muted-foreground))]">Inventory hardware bound to you for capturing permanent card UIDs. It never records school attendance.</p>
+      <p className="mb-3 text-sm">Present any compatible card, including an unknown, unassigned, locked or retired card. A successful read saves its UID to platform inventory only; it does not assign, activate, charge or unlock a card.</p>
       <div className="panel mb-3 p-4 text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">
-        <strong className="text-[hsl(var(--foreground))]">Firmware requirements:</strong> the reader must POST an authenticated <span className="font-mono">CARD_SCAN</span> event with its owner-reader device credential (Bearer) to <span className="font-mono">/api/v1/owner-reader/uid-events</span>. It must not use the school attendance route; an Owner UID reader cannot submit attendance. A registered device is not shown as connected until it reports a UID.
+        <strong className="text-[hsl(var(--foreground))]">Owner capture mode:</strong> configure the terminal to read UID bytes before attendance validation and POST an authenticated <span className="font-mono">CARD_SCAN</span> event with its owner-reader device credential (Bearer) to <span className="font-mono">/api/v1/owner-reader/uid-events</span>. It must not use the school attendance route. Send <span className="font-mono">READER_HEARTBEAT</span> every 30 seconds and <span className="font-mono">CARD_SCAN_ERROR</span> for hardware errors. Linking alone does not configure firmware or prove a connection.
       </div>
-      {isLoading ? <div className="panel skeleton h-24" /> : isError ? (
+      {isError && data && <p role="alert" className={`${errText} mb-3`}>Dashboard transport error — showing previously received UIDs. Live scan status is unavailable. <button onClick={() => void refetch()}>Retry</button></p>}
+      {isLoading ? <div className="panel skeleton h-24" /> : isError && !data ? (
         <div role="alert" className="panel p-4"><p className={errText}>UID inventory could not be loaded.</p><Button variant="outline" className="mt-2" onClick={() => void refetch()}>Retry</Button></div>
       ) : (
         <>
@@ -45,7 +84,16 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
                 <div>
                   <div className="text-sm font-bold">{r.name}</div>
                   <div className="font-mono text-xs text-[hsl(var(--muted-foreground))]">{r.serialNumber} · Device ID {r.deviceId}</div>
-                  <div className="mt-1 text-xs">{r.lastReadAt ? `Last authenticated read: ${date(r.lastReadAt)}` : 'Waiting for authenticated reader'}</div>
+                  <div className="mt-1 text-xs" role="status">{readerConnection(r)}</div>
+                  {r.lastReadAt && <div className="text-xs">Last authenticated read: {date(r.lastReadAt)}</div>}
+                  {r.lastReport && <p className="mt-2 text-sm" role="status">{scanLabels[r.lastReport.scanStatus] ?? 'Authenticated reader report received'}</p>}
+                  {r.lastScan?.uid && <div className="mt-3 space-y-2" aria-live="polite">
+                    <p className="text-xs">Latest captured UID — retained even if the next scan fails</p>
+                    <p className="select-all break-all font-mono text-2xl font-bold">{r.lastScan.rawUid ?? r.lastScan.uid}</p>
+                    {r.lastScan.rawUid && r.lastScan.rawUid !== r.lastScan.uid && <p className="text-xs">Inventory format: {r.lastScan.uid}</p>}
+                    {r.lastScan.duplicateUid && <p className="text-xs">Duplicate UID — already in inventory / registration. Raw UID retained; no new card assignment.</p>}
+                    <CopyUid uid={r.lastScan.rawUid ?? r.lastScan.uid} />
+                  </div>}
                 </div>
                 <Button variant="outline" onClick={() => setUnlink(r)}>Release reader</Button>
               </div>
@@ -57,10 +105,10 @@ export function OwnerUidReaderSection({ inventory }: { inventory: ReturnType<typ
               const reader = readers.find(r => r.deviceId === u.readerDeviceId);
               return (
                 <div key={`${u.uid}-${u.capturedAt}`} className="grid gap-2 border-b border-[hsl(var(--border)/.6)] px-5 py-3 last:border-0 md:grid-cols-[1.2fr_1.2fr_1fr_1fr_auto]" data-testid={`uid-row-${u.uid}`}>
-                  <span className="font-mono text-sm font-bold">{u.uid}</span>
+                  <span className="select-all font-mono text-sm font-bold">{u.uid}<CopyUid uid={u.uid} /></span>
                   <span className="text-xs">{reader ? `${reader.name} (${reader.serialNumber})` : `Device ${u.readerDeviceId}`}</span>
                   <span className="text-xs">{date(u.capturedAt)}</span>
-                   <span className="text-xs font-bold">{u.assigned ? `${u.studentId && ['active','locked'].includes(u.status?.toLowerCase()??'') ? 'Assigned' : 'Reserved'}${u.status ? ` · ${u.status}` : ''}${u.studentId ? ` · student #${u.studentId}` : ''}${u.schoolId ? ` · school #${u.schoolId}` : ''}` : 'Available'}</span>
+                   <span className="text-xs font-bold">{u.assigned ? `${u.studentId && ['active','locked'].includes(u.status?.toLowerCase()??'') ? 'Assigned' : 'Reserved'}${u.status ? ` · ${u.status}` : ''}${u.studentId ? ` · student #${u.studentId}` : ''}${u.schoolId ? ` · school #${u.schoolId}` : ''}` : 'Available · unknown / unassigned'}</span>
                   {!u.assigned ? <Button variant="outline" onClick={() => setAssign(u.uid)} testId={`button-assign-uid-${u.uid}`}>Assign to Student</Button> : <span />}
                 </div>
               );

@@ -17,6 +17,22 @@ attendance pipeline. Device registration does not prove hardware connectivity;
 report firmware/callback configuration and genuine tap verification separately.
 Never introduce a manual/simulated UID read presented as physical evidence.
 
+Owner capture must obtain/report any compatible card's raw UID before any
+attendance, inventory, enrollment, subscription or access checks, including cards
+that school attendance would reject. Linking does not configure installed firmware.
+If the hardware obtained a valid UID despite an attendance error, report a scan,
+not a reader failure. Unknown/unassigned UIDs remain visible and available for
+explicit inventory registration; capturing alone never assigns or activates them.
+
+**Why:** The user explicitly clarified that the Owner wants to read any presented
+compatible card, not only a card already connected to a student. This is an
+inventory-purpose operation, not an attendance decision.
+
+**How to apply:** Distinguish raw scan results, duplicate inventory, malformed or
+unsupported scans, and connectivity errors. Preserve the latest valid UID across
+subsequent failures and maintain trusted-device authentication for diagnostics.
+Never claim a physical hardware fix or acceptance without firmware/device evidence.
+
 Captured UID inventory must have a complete Owner-confirmed assignment path, not
 just a read-only list. Only an available reader-captured UID may be selected in
 that path. Lost/damaged replacement requires explicit old-UID revocation and the

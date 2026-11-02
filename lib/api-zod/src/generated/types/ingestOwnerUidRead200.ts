@@ -6,10 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { IngestOwnerUidRead200Purpose } from './ingestOwnerUidRead200Purpose';
+import type { IngestOwnerUidRead200ScanStatus } from './ingestOwnerUidRead200ScanStatus';
 
 export type IngestOwnerUidRead200 = {
   success: boolean;
-  uid: string;
+  /** @nullable */
+  uid: string | null;
+  /**
+     * Original reader hex representation; canonical inventory UID uses uppercase without changing byte order.
+     * @nullable
+     */
+  rawUid?: string | null;
+  scanStatus?: IngestOwnerUidRead200ScanStatus;
+  /** UID already captured or registered; does not suppress the raw result. */
+  duplicateUid?: boolean;
   duplicate: boolean;
   purpose: IngestOwnerUidRead200Purpose;
 };

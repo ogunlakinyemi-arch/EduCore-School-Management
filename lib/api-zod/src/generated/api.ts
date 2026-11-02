@@ -519,7 +519,20 @@ export const GetOwnerUidInventoryResponse = zod.object({
   "serialNumber": zod.string(),
   "name": zod.string(),
   "ownerUserId": zod.number().int(),
-  "lastReadAt": zod.string().nullable()
+  "lastReadAt": zod.string().nullable(),
+  "lastSeenAt": zod.string().nullish(),
+  "lastReport": zod.object({
+  "scanStatus": zod.string().optional(),
+  "uid": zod.string().nullish(),
+  "rawUid": zod.string().nullish(),
+  "duplicateUid": zod.boolean().optional()
+}).nullish(),
+  "lastScan": zod.object({
+  "scanStatus": zod.string().optional(),
+  "uid": zod.string().optional(),
+  "rawUid": zod.string().optional(),
+  "duplicateUid": zod.boolean().optional()
+}).nullish()
 })),
   "inventory": zod.array(zod.object({
   "uid": zod.string(),
@@ -596,14 +609,18 @@ export const ingestOwnerUidReadBodyUidRegExp = new RegExp('^(?:[a-fA-F0-9]{8}|[a
 export const IngestOwnerUidReadBody = zod.object({
   "event_id": zod.string().regex(ingestOwnerUidReadBodyEventIdRegExp),
   "device_id": zod.union([zod.string().regex(ingestOwnerUidReadBodyDeviceIdOneRegExp),zod.number().int().min(1).max(ingestOwnerUidReadBodyDeviceIdTwoMax),zod.string().regex(ingestOwnerUidReadBodyDeviceIdThreeRegExp)]),
-  "uid": zod.string().regex(ingestOwnerUidReadBodyUidRegExp),
-  "event_type": zod.enum(['CARD_SCAN']),
+  "uid": zod.string().regex(ingestOwnerUidReadBodyUidRegExp).optional().describe('Required for CARD_SCAN only. Send raw UID bytes in reader order, zero-padded hex; never check attendance eligibility before reporting.'),
+  "event_type": zod.enum(['CARD_SCAN', 'READER_HEARTBEAT', 'CARD_SCAN_ERROR']),
+  "error_code": zod.enum(['UNSUPPORTED_CARD', 'READER_ERROR', 'TRANSPORT_ERROR']).optional().describe('Required only for CARD_SCAN_ERROR. Never submit school attendance decisions.'),
   "timestamp": zod.string().describe('Actual scan ISO timestamp within five minutes; retry unchanged.')
 })
 
 export const IngestOwnerUidReadResponse = zod.object({
   "success": zod.boolean(),
-  "uid": zod.string(),
+  "uid": zod.string().nullable(),
+  "rawUid": zod.string().nullish().describe('Original reader hex representation; canonical inventory UID uses uppercase without changing byte order.'),
+  "scanStatus": zod.enum(['CAPTURED', 'READY', 'UNKNOWN_UNASSIGNED', 'ASSIGNED', 'RESERVED', 'UNSUPPORTED_CARD', 'READER_ERROR', 'TRANSPORT_ERROR']).optional(),
+  "duplicateUid": zod.boolean().optional().describe('UID already captured or registered; does not suppress the raw result.'),
   "duplicate": zod.boolean(),
   "purpose": zod.enum(['UID_INVENTORY_ONLY'])
 })

@@ -3,7 +3,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { pool } from "@workspace/db";
 import { AuthError, assertRoles, getUserContext, requireAuthentication } from "../middlewares/auth";
 import { ownerReaderBinding, parseOwnerUidEvent, verifyOwnerReaderSecret,
-  OWNER_READER_ACTION, OWNER_UID_ACTION, type ReaderDb } from "../services/owner-uid-reader";
+  OWNER_READER_ACTION, OWNER_UID_ACTION, OWNER_READER_STATUS_ACTION, type ReaderDb } from "../services/owner-uid-reader";
+import { terminalInternalId } from "../lib/terminal-contract";
 
 const run = (fn: (req: Request, res: Response) => Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => void fn(req, res).catch(next);
@@ -31,11 +32,21 @@ router.get("/platform/uid-inventory", run(async (req, res) => {
   const readers = await pool.query(`SELECT d.id AS "deviceId",d.serial_number AS "serialNumber",d.name,
     (binding.metadata->>'ownerUserId')::int AS "ownerUserId",
     (SELECT max(a."timestamp") FROM audit_logs a WHERE a.module='UIDInventory'
-      AND a.action=$1 AND a.record_id=d.id) AS "lastReadAt"
+      AND a.action=$1 AND a.record_id=d.id
+      AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier') AS "lastReadAt",
+    report."timestamp" AS "lastSeenAt", report.metadata AS "lastReport",
+    (SELECT a.metadata FROM audit_logs a WHERE a.module='UIDInventory'
+      AND a.action=$1 AND a.record_id=d.id
+      AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier'
+      ORDER BY a.id DESC LIMIT 1) AS "lastScan"
     FROM platform_devices d JOIN LATERAL (
       SELECT metadata FROM audit_logs WHERE module='Devices' AND action=$2 AND record_id=d.id ORDER BY id DESC LIMIT 1
     ) binding ON binding.metadata->>'status'='ACTIVE'
-    WHERE d.school_id IS NULL ORDER BY d.serial_number`, [OWNER_UID_ACTION, OWNER_READER_ACTION]);
+    LEFT JOIN LATERAL (SELECT a.metadata,a."timestamp" FROM audit_logs a
+      WHERE a.module='UIDInventory' AND a.action IN ($1,$3) AND a.record_id=d.id
+        AND a.metadata->>'credentialIdentifier'=binding.metadata->>'credentialIdentifier'
+      ORDER BY a.id DESC LIMIT 1) report ON TRUE
+    WHERE d.school_id IS NULL ORDER BY d.serial_number`, [OWNER_UID_ACTION, OWNER_READER_ACTION, OWNER_READER_STATUS_ACTION]);
   const inventory = await pool.query(`SELECT captured.metadata->>'uid' AS uid,
     captured.record_id AS "readerDeviceId",captured."timestamp" AS "capturedAt",
     (card.id IS NOT NULL) AS assigned,card.school_id AS "schoolId",card.student_id AS "studentId",card.status
@@ -45,7 +56,14 @@ router.get("/platform/uid-inventory", run(async (req, res) => {
       WHERE upper(uid)=captured.metadata->>'uid'
       ORDER BY CASE WHEN student_id IS NOT NULL THEN 0 ELSE 1 END,id DESC LIMIT 1) card ON TRUE
     ORDER BY captured."timestamp" DESC LIMIT 500`, [OWNER_UID_ACTION]);
-  res.json({ readers: readers.rows, inventory: inventory.rows });
+  // Never expose credential identifiers, hashes, or internal receipt fingerprints.
+  const publicReport = (value: any) => value ? {
+    uid: value.uid ?? null, rawUid: value.rawUid ?? value.uid ?? null,
+    scanStatus: value.scanStatus ?? "CAPTURED", duplicateUid: value.duplicateUid === true,
+  } : null;
+  res.json({ readers: readers.rows.map(r => ({ ...r,
+    lastReport: publicReport(r.lastReport), lastScan: publicReport(r.lastScan),
+  })), inventory: inventory.rows });
 }));
 
 router.post("/platform/devices/:deviceId/owner-reader", run(async (req, res) => {
@@ -98,13 +116,13 @@ export const ownerUidIngestionRouter = Router();
 ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit: "16kb", strict: true }), run(async (req, res) => {
   const token = /^Bearer ([^\s]+)$/i.exec(req.header("Authorization") ?? "")?.[1];
   if (!token) throw new AuthError(401, "Owner reader credential required");
-  const event = parseOwnerUidEvent(req.body);
+  const id = terminalInternalId(req.body?.device_id, "device");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const device = await client.query(`SELECT id,school_id AS "schoolId",device_type AS "deviceType",status
-      FROM platform_devices WHERE id=$1 FOR UPDATE`, [event.deviceId]);
-    const row = device.rows[0], binding = await ownerReaderBinding(client, event.deviceId);
+      FROM platform_devices WHERE id=$1 FOR UPDATE`, [id]);
+    const row = device.rows[0], binding = await ownerReaderBinding(client, id);
     if (!row || row.schoolId != null || row.status !== "ACTIVE" || !["NFC", "HYBRID"].includes(row.deviceType?.toUpperCase()) || !binding) {
       throw new AuthError(401, "Device is not an active Owner UID-only reader");
     }
@@ -112,30 +130,65 @@ ownerUidIngestionRouter.post("/v1/owner-reader/uid-events", express.json({ limit
     const owner = await client.query(`SELECT 1 FROM school_memberships m JOIN app_users u ON u.id=m.user_id
       WHERE m.user_id=$1 AND m.role='PLATFORM_OWNER' AND m.status='ACTIVE' AND m.school_id IS NULL`, [binding.ownerUserId]);
     if (!owner.rows[0]) throw new AuthError(403, "Assigned Owner no longer has active platform authority");
+    let event: ReturnType<typeof parseOwnerUidEvent>;
+    try { event = parseOwnerUidEvent(req.body); }
+    catch (e) {
+      if (!(e instanceof AuthError) || e.statusCode !== 400) throw e;
+      // Only authenticated hardware can report malformed scans to the Owner.
+      // Do not persist arbitrary invalid payloads or turn them into captured cards.
+      await client.query(`INSERT INTO audit_logs
+        ("user",role,actor_user_id,action,module,record_id,event_type,result,metadata)
+        VALUES('Authenticated Owner reader','DEVICE',$1,$2,'UIDInventory',$3,'OWNER_UID_READER_STATUS','FAILURE',$4::jsonb)`,
+      [binding.ownerUserId, OWNER_READER_STATUS_ACTION, id, JSON.stringify({
+        credentialIdentifier: binding.credentialIdentifier, scanStatus: "MALFORMED_SCAN",
+        purpose: "UID_INVENTORY_ONLY",
+      })]);
+      await client.query("COMMIT");
+      res.status(400).json({ success: false, code: "MALFORMED_SCAN", error: e.message });
+      return;
+    }
     const prior = await client.query(`SELECT metadata FROM audit_logs WHERE module='UIDInventory'
-      AND action=$1 AND record_id=$2 AND metadata->>'eventId'=$3
+      AND action IN ($1,$5) AND record_id=$2 AND metadata->>'eventId'=$3
       AND metadata->>'credentialIdentifier'=$4 ORDER BY id DESC LIMIT 1`,
-    [OWNER_UID_ACTION, event.deviceId, event.eventId, binding.credentialIdentifier]);
+    [OWNER_UID_ACTION, event.deviceId, event.eventId, binding.credentialIdentifier, OWNER_READER_STATUS_ACTION]);
     if (prior.rows[0] && prior.rows[0].metadata.fingerprint !== event.fingerprint) {
       throw new AuthError(409, "event_id was already used for another UID read");
     }
-    if (!prior.rows[0]) {
-      await client.query(`INSERT INTO audit_logs
-        ("user",role,actor_user_id,action,module,record_id,event_type,result,metadata)
-        VALUES('Authenticated Owner reader','DEVICE',$1,$2,'UIDInventory',$3,'OWNER_UID_CAPTURE','SUCCESS',$4::jsonb)`,
-      [binding.ownerUserId, OWNER_UID_ACTION, event.deviceId, JSON.stringify({
-        uid: event.uid, eventId: event.eventId, fingerprint: event.fingerprint,
+    let receipt = prior.rows[0]?.metadata;
+    if (!receipt) {
+      let scanStatus = event.scanStatus, duplicateUid = false;
+      if (event.uid) {
+        // Different readers capturing the same UID serialize before checking inventory.
+        await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`owner-uid:${event.uid}`]);
+        const existing = await client.query(`SELECT id,student_id FROM nfc_cards WHERE upper(uid)=$1 ORDER BY id LIMIT 1`, [event.uid]);
+        const captured = await client.query(`SELECT 1 FROM audit_logs WHERE module='UIDInventory'
+          AND action=$1 AND metadata->>'uid'=$2 LIMIT 1`, [OWNER_UID_ACTION, event.uid]);
+        duplicateUid = Boolean(captured.rows[0] || existing.rows[0]);
+        scanStatus = existing.rows[0] ? (existing.rows[0].student_id ? "ASSIGNED" : "RESERVED") : "UNKNOWN_UNASSIGNED";
+      }
+      receipt = {
+        uid: event.uid, rawUid: event.rawUid, scanStatus, duplicateUid,
+        eventId: event.eventId, fingerprint: event.fingerprint,
         credentialIdentifier: binding.credentialIdentifier, ownerUserId: binding.ownerUserId,
         occurredAt: event.timestamp, purpose: "UID_INVENTORY_ONLY",
-      })]);
+      };
+      await client.query(`INSERT INTO audit_logs
+        ("user",role,actor_user_id,action,module,record_id,event_type,result,metadata)
+        VALUES('Authenticated Owner reader','DEVICE',$1,$2,'UIDInventory',$3,'OWNER_UID_READER_REPORT','SUCCESS',$4::jsonb)`,
+      [binding.ownerUserId, event.uid ? OWNER_UID_ACTION : OWNER_READER_STATUS_ACTION, event.deviceId, JSON.stringify(receipt)]);
     }
     await client.query("COMMIT");
-    res.json({ success: true, uid: event.uid, duplicate: Boolean(prior.rows[0]), purpose: "UID_INVENTORY_ONLY" });
+    res.json({ success: true, uid: receipt.uid, rawUid: receipt.rawUid ?? receipt.uid,
+      scanStatus: receipt.scanStatus ?? "CAPTURED", duplicateUid: receipt.duplicateUid === true,
+      duplicate: Boolean(prior.rows[0]), purpose: "UID_INVENTORY_ONLY" });
   } catch (e) { await client.query("ROLLBACK"); throw e; }
   finally { client.release(); }
 }));
 ownerUidIngestionRouter.use((e: any, _req: Request, res: Response, _next: NextFunction) => {
   const status = e instanceof AuthError ? e.statusCode : e.type === "entity.too.large" ? 413 : e.type === "entity.parse.failed" ? 400 : 503;
-  res.status(status).json({ success: false, error: e instanceof AuthError ? e.message : "Owner UID reader request failed" });
+  res.status(status).json({ success: false,
+    code: status === 401 || status === 403 ? "READER_UNAUTHORIZED" : status === 409 ? "EVENT_CONFLICT" :
+      status === 400 || status === 413 ? "MALFORMED_SCAN" : "TRANSPORT_ERROR",
+    error: e instanceof AuthError ? e.message : "Owner UID reader request failed" });
 });
 export default router;
