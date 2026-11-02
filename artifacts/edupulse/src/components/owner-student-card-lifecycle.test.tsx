@@ -54,6 +54,30 @@ it('explains a staged lock and never offers a printable student card before acti
   expect(q('button-download-nfc-card-101')).toBeNull();
   expect(state.preview.mock.calls.at(-1)![2].query.enabled).toBe(false);
 });
+it('shows Actions and exact disabled policy explanations for UID 6C98EABE awaiting activation from CARD_STATE',async()=>{
+  state.data={...state.data,uid:'6C98EABE',effectiveStatus:'AWAITING_ACTIVATION',statusSource:'CARD_STATE',canActivate:false,
+    restrictions:[{code:'NFC_FLUTTERWAVE_PAYMENT_REQUIRED',message:'Independently verified NFC payment is required.',
+      resolution:'Complete verified payment.',overridable:true,waived:false}]};
+  await mount({uid:'6C98EABE'});
+  expect(q('owner-card-controls')!.textContent).toContain('Actions');
+  expect(q('text-effective-status')!.textContent).toBe('AWAITING_ACTIVATION');
+  expect(q('text-status-source')!.textContent).toBe('CARD_STATE');
+  for(const action of ['lock','unlock','grant-grace']){
+    expect((q(`button-card-${action}`) as HTMLButtonElement).disabled).toBe(true);
+    expect(q(`reason-card-${action}`)!.textContent!.length).toBeGreaterThan(20);
+    await click(`button-card-${action}`);
+  }
+  expect(q('reason-card-lock')!.textContent).toContain('already locked pending initial activation');
+  expect(q('reason-card-unlock')!.textContent).toContain('NFC_FLUTTERWAVE_PAYMENT_REQUIRED');
+  expect(q('reason-card-grant-grace')!.textContent).toContain('Non-overrideable initial activation requirement');
+  expect(q('reason-card-grant-grace')!.textContent).toContain('independently verified NFC payment');
+  expect(q('button-card-revoke-grace')).toBeNull();
+  expect(q('button-owner-activate-card')).toBeNull();
+  expect(q('submit-card-control')).toBeNull();
+  expect(state.control).not.toHaveBeenCalled();expect(state.mutate).not.toHaveBeenCalled();
+  const section=q('owner-card-controls')!;
+  expect(section.compareDocumentPosition(q('card-control-history')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
 it('requires confirmation and a meaningful reason; cancelling changes nothing',async()=>{
   await mount();await click('button-owner-activate-card');
   expect((q('submit-card-activation') as HTMLButtonElement).disabled).toBe(true);
@@ -151,7 +175,8 @@ it('offers unlock only for administrative lock, never for security lock',async()
   state.data={...state.data,stage:'ADMINISTRATIVE_LOCK',canActivate:true};await mount();
   expect(q('button-card-unlock')).not.toBeNull();expect(q('button-owner-activate-card')).toBeNull();
   state.data={...state.data,stage:'SECURITY_LOCK',canActivate:true};await mount();
-  expect(q('button-card-unlock')).toBeNull();
+  expect((q('button-card-unlock') as HTMLButtonElement).disabled).toBe(true);
+  expect(q('reason-card-unlock')!.textContent).toContain('Security/legacy locks cannot be unlocked here');
 });
 it('states partial waiver honestly and shows grantor, expiry, coverage and history',async()=>{
   const grant={id:7,action:'GRANT_GRACE',reason:'Fee promised',actorUserId:9,createdAt:'2025-01-01T10:00:00Z',details:{expiresAt:'2099-01-01T00:00:00Z',restrictions:['SUBSCRIPTION_REQUIRED']}};
@@ -166,6 +191,6 @@ it('disables grace UI and printing on the local clock at expiry even if cached d
   const grant={id:8,action:'GRANT_GRACE',reason:'r',actorUserId:9,createdAt:'2020-01-01T00:00:00Z',details:{expiresAt:'2020-01-02T00:00:00Z',restrictions:['SUBSCRIPTION_REQUIRED']}};
   state.data={...state.data,status:'active',stage:'ACTIVE',canActivate:false,canPrint:true,canRevokeGrace:true,grace:{state:'ACTIVE',grant},history:[grant]};
   await mount();
-  expect(q('text-grace-expired')).not.toBeNull();expect(q('button-card-revoke-grace')).toBeNull();
+  expect(q('text-grace-expired')).not.toBeNull();expect((q('button-card-revoke-grace') as HTMLButtonElement).disabled).toBe(true);
   expect(q('button-download-nfc-card-101')).toBeNull();expect(q('linked-card-preview')).toBeNull();
 });

@@ -58,14 +58,14 @@ export function OwnerStudentCardLifecycle({cardId,schoolId,studentId,uid,autoPre
       !exact?<p role="alert">The current card assignment changed. Refresh the person and card list; no printable card is offered.</p>:
       <>
         <p data-testid="card-lock-explanation">{data.explanation}</p>
-        {data.restrictions.map(item=><div key={item.code} role="status" data-testid={`card-restriction-${item.code}`}>
-          <p className="font-semibold">{item.message}{item.waived?' (waived by grace; payment not marked paid)':' (applies)'}</p><p className="text-sm">{item.resolution}</p>
-        </div>)}
-        {!data.canPrint && <p className="text-sm">The final printable e-ID is unavailable until this card is active and these checks pass. Linking and printing never override an NFC restriction.</p>}
         <CardStatusSummary data={data} graceExpired={graceExpired}/>
         {graceExpired && <p role="alert" data-testid="text-grace-expired">Grace period has expired. Grace-dependent actions and printing are disabled while the server is rechecked.</p>}
         <OwnerCardControls key={`${schoolId}:${studentId}:${cardId}:${uid}`} data={data} cardId={cardId} schoolId={schoolId} studentId={studentId} graceExpired={graceExpired} refreshing={query.isFetching}
           onRefresh={refresh} onRefetch={()=>{void query.refetch();}}/>
+        {data.restrictions.map(item=><div key={item.code} role="status" data-testid={`card-restriction-${item.code}`}>
+          <p className="font-semibold">{item.message}{item.waived?' (waived by grace; payment not marked paid)':' (applies)'}</p><p className="text-sm">{item.resolution}</p>
+        </div>)}
+        {!data.canPrint && <p className="text-sm">The final printable e-ID is unavailable until this card is active and these checks pass. Linking and printing never override an NFC restriction.</p>}
         <CardControlHistory history={data.history??[]}/>
         {data.canActivate && data.stage==='AWAITING_ACTIVATION' && <Button type="button" variant="outline" testId="button-owner-activate-card" onClick={()=>{
           activate.reset();setReason('');setConfirmed(false);setOpen(true);

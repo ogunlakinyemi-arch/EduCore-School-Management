@@ -91,12 +91,38 @@ export function OwnerCardControls({data,cardId,schoolId,studentId,graceExpired,r
   if(data.stage==='ADMINISTRATIVE_LOCK'&&data.canActivate)available.push('UNLOCK');
   if(data.canGrantGrace&&!graceExpired&&graceable.length)available.push('GRANT_GRACE');
   if(data.canRevokeGrace&&!graceExpired)available.push('REVOKE_GRACE');
+  const staged=data.stage==='AWAITING_ACTIVATION';
+  const outstanding=data.restrictions.filter(r=>!r.waived);
+  const restrictionText=outstanding.map(r=>`${r.code}: ${r.message}`).join(' ');
+  const safetyText=outstanding.filter(r=>!r.overridable).map(r=>`${r.code}: ${r.message}`).join(' ');
+  const disabledReason=(a:ControlAction):string=>{
+    if(available.includes(a))return refreshing?'Refreshing current eligibility; wait for the server response.':
+      control.isPending?'A card action is being checked.':'';
+    if(a==='LOCK')return staged
+      ?'This card is already locked pending initial activation. Only an active card can receive an administrative lock.'
+      :'Only an active card can receive an administrative lock. Existing card restrictions and locks are preserved.';
+    if(a==='UNLOCK')return staged
+      ?`Initial activation is required, not administrative Unlock.${restrictionText?` Activation blocked by ${restrictionText}`:' Use Activate linked card after reviewing eligibility.'}`
+      :data.stage==='SECURITY_LOCK'?'Security/legacy locks cannot be unlocked here; use the original security resolution workflow.'
+      :data.stage==='ADMINISTRATIVE_LOCK'?`Current eligibility must pass before Unlock. ${restrictionText||'Refresh readiness to review the current restriction.'}`
+      :'There is no Owner administrative lock to remove.';
+    if(a==='GRANT_GRACE')return staged
+      ?'Non-overrideable initial activation requirement: grace cannot activate a staged card or substitute for its independently verified NFC payment. Grace is permitted only for an active card or an Owner administrative lock.'
+      :graceExpired?'Grace has expired; wait for server eligibility to be rechecked.'
+      :data.grace?.state==='ACTIVE'?'A grace grant is already active. Revoke it before considering a new grant.'
+      :safetyText?`Grace cannot override ${safetyText}`
+      :!graceable.length?'No confirmed eligible payment restriction is available for temporary grace.'
+      :'The server does not permit grace for this card’s current state. Grace requires an eligible exact student/card assignment and current academic term.';
+    return 'Grace has expired; wait for server eligibility to be rechecked.';
+  };
+  const shown:ControlAction[]=['LOCK','UNLOCK','GRANT_GRACE'];
+  if(data.canRevokeGrace&&data.grace?.state==='ACTIVE')shown.push('REVOKE_GRACE');
   const open=(a:ControlAction)=>{control.reset();setAction(a);setVersion(data.version);setReason('');setConfirmed(false);setExpiry('');setSelected([]);setConflict('');};
   const trimmed=reason.trim();
   const expIso=expiry?new Date(expiry):null;
   const expValid=!!expIso&&!Number.isNaN(expIso.getTime())&&expIso.getTime()>Date.now();
   const stale=data.version!==version;
-  const ready=!!action&&confirmed&&trimmed.length>=3&&trimmed.length<=480&&!stale&&!control.isPending&&!refreshing&&
+  const ready=!!action&&available.includes(action)&&confirmed&&trimmed.length>=3&&trimmed.length<=480&&!stale&&!control.isPending&&!refreshing&&
     (action!=='GRANT_GRACE'||(expValid&&selected.length>0));
   const submit=()=>{
     if(!action||!ready)return;
@@ -109,10 +135,25 @@ export function OwnerCardControls({data,cardId,schoolId,studentId,graceExpired,r
       },
     });
   };
-  return <div className="space-y-2" data-testid="owner-card-controls">
+  return <section className="min-w-0 space-y-3 rounded-lg border border-[hsl(var(--border))] p-3 [overflow-wrap:anywhere]" aria-label="Student card actions" data-testid="owner-card-controls">
+    <h4 className="font-semibold">Actions</h4>
+    <p className="text-sm">Platform Owner only. Disabled actions show the current policy reason.</p>
     {data.stage==='SECURITY_LOCK'&&<p className="text-sm" data-testid="text-security-lock">Security lock: this card cannot be unlocked here.</p>}
-    {available.length>0&&<div className="flex flex-wrap gap-2">{available.map(a=>
-      <Button key={a} type="button" variant="outline" disabled={control.isPending||refreshing} testId={`button-card-${a.toLowerCase().replace('_','-')}`} onClick={()=>open(a)}>{LABEL[a]}</Button>)}</div>}
+    <div className="grid min-w-0 gap-3 sm:grid-cols-2">{shown.map(a=>{
+      const id=a.toLowerCase().replace('_','-');const why=disabledReason(a);
+      return <div key={a} className="min-w-0 space-y-1" role="group" aria-label={LABEL[a]}
+        aria-describedby={`card-${cardId}-${id}-reason`} data-testid={`action-card-${id}`}>
+        <Button type="button" variant="outline" disabled={!available.includes(a)||control.isPending||refreshing}
+          title={why||undefined} testId={`button-card-${id}`}
+          onClick={()=>{if(available.includes(a))open(a);}}>{LABEL[a]}</Button>
+        <p id={`card-${cardId}-${id}-reason`} className="text-sm" data-testid={`reason-card-${id}`}>
+          {why||(a==='LOCK'?'Available: stop this exact UID with an audited administrative lock.':
+            a==='UNLOCK'?'Available: remove only the Owner administrative lock; other restrictions still apply.':
+            a==='GRANT_GRACE'?'Available: temporarily cover selected eligible payment restrictions for this exact card and current term. Payment remains unpaid.':
+            'Active grace: revoke the temporary permission immediately; retain the grant and audit history.')}
+        </p>
+      </div>;
+    })}</div>
     {msg&&<p role="status" data-testid="text-control-success">{msg}</p>}
     {action&&<Modal title={`Confirm: ${LABEL[action]}`} eyebrow={`Platform Owner · UID ${data.uid} · version ${version}`} onClose={()=>{if(!control.isPending)setAction(null);}}>
       <div className="space-y-4">
@@ -145,5 +186,5 @@ export function OwnerCardControls({data,cardId,schoolId,studentId,graceExpired,r
         </div>
       </div>
     </Modal>}
-  </div>;
+  </section>;
 }

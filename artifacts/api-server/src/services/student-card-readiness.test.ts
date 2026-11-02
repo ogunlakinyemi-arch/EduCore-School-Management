@@ -24,6 +24,16 @@ describe("authoritative per-card readiness",()=>{
     expect(await read()).toMatchObject({uid:"NEW12345",status:"locked",stage:"AWAITING_ACTIVATION",canActivate:true,canPrint:false,restrictions:[]});
     expect(query.mock.calls.every(([sql])=>!/UPDATE|INSERT|DELETE/.test(sql))).toBe(true);
   });
+  it("retains the initial-activation payment boundary for UID 6C98EABE from CARD_STATE",async()=>{
+    card.uid="6C98EABE";
+    mocks.payment.mockRejectedValue(new AuthError(409,"Independently verified NFC payment is required.","NFC_FLUTTERWAVE_PAYMENT_REQUIRED"));
+    expect(await read()).toMatchObject({
+      uid:"6C98EABE",stage:"AWAITING_ACTIVATION",effectiveStatus:"AWAITING_ACTIVATION",statusSource:"CARD_STATE",
+      canActivate:false,canLock:false,canGrantGrace:false,canRevokeGrace:false,canPrint:false,
+      restrictions:[{code:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED",overridable:true,waived:false}],
+    });
+    expect(query.mock.calls.every(([sql])=>!/UPDATE|INSERT|DELETE/.test(sql))).toBe(true);
+  });
   it("distinguishes and retains a security lock's precise recorded reason",async()=>{
     history={action:"STATUS_CHANGED",reason:"Possession disputed"};
     const result=await read();
