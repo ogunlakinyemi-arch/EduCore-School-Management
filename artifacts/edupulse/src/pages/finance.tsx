@@ -138,11 +138,11 @@ function InvoicePrintDocument({ invoice }: { invoice: FeeInvoice }) {
   return <SchoolDocumentPrintButton
     label="Print invoice"
     testId={`button-print-invoice-${invoice.id}`}
-    disabled={!school || branding.isLoading || branding.isError}
-    unavailableMessage={branding.isError ? 'School branding could not be loaded. Retry before printing this invoice.' : 'Loading the selected school identity.'}
+    disabled={branding.isLoading}
+    unavailableMessage="Loading the selected school identity."
   >
     <article className="school-document-page">
-      <SchoolDocumentHeader branding={school ?? {}} />
+      <SchoolDocumentHeader branding={school ?? { name: 'School invoice' }} optionalLogo />
       <h2 className="school-document-title">Fee invoice</h2>
       <dl className="school-document-grid">
         <DocumentField label="Invoice number" value={invoice.invoiceNumber} />

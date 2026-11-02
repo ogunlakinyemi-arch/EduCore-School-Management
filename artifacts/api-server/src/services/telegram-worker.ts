@@ -1,9 +1,21 @@
 import {pool} from "@workspace/db";
 import {logger} from "../lib/logger";
-import {telegramApi,getTelegramHealth,telegramRuntimeEnabled} from "./telegram-provider";
+import {telegramApi,getTelegramHealth,telegramRuntimeEnabled,TelegramApiError} from "./telegram-provider";
 import {checkTelegramRuntimeHealth,acceptTelegramUpdate} from "./telegram-links";
 import {dispatchCommunicationDeliveries} from "./communication-service";
 let running=false,lastHealth=0;
+/** Allowlisted categories only: never log provider bodies, URLs, tokens or chat IDs. */
+export function telegramPollFailure(error:unknown):string {
+  if(error instanceof TelegramApiError){
+    if(error.code===409)return "POLL_CONFLICT_OTHER_POLLER_OR_WEBHOOK";
+    if(error.code===429)return "PROVIDER_RATE_LIMITED";
+    if(error.code===401||error.code===404)return "BOT_AUTHENTICATION_FAILED";
+    return error.code>=500?"PROVIDER_UNAVAILABLE":error.category;
+  }
+  const code=(error as {code?:unknown}|null)?.code;
+  return code==="42P01"?"POLL_STORAGE_MISSING":code==="42703"?"POLL_STORAGE_SCHEMA_MISMATCH":
+    code==="42501"?"POLL_STORAGE_PERMISSION_DENIED":"POLL_OR_STORAGE_UNAVAILABLE";
+}
 export async function telegramWorkerTick(){
   if(running||!telegramRuntimeEnabled(process.env))return;
   running=true;
@@ -35,7 +47,7 @@ export async function telegramWorkerTick(){
         await db.query(`UPDATE telegram_link_challenges SET pending_ciphertext=NULL,chat_hash=NULL
           WHERE expires_at<=now() AND pending_ciphertext IS NOT NULL`);
         await db.query("COMMIT");
-      }catch{await db.query("ROLLBACK");logger.warn({category:"TELEGRAM_POLL_UNAVAILABLE"},"Telegram linking temporarily unavailable");}
+      }catch(error){await db.query("ROLLBACK");logger.warn({channel:"TELEGRAM",category:telegramPollFailure(error)},"Telegram linking temporarily unavailable");}
       finally{await db.query("SELECT pg_advisory_unlock(31971,1)");}
     }finally{db.release();}
     // This opt-in worker cannot claim SMS/email/push or revive paused Development workers.

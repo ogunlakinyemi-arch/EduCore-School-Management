@@ -28,6 +28,13 @@ beforeEach(()=>{
   state.connect.mockReset().mockResolvedValue({query:state.query,release:vi.fn()});
 });
 afterEach(()=>vi.unstubAllEnvs());
+it('reports safe polling categories without provider text, URLs or personal data',async()=>{
+  const {telegramPollFailure}=await import('./telegram-worker');
+  const {TelegramApiError}=await import('./telegram-provider');
+  expect(telegramPollFailure(new TelegramApiError(409))).toBe('POLL_CONFLICT_OTHER_POLLER_OR_WEBHOOK');
+  expect(telegramPollFailure({code:'42501',message:'private fixture details'})).toBe('POLL_STORAGE_PERMISSION_DENIED');
+  expect(telegramPollFailure(new Error('private fixture details'))).toBe('POLL_OR_STORAGE_UNAVAILABLE');
+});
 describe("Production Telegram worker (mocked, no timers or network)",()=>{
   it("cannot poll or claim a queue without explicit Production enablement",async()=>{
     vi.stubEnv("EDUCORE_PRODUCTION_TELEGRAM_ENABLED","false");

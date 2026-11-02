@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Printer } from 'lucide-react';
-import { getGetSchoolBrandingQueryKey, useGetSchoolBranding } from '@workspace/api-client-react';
+import { customFetch, getGetSchoolBrandingQueryKey, useGetSchoolBranding } from '@workspace/api-client-react';
 import type { SchoolBranding } from '@workspace/api-client-react';
 
 export type DocumentBranding = Partial<Pick<
@@ -30,7 +30,7 @@ export function sameOriginUrl(value: unknown): string | null {
   }
 }
 
-export function SchoolDocumentHeader({ branding }: { branding: DocumentBranding }) {
+export function SchoolDocumentHeader({ branding, optionalLogo = false }: { branding: DocumentBranding; optionalLogo?: boolean }) {
   const logoUrl = branding.logoUrl ? sameOriginUrl(branding.logoUrl) : null;
   const invalidLogoUrl = !!branding.logoUrl && !logoUrl;
   const contact = [
@@ -43,11 +43,11 @@ export function SchoolDocumentHeader({ branding }: { branding: DocumentBranding 
 
   return (
     <header className="school-document-header">
-      {logoUrl && <img className="school-document-logo" data-print-required="logo" src={logoUrl} alt={`${branding.name || 'School'} logo`} />}
+      {logoUrl && <img className="school-document-logo" data-print-logo={optionalLogo ? 'true' : undefined} data-print-required={optionalLogo ? undefined : 'logo'} src={logoUrl} alt={`${branding.name || 'School'} logo`} />}
       <div className="school-document-identity">
         {branding.name && <h1>{branding.name}</h1>}
         {contact.map((value, index) => <div key={`${index}-${value}`}>{value}</div>)}
-        {invalidLogoUrl && <p data-school-logo-invalid="true" className="school-document-error">The school logo URL is not same-origin and cannot be included in a secure printout.</p>}
+        {invalidLogoUrl && !optionalLogo && <p data-school-logo-invalid="true" className="school-document-error">The school logo URL is not same-origin and cannot be included in a secure printout.</p>}
       </div>
     </header>
   );
@@ -99,6 +99,32 @@ function waitForImage(image: HTMLImageElement, ms: number): Promise<boolean> {
     image.addEventListener('error', () => resolve(false), { once: true });
     if (image.complete) resolve(image.naturalWidth > 0);
   }), ms, false);
+}
+
+/** Embed private school logos with the existing bearer-authenticated client.
+ * Never send credentials to another origin; optional invoice logos fail cleanly. */
+export async function embedPrintLogos(doc: Document) {
+  await Promise.all(Array.from(doc.querySelectorAll<HTMLImageElement>('img[data-print-logo]')).map(async image => {
+    try {
+      const path = sameOriginUrl(image.getAttribute('src'));
+      if (!path) throw new Error('Invalid logo origin');
+      const blob = await customFetch<Blob>(path, {
+        responseType: 'blob', redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(6000),
+      });
+      if (!/^image\/(png|jpeg|webp|gif)$/i.test(blob.type) || blob.size > 5 * 1024 * 1024)
+        throw new Error('Unsupported logo');
+      image.src = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Invalid image'));
+        reader.onerror = () => reject(new Error('Image read failed'));
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      if (image.dataset.printRequired === 'logo')
+        throw new Error('The school logo could not be loaded securely. Please retry.');
+      image.remove();
+    }
+  }));
 }
 
 /** Wait (bounded) for stylesheets, fonts and images inside the frame. Optional images that fail are removed; required ones throw. */
@@ -188,6 +214,7 @@ export function SchoolDocumentPrintButton({
       frame = createPrintFrame(html);
       frameRef.current = frame;
       const doc = frame.contentDocument!;
+      await embedPrintLogos(doc);
       await settlePrintDocument(doc);
       const win = frame.contentWindow;
       if (!win) throw new Error('The print surface closed before printing.');
