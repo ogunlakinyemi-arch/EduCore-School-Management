@@ -4362,6 +4362,35 @@ export interface CardInput {
   studentId?: number;
 }
 
+export interface StudentCardRestriction {
+  code: string;
+  message: string;
+  resolution: string;
+}
+
+export type StudentCardReadinessStage = typeof StudentCardReadinessStage[keyof typeof StudentCardReadinessStage];
+
+
+export const StudentCardReadinessStage = {
+  ACTIVE: 'ACTIVE',
+  AWAITING_ACTIVATION: 'AWAITING_ACTIVATION',
+  SECURITY_LOCK: 'SECURITY_LOCK',
+  RESTRICTED: 'RESTRICTED',
+} as const;
+
+export interface StudentCardReadiness {
+  cardId: number;
+  schoolId: number;
+  studentId: number;
+  uid: string;
+  status: string;
+  stage: StudentCardReadinessStage;
+  explanation: string;
+  canActivate: boolean;
+  canPrint: boolean;
+  restrictions: StudentCardRestriction[];
+}
+
 export type CardStatusInputStatus = typeof CardStatusInputStatus[keyof typeof CardStatusInputStatus];
 
 
@@ -4378,6 +4407,19 @@ export const CardStatusInputStatus = {
 } as const;
 
 export interface CardStatusInput {
+  /** Explicit confirmation required when activating a locked student card */
+  confirm?: boolean;
+  /**
+     * Mandatory activation or unlock reason
+     * @minLength 3
+     * @maxLength 480
+     */
+  reason?: string;
+  /**
+     * Confirmed current student identity required for activation
+     * @minimum 1
+     */
+  studentId?: number;
   status: CardStatusInputStatus;
 }
 
@@ -19964,6 +20006,35 @@ export interface CardInput4b96100 {
   studentId?: number;
 }
 
+export interface StudentCardRestriction4b96100 {
+  code: string;
+  message: string;
+  resolution: string;
+}
+
+export type StudentCardReadiness4b96100Stage = typeof StudentCardReadiness4b96100Stage[keyof typeof StudentCardReadiness4b96100Stage];
+
+
+export const StudentCardReadiness4b96100Stage = {
+  ACTIVE: 'ACTIVE',
+  AWAITING_ACTIVATION: 'AWAITING_ACTIVATION',
+  SECURITY_LOCK: 'SECURITY_LOCK',
+  RESTRICTED: 'RESTRICTED',
+} as const;
+
+export interface StudentCardReadiness4b96100 {
+  cardId: number;
+  schoolId: number;
+  studentId: number;
+  uid: string;
+  status: string;
+  stage: StudentCardReadiness4b96100Stage;
+  explanation: string;
+  canActivate: boolean;
+  canPrint: boolean;
+  restrictions: StudentCardRestriction4b96100[];
+}
+
 export type CardStatusInput4b96100Status = typeof CardStatusInput4b96100Status[keyof typeof CardStatusInput4b96100Status];
 
 
@@ -19980,6 +20051,19 @@ export const CardStatusInput4b96100Status = {
 } as const;
 
 export interface CardStatusInput4b96100 {
+  /** Explicit confirmation required when activating a locked student card */
+  confirm?: boolean;
+  /**
+     * Mandatory activation or unlock reason
+     * @minLength 3
+     * @maxLength 480
+     */
+  reason?: string;
+  /**
+     * Confirmed current student identity required for activation
+     * @minimum 1
+     */
+  studentId?: number;
   status: CardStatusInput4b96100Status;
 }
 
@@ -24216,6 +24300,17 @@ export type AssignCapturedUidToStudent201 = {
   schoolId: number;
   studentId: number;
   status: AssignCapturedUidToStudent201Status;
+};
+
+export type GetOwnerStudentCardReadinessParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+studentId: number;
 };
 
 export type IssueCapturedUidReplacementBody = {

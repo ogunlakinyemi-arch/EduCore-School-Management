@@ -76,7 +76,7 @@ export function PrintableNfcCardDownload({
 
   return (
     <div>
-      <Button variant="outline" disabled={busy} onClick={download} testId={`button-download-nfc-card-${cardId}`}>
+      <Button type="button" variant="outline" disabled={busy} onClick={download} testId={`button-download-nfc-card-${cardId}`}>
         <Download size={14} />{busy ? 'Preparing PDF…' : PRINTABLE_CARD_LABEL}
       </Button>
       {error && <p role="alert" className="mt-2 text-sm text-[hsl(var(--destructive))]">{error}</p>}

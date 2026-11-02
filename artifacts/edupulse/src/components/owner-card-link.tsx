@@ -8,6 +8,7 @@ import {
 import { Button, Field, Info, StatusPill } from '@/components/shared';
 import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
 import { OwnerDetachCard } from '@/components/owner-detach-card';
+import { OwnerStudentCardLifecycle } from '@/components/owner-student-card-lifecycle';
 import {
   buildLinkRequest, scopedCardsParams, validSchoolId, employeeMatchesType, findCurrentCard, linkErrorMessage, personDetails, personName, accountStatus,
   type LinkPersonType, type Person,
@@ -22,7 +23,7 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
   const [uid, setUid] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
-  const [printedAssignment, setPrintedAssignment] = useState<{ cardId: number; status: string } | null>(null);
+  const [printedAssignment, setPrintedAssignment] = useState<{ cardId: number; status: string; uid:string } | null>(null);
 
   const resetPerson = () => { setPersonId(0); setUid(''); setMsg(''); setErr(''); setPrintedAssignment(null); };
   const changeSchool = (id: number) => { setSchoolId(validSchoolId(id)); setSearch(''); resetPerson(); };
@@ -53,24 +54,29 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
   const pending = reg.isPending || assign.isPending || reassign.isPending;
   const req = person ? buildLinkRequest(type, schoolId, person.id, uid) : null;
 
-  const done = (response?: any) => {
+  const done = async (response?: any) => {
     setMsg(`Card ${req?.data.uid} linked to ${person ? personName(person) : 'person'}.`);
     setUid('');
     const returnedCardId = req?.kind === 'student' ? response?.id : response?.cardId;
     if (type === 'STUDENT' || type === 'TEACHER') {
       if (Number.isInteger(returnedCardId) && returnedCardId > 0) {
-        setPrintedAssignment({ cardId: returnedCardId, status: String(response?.status ?? 'LOCKED') });
+        setPrintedAssignment({ cardId: returnedCardId, status: String(response?.status ?? 'LOCKED'),uid:String(response?.uid ?? req?.data.uid ?? '') });
       } else {
         setPrintedAssignment(null);
         setErr('The card was linked, but the server did not return its card reference for printing. Refresh the card list to reprint it.');
       }
     }
-    qc.invalidateQueries({ queryKey: getListCardsQueryKey() });
-    qc.invalidateQueries({ queryKey: ['owner-link-emp-cards'] });
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: getListCardsQueryKey() }),
+      qc.invalidateQueries({ queryKey: ['owner-link-emp-cards'] }),
+      qc.invalidateQueries({ queryKey: ['owner-link-students'] }),
+      qc.invalidateQueries({ queryKey: ['owner-link-employees'] }),
+      qc.invalidateQueries({ queryKey: ['owner-student-card-readiness'] }),
+    ]);
     onDone?.();
   };
   const submit = (e: React.FormEvent) => {
-    e.preventDefault(); setMsg(''); setErr('');
+    e.preventDefault(); setMsg(''); setErr('');setPrintedAssignment(null);
     if (!req) return;
     if (req.kind==='student' && !devicesReady) {
       setErr("This school has no active NFC device linked. Link an NFC device to this school before assigning NFC cards.");
@@ -91,18 +97,18 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
       <div><div className="eyebrow">Platform owner</div><h2 className="display-font text-xl font-bold">Link card to an existing person</h2></div>
       <div className="grid gap-4 md:grid-cols-3">
         <Field label="1. School">
-          <select value={schoolId} onChange={e => changeSchool(Number(e.target.value))} data-testid="select-link-school">
+          <select value={schoolId} disabled={pending} onChange={e => changeSchool(Number(e.target.value))} data-testid="select-link-school">
             <option value={0}>Select a school</option>
             {schools.data?.schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </Field>
         <Field label="2. Person type">
-          <select value={type} onChange={e => changeType(e.target.value as LinkPersonType)} data-testid="select-link-type">
+          <select value={type} disabled={pending} onChange={e => changeType(e.target.value as LinkPersonType)} data-testid="select-link-type">
             <option value="STUDENT">Student</option><option value="TEACHER">Teacher</option><option value="STAFF">Staff</option>
           </select>
         </Field>
         <Field label="Search name or number">
-          <input value={search} disabled={!schoolId} onChange={e => { setSearch(e.target.value); resetPerson(); }} data-testid="input-link-search" />
+          <input value={search} disabled={!schoolId || pending} onChange={e => { setSearch(e.target.value); resetPerson(); }} data-testid="input-link-search" />
         </Field>
       </div>
       {schoolId>0 && isStudent && <div data-testid="linked-nfc-devices">
@@ -121,7 +127,7 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
       {schoolId > 0 && (active.isError
         ? <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{linkErrorMessage(active.error)} <button type="button" className="underline" onClick={() => active.refetch()}>Retry</button></p>
         : <Field label="3. Existing person">
-            <select value={personId} onChange={e => { setPersonId(Number(e.target.value)); setMsg(''); setErr(''); setPrintedAssignment(null); }} data-testid="select-link-person">
+            <select value={personId} disabled={pending} onChange={e => { setPersonId(Number(e.target.value)); setMsg(''); setErr(''); setPrintedAssignment(null); }} data-testid="select-link-person">
               <option value={0}>{active.isLoading ? 'Loading…' : people.length ? 'Select a person' : 'No matching people'}</option>
               {people.map(p => <option key={p.id} value={p.id}>{personName(p)} · {personDetails(p, type).identifier}</option>)}
             </select>
@@ -138,7 +144,7 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
       {person && (
         <>
           <Field label="4. Card UID (type or scan)">
-            <input required minLength={4} autoComplete="off" value={uid} onChange={e => setUid(e.target.value.toUpperCase())} className="font-mono uppercase" data-testid="input-link-uid" />
+            <input required minLength={4} disabled={pending} autoComplete="off" value={uid} onChange={e => setUid(e.target.value.toUpperCase())} className="font-mono uppercase" data-testid="input-link-uid" />
           </Field>
           {!isStudent && <p className="text-xs text-[hsl(var(--muted-foreground))]">Card status, history and replacement are managed on <Link href="/employee-nfc" className="underline">Employee NFC</Link>.</p>}
           {card && <p className="text-xs text-[hsl(var(--muted-foreground))]">This person already has a card; the server decides whether linking another is allowed.</p>}
@@ -149,7 +155,11 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
       )}
       {msg && <p role="status" className="text-sm font-semibold text-emerald-600" data-testid="link-success">{msg}</p>}
       {err && <p role="alert" className="text-sm font-semibold text-[hsl(var(--destructive))]" data-testid="link-error">{err}</p>}
-      {printedAssignment && (
+      {isStudent && person && !pending && !err && (printedAssignment || card) && <OwnerStudentCardLifecycle
+        key={`${schoolId}:${person.id}:${printedAssignment?.cardId ?? card?.id}`}
+        schoolId={schoolId} studentId={person.id} cardId={printedAssignment?.cardId ?? Number(card?.id)}
+        uid={printedAssignment?.uid ?? String(card?.uid ?? '')} autoPreview={!!printedAssignment}/>}
+      {!isStudent && printedAssignment && (
         <div className="space-y-1" data-testid="assigned-card-print">
           <PrintableNfcCardDownload
             cardId={printedAssignment.cardId}

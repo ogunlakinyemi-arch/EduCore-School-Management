@@ -31,6 +31,10 @@ vi.mock('@workspace/api-client-react', () => ({
   getListCardsQueryKey: () => ['list-cards'],
 }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: mocks.useQueryClient }));
+vi.mock('@/components/owner-student-card-lifecycle',()=>({
+  OwnerStudentCardLifecycle:({cardId,uid,autoPreview}:any)=><div data-testid="student-card-lifecycle"
+    data-card-id={cardId} data-uid={uid} data-auto-preview={String(autoPreview)}/>,
+}));
 vi.mock('wouter', () => ({ Link: ({ children }: any) => <a>{children}</a> }));
 vi.mock('@/components/shared', () => ({
   Button: ({ children, testId, ...props }: any) => <button data-testid={testId} {...props}>{children}</button>,
@@ -118,6 +122,9 @@ describe('OwnerCardLink printable card assignment result', () => {
     expect(regMutate).toHaveBeenCalledOnce();
     expect(host.querySelector('[data-testid^="button-download-nfc-card-"]')).toBeNull();
     expect(mocks.downloadPrintableNfcCard).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-testid="student-card-lifecycle"]')?.getAttribute('data-card-id')).toBe('101');
+    expect(host.querySelector('[data-testid="student-card-lifecycle"]')?.getAttribute('data-uid')).toBe('ABCD1234');
+    expect(host.querySelector('[data-testid="student-card-lifecycle"]')?.getAttribute('data-auto-preview')).toBe('true');
     expect(regMutate).toHaveBeenCalledOnce();
   });
 

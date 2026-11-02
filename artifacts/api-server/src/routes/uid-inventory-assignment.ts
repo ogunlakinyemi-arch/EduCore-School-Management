@@ -6,6 +6,7 @@ import { assignCapturedUid } from "../services/uid-inventory-assignment";
 import { issueReplacement, requestReplacement } from "../services/student-card-replacement";
 import { markSecurityCardLost } from "../services/school-security-core-service";
 import { detachOwnerCard } from "../services/owner-card-detach";
+import { readStudentCardReadiness } from "../services/student-card-readiness";
 
 const router = Router();
 const positive = z.number().int().positive().max(2147483647);
@@ -13,6 +14,12 @@ const confirmed = z.object({ confirm:z.literal(true) });
 const run = (fn:(req:Request,res:Response)=>Promise<void>) =>
   (req:Request,res:Response,next:NextFunction) => void fn(req,res).catch(next);
 router.use(requireAuthentication());
+router.get("/platform/uid-inventory/cards/:cardId/readiness",run(async(req,res)=>{
+  assertRoles(req,["PLATFORM_OWNER"]);
+  res.setHeader("Cache-Control","no-store");
+  res.json(await readStudentCardReadiness(pool,positive.parse(Number(req.params.cardId)),
+    positive.parse(Number(req.query.schoolId)),positive.parse(Number(req.query.studentId))));
+}));
 router.get("/platform/schools/:schoolId/card-brand",run(async(req,res)=>{
   assertRoles(req,["PLATFORM_OWNER"]);
   const schoolId=positive.parse(Number(req.params.schoolId));

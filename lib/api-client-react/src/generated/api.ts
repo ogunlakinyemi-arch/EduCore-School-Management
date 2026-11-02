@@ -398,6 +398,7 @@ import type {
   GetOwnerBankTransferInstructions200,
   GetOwnerBankTransferInstructionsParams,
   GetOwnerHardwareCorrection200,
+  GetOwnerStudentCardReadinessParams,
   GetOwnerUidInventoryParams,
   GetParentChildAttendanceParams,
   GetParentCommunicationThreadParams,
@@ -874,6 +875,7 @@ import type {
   StaffSubscriptionAccess,
   StatusInput,
   Student,
+  StudentCardReadiness,
   StudentCardReplacementRequest,
   StudentClassAssignment,
   StudentClassAssignmentInput,
@@ -2168,6 +2170,95 @@ export const useAssignCapturedUidToStudent = <TError = ErrorType<void>,
       > => {
       return useMutation(getAssignCapturedUidToStudentMutationOptions(options));
     }
+
+export const getGetOwnerStudentCardReadinessUrl = (cardId: number,
+    params: GetOwnerStudentCardReadinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/uid-inventory/cards/${cardId}/readiness?${stringifiedParams}` : `/api/platform/uid-inventory/cards/${cardId}/readiness`
+}
+
+/**
+ * @summary Owner-only read-only current student card activation and print readiness
+ */
+export const getOwnerStudentCardReadiness = async (cardId: number,
+    params: GetOwnerStudentCardReadinessParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentCardReadiness> => {
+
+  return customFetch<StudentCardReadiness>(getGetOwnerStudentCardReadinessUrl(cardId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerStudentCardReadinessQueryKey = (cardId: number,
+    params?: GetOwnerStudentCardReadinessParams,) => {
+    return [
+    `/api/platform/uid-inventory/cards/${cardId}/readiness`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOwnerStudentCardReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerStudentCardReadiness>>, TError = ErrorType<void>>(cardId: number,
+    params: GetOwnerStudentCardReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerStudentCardReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerStudentCardReadinessQueryKey(cardId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerStudentCardReadiness>>> = ({ signal }) => getOwnerStudentCardReadiness(cardId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: cardId !== null && cardId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerStudentCardReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerStudentCardReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerStudentCardReadiness>>>
+export type GetOwnerStudentCardReadinessQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner-only read-only current student card activation and print readiness
+ */
+
+export function useGetOwnerStudentCardReadiness<TData = Awaited<ReturnType<typeof getOwnerStudentCardReadiness>>, TError = ErrorType<void>>(
+ cardId: number,
+    params: GetOwnerStudentCardReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerStudentCardReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerStudentCardReadinessQueryOptions(cardId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getUnlinkCardForCapturedReplacementUrl = (cardId: number,) => {
 

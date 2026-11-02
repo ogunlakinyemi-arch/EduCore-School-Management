@@ -8,5 +8,18 @@
 import type { CardStatusInput4b96100Status } from './cardStatusInput4b96100Status';
 
 export interface CardStatusInput4b96100 {
+  /** Explicit confirmation required when activating a locked student card */
+  confirm?: boolean;
+  /**
+     * Mandatory activation or unlock reason
+     * @minLength 3
+     * @maxLength 480
+     */
+  reason?: string;
+  /**
+     * Confirmed current student identity required for activation
+     * @minimum 1
+     */
+  studentId?: number;
   status: CardStatusInput4b96100Status;
 }

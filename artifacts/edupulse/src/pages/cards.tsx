@@ -9,6 +9,7 @@ import { OwnerCardLink } from '@/components/owner-card-link';
 import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
 import { CardBrandSettings } from '@/components/card-brand-settings';
 import { OfficialCardPreview } from '@/components/official-card-preview';
+import { OwnerStudentCardLifecycle } from '@/components/owner-student-card-lifecycle';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx 
 } from '@/components/shared';
@@ -90,6 +91,10 @@ export function CardsPage() {
   return (
     <div className="fade-up">
       {modal?.lost && <ReportLostModal card={modal.lost} onClose={() => setModal(null)} onSubmit={reportLost} />}
+      {modal?.activate && canManageCards && <Modal title="Review student card activation" onClose={()=>setModal(null)}>
+        <OwnerStudentCardLifecycle key={modal.activate.id} cardId={modal.activate.id} schoolId={schoolId}
+          studentId={modal.activate.studentId} uid={modal.activate.uid} onChanged={done}/>
+      </Modal>}
       <PageHeading 
         eyebrow="Security / NFC Cards" 
         title="NFC Card Management"
@@ -161,7 +166,8 @@ export function CardsPage() {
                   <Button variant="outline" onClick={() => setModal({ reassign: card })} disabled={studentsQuery.isLoading || !students.length}>
                     Reassign
                   </Button>
-                  {['active','locked'].includes(String(card.status).toLowerCase()) && <Button variant="outline" onClick={() => handleToggle(card.id, card.status)} disabled={toggleStatus.isPending} testId={`button-card-status-${card.id}`}>
+                  {['active','locked'].includes(String(card.status).toLowerCase()) && <Button type="button" variant="outline" onClick={() =>
+                    String(card.status).toLowerCase()==='locked'?setModal({activate:card}):handleToggle(card.id, card.status)} disabled={toggleStatus.isPending} testId={`button-card-status-${card.id}`}>
                     {String(card.status).toLowerCase() === 'active' ? 'Lock Card' : 'Unlock Card'}
                   </Button>}
                  </div>}

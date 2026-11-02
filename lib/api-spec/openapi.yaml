@@ -95,6 +95,23 @@ paths:
     $ref: "./flutterwave-live-runtime.yaml#/allocationReview"
   /platform/uid-inventory/assign:
     $ref: "./owner-uid-reader.yaml#/capturedUidAssignment"
+  /platform/uid-inventory/cards/{cardId}/readiness:
+    get:
+      operationId: getOwnerStudentCardReadiness
+      tags: [platform]
+      summary: Owner-only read-only current student card activation and print readiness
+      parameters:
+        - { name: cardId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: studentId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Fresh current-assignment evidence and restrictions; not permission to bypass scan checks
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentCardReadiness" }
+        "403": { description: Platform Owner only }
+        "404": { description: Assignment changed or not found }
   /platform/uid-inventory/cards/{cardId}/unlink:
     $ref: "./owner-uid-reader.yaml#/capturedCardUnlink"
   /platform/uid-inventory/replacements/{requestId}/issue:
@@ -8473,10 +8490,36 @@ components:
       properties:
         uid: { type: string, minLength: 4 }
         studentId: { type: integer, minimum: 1 }
+    StudentCardRestriction:
+      type: object
+      required: [code, message, resolution]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        resolution: { type: string }
+    StudentCardReadiness:
+      type: object
+      required: [cardId, schoolId, studentId, uid, status, stage, explanation, canActivate, canPrint, restrictions]
+      properties:
+        cardId: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        uid: { type: string }
+        status: { type: string }
+        stage: { type: string, enum: [ACTIVE, AWAITING_ACTIVATION, SECURITY_LOCK, RESTRICTED] }
+        explanation: { type: string }
+        canActivate: { type: boolean }
+        canPrint: { type: boolean }
+        restrictions:
+          type: array
+          items: { $ref: "#/components/schemas/StudentCardRestriction" }
     CardStatusInput:
       type: object
       required: [status]
       properties:
+        confirm: { type: boolean, description: Explicit confirmation required when activating a locked student card }
+        reason: { type: string, minLength: 3, maxLength: 480, description: Mandatory activation or unlock reason }
+        studentId: { type: integer, minimum: 1, description: Confirmed current student identity required for activation }
         status:
           type: string
           enum: [active, inactive, locked, unassigned, lost, blocked, suspended, replaced, expired]

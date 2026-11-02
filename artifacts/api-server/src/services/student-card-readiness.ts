@@ -1,0 +1,63 @@
+import {AuthError} from "../middlewares/auth";
+import {assertSchoolHasActiveNfcDevice} from "../lib/nfc-device-first";
+import {assertVerifiedStudentNfcPayment} from "./student-nfc-payment-evidence";
+import {assertSubscriptionAccess} from "./subscription-enforcement";
+
+type Db={query(sql:string,values?:any[]):Promise<{rows:any[]}>};
+
+/** The same independent prerequisites used for attendance; never changes them. */
+export async function assertStudentCardUsePrerequisites(db:Db,schoolId:number,studentId:number){
+  await assertSubscriptionAccess(schoolId,studentId,db);
+  await assertVerifiedStudentNfcPayment(db,schoolId,studentId);
+  await assertSchoolHasActiveNfcDevice(db,schoolId);
+  const policy=(await db.query(`SELECT policy FROM student_identification_policies
+    WHERE school_id=$1 AND student_id=$2 AND status='ACTIVE'`,[schoolId,studentId])).rows[0]?.policy;
+  if(policy==="BIOMETRIC_ONLY")throw new AuthError(409,
+    "This student's identification policy is BIOMETRIC_ONLY. Review the existing identification policy workflow; card activation cannot override it.",
+    "IDENTIFICATION_POLICY_RESTRICTED");
+}
+
+/** Read-only explanation for one exact current assignment, not a person-level lock. */
+export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:number,studentId:number){
+  const card=(await db.query(`SELECT nc.id,nc.uid,nc.status,nc.student_id AS "studentId",
+      nc.replaced_by_card_id AS "replacedByCardId",nc.replaced_at AS "replacedAt",nc.expires_at AS "expiresAt",
+      st.status AS "studentStatus",sc.status AS "schoolStatus",
+      (SELECT count(*)::int FROM employee_nfc_card_bindings b WHERE b.nfc_card_id=nc.id) AS "employeeBindings",
+      (SELECT count(*)::int FROM nfc_cards other WHERE other.school_id=nc.school_id
+        AND other.student_id=nc.student_id AND lower(other.status) IN ('active','locked')) AS "currentCards"
+    FROM nfc_cards nc JOIN schools sc ON sc.id=nc.school_id
+    LEFT JOIN students st ON st.id=nc.student_id AND st.school_id=nc.school_id
+    WHERE nc.id=$1 AND nc.school_id=$2`,[cardId,schoolId])).rows[0];
+  if(!card || Number(card.studentId)!==studentId)throw new AuthError(404,"This is no longer the selected student's current card. Refresh the person and card list.");
+  const status=String(card.status).toLowerCase();
+  const restrictions:Array<{code:string;message:string;resolution:string}>=[];
+  const deny=(code:string,message:string,resolution:string)=>restrictions.push({code,message,resolution});
+  if(card.employeeBindings || Number(card.currentCards)!==1)deny("ASSIGNMENT_CONFLICT","The card has conflicting or multiple current assignments.","Owner must review the retained assignment history; do not create another assignment.");
+  if(String(card.studentStatus).toUpperCase()!=="ACTIVE")deny("STUDENT_INACTIVE","The selected student's account is not ACTIVE.","Resolve the student's account status through the existing school administration workflow.");
+  if(String(card.schoolStatus).toUpperCase()!=="ACTIVE")deny("SCHOOL_INACTIVE","The school is not ACTIVE.","Resolve the school restriction through existing Owner school controls.");
+  if(card.replacedByCardId!=null || card.replacedAt!=null)deny("CARD_REPLACED","This UID has been replaced and must not be reactivated.","Use the retained replacement request and its new UID.");
+  if(card.expiresAt && new Date(card.expiresAt).getTime()<=Date.now())deny("CARD_EXPIRED","This physical card has expired.","Use the existing renewal/replacement workflow; unlock cannot extend expiry.");
+  if(!["active","locked"].includes(status))deny("CARD_RESTRICTED",`This physical card is ${status}, not awaiting ordinary activation.`,"Lost/stolen cards require the paid replacement workflow. Other restrictions require their existing review workflow; this action cannot clear them.");
+  const history=status==="locked"?(await db.query(`SELECT action,reason,previous_status AS "previousStatus"
+    FROM nfc_card_history WHERE nfc_card_id=$1 AND school_id=$2 AND lower(new_status)='locked'
+    ORDER BY id DESC LIMIT 1`,[cardId,schoolId])).rows[0]:null;
+  const staged=status==="locked" && ["REGISTERED","REASSIGNED","ASSIGNED"].includes(history?.action);
+  const stage=status==="active"?"ACTIVE":status==="locked"?(staged?"AWAITING_ACTIVATION":"SECURITY_LOCK"):"RESTRICTED";
+  const explanation=staged
+    ?"This new UID was linked successfully and deliberately staged as LOCKED pending Owner activation. It did not inherit the previous UID's lock."
+    :status==="locked"?`This card is locked by a separate status change. Recorded reason: ${history?.reason || "No reason was recorded in the legacy history; review the card history before unlocking."}`
+    :status==="active"?"This UID is active. Reader, account and attendance policy checks still apply.":`This UID is ${status}.`;
+  if(!restrictions.length){
+    try{await assertStudentCardUsePrerequisites(db,schoolId,studentId);}
+    catch(error){
+      if(!(error instanceof AuthError))throw error;
+      deny(error.eventType,error.message,error.eventType==="NFC_FLUTTERWAVE_PAYMENT_REQUIRED"
+        ?"Complete the existing student platform checkout and independent server verification for the current term. An Owner unlock cannot substitute payment."
+        :error.eventType==="NFC_DEVICE_REQUIRED"?"Link an eligible NFC reader through existing device management."
+        :"Resolve this restriction through its existing school, subscription or identification-policy workflow, then refresh. Card unlock cannot override it.");
+    }
+  }
+  return {cardId,schoolId,studentId,uid:String(card.uid),status,stage,explanation,
+    canActivate:status==="locked" && restrictions.length===0,
+    canPrint:status==="active" && restrictions.length===0,restrictions};
+}

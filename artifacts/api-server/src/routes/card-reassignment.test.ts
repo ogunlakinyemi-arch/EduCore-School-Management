@@ -10,7 +10,20 @@ const state = vi.hoisted(() => ({
   deviceAvailable: true,
   schoolExists: true,
   queries: [] as Array<{ sql: string; values: unknown[] }>,
+  paymentVerified:true,schoolRestricted:false,lockAction:"REGISTERED",lockReason:null as string|null,
 }));
+vi.mock("../services/student-nfc-payment-evidence",async()=>{
+  const {AuthError}=await import("../middlewares/auth");
+  return {assertVerifiedStudentNfcPayment:vi.fn(async()=>{
+    if(!state.paymentVerified)throw new AuthError(409,"Verified current-term NFC checkout required","NFC_FLUTTERWAVE_PAYMENT_REQUIRED");
+  })};
+});
+vi.mock("../services/subscription-enforcement",async()=>{
+  const {AuthError}=await import("../middlewares/auth");
+  return {assertSubscriptionAccess:vi.fn(async()=>{
+    if(state.schoolRestricted)throw new AuthError(403,"School manually locked","SCHOOL_SUBSCRIPTION_LOCKED");
+  })};
+});
 
 const poolMock = vi.hoisted(() => {
   const query = vi.fn(async (sql: string, values: unknown[] = []) => {
@@ -20,6 +33,12 @@ const poolMock = vi.hoisted(() => {
   const connect = vi.fn(async () => ({
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
+      if(sql.includes('nc.student_id AS "studentId"') && sql.includes('AS "currentCards"'))
+        return {rows:[{...state.card,studentStatus:"ACTIVE",schoolStatus:"ACTIVE",employeeBindings:0,currentCards:1}]};
+      if(sql.includes("SELECT action,reason,previous_status"))return {rows:[{action:state.lockAction,reason:state.lockReason}]};
+      if(sql.includes("UPDATE nfc_cards") && sql.includes("SET status = $1")){
+        state.card.status=String(values[0]);return {rows:[{...state.card}]};
+      }
       if(sql.includes("SELECT id FROM schools WHERE id=$1")) return {rows:state.schoolExists?[{id:values[0]}]:[]};
       if(sql.includes("FROM platform_devices d")) return {rows:state.deviceAvailable?[{id:501}]:[]};
       if (sql.includes('SELECT nc.id, nc.school_id AS "schoolId"')) {
@@ -131,6 +150,7 @@ beforeEach(() => {
   state.deviceAvailable = true;
   state.schoolExists = true;
   state.queries.length = 0;
+  state.paymentVerified=true;state.schoolRestricted=false;state.lockAction="REGISTERED";state.lockReason=null;
   poolMock.query.mockClear();
   poolMock.connect.mockClear();
 });
@@ -171,7 +191,7 @@ describe("NFC card reassignment", () => {
   });
   it("rejects future activation of a legacy assigned card whose school has no device",async()=>{
     state.deviceAvailable=false;
-    const response=await fetch(`${baseUrl}/cards/31/status`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({status:"active"})});
+    const response=await fetch(`${baseUrl}/cards/31/status`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({status:"active",confirm:true,reason:"Activate prepared card",studentId:10})});
     expect(response.status).toBe(409);
     expect(state.queries.some(q=>q.sql.includes("SET status = $1"))).toBe(false);
   });

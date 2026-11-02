@@ -423,6 +423,43 @@ export const AssignCapturedUidToStudentResponse = zod.object({
 
 
 /**
+ * @summary Owner-only read-only current student card activation and print readiness
+ */
+
+
+
+export const GetOwnerStudentCardReadinessParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const GetOwnerStudentCardReadinessQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const GetOwnerStudentCardReadinessResponse = zod.object({
+  "cardId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "uid": zod.string(),
+  "status": zod.string(),
+  "stage": zod.enum(['ACTIVE', 'AWAITING_ACTIVATION', 'SECURITY_LOCK', 'RESTRICTED']),
+  "explanation": zod.string(),
+  "canActivate": zod.boolean(),
+  "canPrint": zod.boolean(),
+  "restrictions": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "resolution": zod.string()
+}))
+})
+
+
+/**
  * @summary Owner confirms ordinary card detachment or existing lost/damaged revocation
  */
 
@@ -15800,7 +15837,16 @@ export const UpdateCardStatusParams = zod.object({
   "cardId": zod.coerce.number().int().min(1)
 })
 
+export const updateCardStatusBodyReasonMin = 3;
+export const updateCardStatusBodyReasonMax = 480;
+
+
+
+
 export const UpdateCardStatusBody = zod.object({
+  "confirm": zod.boolean().optional().describe('Explicit confirmation required when activating a locked student card'),
+  "reason": zod.string().min(updateCardStatusBodyReasonMin).max(updateCardStatusBodyReasonMax).optional().describe('Mandatory activation or unlock reason'),
+  "studentId": zod.number().int().min(1).optional().describe('Confirmed current student identity required for activation'),
   "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired'])
 })
 

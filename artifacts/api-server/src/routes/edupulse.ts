@@ -8,6 +8,7 @@ import { splitAttribution } from "../services/flutterwave-split-checkout";
 import { resolveRegistrationClass, saveRegistrationAssignment, registrationParent } from "../lib/student-registration-assignment";
 import { generateSchoolCode } from "../lib/generated-person-codes";
 import {assignAvailableStudentCard} from "../services/student-card-assignment";
+import {readStudentCardReadiness} from "../services/student-card-readiness";
 import { assertStudentNfcPaymentAccess,ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
 import {assertSchoolHasActiveNfcDevice,rejectManualCardDeviceIds} from "../lib/nfc-device-first";
 import {
@@ -1641,6 +1642,17 @@ router.patch("/cards/:cardId/status", async (req, res) => {
       throw new AuthError(409, "Employee-bound cards must be managed through employee NFC controls");
     }
     const previousStatus = String(card.rows[0].status).toLowerCase();
+    let activationReason:string|null=null;
+    if(status==="active" && previousStatus!=="active"){
+      if(req.body?.confirm!==true || typeof req.body?.reason!=="string" ||
+          req.body.reason.trim().length<3 || req.body.reason.trim().length>480)
+        throw new AuthError(400,"Explicit confirmation and a 3–480 character activation/unlock reason are required");
+      activationReason=req.body.reason.trim();
+      if(req.body.studentId!==card.rows[0].studentId)
+        throw new AuthError(409,"The card is no longer linked to the confirmed student. Refresh before activating.");
+      const readiness=await readStudentCardReadiness(client,cardId,Number(card.rows[0].schoolId),Number(card.rows[0].studentId));
+      if(!readiness.canActivate)throw new AuthError(409,readiness.restrictions.map(item=>item.message).join(" ") || "This card cannot be activated");
+    }
     if(req.query.schoolId!==undefined && String(req.query.schoolId)!==String(card.rows[0].schoolId)) {
       throw new AuthError(404,"Card not found in the selected school");
     }
@@ -1701,13 +1713,15 @@ router.patch("/cards/:cardId/status", async (req, res) => {
     }
     await client.query(
       `INSERT INTO nfc_card_history
-       (school_id, nfc_card_id, student_id, action, previous_status, new_status, actor_user_id)
-       VALUES ($1, $2, $3, 'STATUS_CHANGED', $4, $5, $6)`,
-      [result.rows[0].schoolId, cardId, result.rows[0].studentId, previousStatus, status, getUserContext(req).user.id],
+       (school_id, nfc_card_id, student_id, action, previous_status, new_status, actor_user_id, reason)
+       VALUES ($1, $2, $3, 'STATUS_CHANGED', $4, $5, $6, $7)`,
+      [result.rows[0].schoolId, cardId, result.rows[0].studentId, previousStatus, status, getUserContext(req).user.id,activationReason],
     );
     await audit(req, result.rows[0].schoolId, `Changed NFC status to ${status}`, "NFC Cards", cardId, "info", "NFC_STATUS_CHANGED", "SUCCESS", {
       previousStatus,
       newStatus: status,
+      reason:activationReason,
+      confirmed:activationReason!==null,
     }, client);
     await client.query("COMMIT");
     res.json({ ...result.rows[0], studentName: null, lastScan: dateString(result.rows[0].lastScan) });

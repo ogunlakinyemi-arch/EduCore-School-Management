@@ -6,6 +6,9 @@ export type PrintableSnapshot = {
   schoolId: number;
   cardStatus: string;
   cardUid: string;
+  expiresAt?: string | Date | null;
+  replacedAt?: string | Date | null;
+  replacedByCardId?: number | null;
   studentId: number | null;
   studentStatus: string | null;
   studentName: string | null;
@@ -42,6 +45,7 @@ export class PrintableUnsupportedIdentityError extends Error {
  */
 export const printableCardSnapshotSql = `
   SELECT nc.id AS "cardId", nc.school_id AS "schoolId", nc.status AS "cardStatus", nc.uid AS "cardUid",
+         nc.expires_at AS "expiresAt",nc.replaced_at AS "replacedAt",nc.replaced_by_card_id AS "replacedByCardId",
          nc.student_id AS "studentId", st.status AS "studentStatus",
          CASE WHEN st.id IS NULL THEN NULL
               ELSE trim(concat_ws(' ',st.first_name,st.middle_name,st.last_name)) END AS "studentName",
@@ -83,6 +87,9 @@ export function resolvePrintableIdentity(
   mode: "printable" | "preview" = "printable",
 ) {
   if (!snapshot) throw new AuthError(404, "NFC card not found in this school");
+  if(snapshot.replacedByCardId!=null || snapshot.replacedAt!=null ||
+    (snapshot.expiresAt && new Date(snapshot.expiresAt).getTime()<=Date.now()))
+    throw new AuthError(409,"A replaced or expired card cannot be previewed or printed. Use the existing replacement workflow.");
   if (snapshot.studentId !== null && snapshot.employeeBindingCount > 0) {
     throw new AuthError(409, "The NFC card has conflicting current assignments");
   }
