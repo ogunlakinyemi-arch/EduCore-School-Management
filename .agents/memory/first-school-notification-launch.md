@@ -1,6 +1,6 @@
 ---
 name: First real-school notification boundary
-description: TEST-only existing data and the external-notification launch safety rule.
+description: Notification-age cutoff, existing-account eligibility and external-send authorization.
 ---
 
 All existing schools, users and notification records were explicitly declared
@@ -10,12 +10,23 @@ those records; that declaration does not authorize delivery or deletion.
 **Why:** Historical queued/failed work and edits to TEST contact details must not
 turn into real-school notifications when credentials or a release become usable.
 
-**How to apply:** Keep a fail-closed external launch boundary chosen after TEST
-onboarding and before real onboarding. Existing TEST school/user identities must
-not be converted to live identities by backdating the cutoff or rewriting creation
-timestamps. Any explicit promotion mechanism requires separate review. In-App
-history remains available under existing authorization. After the cutoff, dates
-alone cannot classify new QA data; keep QA in Development or hold external sends.
+**How to apply:** Preserve historical notices and the fail-closed launch cutoff.
+Do not backdate the cutoff or rewrite creation timestamps. In-App history remains
+available under existing authorization. Keep QA in Development or hold external sends.
+
+Existing active schools and parent accounts may receive new post-cutoff notices;
+their own creation dates must not determine notification eligibility. Both the
+notification and delivery must meet the approved cutoff, and all current
+authorization, consent, preference and channel-registration checks remain required.
+
+**Why:** On 2026-11-03 the Owner explicitly authorized this correction in the
+Development workspace only. School/account age was blocking new legitimate
+notices. This supersedes the original identity-age restriction, not the retained
+history protection or external-send authorization.
+
+**How to apply:** Never release pre-cutoff notices through retries or new delivery
+rows. Do not treat this code correction as permission to publish, alter Production,
+backfill events, change settings or perform real sends.
 Launch activation was explicitly authorized by the Owner on 2026-10-23 using
 a current UTC cutoff strictly after retained TEST history. This authorization
 does not permit backdating, promoting TEST identities, changing channel defaults,

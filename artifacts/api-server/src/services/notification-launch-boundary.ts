@@ -29,18 +29,18 @@ export function notificationLaunchBoundary(
   return { allowed: true, liveFrom: value };
 }
 
-/** Fixed SQL identifiers only; the cutoff is always a bound parameter. */
+/**
+ * Gate message history, not the age of an otherwise authorized school/account.
+ * Both timestamps are required so a fresh delivery cannot revive an old notice.
+ * Fixed SQL identifiers only; the cutoff is always a bound parameter.
+ */
 export function notificationLaunchSql(parameter: "$2" | "$4" | "$6"): string {
   return `(${parameter}::timestamptz IS NULL OR (
     d.created_at >= ${parameter}::timestamptz
     AND EXISTS (
       SELECT 1 FROM communication_notifications launch_n
-      JOIN app_users launch_u ON launch_u.id = launch_n.recipient_user_id
-      LEFT JOIN schools launch_s ON launch_s.id = launch_n.school_id
       WHERE launch_n.id = d.notification_id
         AND launch_n.created_at >= ${parameter}::timestamptz
-        AND launch_u.created_at >= ${parameter}::timestamptz
-        AND (launch_n.school_id IS NULL OR launch_s.created_at >= ${parameter}::timestamptz)
     )
   ))`;
 }

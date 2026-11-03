@@ -12,6 +12,8 @@ import {createParentTelegramChallenge,acceptTelegramUpdate,confirmParentTelegram
 import {dispatchCommunicationDeliveries,queueCommunicationNotification} from "./communication-service";
 import {createTelegramDirectoryInvitation,parentTelegramInvitationStatus} from "./telegram-onboarding";
 import {inspectTelegramStorage} from "./telegram-storage-readiness";
+import {notificationLaunchSql} from "./notification-launch-boundary";
+import {dispatchPushDevices} from "./web-push-dispatch";
 
 const state=vi.hoisted(()=>({pool:null as any,userId:1,role:"PARENT",anonymous:false}));
 vi.mock("@workspace/db",async original=>({...await original<any>(),pool:{
@@ -62,10 +64,11 @@ beforeAll(async()=>{
       attempts int DEFAULT 0,next_attempt_at timestamptz DEFAULT now(),last_attempt_at timestamptz,updated_at timestamptz DEFAULT now(),
       created_at timestamptz DEFAULT now(),provider_message_id text,provider_name text,provider_acknowledged_at timestamptz,
       sent_at timestamptz,delivered_at timestamptz,failed_at timestamptz,error_code text,last_error text,
+      push_attempts jsonb NOT NULL DEFAULT '{}',
       UNIQUE(notification_id,channel),CONSTRAINT communication_deliveries_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));
     CREATE TABLE communication_preferences(user_id int,school_id int,category text,channel text,enabled boolean,
       CONSTRAINT communication_preferences_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));
-    CREATE TABLE communication_push_devices(user_id int,school_id int,status text,subscription jsonb,session_id text);
+    CREATE TABLE communication_push_devices(id serial PRIMARY KEY,user_id int,school_id int,status text,subscription jsonb,session_id text);
     CREATE TABLE communication_templates(channel text,CONSTRAINT communication_templates_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));`);
   await db.query(await readFile(new URL("../../../../lib/db/drizzle/0172_telegram_notifications.sql",import.meta.url),"utf8"));
   await db.query(await readFile(new URL("../../../../lib/db/drizzle/0173_telegram_storage_readiness.sql",import.meta.url),"utf8"));
@@ -116,6 +119,47 @@ async function notification(eventKey="PARENT_EVENT:SCHOOL_ENTRY:1:1:1",channel="
 }
 const mocks=()=>({sms:{provider:"mock-sms",channel:"sms" as const,send:vi.fn()},email:{provider:"mock-email",channel:"email" as const,send:vi.fn()}});
 describe("Telegram real SQL: linking, consent and outbox safety; no external network",()=>{
+  it("launch correction admits new notices for existing consented parents without reviving historical queues",async()=>{
+    await db.query(`UPDATE schools SET created_at='2026-10-01T00:00:00Z';
+      UPDATE app_users SET created_at='2026-10-01T00:00:00Z'`);
+    await link();
+    const fresh=await notification("PARENT_EVENT:SCHOOL_ENTRY:launch-fresh");
+    const oldNotice=await notification("PARENT_EVENT:SCHOOL_ENTRY:launch-old-notice");
+    const oldDelivery=await notification("PARENT_EVENT:SCHOOL_ENTRY:launch-old-delivery");
+    await db.query("UPDATE communication_notifications SET created_at='2026-10-01T00:00:00Z' WHERE id=$1",[oldNotice]);
+    await db.query("UPDATE communication_deliveries SET created_at='2026-10-01T00:00:00Z' WHERE notification_id=$1",[oldDelivery]);
+    const eligible=await db.query(`SELECT d.notification_id FROM communication_deliveries d
+      WHERE d.notification_id=ANY($1::int[]) AND ${notificationLaunchSql("$2")} ORDER BY d.notification_id`,
+      [[fresh,oldNotice,oldDelivery],fixtureEnv.EDUCORE_NOTIFICATION_LIVE_FROM]);
+    expect(eligible.rows).toEqual([{notification_id:fresh}]);
+    expect(await telegramRecipient(db,1,1,1,"ATTENDANCE")).not.toBeNull();
+    // Missing consent and foreign-school relationships remain separate, mandatory checks.
+    expect(await telegramRecipient(db,2,2,2,"ATTENDANCE")).toBeNull();
+    expect(await telegramRecipient(db,1,2,2,"ATTENDANCE")).toBeNull();
+    await db.query(`INSERT INTO communication_preferences VALUES(1,1,'ATTENDANCE','TELEGRAM',false)`);
+    expect(await telegramRecipient(db,1,1,1,"ATTENDANCE")).toBeNull();
+    expect((await db.query("SELECT DISTINCT status,attempts FROM communication_deliveries")).rows)
+      .toEqual([{status:"QUEUED",attempts:0}]);
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("launch correction does not bypass missing, revoked or foreign-school push registration",async()=>{
+    const notificationId=await notification("launch-push","PUSH");
+    const id=(await db.query("UPDATE communication_deliveries SET status='PROCESSING' WHERE notification_id=$1 RETURNING id",[notificationId])).rows[0].id;
+    const record={id,notificationId,recipientUserId:1,schoolId:1};
+    const send=vi.fn(async()=>({provider:"fixture",channel:"push" as const,status:"ACCEPTED" as const,accepted:true,delivered:false}));
+    const provider={provider:"fixture",channel:"push" as const,send};
+    const sessionActive=vi.fn(async()=>true);
+    expect((await dispatchPushDevices(db,record,provider,sessionActive)).accepted).toBe(false);
+    await db.query(`INSERT INTO communication_push_devices(user_id,school_id,status,subscription,session_id)
+      VALUES(1,2,'ACTIVE','{}','fixture-session'),(1,1,'REVOKED','{}','fixture-session')`);
+    expect((await dispatchPushDevices(db,record,provider,sessionActive)).accepted).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+    expect(sessionActive).not.toHaveBeenCalled();
+    await db.query(`INSERT INTO communication_push_devices(user_id,school_id,status,subscription,session_id)
+      VALUES(1,1,'ACTIVE','{}','fixture-session')`);
+    expect((await dispatchPushDevices(db,record,provider,sessionActive)).accepted).toBe(true);
+    expect(send).toHaveBeenCalledOnce(); // Synthetic adapter only; no network.
+  });
   it("encrypts authenticated-parent chat payloads with ownership-bound authenticated encryption",()=>{
     const sealed=sealTelegramChat(1,{chatId:"888001",label:"Fixture"},process.env);
     expect(sealed).not.toContain("888001");expect(openTelegramChat(1,sealed).chatId).toBe("888001");

@@ -96,12 +96,13 @@ describe("first-school notification boundary", () => {
     expect(release).toHaveBeenCalledOnce();
   });
 
-  it("requires new delivery, notification, recipient and school, not just a fresh retry", () => {
+  it("requires new delivery and notification, not new school/account creation or just a fresh retry", () => {
     const sql = notificationLaunchSql("$6");
-    for (const field of ["d.created_at", "launch_n.created_at", "launch_u.created_at", "launch_s.created_at"]) {
+    for (const field of ["d.created_at", "launch_n.created_at"]) {
       expect(sql).toContain(`${field} >= $6::timestamptz`);
     }
-    expect(sql).toContain("launch_n.school_id IS NULL OR launch_s.created_at");
+    expect(sql).not.toContain("launch_u");
+    expect(sql).not.toContain("launch_s");
   });
 
   it("rechecks the same cutoff during pre-send reload and sends nothing when the record is excluded", async () => {
