@@ -17,6 +17,7 @@ import {developmentPushDispatchEnabled} from "../lib/development-push-policy";
 import {notificationText} from "@workspace/api-zod";
 import {loadOwnerDeliveryControls,ownerNotificationDevelopment,ownerNotificationScope,
   ownerDeliveryClaimSql,financialNotification,ownerTransportAllowed} from "./owner-notification-controls";
+import { teacherPeriodPrefix, teacherPeriodStillCurrent } from "./teacher-period-notifications";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -1026,6 +1027,13 @@ export async function dispatchCommunicationDeliveries(
       );
       summary.skipped += 1;
       continue;
+    }
+    if (record.eventKey?.startsWith(teacherPeriodPrefix)
+      && (delivery.channel !== "PUSH" || !await teacherPeriodStillCurrent(pool,record,now()))) {
+      await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='TIMETABLE_CHANGED_OR_EXPIRED',
+        last_error='Teacher period is no longer current',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
+        [delivery.id,normalizedDate(now())]);
+      summary.skipped++; continue;
     }
     const dispatchEvent=notificationEvent(record.category,record.eventKey);
     if(ownerControls&&delivery.channel==="PUSH"){

@@ -61,14 +61,14 @@ export function OwnerNotificationDeliveryControl(){
         </div>;})}</div>
       <fieldset className="rounded-lg border p-3 text-sm">
         <legend className="px-1 font-semibold">Push test recipients ({current.pushParentIds.length} selected, max 20)</legend>
-        <p className="text-xs">Only eligible parent accounts reported by the server can be selected. No message is sent by selecting a recipient.</p>
+        <p className="text-xs">Only eligible parent or teacher accounts reported by the server can be selected. No message is sent by selecting a recipient.</p>
         {eligible.length===0?<p role="status" className="mt-2 text-xs">No eligible push test recipients are currently available.</p>:
           <div className="mt-2 flex flex-wrap gap-3">{eligible.map(c=><label key={c.userId} className="inline-flex min-h-10 items-center gap-2">
             <input type="checkbox" disabled={busy||(!current.pushParentIds.includes(c.userId)&&current.pushParentIds.length>=20)} checked={current.pushParentIds.includes(c.userId)} onChange={e=>toggleParent(c.userId,e.target.checked)}/>
-            Parent #{c.userId} · School #{c.schoolId}</label>)}</div>}
+            Recipient #{c.userId} · School #{c.schoolId}</label>)}</div>}
         {current.pushParentIds.filter(id=>!eligible.some(c=>c.userId===id)).length>0&&<p className="mt-2 text-xs" role="status">Saved recipients no longer eligible will be removed on next save: {current.pushParentIds.filter(id=>!eligible.some(c=>c.userId===id)).map(id=>`#${id}`).join(', ')}</p>}
         {ineligible.length>0&&<details className="mt-2 text-xs"><summary>Ineligible candidates ({ineligible.length})</summary>
-          <ul className="mt-1 space-y-1">{ineligible.map(c=><li key={c.userId}>Parent #{c.userId} · School #{c.schoolId} — {c.reason}</li>)}</ul></details>}
+          <ul className="mt-1 space-y-1">{ineligible.map(c=><li key={c.userId}>Recipient #{c.userId} · School #{c.schoolId} — {c.reason}</li>)}</ul></details>}
       </fieldset>
       <div className="rounded-lg border p-3 text-xs" aria-label="Delivery diagnostics">
         <p className="font-semibold text-sm">Diagnostics (read-only, no secret values)</p>

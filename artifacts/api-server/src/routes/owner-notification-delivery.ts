@@ -44,7 +44,7 @@ router.put("/communication/owner-delivery-controls",async(req,res)=>{
       throw new AuthError(400,"Selected channel configuration is incomplete");
     const candidates=await pushTestCandidates(pool);
     if(input.pushEnabled&&(!input.pushParentIds.length||input.pushParentIds.some(id=>!candidates.some(p=>p.userId===id&&p.eligible))))
-      throw new AuthError(400,"Push requires an explicitly consenting parent with a valid active school device registration");
+      throw new AuthError(400,"Push requires an explicitly consenting parent or teacher with a valid active school device registration");
     db=await pool.connect();await db.query("BEGIN");
     await db.query("SELECT pg_advisory_xact_lock(31973,1)");
     const previous=await loadOwnerDeliveryControls(db);

@@ -12,6 +12,7 @@ import { developmentWorkersPaused } from "./lib/development-worker-policy";
 import { assessDevelopmentSchools } from "./services/attendance-scheduler";
 import { queueStudentAttendanceCommunication } from "./routes/attendance";
 import { verifyRemovalRuntimeTarget } from "./services/development-settlement-removal";
+import { queueTeacherPeriodNotifications } from "./services/teacher-period-notifications";
 
 // Route sanitized pool diagnostics (SQLSTATE/category only) into structured logs.
 setDatabaseDiagnosticReporter((event, diagnostic) => {
@@ -58,6 +59,9 @@ app.listen(port, (err) => {
       }
       await reconcileFinanceCommunicationIntents(pool, 50);
     },
+  }, {
+    name: "Teacher period notification intent worker",
+    run: async () => { await queueTeacherPeriodNotifications(pool); },
   }, {
     name: "Communication delivery worker",
     run: async () => {

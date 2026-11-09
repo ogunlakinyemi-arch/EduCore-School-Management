@@ -130,6 +130,27 @@ function selectedEmailPolicy() {
   return policy;
 }
 
+describe("teacher period channel gating",()=>{
+  it.each([
+    {allowed:["IN_APP","PUSH"],selected:["IN_APP","PUSH","EMAIL","TELEGRAM"],preferences:[],expected:["IN_APP","PUSH"]},
+    {allowed:["IN_APP"],selected:["IN_APP","PUSH"],preferences:[],expected:["IN_APP"]},
+    {allowed:["IN_APP","PUSH"],selected:[],preferences:[],expected:[]},
+    {allowed:["IN_APP","PUSH"],selected:["IN_APP","PUSH"],preferences:[{channel:"PUSH",enabled:false}],expected:["IN_APP"]},
+    {allowed:["IN_APP","PUSH"],selected:["PUSH"],preferences:[],expected:["PUSH"]},
+  ])("intersects Owner, school, recipient and the two-channel ceiling %j",async ({allowed,selected,preferences,expected})=>{
+    const policy=defaultNotificationPolicy();
+    policy.events.ACADEMIC={allowed:allowed as any,defaults:[]};
+    const {client,calls}=queueClient({policy,schoolChoices:{ACADEMIC:selected},preferences});
+    await queueCommunicationNotification(client,notificationInput({
+      category:"ACADEMIC",eventKey:"TEACHER_PERIOD:1:2026-11-09:BEFORE",
+      channels:["IN_APP","PUSH"],useSchoolDefaults:false,
+    }));
+    const inserted=calls.filter(c=>c.sql.includes("INSERT INTO communication_deliveries"))
+      .map(c=>c.sql.includes("'IN_APP'")?"IN_APP":c.values?.[1]);
+    expect(inserted).toEqual(expected);
+  });
+});
+
 function dispatchPool(options: {
   channel?: "SMS" | "EMAIL";
   claimed?: Array<{ id: number; channel: "SMS" | "EMAIL"; attempts: number }>;
