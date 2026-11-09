@@ -59,7 +59,7 @@ const is404 = (err: unknown) => (err as { status?: number } | null)?.status === 
 function Unavailable() {
   return <div className="mx-auto max-w-3xl p-8"><div className="panel p-8 text-center">
     <h1 className="display-font text-2xl font-bold">Field Operations unavailable</h1>
-    <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">This Development-only workspace is not available in this environment.</p>
+    <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Field Operations could not be found. Refresh or contact the Platform Owner.</p>
   </div></div>;
 }
 
@@ -82,7 +82,7 @@ export default function FieldOperationsPage() {
     ...(selected ? [qc.invalidateQueries({ queryKey: getGetBroFieldLeadQueryKey(selected) })] : []),
   ]);
 
-  if (!import.meta.env.DEV || is404(options.error) || is404(leads.error)) return <Unavailable />;
+  if (is404(options.error) || is404(leads.error)) return <Unavailable />;
   if (options.isLoading) return <SkeletonPage />;
   if (options.isError || !options.data) return <ErrorState message={errorText(options.error, 'Field options could not be loaded.')} retry={() => { void options.refetch(); }} />;
   const opts = options.data;
@@ -93,7 +93,7 @@ export default function FieldOperationsPage() {
     <div className="mx-auto max-w-6xl p-5 md:p-8" data-testid="field-operations">
       <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <div className="eyebrow">{isOwner ? 'Owner oversight · Development only' : 'Development only'}</div>
+          <div className="eyebrow">{isOwner ? 'Owner oversight' : 'BRO field operations'}</div>
           <h1 className="display-font mt-2 text-3xl font-bold">Field Operations & School Leads</h1>
         </div>
         <div className="flex gap-2">

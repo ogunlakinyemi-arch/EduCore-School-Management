@@ -1084,13 +1084,11 @@ export default function PartnerManagement() {
             Attribution Conflicts
           </button>
         </Link>
-        {import.meta.env.DEV && (
           <Link href="/partners/field-operations">
             <button data-testid="link-owner-field-operations" className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/field-operations' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
               Field Operations
             </button>
           </Link>
-        )}
         {isOwner && import.meta.env.DEV && (
           <Link href="/partners/live-readiness">
             <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/live-readiness' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>

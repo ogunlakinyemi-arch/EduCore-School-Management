@@ -99,7 +99,7 @@ function PortalHeader() {
               {isOwner && <Link href="/partner/staff" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/staff') && "text-[hsl(var(--primary))]")}>Staff</Link>}
               {canViewFinance && <Link href="/partner/commissions" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/commissions') && "text-[hsl(var(--primary))]")}>Commissions</Link>}
               {nfcAllowed && <Link href="/partner/nfc-activation" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/nfc-activation' && "text-[hsl(var(--primary))]")} data-testid="link-partner-nfc-activation">NFC Activation</Link>}
-              {import.meta.env.DEV && <Link href="/partner/field-operations" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/field-operations' && "text-[hsl(var(--primary))]")} data-testid="link-partner-field-operations">Field Ops</Link>}
+              <Link href="/partner/field-operations" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/field-operations' && "text-[hsl(var(--primary))]")} data-testid="link-partner-field-operations">Field Ops</Link>
               <Link href="/reporting" className={cx("hover:text-[hsl(var(--foreground))]", location === '/reporting' && "text-[hsl(var(--primary))]")} data-testid="link-partner-reporting">Reports</Link>
               {isOwner && <Link href="/partner/profile" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/profile' && "text-[hsl(var(--primary))]")}>Settings</Link>}
             </nav>
@@ -118,7 +118,7 @@ function PortalHeader() {
         {canViewFinance && <Link href="/partner/commissions" data-testid="link-partner-commissions-mobile" className="hover:underline">Commissions</Link>}
         {nfcAllowed && <Link href="/partner/nfc-activation" data-testid="link-partner-nfc-activation-mobile" className="whitespace-nowrap hover:underline">NFC Activation</Link>}
         {isOwner && <Link href="/partner/profile" data-testid="link-partner-settings-mobile" className="hover:underline">Settings</Link>}
-        {import.meta.env.DEV && <Link href="/partner/field-operations" data-testid="link-partner-field-operations-mobile" className="whitespace-nowrap hover:underline">Field Ops</Link>}
+        <Link href="/partner/field-operations" data-testid="link-partner-field-operations-mobile" className="whitespace-nowrap hover:underline">Field Ops</Link>
         <Link href="/notification-settings" data-testid="link-partner-preferences-mobile" className="hover:underline">Preferences</Link>
       </nav>}
     </header>

@@ -4,11 +4,10 @@ import {z} from "zod";
 import {assertRoles,getUserContext,requireAuthentication} from "../middlewares/auth";
 import {assertTestArchiveAccess} from "../services/test-account-archive-access";
 import {broLeadInput,broTransferInput,broDecisionInput,broLeadView,broLeadAccess,broTransferView,broCalendarDay,
-  BroFieldError,type BroActor,developmentBroField,eligibleBro,saveBroLead,requestBroTransfer,decideBroTransfer} from "../services/bro-field-operations";
+  BroFieldError,type BroActor,eligibleBro,saveBroLead,requestBroTransfer,decideBroTransfer} from "../services/bro-field-operations";
 const router=Router();
 router.use("/bro-field",requireAuthentication(),async(req,res,next)=>{
   try{
-    if(!developmentBroField())throw new BroFieldError(404,"BRO field operations are available in Development only");
     const ctx=assertRoles(req,["PARTNER","PLATFORM_OWNER"]);
     const owner=ctx.roles.some(r=>r.role==="PLATFORM_OWNER"&&r.status==="ACTIVE");
     if(!owner){

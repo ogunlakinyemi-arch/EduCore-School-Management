@@ -18,7 +18,6 @@ export const broTransferInput=z.object({targetOwnerId:z.number().int().positive(
 export const broDecisionInput=z.object({decision:z.enum(["APPROVED","REJECTED"]),reason:z.string().trim().min(5).max(500)}).strict();
 export type BroActor={id:number;owner:boolean;email?:string};
 export class BroFieldError extends Error{constructor(readonly status:number,message:string){super(message);}}
-export const developmentBroField=()=>process.env.NODE_ENV==="development"&&!process.env.REPLIT_DEPLOYMENT;
 export const normalizeBroName=(v:string)=>v.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
 export const normalizeBroPhone=(v:string|null|undefined)=>{
   const n=(v??"").replace(/\D/g,"");return n.startsWith("234")?`0${n.slice(3)}`:n;

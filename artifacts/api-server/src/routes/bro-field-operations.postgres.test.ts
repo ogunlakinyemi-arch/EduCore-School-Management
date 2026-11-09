@@ -152,7 +152,7 @@ it("Owner can reject, approve release, and reassign a released lead without auto
   expect((await db.query("SELECT original_owner_id,current_owner_id FROM bro_field_leads")).rows[0])
     .toEqual({original_owner_id:1,current_owner_id:2});
 });
-it("supports Owner search/status/follow-up oversight and denies other roles/inactive BROs and Production",async()=>{
+it("supports Owner search/status/follow-up oversight and denies other roles/inactive BROs",async()=>{
   const lead=await create();
   const rows:any=await (await call("GET","/leads?q=Alpha&status=Visited&ownerId=1&followUp=2026-11-21",undefined,3)).json();
   expect(rows.map((r:any)=>r.id)).toEqual([lead.id]);
@@ -160,6 +160,59 @@ it("supports Owner search/status/follow-up oversight and denies other roles/inac
   for(const user of [4,5,6])expect((await call("GET","/leads",undefined,user)).status).toBe(403);
   expect((await call("GET","/leads",undefined,0)).status).toBe(401);
   expect((await call("POST","/leads",input(),3)).status).toBe(403);
-  vi.stubEnv("REPLIT_DEPLOYMENT","1");
-  expect((await call("GET","/leads",undefined,3)).status).toBe(404);
+});
+it("allows existing BRO and Owner roles in Production while retaining cross-BRO ownership and transfer authority",async()=>{
+  vi.stubEnv("NODE_ENV","production");vi.stubEnv("REPLIT_DEPLOYMENT","1");
+  const lead=await create();
+  for(const user of [1,3]){
+    expect((await call("GET","/options",undefined,user)).status).toBe(200);
+    expect((await call("GET",`/leads/${lead.id}`,undefined,user)).status).toBe(200);
+  }
+  expect((await call("GET",`/leads/${lead.id}`,undefined,2)).status).toBe(404);
+  expect((await call("PUT",`/leads/${lead.id}`,input({notes:"Other BRO"}),2)).status).toBe(404);
+  for(const user of [4,5,6])expect((await call("GET","/leads",undefined,user)).status).toBe(403);
+  expect((await call("GET","/leads",undefined,0)).status).toBe(401);
+  expect((await call("POST","/leads",input(),3)).status).toBe(403);
+  const transfer:any=await (await call("POST",`/leads/${lead.id}/transfers`,{targetOwnerId:2,reason:"Controlled fixture reassignment"})).json();
+  expect((await call("POST",`/transfers/${transfer.id}/decision`,{decision:"APPROVED",reason:"Unauthorized BRO approval"},1)).status).toBe(403);
+  expect((await call("POST",`/transfers/${transfer.id}/decision`,{decision:"APPROVED",reason:"Reviewed by fixture Owner"},3)).status).toBe(200);
+  expect((await call("GET",`/leads/${lead.id}`,undefined,1)).status).toBe(404);
+  expect((await call("GET",`/leads/${lead.id}`,undefined,2)).status).toBe(200);
+});
+it("installs only missing procedures/triggers, preserves populated records, repeats safely and refuses drift",async()=>{
+  const lead=await create();
+  await call("POST",`/leads/${lead.id}/transfers`,{targetOwnerId:2,reason:"Fixture pending transfer"});
+  const snapshot=async()=>JSON.stringify((await db.query(`SELECT * FROM (SELECT 'leads' AS kind,to_jsonb(l) AS row FROM bro_field_leads l
+    UNION ALL SELECT 'claims',to_jsonb(c) FROM bro_field_claims c
+    UNION ALL SELECT 'transfers',to_jsonb(t) FROM bro_field_transfers t
+    UNION ALL SELECT 'audit',to_jsonb(a) FROM audit_logs a) records ORDER BY kind,row::text`)).rows);
+  const saved=await snapshot();
+  const functions=["bro_field_immutable","bro_field_owner_guard","bro_field_transfer_guard","bro_field_audit_guard"];
+  const definitions=await db.query(`SELECT proname,pg_get_functiondef(oid) AS definition FROM pg_proc
+    WHERE pronamespace='public'::regnamespace AND proname=ANY($1) ORDER BY proname`,[functions]);
+  // Disposable local fixture ONLY: reproduce the observed Production catalog gap.
+  await db.query(`DROP TRIGGER bro_field_claim_history ON bro_field_claims;
+    DROP TRIGGER bro_field_ownership ON bro_field_leads;
+    DROP TRIGGER bro_field_transfer_history ON bro_field_transfers;
+    DROP TRIGGER bro_field_audit_history ON audit_logs;
+    DROP FUNCTION bro_field_immutable(),bro_field_owner_guard(),bro_field_transfer_guard(),bro_field_audit_guard();`);
+  const migration=await readFile(new URL("../../../../lib/db/reviewed-releases/bro-field-protections.sql",import.meta.url),"utf8");
+  await db.query(migration);await db.query(migration);
+  expect(await snapshot()).toBe(saved);
+  expect((await db.query(`SELECT proname,pg_get_functiondef(oid) AS definition FROM pg_proc
+    WHERE pronamespace='public'::regnamespace AND proname=ANY($1) ORDER BY proname`,[functions])).rows).toEqual(definitions.rows);
+  await expect(db.query("UPDATE bro_field_claims SET claim_key='tampered'")).rejects.toThrow();
+  await expect(db.query("UPDATE bro_field_leads SET current_owner_id=2,version=version+1")).rejects.toThrow();
+  await expect(db.query("DELETE FROM bro_field_leads")).rejects.toThrow();
+  await expect(db.query("DELETE FROM bro_field_transfers")).rejects.toThrow();
+  await expect(db.query("DELETE FROM audit_logs WHERE module='BROFieldOperations'")).rejects.toThrow();
+  // A disabled or altered protection must be reviewed, never silently replaced.
+  await db.query("ALTER TABLE bro_field_claims DISABLE TRIGGER bro_field_claim_history");
+  const c=await db.connect();
+  try{
+    await expect(c.query(migration)).rejects.toThrow("differs from approved definition");
+    await c.query("ROLLBACK");
+  }finally{c.release();}
+  await db.query("ALTER TABLE bro_field_claims ENABLE TRIGGER bro_field_claim_history");
+  expect(await snapshot()).toBe(saved);
 });
