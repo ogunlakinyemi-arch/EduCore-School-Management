@@ -20,8 +20,10 @@ export async function dispatchPushDevices(pool: CommunicationDispatchPool, recor
   if (provider.provider === "web-push" && !developmentPushAllowed(record.recipientUserId))
     return failure("CONFIGURATION");
   if ("configured" in provider && !provider.configured) return failure("CONFIGURATION");
-  const saved = await pool.query<{ pushAttempts: Record<string, State> }>(
-    `SELECT push_attempts AS "pushAttempts" FROM communication_deliveries WHERE id=$1 AND status='PROCESSING'`, [record.id]);
+  const saved = await pool.query<{ pushAttempts: Record<string, State>; notificationCreatedAt?: string | Date }>(
+    `SELECT push_attempts AS "pushAttempts",
+      (SELECT created_at FROM communication_notifications WHERE id=notification_id) AS "notificationCreatedAt"
+      FROM communication_deliveries WHERE id=$1 AND status='PROCESSING'`, [record.id]);
   if (!saved.rows[0]) return failure("UNKNOWN");
   const states = saved.rows[0].pushAttempts ?? {};
   const devices = await pool.query<Device>(`SELECT id,subscription,session_id AS "sessionId" FROM communication_push_devices
@@ -49,7 +51,8 @@ export async function dispatchPushDevices(pool: CommunicationDispatchPool, recor
     if (!claim.rows.length) { uncertain = true; break; }
     let result: ProviderSendResult;
     try { result = await provider.send({ subscription: device.subscription,
-      idempotencyKey: `communication-${record.notificationId}-push-${device.id}` }); }
+      idempotencyKey: `communication-${record.notificationId}-push-${device.id}`,
+      createdAt:saved.rows[0].notificationCreatedAt }); }
     catch { result = failure("UNKNOWN"); }
     accepted ||= result.accepted;
     simulated ||= result.status === "SIMULATED";

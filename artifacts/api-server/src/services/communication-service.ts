@@ -13,6 +13,8 @@ import {telegramRecipient} from "./telegram-links";
 import {createTelegramProvider,getTelegramHealth} from "./telegram-provider";
 import { notificationLaunchBoundary, notificationLaunchSql } from "./notification-launch-boundary";
 import {smsNotificationAllowed} from "./sms-event-policy";
+import {developmentPushDispatchEnabled} from "../lib/development-push-policy";
+import {notificationText} from "@workspace/api-zod";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -972,7 +974,7 @@ export async function dispatchCommunicationDeliveries(
   const availableChannels=selectedChannels.filter(channel=>(channel!=="SMS"||notificationChannelAvailability().SMS)
     &&(channel!=="EMAIL"||!!options.providers?.email||options.allowConfiguredProviders!==true||notificationChannelAvailability().EMAIL)
     &&(channel!=="TELEGRAM"||!!telegramProvider)
-    &&(channel!=="PUSH"||!!pushProvider&&(!("configured" in pushProvider)||pushProvider.configured)));
+    &&(channel!=="PUSH"||developmentPushDispatchEnabled()&&!!pushProvider&&(!("configured" in pushProvider)||pushProvider.configured)));
   const claimed = availableChannels.length
     ? await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now(),availableChannels,options.notificationIds,launch.liveFrom) : [];
   const summary: DispatchCommunicationResult = {
@@ -1073,21 +1075,21 @@ export async function dispatchCommunicationDeliveries(
     try {
       const providerResult = delivery.channel === "TELEGRAM"
         ? await telegramProvider!.send({to:target!,idempotencyKey:`communication-${record.notificationId}-telegram`,
-          body:record.subjectStudentId!=null?`${record.subject??"School update"}\n${record.body}`.slice(0,4096)
+          body:record.subjectStudentId!=null?notificationText(`${record.subject??"School update"}\n${record.body}`).slice(0,4096)
             :`Yetenia EduCore: ${dispatchEvent.replaceAll("_"," ").toLowerCase()} update. Sign in to EduCore to view the details.`})
         : delivery.channel === "PUSH"
         ? await dispatchPushDevices(pool, record, pushProvider, options.pushSessionActive)
         : delivery.channel === "SMS"
         ? await providers.sms.send({
           to: target!,
-          body: record.body,
+          body: notificationText(record.body),
           idempotencyKey: `communication-${record.notificationId}-sms`,
           event: dispatchEvent,
         })
         : await providers.email.send({
           to: target!,
           subject: record.subject ?? record.category,
-          body: record.body,
+          body: notificationText(record.body),
           idempotencyKey: `communication-${record.notificationId}-email`,
         });
       outcome = {

@@ -156,7 +156,7 @@ export function notificationChannelReadiness(env: NodeJS.ProcessEnv = process.en
   const details:Record<PolicyChannel,string>={
     IN_APP:"In-App is available under existing user and school permissions.",
     SMS:bulkSmsConfigurationReady(env)
-      ?"BulkSMSNigeria is configured for emergency and student absence only. Explicit recipient opt-in and current school/Owner selections are required; sending and receipt are not verified."
+      ?"BulkSMSNigeria is configured for emergency and student absence only. Sender approval was confirmed by the Owner; sender-list discovery is not required. Explicit recipient opt-in, current school/Owner selections and delivery safety controls still apply; sending and receipt are not verified."
       :"SMS requires COMMUNICATION_SMS_PROVIDER=bulksmsnigeria, BULKSMSNIGERIA_API_TOKEN and BULKSMSNIGERIA_SENDER_ID.",
     EMAIL:emailSetupDetail(env),
     PUSH:pushMissing.length

@@ -4,6 +4,7 @@ import { ECDH } from "node:crypto";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import type { PushProvider, ProviderSendResult, WebPushSubscription } from "./communication-providers";
 import { validVapidConfiguration } from "./web-push-configuration";
+import {notificationTime} from "@workspace/api-zod";
 
 // Do not permit arbitrary HTTPS targets: subscriptions are server-side egress credentials.
 export const pushSubscriptionSchema = z.object({
@@ -33,7 +34,7 @@ export class WebPushProvider implements PushProvider {
   get configured() { return validVapidConfiguration(this.config); }
   constructor(private readonly config: { publicKey: string; privateKey: string; subject: string },
     private readonly transport: typeof webPush.sendNotification = webPush.sendNotification) {}
-  async send(message: { subscription: WebPushSubscription; idempotencyKey: string }): Promise<ProviderSendResult> {
+  async send(message: { subscription: WebPushSubscription; idempotencyKey: string; createdAt?: string | Date }): Promise<ProviderSendResult> {
     const failed = (category: "CONFIGURATION" | "INVALID_REQUEST" | "NETWORK" | "RATE_LIMITED" | "PROVIDER_REJECTED", retryable = false): ProviderSendResult =>
       ({ provider: this.provider, channel: this.channel, status: "FAILED", accepted: false, delivered: false, failure: { category, retryable } });
     if (developmentPaymentNotificationsSuppressed() ||
@@ -44,7 +45,8 @@ export class WebPushProvider implements PushProvider {
     if (!parsed.success || (parsed.data.expirationTime && parsed.data.expirationTime <= Date.now())) return failed("INVALID_REQUEST");
     try {
       // Generic lock-screen content only. No child name, school, medical details or URL credentials.
-      await this.transport(parsed.data, JSON.stringify({ title: "Yetenia EduCore", body: "You have a new notification. Open EduCore for details.", tag: message.idempotencyKey }), {
+      await this.transport(parsed.data, JSON.stringify({ title: "Yetenia EduCore", body: "You have a new notification. Open EduCore for details.", tag: message.idempotencyKey,
+        ...(message.createdAt ? {createdAtWAT:notificationTime(message.createdAt)} : {}) }), {
         vapidDetails: { subject: this.config.subject, publicKey: this.config.publicKey, privateKey: this.config.privateKey },
         TTL: 300, timeout: 8000,
       });

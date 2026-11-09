@@ -175,12 +175,15 @@ self.addEventListener('fetch', (event) => {
 // Do not persist payloads or accept payload-supplied navigation URLs.
 self.addEventListener('push', (event) => {
   let tag = 'educore-notification';
+  let createdAtWAT = '';
   try {
     const value = event.data?.json();
     if (typeof value?.tag === 'string' && /^communication-\d+-push-\d+$/.test(value.tag)) tag = value.tag;
+    if (typeof value?.createdAtWAT === 'string' && /^\d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}, \d{2}:\d{2}:\d{2} WAT$/.test(value.createdAtWAT))
+      createdAtWAT = value.createdAtWAT;
   } catch { /* Keep generic content even when an external push payload is malformed. */ }
   event.waitUntil(self.registration.showNotification('Yetenia EduCore', {
-    body: 'You have a new notification. Open EduCore for details.',
+    body: 'You have a new notification. Open EduCore for details.' + (createdAtWAT ? ` Notification created: ${createdAtWAT}` : ''),
     icon: scopedUrl('icons/educore-192.png'),
     tag,
   }));

@@ -79,7 +79,7 @@ export interface WebPushSubscription {
 export interface PushProvider {
   readonly provider: string;
   readonly channel: "push";
-  send(message: { subscription: WebPushSubscription; idempotencyKey: string }): Promise<ProviderSendResult>;
+  send(message: { subscription: WebPushSubscription; idempotencyKey: string; createdAt?: string | Date }): Promise<ProviderSendResult>;
 }
 
 export interface CommunicationProviderLogEvent {
@@ -613,13 +613,14 @@ export function createCommunicationProviders(
   };
 }
 
-/** Development can opt in to email for controlled recipients, never live SMS/push. */
+/** Preserve email controls; approved SMS still requires scope/consent and send locks. */
 export function createDevelopmentCommunicationProviders(
   env: NodeJS.ProcessEnv = process.env,
   options: CommunicationProviderOptions = {},
 ): CommunicationProviderAdapters {
   if (developmentPaymentNotificationsSuppressed(env)) return createCommunicationProviders(env, options);
   const simulated = createCommunicationProviders({}, options);
+  if (bulkSmsConfigurationReady(env)) simulated.sms = createSmsProvider(env,options);
   if (configuredProviderName(env.COMMUNICATION_EMAIL_PROVIDER) !== "resend" ||
       !(env.RESEND_DEVELOPMENT_RECIPIENTS ?? "").trim()) return simulated;
   const configured = createCommunicationProviders({

@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
+import {notificationTime,notificationText} from '../../../../lib/api-zod/src/notification-time';
 import { Bell, Check, BellRing, Inbox } from 'lucide-react';
 import { 
   useListPlatformNotifications, useMarkPlatformNotificationRead, getListPlatformNotificationsQueryKey
 } from '@workspace/api-client-react';
 import { 
-  PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, cx, date, time
+  PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, cx
 } from '@/components/shared';
 
 export function NotificationsPage() {
@@ -76,12 +77,12 @@ export function NotificationsPage() {
                       <div className="flex items-center gap-2 shrink-0">
                         <StatusPill value={notification.severity} />
                         <span className="text-[11px] font-medium text-[hsl(var(--muted-foreground))] whitespace-nowrap">
-                          {date(notification.createdAt)} at {time(notification.createdAt)}
+                          Notification created: {notificationTime(notification.createdAt)}
                         </span>
                       </div>
                     </div>
                     <p className={cx("text-sm leading-relaxed", !notification.isRead ? "text-[hsl(var(--foreground)/.9)]" : "text-[hsl(var(--muted-foreground))]")}>
-                      {notification.message}
+                      {notificationText(notification.message)}
                     </p>
                   </div>
                   {!notification.isRead && (
