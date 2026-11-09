@@ -34,3 +34,16 @@ identity and forbids sandbox/Development verification of real accounts.
 fuzzy matching, initial expansion or missing/extra names. Recheck identity, saved
 bank revision, exact input and expiry on save; mask routine reads and audit
 Owner-only full-number reveals. Failed proposed edits preserve saved history.
+
+Only the actual BRO profile owner may read, resolve or replace their payout
+account through self-service. Delegated BRO administrators, finance staff and
+other delegates must not gain this access. Owner routine reads remain masked;
+full-number reveals are limited to the audited, frozen payout snapshot.
+
+**Why:** The user explicitly required actual profile-owner scope with no delegated
+or cross-BRO access, and reserved full-number disclosure for frozen payout evidence.
+
+**How to apply:** Allow only the exact account GET, lookup POST and save PATCH
+through the financial privacy boundary; retain all legacy commission/payout
+denials. Recheck ownership during locked saves, and never redirect an existing
+payout snapshot when the BRO replaces the current account.

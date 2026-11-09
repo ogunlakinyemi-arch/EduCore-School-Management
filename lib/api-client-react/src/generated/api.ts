@@ -38337,11 +38337,11 @@ export const getGetPartnerPayoutInformationForOwnerUrl = (partnerId: number,) =>
 }
 
 /**
- * @summary Retrieve decrypted payout instructions with audited owner access
+ * @summary Retrieve masked verified payout instructions with audited owner access
  */
-export const getPartnerPayoutInformationForOwner = async (partnerId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutInformationPrivate> => {
+export const getPartnerPayoutInformationForOwner = async (partnerId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutInformationMasked> => {
 
-  return customFetch<PartnerPayoutInformationPrivate>(getGetPartnerPayoutInformationForOwnerUrl(partnerId),
+  return customFetch<PartnerPayoutInformationMasked>(getGetPartnerPayoutInformationForOwnerUrl(partnerId),
   {
     ...options,
     method: 'GET'
@@ -38384,7 +38384,7 @@ export type GetPartnerPayoutInformationForOwnerQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Retrieve decrypted payout instructions with audited owner access
+ * @summary Retrieve masked verified payout instructions with audited owner access
  */
 
 export function useGetPartnerPayoutInformationForOwner<TData = Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>, TError = ErrorType<unknown>>(

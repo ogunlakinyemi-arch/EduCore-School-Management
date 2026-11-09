@@ -21,18 +21,30 @@ export function withoutBroFinancialData(input: unknown): unknown {
 
 const router = Router();
 // A BRO profile, even its administrator, is not a Platform Owner membership.
-router.use([
+const blockedBroRoutes = [
   "/partner/commissions", "/partner/deferred-commissions", "/partner/payouts",
   "/partner/payout-information", "/partner/staff-nfc/commissions",
-], requireAuthentication(), (req, res) => {
-  const context = getUserContext(req);
-  if (!isActiveOwner(context)) {
-    res.setHeader("Cache-Control", "private, no-store");
+];
+router.use((req, res, next) => {
+  // Exact exceptions only. The handlers independently enforce actual profile
+  // ownership; this must not reopen commission feeds or arbitrary descendants.
+  const bankAccountOperation =
+    (req.method === "GET" && req.path === "/partner/payout-information")
+    || (req.method === "PATCH" && req.path === "/partner/payout-information")
+    || (req.method === "POST" && req.path === "/partner/payout-information/lookup-account");
+  if (bankAccountOperation) { next(); return; }
+  const path = req.path.toLowerCase();
+  if (!blockedBroRoutes.some(root => path === root || path.startsWith(`${root}/`))) { next(); return; }
+  requireAuthentication()(req, res, () => {
+    const context = getUserContext(req);
+    if (!isActiveOwner(context)) {
+      res.setHeader("Cache-Control", "private, no-store");
+      res.status(404).json({ error: "Resource not found" });
+      return;
+    }
+    // Owners use their Owner-only financial routes, not a BRO self-service identity.
     res.status(404).json({ error: "Resource not found" });
-    return;
-  }
-  // Owners use their Owner-only financial routes, not a BRO self-service identity.
-  res.status(404).json({ error: "Resource not found" });
+  });
 });
 
 router.use((req, res, next) => {

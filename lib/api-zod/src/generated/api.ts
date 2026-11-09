@@ -16649,7 +16649,7 @@ export const ListPartnerPayoutsResponse = zod.array(ListPartnerPayoutsResponseIt
 
 
 /**
- * @summary Retrieve decrypted payout instructions with audited owner access
+ * @summary Retrieve masked verified payout instructions with audited owner access
  */
 
 
@@ -16660,12 +16660,12 @@ export const GetPartnerPayoutInformationForOwnerParams = zod.object({
 
 export const GetPartnerPayoutInformationForOwnerResponse = zod.object({
   "id": zod.number().int(),
-  "partnerId": zod.number().int(),
   "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
-  "bankName": zod.string(),
-  "accountName": zod.string(),
-  "accountNumber": zod.string(),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
   "bankCode": zod.string().nullish(),
+  "verified": zod.boolean().optional(),
   "updatedAt": zod.coerce.date()
 })
 

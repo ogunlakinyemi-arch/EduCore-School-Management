@@ -32,6 +32,7 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
   };
 });
 import partnersRouter from "./partners";
+import ownerCommissionPrivacy from "../middlewares/owner-commission-privacy";
 import { bankFingerprint, BRO_BANK_POLICY } from "../services/bro-bank-verification";
 import { FlutterwavePayrollV3Client } from "../lib/flutterwave-payroll-v3";
 vi.mock("../services/test-account-archive-access",()=>({assertTestArchiveAccess:vi.fn(async()=>{})}));
@@ -92,6 +93,7 @@ beforeAll(async () => {
   migration = await readFile(new URL("../../../../lib/db/drizzle/0166_partner_payout_retry_identity.sql", import.meta.url), "utf8");
   const app = express();
   app.use(express.json());
+  app.use(ownerCommissionPrivacy);
   app.use(partnersRouter);
   app.use((error: any, _req: Request, res: Response, _next: NextFunction) =>
     res.status(error.statusCode ?? 500).json({ error: error.message }));
@@ -151,7 +153,7 @@ const counts = async () => (await state.pool.query(`SELECT
 const payoutBody = async (response: globalThis.Response) => await response.json() as { id: number; status: string };
 
 describe("Partner payout real PostgreSQL request identity and constraints", () => {
-  it("keeps Owner selection and BRO dashboard balances identical before reservation and after Paid",async()=>{
+  it("keeps Owner balances correct while privacy hides legacy BRO dashboard balances before and after Paid",async()=>{
     await state.pool.query(`INSERT INTO commission_ledger(partner_profile_id,amount,school_id,status)
       VALUES(3,50,10,'PENDING'),(3,25,10,'CANCELLED')`);
     await state.pool.query(`CREATE TABLE bro_term_commission_entitlements(partner_profile_id integer,amount_minor integer,status text);
@@ -162,11 +164,12 @@ describe("Partner payout real PostgreSQL request identity and constraints", () =
     expect(before).toMatchObject({accruedCommission:500,paidCommission:0,outstandingCommission:500,
       payableCommission:300,reservedCommission:0,pendingApprovalCommission:200,bankDetails:{verified:true,maskedAccountNumber:"****6789"}});
     expect(JSON.stringify(before)).not.toContain("0123456789");
-    expect(own).toMatchObject({lifetimeCommission:500,paidCommission:0,outstandingCommission:500,payableCommission:300});
+    expect(own).toMatchObject({referredSchools:0,eligibleStudents:0});
+    expect(JSON.stringify(own)).not.toMatch(/commission|payable|reserved/i);
     const payout=await payoutBody(await create(input()));
     expect((await candidates()).find(p=>p.partnerId===3)).toMatchObject({payableCommission:0,reservedCommission:300,paidCommission:0});
     expect((await update(payout.id,{status:"PAID",paymentReference:"external-bank-1",confirmExternalTransfer:true})).status).toBe(200);
-    expect(await dashboard()).toMatchObject({lifetimeCommission:500,paidCommission:300,outstandingCommission:200,payableCommission:0,reservedCommission:0});
+    expect(JSON.stringify(await dashboard())).not.toMatch(/commission|payable|reserved/i);
     expect((await candidates()).find(p=>p.partnerId===3)).toMatchObject({accruedCommission:500,paidCommission:300,outstandingCommission:200,pendingApprovalCommission:200});
     const audit=(await state.pool.query(`SELECT actor_user_id,metadata FROM audit_logs WHERE action='Updated partner payout to PAID'`)).rows;
     expect(audit).toHaveLength(1);expect(audit[0]).toMatchObject({actor_user_id:1,metadata:{externalTransferConfirmed:true}});
@@ -374,6 +377,65 @@ describe("BRO LIVE lookup and proof-backed bank save on isolated PostgreSQL",()=
       resolvedAccountName:"Ada Example",resolvedAccountNumber:"0123456789"});
     return {directory,resolve};
   };
+  it("preserves the LIVE-only gate in Development without contacting a provider",async()=>{
+    vi.stubEnv("NODE_ENV","development");
+    const resolve=vi.spyOn(FlutterwavePayrollV3Client.prototype,"resolveNigerianAccount");
+    const directory=vi.spyOn(FlutterwavePayrollV3Client.prototype,"listNigerianBanks");
+    const before=(await state.pool.query("SELECT * FROM partner_payout_information ORDER BY id")).rows;
+    expect((await lookup()).status).toBe(409);
+    expect(resolve).not.toHaveBeenCalled();expect(directory).not.toHaveBeenCalled();
+    expect((await state.pool.query("SELECT * FROM partner_payout_information ORDER BY id")).rows).toEqual(before);
+  });
+  it("allows only exact account operations through privacy and blocks legacy feeds and aliases",async()=>{
+    const {resolve}=live();
+    for(const [method,path] of [
+      ["GET","/partner/commissions"],["GET","/partner/deferred-commissions"],["GET","/partner/payouts"],
+      ["POST","/partner/payout-information"],["PUT","/partner/payout-information"],
+      ["GET","/partner/payout-information/lookup-account"],["PATCH","/partner/payout-information/lookup-account"],
+      ["POST","/partner/payout-information/lookup-account/extra"],["GET","/partner/payout-information/"],
+      ["POST","/partner/payout-information/lookup-account/"],["GET","/PARTNER/PAYOUT-INFORMATION"],
+    ]){
+      expect((await fetch(`${base}${path}`,{method,headers})).status,`${method} ${path}`).toBe(404);
+    }
+    expect(resolve).not.toHaveBeenCalled();
+    const read=await fetch(`${base}/partner/payout-information`,{headers});
+    expect(read.status).toBe(200);expect(JSON.stringify(await read.json())).not.toContain(selection.accountNumber);
+    const proof=await (await lookup()).json() as any;
+    expect((await save(proof.lookupToken)).status).toBe(200);
+  });
+  it("denies every delegated role on read, lookup and save before provider calls",async()=>{
+    const {resolve,directory}=live();
+    for(const role of ["PARTNER_ADMIN","PARTNER_FINANCE","PARTNER_OWNER","PARTNER_STAFF"]){
+      await state.pool.query("DELETE FROM partner_profile_users");
+      await state.pool.query("INSERT INTO partner_profile_users VALUES(3,5,$1,'ACTIVE')",[role]);
+      const delegate={...headers,"x-test-actor":"5"};
+      for(const [method,path] of [
+        ["GET","/partner/payout-information"],["POST","/partner/payout-information/lookup-account"],
+        ["PATCH","/partner/payout-information"],
+      ]) expect((await fetch(`${base}${path}`,{method,headers:delegate,
+        ...(method==="GET"?{}:{body:JSON.stringify(selection)})})).status).toBe(403);
+    }
+    expect(resolve).not.toHaveBeenCalled();expect(directory).not.toHaveBeenCalled();
+  });
+  it("keeps Owner current-account reads masked and existing payout snapshots unchanged after replacement",async()=>{
+    const payout=await payoutBody(await create(input()));
+    const before=await (await fetch(`${base}/platform/partner-payouts/${payout.id}/bank-details`)).json();
+    const {resolve}=live();
+    const replacement={...selection,accountNumber:"9876543210"};
+    resolve.mockResolvedValue({resolvedAccountName:"Ada Example",resolvedAccountNumber:replacement.accountNumber});
+    const proof=await (await lookup(replacement)).json() as any;
+    expect((await save(proof.lookupToken,replacement)).status).toBe(200);
+    const current=await fetch(`${base}/platform/partners/3/payout-information`);
+    const text=await current.text();
+    expect(current.status).toBe(200);expect(text).not.toContain(replacement.accountNumber);
+    expect(JSON.parse(text)).toMatchObject({verified:true,maskedAccountNumber:"****3210",accountName:"Ada Example"});
+    const after=await (await fetch(`${base}/platform/partner-payouts/${payout.id}/bank-details`)).json();
+    expect(after).toEqual(before);
+    const candidates=await (await fetch(`${base}/platform/partner-payout-candidates`)).text();
+    expect(candidates).not.toContain(replacement.accountNumber);
+    expect(JSON.parse(candidates).find((p:any)=>p.partnerId===3).bankDetails)
+      .toMatchObject({accountName:"Ada Example",maskedAccountNumber:"****3210",verified:true});
+  });
   it("lookup writes nothing; save stores encrypted bank details with audit proof and masked reads",async()=>{
     const mocks=live();
     const before=(await state.pool.query("SELECT * FROM partner_payout_information ORDER BY id")).rows;
@@ -388,7 +450,9 @@ describe("BRO LIVE lookup and proof-backed bank save on isolated PostgreSQL",()=
     const own=await fetch(`${base}/partner/payout-information`,{headers});
     const ownText=await own.text();expect(ownText).not.toContain(selection.accountNumber);expect(JSON.parse(ownText).verified).toBe(true);
     const owner=await fetch(`${base}/platform/partners/3/payout-information`);
-    expect(await owner.json()).toMatchObject({verified:true,accountNumber:selection.accountNumber});
+    const ownerText=await owner.text();
+    expect(ownerText).not.toContain(selection.accountNumber);
+    expect(JSON.parse(ownerText)).toMatchObject({verified:true,maskedAccountNumber:"****6789"});
     expect(mocks.resolve).not.toHaveBeenCalled(); // Save and GET never resolve.
     const raw=await state.pool.query("SELECT account_number_encrypted FROM partner_payout_information WHERE partner_profile_id=3");
     expect(JSON.stringify(raw.rows)).not.toContain(selection.accountNumber);

@@ -906,7 +906,11 @@ export function PayoutsOverview() {
               <div key={label}><dt className="eyebrow">{label}</dt><dd className="mt-1 font-mono font-bold">{ngn(v)}</dd></div>
             ))}
             <div className="sm:col-span-3 lg:col-span-6 text-xs text-[hsl(var(--muted-foreground))]">
-              {selected.email} · {selected.partnerCode} · Bank: {hasVerifiedBank ? `${selected.bankDetails!.bankName} ${selected.bankDetails!.maskedAccountNumber ?? ''}` : 'not verified'}
+              {selected.email} · {selected.partnerCode}
+              <div data-testid="text-payout-bank-summary">
+                {hasVerifiedBank ? <>Verified payout bank account · {selected.bankDetails!.bankName} · Account holder: {selected.bankDetails!.accountName} · {selected.bankDetails!.maskedAccountNumber}</>
+                  : 'Payout bank account: not verified'}
+              </div>
             </div>
           </dl>
         )}

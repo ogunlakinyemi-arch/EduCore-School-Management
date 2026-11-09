@@ -39,7 +39,8 @@ vi.mock('@workspace/api-client-react', async importOriginal => {
     useListCompanyPayrollEmployees: () => empQ, useListCompanyPayrollPeriods: () => perQ, useUpsertCompanyPayrollEmployee: mut,
     useListSchoolPayrollEmployees: () => empQ, useListSchoolPayrollPeriods: () => perQ, useUpdateSchoolPayrollEmployee: mut,
     useUpdateFinanceSettings: mut,
-    useGetPartnerProfile: () => profileQ, useGetPartnerPayoutInformation: () => payoutQ, useUpdatePartnerProfile: mut, useUpdatePartnerPayoutInformation: mut,
+    useGetPartnerProfile: () => profileQ, useGetPartnerPayoutInformation: () => payoutQ, useUpdatePartnerProfile: mut,
+    useUpdatePartnerPayoutInformation: () => ({ isPending: false, mutateAsync: s.partnerSave }),
   };
 });
 import { PaymentSettlementPage } from './payment-settlement';
@@ -198,7 +199,33 @@ describe('Partner payout automatic bank verification', () => {
   const form = () => node('form-partner-bank');
   const acct = () => node<HTMLInputElement>('input-partner-account-number');
   const wait = () => act(async () => { await new Promise(r => setTimeout(r, 600)); });
-  beforeEach(() => { s.plookup.mockReset().mockResolvedValue({ accountName: 'UNIT PARTNER', accountLast4: '6789', lookupToken: 'synthetic-partner-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() }); });
+  beforeEach(() => {
+    s.profile.isOwner = true;
+    s.partnerSave.mockResolvedValue({verified:true,bankName:'Fictional Alpha Bank',accountName:'UNIT PARTNER',maskedAccountNumber:'****6789',updatedAt:'2026-11-09T10:00:00Z'});
+    s.plookup.mockReset().mockResolvedValue({ accountName: 'UNIT PARTNER', accountLast4: '6789', lookupToken: 'synthetic-partner-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+  });
+  it('labels the section and hides bank controls from delegates',async()=>{
+    await render(<PartnerSettings />);
+    expect(host.textContent).toContain('Payout bank account');
+    s.profile.isOwner=false;await render(<PartnerSettings />);
+    expect(form()).toBeNull();expect(s.plookup).not.toHaveBeenCalled();
+  });
+  it('keeps the returned holder name read-only and refreshes masked saved details after success',async()=>{
+    const invalidate=vi.spyOn(client,'invalidateQueries');
+    await render(<PartnerSettings />);await pick('alpha');await typeInto(acct(),'0123456789');await wait();
+    expect(node<HTMLInputElement>('input-partner-account-name').readOnly).toBe(true);
+    await submit(form());
+    expect(client.getQueryData(['/api/partner/payout-information'])).toMatchObject({verified:true,maskedAccountNumber:'****6789'});
+    expect(invalidate).toHaveBeenCalledWith({queryKey:['/api/partner/payout-information']});
+  });
+  it('reports save failure without clearing the saved-account cache or promoting the draft',async()=>{
+    s.partnerSave.mockRejectedValue(new Error('Verification expired; saved account unchanged.'));
+    client.setQueryData(['/api/partner/payout-information'],{verified:true,maskedAccountNumber:'****1111'});
+    await render(<PartnerSettings />);await pick('alpha');await typeInto(acct(),'0123456789');await wait();
+    await submit(form());
+    expect(host.ownerDocument.body.textContent).not.toContain('Verified payout account');
+    expect(client.getQueryData(['/api/partner/payout-information'])).toMatchObject({maskedAccountNumber:'****1111'});
+  });
   it('hides unverified legacy details and never looks up on load or programmatic save', async () => {
     await render(<PartnerSettings />); await submit(form());
     expect(node('text-current-bank').textContent).not.toContain('Legacy Bank');

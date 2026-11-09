@@ -363,6 +363,12 @@ const profileSchema = z.object({
 export function PartnerSettings() {
   const profileQuery = useGetPartnerProfile();
   const updateProfile = useUpdatePartnerProfile();
+  const isBankOwner = (profileQuery.data as { isOwner?: boolean } | undefined)?.isOwner === true;
+  const bankQuery = useGetPartnerPayoutInformation({
+    query: { queryKey: getGetPartnerPayoutInformationQueryKey(), enabled: isBankOwner },
+    request: { cache: 'no-store' },
+  });
+  const updateBank = useUpdatePartnerPayoutInformation();
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -384,9 +390,24 @@ export function PartnerSettings() {
       onSuccess: () => {
         toast({ title: 'Profile updated' });
         queryClient.invalidateQueries({ queryKey: getGetPartnerProfileQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
       }
     });
   });
+
+  const saveBank = async (data: PartnerPayoutInformationInput) => {
+    try {
+      const saved = await updateBank.mutateAsync({ data });
+      queryClient.setQueryData(getGetPartnerPayoutInformationQueryKey(), saved);
+      await queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
+      toast({ title: 'Payout bank account saved', description: 'Verified details will be available to the Platform Owner. No payment was made.' });
+    } catch (e) {
+      const err = e as { data?: { error?: string }; message?: string };
+      // A lost response is not proof that the transaction rolled back.
+      void queryClient.invalidateQueries({ queryKey: getGetPartnerPayoutInformationQueryKey() });
+      toast({ title: 'Bank account save could not be confirmed', description: err.data?.error || err.message || 'Refresh the saved account before retrying with a fresh lookup.', variant: 'destructive' });
+    }
+  };
 
 
   if (profileQuery.isLoading) return <SkeletonPage />;
@@ -442,6 +463,17 @@ export function PartnerSettings() {
             </div>
           </form>
         </section>
+
+        {isBankOwner && profileQuery.data && <section className="panel p-6 md:p-8" aria-labelledby="payout-bank-heading">
+          <div className="mb-6 border-b border-[hsl(var(--border))] pb-4">
+            <h2 id="payout-bank-heading" className="display-font text-xl font-bold">Payout bank account</h2>
+            <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">Select your bank and enter your account number to retrieve the account holder name. Only an exact match to your registered BRO name can be saved. Verification does not approve or send a commission payout.</p>
+          </div>
+          {bankQuery.isLoading ? <p role="status">Loading saved bank account…</p>
+            : bankQuery.isError ? <ErrorState retry={() => bankQuery.refetch()} message="Your saved payout bank account could not be loaded." />
+            : <PartnerBankAccountForm key={bankQuery.data?.updatedAt ?? 'unsaved'} current={bankQuery.data} fullName={profileQuery.data.fullName}
+                saving={updateBank.isPending || updateProfile.isPending} onSave={saveBank} />}
+        </section>}
 
       </div>
     </div>

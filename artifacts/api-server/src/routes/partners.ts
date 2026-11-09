@@ -190,6 +190,11 @@ function requirePartnerFinanceAccess(partner: any) {
     throw new AuthError(403, "Partner finance permission is required");
   }
 }
+function requireActualBroOwner(req: Request, partner: any) {
+  if (partner.isOwner !== true || partner.userId !== getUserContext(req).user.id) {
+    throw new AuthError(403, "Only the BRO profile owner can manage their payout bank account");
+  }
+}
 function invitationRedirectUrl(token: string) {
   return invitationRedirect(`/accept-invitation?partnerInvitation=${encodeURIComponent(token)}`);
 }
@@ -1845,7 +1850,7 @@ router.get("/platform/partners/:partnerId/payout-information", run(async(req,res
     const bank=await verifiedBroBank(client,p,decrypt);
     if(!bank) throw new AuthError(404,"Verified payout information is unavailable");
     await audit(req,"Viewed payout information","Partner Payout Information",bank.id,{partnerId},client);
-    await client.query("COMMIT");res.json(bank);
+    await client.query("COMMIT");res.json(maskedBroBank(bank));
   }catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}
 }));
 
@@ -3011,11 +3016,13 @@ router.delete("/partner/staff-invitations/:invitationId", run(async (req, res) =
 router.get("/partner/commissions", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT ${commissionFields} FROM commission_ledger l WHERE l.partner_profile_id=$1 ORDER BY l.created_at DESC`,[p.id]);res.json(r.rows)}));
 router.get("/partner/payouts", run(async(req,res)=>{const p=await self(req);requirePartnerFinanceAccess(p);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts WHERE partner_profile_id=$1 ORDER BY created_at DESC`,[p.id]);res.json(r.rows)}));
 router.get("/partner/payout-information", run(async(req,res)=>{
-  const p=await self(req);requirePartnerFinanceAccess(p);res.set("Cache-Control","private, no-store");
+  const p=await self(req);requireActualBroOwner(req,p);res.set("Cache-Control","private, no-store");
   const c=await pool.connect();
   try {
     await c.query("BEGIN");
     const identity=(await c.query("SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1 FOR SHARE",[p.id])).rows[0];
+    if(!identity || identity.user_id!==getUserContext(req).user.id || identity.status!=="ACTIVE")
+      throw new AuthError(403,"Only the active BRO profile owner can read payout bank details");
     const bank=identity?await verifiedBroBank(c,identity,decrypt):null;
     await c.query("COMMIT");
     res.json(maskedBroBank(bank)??{id:0,payoutMethod:"BANK_TRANSFER",bankName:null,accountName:null,
@@ -3023,17 +3030,19 @@ router.get("/partner/payout-information", run(async(req,res)=>{
   }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
 }));
 router.post("/partner/payout-information/lookup-account",run(async(req,res)=>{
-  const p=await self(req);requirePartnerOwner(req,p);
+  const p=await self(req);requireActualBroOwner(req,p);
   res.set("Cache-Control","private, no-store");
   const parsed=LookupPartnerReceivingAccountBody.strict().safeParse(req.body);
   if(!parsed.success)throw new AuthError(400,"Select a supported bank and enter a valid 10-digit account number.");
   const identity=(await pool.query("SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1",[p.id])).rows[0];
   if(!identity)throw new AuthError(404,"BRO not found");
+  if(identity.user_id!==getUserContext(req).user.id || identity.status!=="ACTIVE")
+    throw new AuthError(403,"Only the active BRO profile owner can verify payout bank details");
   res.json(await lookupBroBank(getUserContext(req).user.id,identity,validateBroSelection(parsed.data)));
 }));
 router.patch("/partner/payout-information", run(async(req,res)=>{
   const p=await self(req);
-  requirePartnerOwner(req,p);
+  requireActualBroOwner(req,p);
   res.set("Cache-Control","private, no-store");
   const parsed=UpdatePartnerPayoutInformationBody.strict().safeParse(req.body);
   if(!parsed.success)throw new AuthError(400,"Fresh matching lookup evidence and complete bank details are required.");
@@ -3043,6 +3052,8 @@ router.patch("/partner/payout-information", run(async(req,res)=>{
     await client.query("BEGIN");
     const identity=(await client.query("SELECT id,full_name,user_id,status FROM partner_profiles WHERE id=$1 FOR UPDATE",[p.id])).rows[0];
     if(!identity)throw new AuthError(404,"BRO not found");
+    if(identity.user_id!==getUserContext(req).user.id || identity.status!=="ACTIVE")
+      throw new AuthError(403,"Only the active BRO profile owner can save payout bank details");
     const existing=await broBankRow(client,p.id);
     const actorId=getUserContext(req).user.id;
     acceptBroBankProof(actorId,identity,existing,b);

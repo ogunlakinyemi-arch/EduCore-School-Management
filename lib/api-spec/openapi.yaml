@@ -4641,14 +4641,14 @@ paths:
     get:
       operationId: getPartnerPayoutInformationForOwner
       tags: [platform-partners]
-      summary: Retrieve decrypted payout instructions with audited owner access
+      summary: Retrieve masked verified payout instructions with audited owner access
       parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
       responses:
         "200":
-          description: Decrypted payout instructions
+          description: Masked verified payout instructions; full-number reveal is restricted to frozen payout snapshots
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/PartnerPayoutInformationPrivate" }
+              schema: { $ref: "#/components/schemas/PartnerPayoutInformationMasked" }
   /platform/partner-attribution-conflicts:
     get:
       operationId: listPartnerAttributionConflicts

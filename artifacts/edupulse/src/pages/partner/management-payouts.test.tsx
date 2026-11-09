@@ -105,6 +105,15 @@ describe('BRO payout creation', () => {
     expect(createBtn().disabled).toBe(true);
     await click(createBtn()); expect(state.create).not.toHaveBeenCalled();
   });
+  it('shows verified holder, bank and masked number without exposing full account numbers',async()=>{
+    await choose();
+    const summary=q('text-payout-bank-summary')!;
+    expect(summary.textContent).toContain('Verified payout bank account');
+    expect(summary.textContent).toContain('Fictional Alpha Bank');
+    expect(summary.textContent).toContain('Ada Obi');
+    expect(summary.textContent).toContain('****6789');
+    expect(element.textContent).not.toContain('0123456789');
+  });
   it('clears the completed request and invalidates candidates, payouts and dashboard', async () => {
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     state.create.mockResolvedValue({ id: 1 });
