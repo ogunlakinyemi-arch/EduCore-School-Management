@@ -12,6 +12,9 @@ vi.mock('@workspace/api-client-react',()=>({
   useGetNotificationChannelPolicy:mocks.policy,
   getGetNotificationChannelPolicyQueryKey:()=>['owner-policy'],
   useUpdateNotificationChannelPolicy:mocks.save,
+  useGetOwnerNotificationDeliveryControls:()=>({isLoading:true,isError:false,isFetching:false,refetch:vi.fn()}),
+  useUpdateOwnerNotificationDeliveryControls:()=>({isPending:false,mutate:vi.fn()}),
+  getGetOwnerNotificationDeliveryControlsQueryKey:()=>['owner-delivery'],
 }));
 import {OwnerNotificationPolicyControl} from './owner-notification-policy';
 
@@ -30,6 +33,8 @@ async function change(element:HTMLInputElement|HTMLSelectElement,value:string){
   });
 }
 async function click(element:HTMLElement){await act(async()=>element.click());}
+async function giveReason(text='Quarterly policy review'){const input=[...host.querySelectorAll('label')].find(l=>l.textContent?.startsWith('Policy change reason'))!.querySelector('input')!;
+  await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,text);input.dispatchEvent(new Event('input',{bubbles:true}));});}
 beforeEach(()=>{
   vi.clearAllMocks();
   Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
@@ -104,8 +109,9 @@ describe('Owner school permission selector',()=>{
     expect(host.textContent).toContain('North Academy');
     expect(select().value).toBe('');expect(button('Add override').disabled).toBe(true);
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
-    await click(button('Save Owner policy'));
+    await giveReason();await click(button('Save Owner policy'));
     const saved=mocks.mutateAsync.mock.calls[0][0].data;
+    expect(mocks.save.mock.calls.some(([o]:any[])=>o?.request?.headers?.['X-Notification-Policy-Reason']==='Quarterly policy review')).toBe(true);
     expect(saved.events).toEqual(policy.events);
     expect(saved.events.FINANCE.allowed).not.toContain('SMS');
     expect(saved.schools['9']).toEqual({enabled:true,allowed:['IN_APP','EMAIL']});
@@ -155,12 +161,12 @@ describe('Owner school permission selector',()=>{
     expect(sms.checked).toBe(false);
     await click(sms);
     expect((override.querySelectorAll('input')[5] as HTMLInputElement).disabled).toBe(true);
-    await click(button('Save Owner policy'));
+    await giveReason();await click(button('Save Owner policy'));
     const saved=mocks.mutateAsync.mock.calls[0][0].data;
     expect(saved.schools['9'].allowed).not.toContain('SMS');
     expect(saved.events).toEqual(policy.events);
     await click(button('Use global permissions'));
-    await click(button('Save Owner policy'));
+    await giveReason();await click(button('Save Owner policy'));
     expect(mocks.mutateAsync.mock.calls[1][0].data.schools).toEqual({});
     expect(mocks.mutateAsync.mock.calls[1][0].data.events).toEqual(policy.events);
   });
@@ -185,7 +191,7 @@ describe('Owner school permission selector',()=>{
     const schoolTelegram=override.querySelector<HTMLInputElement>('input[aria-label="School 9 TELEGRAM permitted"]')!;
     expect(schoolTelegram.disabled).toBe(false);
     expect(schoolTelegram.checked).toBe(true);
-    await click(button('Save Owner policy'));
+    await giveReason();await click(button('Save Owner policy'));
     const saved=mocks.mutateAsync.mock.calls[0][0].data;
     expect(saved.events.FINANCE.allowed).toContain('TELEGRAM');
     expect(saved.events.FINANCE.defaults).not.toContain('TELEGRAM');

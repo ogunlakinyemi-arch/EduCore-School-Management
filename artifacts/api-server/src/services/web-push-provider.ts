@@ -5,6 +5,8 @@ import { developmentPaymentNotificationsSuppressed } from "../lib/development-pa
 import type { PushProvider, ProviderSendResult, WebPushSubscription } from "./communication-providers";
 import { validVapidConfiguration } from "./web-push-configuration";
 import {notificationTime} from "@workspace/api-zod";
+import {notificationTransportSuppressed} from "../lib/owner-notification-transport";
+import {ownerTransportAllowed} from "./owner-notification-controls";
 
 // Do not permit arbitrary HTTPS targets: subscriptions are server-side egress credentials.
 export const pushSubscriptionSchema = z.object({
@@ -37,9 +39,9 @@ export class WebPushProvider implements PushProvider {
   async send(message: { subscription: WebPushSubscription; idempotencyKey: string; createdAt?: string | Date }): Promise<ProviderSendResult> {
     const failed = (category: "CONFIGURATION" | "INVALID_REQUEST" | "NETWORK" | "RATE_LIMITED" | "PROVIDER_REJECTED", retryable = false): ProviderSendResult =>
       ({ provider: this.provider, channel: this.channel, status: "FAILED", accepted: false, delivered: false, failure: { category, retryable } });
-    if (developmentPaymentNotificationsSuppressed() ||
+    if (notificationTransportSuppressed("PUSH") ||
         (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT
-          && process.env.EDUCORE_DEVELOPMENT_PUSH_ENABLED !== "true")) return failed("CONFIGURATION");
+          && process.env.EDUCORE_DEVELOPMENT_PUSH_ENABLED !== "true"&&!ownerTransportAllowed("PUSH"))) return failed("CONFIGURATION");
     if (!this.configured) return failed("CONFIGURATION");
     const parsed = pushSubscriptionSchema.safeParse(message.subscription);
     if (!parsed.success || (parsed.data.expirationTime && parsed.data.expirationTime <= Date.now())) return failed("INVALID_REQUEST");

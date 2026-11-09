@@ -14,6 +14,7 @@ import {createTelegramDirectoryInvitation,parentTelegramInvitationStatus} from "
 import {inspectTelegramStorage} from "./telegram-storage-readiness";
 import {notificationLaunchSql} from "./notification-launch-boundary";
 import {dispatchPushDevices} from "./web-push-dispatch";
+import {ownerDeliveryClaimSql,pushTestCandidates} from "./owner-notification-controls";
 
 const state=vi.hoisted(()=>({pool:null as any,userId:1,role:"PARENT",anonymous:false}));
 vi.mock("@workspace/db",async original=>({...await original<any>(),pool:{
@@ -119,6 +120,39 @@ async function notification(eventKey="PARENT_EVENT:SCHOOL_ENTRY:1:1:1",channel="
 }
 const mocks=()=>({sms:{provider:"mock-sms",channel:"sms" as const,send:vi.fn()},email:{provider:"mock-email",channel:"email" as const,send:vi.fn()}});
 describe("Telegram real SQL: linking, consent and outbox safety; no external network",()=>{
+  it("Owner push allowlist discovery requires explicit consent and valid active registration without exposing subscriptions",async()=>{
+    const keys=createECDH("prime256v1");keys.generateKeys();
+    const subscription={endpoint:"https://fcm.googleapis.com/isolated-fixture",expirationTime:null,
+      keys:{p256dh:keys.getPublicKey().toString("base64url"),auth:Buffer.alloc(16,9).toString("base64url")}};
+    await db.query(`INSERT INTO communication_push_devices(user_id,school_id,status,subscription,session_id)
+      VALUES(1,1,'ACTIVE',$1::jsonb,'isolated-session')`,[JSON.stringify(subscription)]);
+    expect(await pushTestCandidates(db)).toEqual([]);
+    await db.query(`INSERT INTO communication_preferences(user_id,school_id,category,channel,enabled)
+      VALUES(1,1,'ATTENDANCE','PUSH',true)`);
+    const candidates=await pushTestCandidates(db);
+    expect(candidates).toHaveLength(1);expect(candidates[0]).toMatchObject({userId:1,schoolId:1,eligible:true});
+    expect(JSON.stringify(candidates)).not.toContain("isolated-session");
+    expect(JSON.stringify(candidates)).not.toContain("p256dh");
+    await db.query("UPDATE communication_push_devices SET status='REVOKED'");
+    expect(await pushTestCandidates(db)).toEqual([]);
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("Owner delivery-only SQL excludes financial jobs, historical notices and nonallowlisted push parents",async()=>{
+    const fresh=await notification("attendance:1:ABSENT","PUSH");
+    const financial=await notification("invoice:1","PUSH");
+    const old=await notification("attendance:2:ABSENT","PUSH");
+    const foreign=await notification("attendance:3:ABSENT","PUSH");
+    await db.query("UPDATE communication_notifications SET category='PAYMENT' WHERE id=$1",[financial]);
+    await db.query("UPDATE communication_notifications SET created_at='2026-10-01T00:00:00Z' WHERE id=$1",[old]);
+    await db.query("UPDATE communication_notifications SET recipient_user_id=2,school_id=2 WHERE id=$1",[foreign]);
+    const eligible=await db.query(`SELECT d.notification_id FROM communication_deliveries d
+      WHERE ${ownerDeliveryClaimSql("$1","$2")} ORDER BY d.notification_id`,
+      ["2026-10-24T00:00:00.000Z",[1]]);
+    expect(eligible.rows).toEqual([{notification_id:fresh}]);
+    expect((await db.query("SELECT DISTINCT status,attempts FROM communication_deliveries")).rows)
+      .toEqual([{status:"QUEUED",attempts:0}]);
+    expect(botFetch).not.toHaveBeenCalled();
+  });
   it("launch correction admits new notices for existing consented parents without reviving historical queues",async()=>{
     await db.query(`UPDATE schools SET created_at='2026-10-01T00:00:00Z';
       UPDATE app_users SET created_at='2026-10-01T00:00:00Z'`);

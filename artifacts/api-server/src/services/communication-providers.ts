@@ -2,6 +2,7 @@ import { logger } from "../lib/logger";
 import {createTelegramProvider,type TelegramProvider} from "./telegram-provider";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import {BulkSmsNigeriaProvider,bulkSmsConfigurationReady} from "./bulksmsnigeria-provider";
+import {notificationTransportSuppressed} from "../lib/owner-notification-transport";
 
 export type CommunicationChannel = "sms" | "email" | "push" | "telegram";
 export type ProviderDeliveryStatus = "SIMULATED" | "ACCEPTED" | "DELIVERED" | "FAILED";
@@ -462,7 +463,7 @@ export function createSmsProvider(
   env: NodeJS.ProcessEnv = process.env,
   options: CommunicationProviderOptions = {},
 ): SmsProvider {
-  if (developmentPaymentNotificationsSuppressed(env)) return suppressedNotificationProvider("sms");
+  if (notificationTransportSuppressed("SMS",env)) return suppressedNotificationProvider("sms");
   const selected = configuredProviderName(env.COMMUNICATION_SMS_PROVIDER);
   if (selected === "bulksmsnigeria") {
     if (!bulkSmsConfigurationReady(env)) throw new CommunicationProviderConfigurationError("sms",selected);

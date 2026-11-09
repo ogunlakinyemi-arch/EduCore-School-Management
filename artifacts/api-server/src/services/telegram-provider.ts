@@ -2,6 +2,8 @@ import {createHash} from "node:crypto";
 import type {ProviderSendResult,ProviderFailureCategory} from "./communication-providers";
 import {developmentPaymentNotificationsSuppressed} from "../lib/development-payment-notification-policy";
 import {logger} from "../lib/logger";
+import {ownerTransportAllowed} from "./owner-notification-controls";
+import {notificationTransportSuppressed} from "../lib/owner-notification-transport";
 
 export interface TelegramHealth {configured:boolean;ready:boolean;reason:string;botUsername:string|null;botId:string|null}
 let health:TelegramHealth={configured:false,ready:false,reason:"NOT_CHECKED",botUsername:null,botId:null};
@@ -23,7 +25,7 @@ export function getTelegramHealth(env:NodeJS.ProcessEnv=process.env):TelegramHea
     return {configured:true,ready:false,reason:"HEALTH_CHECK_REQUIRED",botUsername:null,botId:null};
   // A separate explicit Development opt-in authorizes only this new channel.
   // Never change the existing SMS/email payment-test or scheduler locks.
-  if(health.ready&&developmentPaymentNotificationsSuppressed(env)&&env.EDUCORE_DEVELOPMENT_TELEGRAM_ENABLED!=="true")
+  if(health.ready&&developmentPaymentNotificationsSuppressed(env)&&env.EDUCORE_DEVELOPMENT_TELEGRAM_ENABLED!=="true"&&!ownerTransportAllowed("TELEGRAM"))
     return {...health,ready:false,reason:"DEVELOPMENT_SEND_LOCK"};
   return {...health};
 }
@@ -118,7 +120,7 @@ export function createTelegramProvider(env:NodeJS.ProcessEnv=process.env,transpo
       provider:"telegram-bot-api",channel:"telegram",status:"FAILED",accepted:false,delivered:false,
       failure:{category,retryable,...(retryAfterSeconds?{retryAfterSeconds}:{})},
     });
-    if(!getTelegramHealth(env).ready)return failure("CONFIGURATION");
+    if(!getTelegramHealth(env).ready||notificationTransportSuppressed("TELEGRAM",env))return failure("CONFIGURATION");
     if(!/^[1-9]\d{0,15}$/.test(message.to)||!message.body||message.body.length>4096)return failure("INVALID_REQUEST");
     const now=Date.now(),key=digest(message.to),last=chatLastSend.get(key)??0;
     if(botBlockedUntil>now||now-last<1100)return failure("RATE_LIMITED",true,Math.max(2,Math.ceil((botBlockedUntil-now)/1000)));

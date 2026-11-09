@@ -67,7 +67,8 @@ it("never presents a stale globally disallowed school Email choice as effective"
   expect(body.effectiveDefaults.ACADEMIC).toEqual([]);
 });
 afterEach(()=>vi.unstubAllEnvs());
-const put=(url:string,body:unknown)=>fetch(base+url,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+const put=(url:string,body:unknown)=>fetch(base+url,{method:"PUT",headers:{"content-type":"application/json",
+  "X-Notification-Policy-Reason":"Controlled policy fixture change"},body:JSON.stringify(body)});
 describe("Owner/school channel policy HTTP boundaries; no delivery",()=>{
   it("reports runtime holds to the Owner without changing saved policy or delivery state",async()=>{
     h.role="PLATFORM_OWNER";
@@ -104,7 +105,7 @@ describe("Owner/school channel policy HTTP boundaries; no delivery",()=>{
   it("Owner may permit unavailable Telegram globally and for an opted-in school without delivering messages",async()=>{
     h.role="PLATFORM_OWNER";
     const p=defaultNotificationPolicy();
-    for(const rule of Object.values(p.events))rule!.allowed.push("TELEGRAM");
+    for(const rule of Object.values(p.events))if(!rule!.allowed.includes("TELEGRAM"))rule!.allowed.push("TELEGRAM");
     p.schools["9"]={enabled:true,allowed:["IN_APP","TELEGRAM"]};
     const r=await put("/communication/channel-policy",p);
     expect(r.status).toBe(200);

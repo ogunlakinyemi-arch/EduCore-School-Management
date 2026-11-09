@@ -19842,6 +19842,97 @@ export const UpdateSchoolCommunicationDefaultsResponse = zod.object({
 })
 
 
+export const GetOwnerNotificationDeliveryControlsResponse = zod.object({
+  "controls": zod.object({
+  "paused": zod.boolean(),
+  "smsEnabled": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "telegramEnabled": zod.boolean(),
+  "pushParentIds": zod.array(zod.number().int()),
+  "version": zod.number().int(),
+  "activatedAt": zod.string().nullable()
+}),
+  "configuration": zod.object({
+  "SMS": zod.boolean(),
+  "PUSH": zod.boolean(),
+  "TELEGRAM": zod.boolean()
+}),
+  "worker": zod.object({
+  "running": zod.boolean(),
+  "lastTickAt": zod.string().nullable(),
+  "lastErrorCategory": zod.string().nullable()
+}),
+  "protectedWorkersPaused": zod.boolean(),
+  "paymentTestNotificationsRestricted": zod.boolean(),
+  "queue": zod.array(zod.object({
+  "channel": zod.string(),
+  "status": zod.string(),
+  "category": zod.string(),
+  "count": zod.number().int()
+})),
+  "candidates": zod.array(zod.object({
+  "userId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "eligible": zod.boolean(),
+  "reason": zod.string()
+}))
+})
+
+
+export const updateOwnerNotificationDeliveryControlsBodyPushParentIdsMax = 20;
+
+export const updateOwnerNotificationDeliveryControlsBodyReasonMin = 5;
+export const updateOwnerNotificationDeliveryControlsBodyReasonMax = 500;
+
+
+
+export const UpdateOwnerNotificationDeliveryControlsBody = zod.object({
+  "paused": zod.boolean(),
+  "smsEnabled": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "telegramEnabled": zod.boolean(),
+  "pushParentIds": zod.array(zod.number().int()).max(updateOwnerNotificationDeliveryControlsBodyPushParentIdsMax),
+  "expectedVersion": zod.number().int(),
+  "reason": zod.string().min(updateOwnerNotificationDeliveryControlsBodyReasonMin).max(updateOwnerNotificationDeliveryControlsBodyReasonMax)
+})
+
+export const UpdateOwnerNotificationDeliveryControlsResponse = zod.object({
+  "controls": zod.object({
+  "paused": zod.boolean(),
+  "smsEnabled": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "telegramEnabled": zod.boolean(),
+  "pushParentIds": zod.array(zod.number().int()),
+  "version": zod.number().int(),
+  "activatedAt": zod.string().nullable()
+}),
+  "configuration": zod.object({
+  "SMS": zod.boolean(),
+  "PUSH": zod.boolean(),
+  "TELEGRAM": zod.boolean()
+}),
+  "worker": zod.object({
+  "running": zod.boolean(),
+  "lastTickAt": zod.string().nullable(),
+  "lastErrorCategory": zod.string().nullable()
+}),
+  "protectedWorkersPaused": zod.boolean(),
+  "paymentTestNotificationsRestricted": zod.boolean(),
+  "queue": zod.array(zod.object({
+  "channel": zod.string(),
+  "status": zod.string(),
+  "category": zod.string(),
+  "count": zod.number().int()
+})),
+  "candidates": zod.array(zod.object({
+  "userId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "eligible": zod.boolean(),
+  "reason": zod.string()
+}))
+})
+
+
 export const GetNotificationChannelPolicyResponse = zod.object({
   "policy": zod.object({
   "events": zod.record(zod.string(), zod.object({
@@ -19862,6 +19953,15 @@ export const GetNotificationChannelPolicyResponse = zod.object({
 })).optional()
 })
 
+
+export const updateNotificationChannelPolicyHeaderXNotificationPolicyReasonMin = 5;
+export const updateNotificationChannelPolicyHeaderXNotificationPolicyReasonMax = 500;
+
+
+
+export const UpdateNotificationChannelPolicyHeader = zod.object({
+  "X-Notification-Policy-Reason": zod.string().min(updateNotificationChannelPolicyHeaderXNotificationPolicyReasonMin).max(updateNotificationChannelPolicyHeaderXNotificationPolicyReasonMax).optional().describe('Required in Development; audit reason for the Owner policy change.')
+})
 
 export const UpdateNotificationChannelPolicyBody = zod.object({
   "events": zod.record(zod.string(), zod.object({

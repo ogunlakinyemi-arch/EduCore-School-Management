@@ -1,5 +1,6 @@
 import app from "./app";
 import {startTelegramWorker} from "./services/telegram-worker";
+import {startOwnerNotificationWorker} from "./services/owner-notification-worker";
 import { pool, setDatabaseDiagnosticReporter } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { createIndependentBackgroundTasks } from "./lib/background-task";
@@ -34,6 +35,7 @@ app.listen(port, (err) => {
       communicationWorkerUsesApiPool:true}, "Development database configuration provenance");
   }
   startTelegramWorker();
+  startOwnerNotificationWorker(pool);
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
     void verifyRemovalRuntimeTarget().then((verified) => {
       logger.info({ developmentSettlementRemovalIsolation: verified },

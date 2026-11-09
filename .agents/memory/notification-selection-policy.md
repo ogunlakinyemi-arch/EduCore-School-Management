@@ -3,6 +3,18 @@ name: Notification permissions versus selections
 description: Owner ceilings, school event selections, preferences, and accurate delivery claims.
 ---
 
+The Platform Owner sets and centrally controls all notification capability.
+School choices and recipient preferences may only narrow that authority, never
+override it. Configured credentials do not authorize delivery.
+
+**Why:** The user explicitly confirmed that the platform Owner must set and
+control all notifications, including the authority to pause delivery.
+
+**How to apply:** Preserve server-side Owner gates across dispatch paths, with
+audited actor/time/reason for control changes. Development notification-only
+controls must not release independently paused subscription/payment-test jobs.
+Default new delivery controls to disabled/paused and never invent a push recipient.
+
 Allowed is only a permission ceiling; it is never a request to send.
 For each mapped event, inherit the Owner defaults only if the school has no
 explicit selection. An explicit empty school selection disables all channels for

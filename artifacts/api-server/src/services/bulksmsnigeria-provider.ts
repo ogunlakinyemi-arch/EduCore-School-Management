@@ -2,6 +2,7 @@ import type {CommunicationProviderOptions, ProviderFailureCategory, ProviderSend
 import {normalizeTermiiRecipient} from "./communication-providers";
 import {developmentPaymentNotificationsSuppressed} from "../lib/development-payment-notification-policy";
 import {smsEventAllowed} from "./sms-event-policy";
+import {notificationTransportSuppressed} from "../lib/owner-notification-transport";
 
 export function bulkSmsConfigurationReady(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.COMMUNICATION_SMS_PROVIDER?.trim().toLowerCase() === "bulksmsnigeria"
@@ -19,7 +20,7 @@ export class BulkSmsNigeriaProvider implements SmsProvider {
     const failure = (category: ProviderFailureCategory, retryable = false, retryAfterSeconds?: number): ProviderSendResult =>
       ({provider:this.provider,channel:this.channel,status:"FAILED",accepted:false,delivered:false,
         failure:{category,retryable,...(retryAfterSeconds ? {retryAfterSeconds} : {})}});
-    if (developmentPaymentNotificationsSuppressed()) return failure("CONFIGURATION");
+    if (notificationTransportSuppressed("SMS")) return failure("CONFIGURATION");
     if (!smsEventAllowed(message.event ?? "")) return failure("INVALID_REQUEST");
     const phone = normalizeTermiiRecipient(message.to);
     if (!phone || !/^\+234\d{10}$/.test(phone) || !message.body.trim() || message.body.length > 1530)

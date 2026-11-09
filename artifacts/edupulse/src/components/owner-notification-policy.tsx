@@ -2,10 +2,13 @@ import {useState} from 'react';
 import {useGetNotificationChannelPolicy,getGetNotificationChannelPolicyQueryKey,useUpdateNotificationChannelPolicy,useListOwnerSchoolDirectory} from '@workspace/api-client-react';
 import type {NotificationChannelPolicy} from '@workspace/api-client-react';
 import {OwnerPushBrowserStatus} from './owner-push-browser-status';
+import {OwnerNotificationDeliveryControl} from './OwnerNotificationDeliveryControl';
 const channels=['IN_APP','SMS','EMAIL','PUSH','TELEGRAM'] as const;
 export function OwnerNotificationPolicyControl(){
   const query=useGetNotificationChannelPolicy({query:{queryKey:getGetNotificationChannelPolicyQueryKey(),refetchInterval:30000}});
-  const save=useUpdateNotificationChannelPolicy();
+  const [policyReason,setPolicyReason]=useState('');
+  const policyReasonOk=policyReason.trim().length>=5&&policyReason.trim().length<=500;
+  const save=useUpdateNotificationChannelPolicy({request:{headers:{'X-Notification-Policy-Reason':policyReason.trim()}}});
   const directory=useListOwnerSchoolDirectory({status:'all'});
   const [draft,setDraft]=useState<NotificationChannelPolicy|null>(null);
   const [school,setSchool]=useState('');
@@ -41,6 +44,7 @@ export function OwnerNotificationPolicyControl(){
   return <section className="panel mb-6 space-y-4 p-5" aria-label="Platform notification policy">
     <h2 className="display-font text-xl font-bold">Owner notification controls</h2>
     <p className="text-sm">Allowed means globally permitted for that event, not prohibited and not automatically selected. Default is a separate selection inherited by schools without an override. Provider readiness and delivery safeguards are separate from both. No real school is required to check configuration. SMS is restricted to emergency and student absence, with explicit recipient opt-in.</p>
+    <OwnerNotificationDeliveryControl/>
     {query.isLoading?<p>Loading policy…</p>:query.isError?<p role="alert">Could not load policy. <button onClick={()=>void query.refetch()}>Retry</button></p>:policy&&<>
       {query.data?.readiness&&<div className="space-y-3 rounded-xl border p-3" aria-label="External channel readiness">
         <h3 className="font-bold">Configuration and delivery holds</h3>
@@ -101,8 +105,10 @@ export function OwnerNotificationPolicyControl(){
           onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,allowed:e.target.checked?[...permission.allowed,channel]:permission.allowed.filter(c=>c!==channel)}}})}/>{channel}</label>)}
         <button type="button" disabled={save.isPending} onClick={()=>{const schools={...policy.schools};delete schools[id];setDraft({...policy,schools});}} className="ml-3 underline">Use global permissions</button>
       </fieldset>)}
-      <button type="button" disabled={!draft||save.isPending} className="min-h-11 rounded-lg border px-4 disabled:opacity-50"
-        onClick={()=>draft&&void save.mutateAsync({data:draft}).then(async()=>{await query.refetch();setDraft(null);setNotice('Owner policy saved and audited. No messages sent.');}).catch(()=>setNotice('Policy was not confirmed saved. Reload to check before retrying.'))}>Save Owner policy</button>
+      <label className="flex flex-col gap-1 text-sm">Policy change reason (required, 5–500 characters, recorded in the audit log)
+        <input type="text" className="rounded border p-2" maxLength={500} value={policyReason} disabled={save.isPending} onChange={e=>setPolicyReason(e.target.value)}/></label>
+      <button type="button" disabled={!draft||!policyReasonOk||save.isPending} className="min-h-11 rounded-lg border px-4 disabled:opacity-50"
+        onClick={()=>draft&&policyReasonOk&&void save.mutateAsync({data:draft}).then(async()=>{await query.refetch();setDraft(null);setPolicyReason('');setNotice('Owner policy saved and audited. No messages sent.');}).catch(()=>setNotice('Policy was not confirmed saved. Reload to check before retrying.'))}>Save Owner policy</button>
     </>}
     {notice&&<p role="status">{notice}</p>}
   </section>;

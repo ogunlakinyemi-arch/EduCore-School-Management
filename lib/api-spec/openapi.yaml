@@ -6009,6 +6009,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolCommunicationDefaultsResponse" }
+  /communication/owner-delivery-controls:
+    $ref: "./owner-notification-controls.yaml#/paths/~1communication~1owner-delivery-controls"
   /communication/channel-policy:
     get:
       operationId: getNotificationChannelPolicy
@@ -6022,6 +6024,12 @@ paths:
     put:
       operationId: updateNotificationChannelPolicy
       tags: [Communication]
+      parameters:
+        - name: X-Notification-Policy-Reason
+          in: header
+          required: false
+          description: Required in Development; audit reason for the Owner policy change.
+          schema: {type: string, minLength: 5, maxLength: 500}
       requestBody:
         required: true
         content:

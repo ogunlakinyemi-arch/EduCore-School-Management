@@ -15,6 +15,8 @@ import { notificationLaunchBoundary, notificationLaunchSql } from "./notificatio
 import {smsNotificationAllowed} from "./sms-event-policy";
 import {developmentPushDispatchEnabled} from "../lib/development-push-policy";
 import {notificationText} from "@workspace/api-zod";
+import {loadOwnerDeliveryControls,ownerNotificationDevelopment,ownerNotificationScope,
+  ownerDeliveryClaimSql,financialNotification,ownerTransportAllowed} from "./owner-notification-controls";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -661,6 +663,7 @@ async function claimCommunicationDeliveries(
   notificationIds?: number[],
   liveFrom: string | null = null,
 ): Promise<ClaimedDelivery[]> {
+  const ownerScope=ownerNotificationScope();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -674,9 +677,11 @@ async function claimCommunicationDeliveries(
        WHERE channel = ANY($2::text[])
           AND ($3::int[] IS NULL OR notification_id=ANY($3::int[]))
            AND ${notificationLaunchSql("$4")}
+           ${ownerScope?`AND ${ownerDeliveryClaimSql("$5","$6")}`:""}
           AND status = 'PROCESSING'
           AND COALESCE(last_attempt_at, updated_at, created_at) < $1::timestamptz - INTERVAL '15 minutes'`,
-      [normalizedDate(now),selectedChannels,notificationIds??null,liveFrom],
+      [normalizedDate(now),selectedChannels,notificationIds??null,liveFrom,
+        ...(ownerScope?[ownerScope.activatedAt,ownerScope.pushParentIds]:[])],
     );
     const claimed = await client.query<ClaimedDelivery>(
       `WITH due AS (
@@ -685,6 +690,7 @@ async function claimCommunicationDeliveries(
          WHERE channel = ANY($4::text[])
             AND ($5::int[] IS NULL OR notification_id=ANY($5::int[]))
              AND ${notificationLaunchSql("$6")}
+             ${ownerScope?`AND ${ownerDeliveryClaimSql("$7","$8")}`:""}
            AND attempts < $2
            AND next_attempt_at <= $3
             AND status IN ('QUEUED','FAILED')
@@ -703,7 +709,8 @@ async function claimCommunicationDeliveries(
        FROM due
        WHERE d.id = due.id
        RETURNING d.id, d.channel, d.attempts`,
-      [batchLimit, maxAttempts, normalizedDate(now),selectedChannels,notificationIds??null,liveFrom],
+      [batchLimit, maxAttempts, normalizedDate(now),selectedChannels,notificationIds??null,liveFrom,
+        ...(ownerScope?[ownerScope.activatedAt,ownerScope.pushParentIds]:[])],
     );
     await client.query("COMMIT");
     return claimed.rows;
@@ -955,6 +962,7 @@ export async function dispatchCommunicationDeliveries(
   if (!launch.allowed) {
     return { claimed: 0, accepted: 0, simulated: 0, delivered: 0, failed: 0, skipped: 0 };
   }
+  const ownerControls=ownerNotificationDevelopment()?await loadOwnerDeliveryControls(pool):null;
   const providers = options.providers ?? createCommunicationProviders(
     options.allowConfiguredProviders === true ? process.env : {},
   );
@@ -971,7 +979,11 @@ export async function dispatchCommunicationDeliveries(
     options.notificationIds.some(id=>!Number.isSafeInteger(id)||id<1)))throw new TypeError("Invalid notification scope");
   // Unavailable Telegram is deferred, not claimed and exhausted before its
   // explicitly enabled worker has validated credentials/storage.
-  const availableChannels=selectedChannels.filter(channel=>(channel!=="SMS"||notificationChannelAvailability().SMS)
+  const availableChannels=selectedChannels.filter(channel=>
+    (!ownerControls||(!ownerControls.paused&&(channel==="EMAIL"||
+      (ownerNotificationScope()?.version===ownerControls.version&&!!ownerControls.activatedAt&&
+        (channel==="SMS"?ownerControls.smsEnabled:channel==="PUSH"?ownerControls.pushEnabled:ownerControls.telegramEnabled)))))
+    &&(channel!=="SMS"||notificationChannelAvailability().SMS||ownerTransportAllowed("SMS"))
     &&(channel!=="EMAIL"||!!options.providers?.email||options.allowConfiguredProviders!==true||notificationChannelAvailability().EMAIL)
     &&(channel!=="TELEGRAM"||!!telegramProvider)
     &&(channel!=="PUSH"||developmentPushDispatchEnabled()&&!!pushProvider&&(!("configured" in pushProvider)||pushProvider.configured)));
@@ -988,6 +1000,20 @@ export async function dispatchCommunicationDeliveries(
 
   for (const delivery of claimed) {
     const record = await loadDispatchRecord(pool, delivery.id, launch.liveFrom);
+    if(ownerControls){
+      const current=await loadOwnerDeliveryControls(pool);
+      const held=current.paused||current.version!==ownerControls.version||!current.activatedAt
+        ||(delivery.channel==="EMAIL"?false:delivery.channel==="SMS"?!current.smsEnabled:delivery.channel==="PUSH"?!current.pushEnabled:!current.telegramEnabled)
+        ||(!!ownerNotificationScope()&&!!record&&financialNotification(record.category,record.eventKey))
+        ||(delivery.channel==="PUSH"&&!!record&&!current.pushParentIds.includes(Number(record.recipientUserId)));
+      if(held){
+        await pool.query(`UPDATE communication_deliveries SET status='QUEUED',attempts=greatest(attempts-1,0),
+          next_attempt_at=$2::timestamptz+interval '30 seconds',error_code='OWNER_DELIVERY_HELD',
+          last_error='Owner delivery control or protected financial boundary holds this notification',updated_at=$2
+          WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now())]);
+        summary.skipped++;continue;
+      }
+    }
     if (!record || record.channel !== delivery.channel || record.userStatus.toUpperCase() !== "ACTIVE" || !record.schoolAuthorized) {
       await pool.query(
         `UPDATE communication_deliveries
@@ -1002,6 +1028,17 @@ export async function dispatchCommunicationDeliveries(
       continue;
     }
     const dispatchEvent=notificationEvent(record.category,record.eventKey);
+    if(ownerControls&&delivery.channel==="PUSH"){
+      const consent=await pool.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
+        WHERE user_id=$1 AND channel='PUSH' AND category=$2 AND school_id=$3
+        LIMIT 1`,[record.recipientUserId,record.category,record.schoolId]);
+      if(consent.rows[0]?.enabled!==true){
+        await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='RECIPIENT_PREFERENCE',
+          last_error='Explicit push test consent is required',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
+          [delivery.id,normalizedDate(now())]);
+        summary.skipped++;continue;
+      }
+    }
     if (delivery.channel === "SMS") {
       const consent = await pool.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
         WHERE user_id=$1 AND category=$2 AND channel='SMS' AND (school_id=$3 OR school_id IS NULL)

@@ -1,7 +1,9 @@
 import { developmentPaymentNotificationsSuppressed } from "./development-payment-notification-policy";
+import {ownerTransportAllowed} from "../services/owner-notification-controls";
 
 /** A known hold must defer queue claims, not consume failed delivery attempts. */
 export function developmentPushDispatchEnabled(env: NodeJS.ProcessEnv = process.env) {
+  if(ownerTransportAllowed("PUSH"))return true;
   return env.NODE_ENV !== "development" || !!env.REPLIT_DEPLOYMENT
     || (!developmentPaymentNotificationsSuppressed(env)
       && env.EDUCORE_DEVELOPMENT_PUSH_ENABLED === "true"
@@ -10,6 +12,7 @@ export function developmentPushDispatchEnabled(env: NodeJS.ProcessEnv = process.
 
 /** Credentials are configuration, not consent to send to Development users. */
 export function developmentPushAllowed(userId: number | string, env: NodeJS.ProcessEnv = process.env) {
+  if(ownerTransportAllowed("PUSH",userId))return true;
   if (env.NODE_ENV !== "development" || env.REPLIT_DEPLOYMENT) return true;
   return !developmentPaymentNotificationsSuppressed(env)
     && env.EDUCORE_DEVELOPMENT_PUSH_ENABLED === "true"

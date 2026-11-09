@@ -117,7 +117,7 @@ export function notificationChannelConfiguration(env:NodeJS.ProcessEnv=process.e
     catch{return false;}
   };
   return {IN_APP:true,SMS:bulkSmsConfigurationReady(env),EMAIL:emailReady(),
-    PUSH:!developmentPaymentNotificationsSuppressed(env)&&validVapidConfiguration(vapidConfiguration(env)),
+    PUSH:validVapidConfiguration(vapidConfiguration(env)),
     TELEGRAM:getTelegramHealth(env).ready};
 }
 

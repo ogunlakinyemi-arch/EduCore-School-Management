@@ -16100,6 +16100,70 @@ export interface LiveEvidencePreviewReport {
   missingTables: string[];
 }
 
+export interface OwnerDeliveryControlInput {
+  paused: boolean;
+  smsEnabled: boolean;
+  pushEnabled: boolean;
+  telegramEnabled: boolean;
+  /** @maxItems 20 */
+  pushParentIds: number[];
+  expectedVersion: number;
+  /**
+     * @minLength 5
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface OwnerDeliveryControls {
+  paused: boolean;
+  smsEnabled: boolean;
+  pushEnabled: boolean;
+  telegramEnabled: boolean;
+  pushParentIds: number[];
+  version: number;
+  /** @nullable */
+  activatedAt: string | null;
+}
+
+export interface OwnerPushTestCandidate {
+  userId: number;
+  schoolId: number;
+  eligible: boolean;
+  reason: string;
+}
+
+export interface OwnerDeliveryQueueItem {
+  channel: string;
+  status: string;
+  category: string;
+  count: number;
+}
+
+export type OwnerDeliveryViewConfiguration = {
+  SMS: boolean;
+  PUSH: boolean;
+  TELEGRAM: boolean;
+};
+
+export type OwnerDeliveryViewWorker = {
+  running: boolean;
+  /** @nullable */
+  lastTickAt: string | null;
+  /** @nullable */
+  lastErrorCategory: string | null;
+};
+
+export interface OwnerDeliveryView {
+  controls: OwnerDeliveryControls;
+  configuration: OwnerDeliveryViewConfiguration;
+  worker: OwnerDeliveryViewWorker;
+  protectedWorkersPaused: boolean;
+  paymentTestNotificationsRestricted: boolean;
+  queue: OwnerDeliveryQueueItem[];
+  candidates: OwnerPushTestCandidate[];
+}
+
 export interface SettlementRemovalConfirmation {
   /** @minimum 1 */
   expectedProfileId: number;

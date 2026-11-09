@@ -8,10 +8,10 @@ const smsEnv={NODE_ENV:"development",COMMUNICATION_SMS_PROVIDER:"bulksmsnigeria"
   BULKSMSNIGERIA_API_TOKEN:"synthetic-token",BULKSMSNIGERIA_SENDER_ID:"FixtureSMS"};
 afterEach(()=>vi.unstubAllEnvs());
 describe("targeted Development delivery repair, no external requests",()=>{
-  it("selects actual scoped SMS without sender-list discovery, retaining other Development transports",()=>{
+  it("keeps Development SMS suppressed until Owner-scoped permission, without sender-list discovery",()=>{
     const transport=vi.fn();
     const providers=createDevelopmentCommunicationProviders(smsEnv,{fetch:transport});
-    expect(providers.sms.provider).toBe("bulksmsnigeria");
+    expect(providers.sms.provider).not.toBe("bulksmsnigeria");
     expect(providers.email.provider).not.toBe("resend");
     expect(notificationChannelReadiness(smsEnv).SMS.configurationDetail).toContain("confirmed by the Owner");
     expect(transport).not.toHaveBeenCalled();
@@ -23,13 +23,13 @@ describe("targeted Development delivery repair, no external requests",()=>{
       vi.stubEnv("EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED",hold==="EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED"?"true":"false");
       vi.stubEnv("EDUCORE_DEVELOPMENT_PUSH_ENABLED",hold==="NO_OPT_IN"?"":"true");
       vi.stubEnv("EDUCORE_DEVELOPMENT_PUSH_USER_IDS",hold==="NO_RECIPIENTS"?"":"17");
-      const pool={query:vi.fn(),connect:vi.fn()},send=vi.fn();
+      const pool={query:vi.fn(async()=>({rows:[]})),connect:vi.fn()},send=vi.fn();
       const result=await dispatchCommunicationDeliveries(pool as any,1,{channels:["PUSH"],providers:{
         sms:{provider:"fixture",channel:"sms",send},email:{provider:"fixture",channel:"email",send},
         push:{provider:"web-push",channel:"push",send},
       }});
       expect(result.claimed).toBe(0);
-      expect(pool.connect).not.toHaveBeenCalled();expect(pool.query).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();
+      expect(pool.connect).not.toHaveBeenCalled();expect(pool.query).toHaveBeenCalledOnce();expect(send).not.toHaveBeenCalled();
     });
   it("adds only a WAT created-time label to privacy-preserving push payloads; acceptance is not receipt",async()=>{
     vi.stubEnv("NODE_ENV","test");

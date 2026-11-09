@@ -1,0 +1,88 @@
+paths:
+  /communication/owner-delivery-controls:
+    get:
+      operationId: getOwnerNotificationDeliveryControls
+      tags: [communications]
+      responses:
+        "200":
+          description: Owner-only Development controls and read-only diagnostics; never sends.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerDeliveryView" }
+    put:
+      operationId: updateOwnerNotificationDeliveryControls
+      tags: [communications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerDeliveryControlInput" }
+      responses:
+        "200":
+          description: Audited control change; delivery begins only through the isolated worker.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerDeliveryView" }
+components:
+  schemas:
+    OwnerDeliveryControlInput:
+      type: object
+      required: [paused, smsEnabled, pushEnabled, telegramEnabled, pushParentIds, expectedVersion, reason]
+      properties:
+        paused: { type: boolean }
+        smsEnabled: { type: boolean }
+        pushEnabled: { type: boolean }
+        telegramEnabled: { type: boolean }
+        pushParentIds: { type: array, maxItems: 20, items: {type: integer} }
+        expectedVersion: { type: integer }
+        reason: { type: string, minLength: 5, maxLength: 500 }
+    OwnerDeliveryControls:
+      type: object
+      required: [paused, smsEnabled, pushEnabled, telegramEnabled, pushParentIds, version, activatedAt]
+      properties:
+        paused: { type: boolean }
+        smsEnabled: { type: boolean }
+        pushEnabled: { type: boolean }
+        telegramEnabled: { type: boolean }
+        pushParentIds: { type: array, items: {type: integer} }
+        version: { type: integer }
+        activatedAt: { type: [string, "null"] }
+    OwnerPushTestCandidate:
+      type: object
+      required: [userId, schoolId, eligible, reason]
+      properties:
+        userId: { type: integer }
+        schoolId: { type: integer }
+        eligible: { type: boolean }
+        reason: { type: string }
+    OwnerDeliveryQueueItem:
+      type: object
+      required: [channel, status, category, count]
+      properties:
+        channel: { type: string }
+        status: { type: string }
+        category: { type: string }
+        count: { type: integer }
+    OwnerDeliveryView:
+      type: object
+      required: [controls, configuration, worker, protectedWorkersPaused, paymentTestNotificationsRestricted, queue, candidates]
+      properties:
+        controls: { $ref: "#/components/schemas/OwnerDeliveryControls" }
+        configuration:
+          type: object
+          required: [SMS, PUSH, TELEGRAM]
+          properties:
+            SMS: {type: boolean}
+            PUSH: {type: boolean}
+            TELEGRAM: {type: boolean}
+        worker:
+          type: object
+          required: [running, lastTickAt, lastErrorCategory]
+          properties:
+            running: {type: boolean}
+            lastTickAt: {type: [string, "null"]}
+            lastErrorCategory: {type: [string, "null"]}
+        protectedWorkersPaused: { type: boolean }
+        paymentTestNotificationsRestricted: { type: boolean }
+        queue: { type: array, items: { $ref: "#/components/schemas/OwnerDeliveryQueueItem" } }
+        candidates: { type: array, items: { $ref: "#/components/schemas/OwnerPushTestCandidate" } }
