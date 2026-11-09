@@ -73,7 +73,7 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
       </section>
       <section className="panel h-fit overflow-hidden">
         <WebPushControl schoolId={schoolId || null} />
-        {schoolId > 0 && !schoolAccess.isPlatformOwner && (!teacher || import.meta.env.DEV) && <div className="p-5 md:p-6"><ParentTelegramControl key={`${schoolId}:${teacher}`} schoolId={schoolId} teacher={teacher} /></div>}
+        {schoolId > 0 && !schoolAccess.isPlatformOwner && <div className="p-5 md:p-6"><ParentTelegramControl key={`${schoolId}:${teacher}`} schoolId={schoolId} teacher={teacher} /></div>}
         <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><Smartphone size={22} className="text-[hsl(var(--primary))]" /><h2 className="display-font mt-3 text-xl font-bold">Push device readiness</h2><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Device references are for development testing. Registering one does not subscribe this browser to Web Push or prove that any real notification will arrive.</p></div>
         <div className="p-5 md:p-6">
           <label className="block text-xs font-bold" htmlFor="device-reference">Opaque test device reference</label>

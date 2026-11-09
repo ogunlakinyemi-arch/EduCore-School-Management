@@ -5,7 +5,7 @@ import {sealTelegramChat,openTelegramChat,telegramTokenHash,telegramChatHash} fr
 import {loadNotificationPolicy,allowedNotificationChannels} from "./notification-channel-policy";
 import {ownerNotificationDevelopment} from "./owner-notification-controls";
 type Db={query:(sql:string,values?:any[])=>Promise<{rows:any[]}>};
-const development=()=>{if(!ownerNotificationDevelopment())throw new AuthError(404,"Teacher Telegram is Development only");};
+const development=()=>{if(!ownerNotificationDevelopment())throw new AuthError(404,"Teacher Telegram unavailable");};
 export async function eligibleTelegramTeacher(db:Db,userId:number,schoolId:number){
   return (await db.query(`SELECT e.id FROM employees e JOIN app_users u ON u.id=e.user_id
     JOIN schools s ON s.id=e.school_id WHERE e.user_id=$1 AND e.school_id=$2

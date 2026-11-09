@@ -27,8 +27,8 @@ beforeEach(()=>{
   state.role="PLATFORM_OWNER";state.anonymous=false;state.saved=null;state.queries=[];
   state.query.mockReset().mockImplementation(async(sql:string,values?:any[])=>{
     state.queries.push({sql,values});
-    if(sql.includes("SELECT id,metadata,created_at FROM audit_logs"))return {rows:state.saved?[state.saved]:[]};
-    if(sql.includes("INSERT INTO audit_logs"))state.saved={id:101,metadata:JSON.parse(values![2]),created_at:new Date()};
+    if(sql.includes("SELECT id,metadata,"))return {rows:state.saved&&state.saved.eventType===values?.[0]?[state.saved]:[]};
+    if(sql.includes("INSERT INTO audit_logs"))state.saved={id:101,eventType:values![3],metadata:JSON.parse(values![2]),created_at:new Date()};
     return {rows:[]};
   });
   state.connect.mockReset().mockResolvedValue({query:state.query,release:vi.fn()});
@@ -36,7 +36,22 @@ beforeEach(()=>{
 const input=(extra:Record<string,unknown>={})=>({paused:true,smsEnabled:false,pushEnabled:false,telegramEnabled:false,
   pushParentIds:[],expectedVersion:0,reason:"Controlled fixture change",...extra});
 const put=(body:unknown)=>fetch(url,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-describe("Owner-only Development delivery controls, no sends",()=>{
+describe("Owner-only notification delivery controls, no sends",()=>{
+  it("exposes paused Production controls without inheriting Development activation",async()=>{
+    vi.stubEnv("NODE_ENV","production");vi.stubEnv("REPLIT_DEPLOYMENT","1");
+    state.saved={id:99,eventType:"DEVELOPMENT_DELIVERY_CONTROLS_UPDATED",
+      metadata:{controls:{paused:false,smsEnabled:true,pushEnabled:true,telegramEnabled:true,pushParentIds:[17]},
+        activatedAt:new Date().toISOString()}};
+    const result=await fetch(url);
+    expect(result.status).toBe(200);
+    expect(((await result.json()) as {controls:unknown}).controls).toMatchObject({paused:true,smsEnabled:false,
+      pushEnabled:false,telegramEnabled:false,pushParentIds:[],activatedAt:null,version:0});
+    expect((await put(input())).status).toBe(200);
+    expect(state.saved.eventType).toBe("PRODUCTION_DELIVERY_CONTROLS_UPDATED");
+    expect(((await (await fetch(url)).json()) as {controls:unknown}).controls).toMatchObject({paused:true,version:101});
+    state.role="PARTNER";expect((await fetch(url)).status).toBe(403);
+    state.anonymous=true;expect((await fetch(url)).status).toBe(401);
+  });
   it("GET is read-only and reports disabled defaults without contact or credential values",async()=>{
     const response=await fetch(url),data=await response.json() as any;
     expect(response.status).toBe(200);expect(data.controls.paused).toBe(true);

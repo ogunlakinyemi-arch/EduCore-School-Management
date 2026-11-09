@@ -1,5 +1,8 @@
 # BRO Field Operations — release preflight
 
+Historical BRO-only scope. The later all-recent-features authorization and current
+prepared release are documented in `recent-features-production-release.md`.
+
 Date: 2026-11-09. **Status: BLOCKED — prepared and tested, not released.**
 
 ## Authorized scope

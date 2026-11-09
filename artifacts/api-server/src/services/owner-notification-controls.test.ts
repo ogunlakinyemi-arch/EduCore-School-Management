@@ -34,9 +34,12 @@ describe("Owner notification-only delivery boundary",()=>{
       expect(ownerTransportAllowed("SMS")).toBe(false);expect(ownerTransportAllowed("TELEGRAM")).toBe(true);
     });
   });
-  it("never uses the Development exception in a deployed runtime",async()=>{
+  it("requires explicit Production controls and a scope for deployed delivery",async()=>{
     vi.stubEnv("NODE_ENV","production");vi.stubEnv("REPLIT_DEPLOYMENT","1");
-    await withOwnerNotificationScope(active(),async()=>expect(ownerTransportAllowed("SMS")).toBe(false));
+    expect(await loadOwnerDeliveryControls({query:vi.fn(async()=>({rows:[]}))})).toEqual(disabledDeliveryControls());
+    expect(ownerTransportAllowed("SMS")).toBe(false);
+    await withOwnerNotificationScope(active(),async()=>expect(ownerTransportAllowed("SMS")).toBe(true));
+    expect(ownerTransportAllowed("SMS")).toBe(false);
   });
   it.each([["FINANCE","invoice:1"],["PAYMENT","receipt"],["SUBSCRIPTION","term:1"],["SYSTEM","NFC_CARD_REMINDER"],
     ["ANNOUNCEMENT","manual:FEE:1"],["PARTNER","commission"]])("holds financial event %s %s", (category,key)=>{

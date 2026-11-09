@@ -5,8 +5,8 @@ import type {OwnerDeliveryControls,OwnerDeliveryView} from '@workspace/api-clien
 type Draft=Pick<OwnerDeliveryControls,'paused'|'smsEnabled'|'pushEnabled'|'telegramEnabled'|'pushParentIds'>;
 const channelRows=[
   {key:'smsEnabled',config:'SMS',label:'SMS',note:'Emergency and student absence notices only. Recipient opt-in remains required.'},
-  {key:'pushEnabled',config:'PUSH',label:'Push',note:'Limited to the explicitly selected eligible parent test recipients below.'},
-  {key:'telegramEnabled',config:'TELEGRAM',label:'Telegram',note:'Only parents who linked Telegram and consented receive notices.'},
+  {key:'pushEnabled',config:'PUSH',label:'Push',note:'Limited to the explicitly selected eligible parent or teacher recipients below.'},
+  {key:'telegramEnabled',config:'TELEGRAM',label:'Telegram',note:'Only parents or teachers who linked Telegram and consented receive eligible notices.'},
 ] as const;
 
 const errorStatus=(e:unknown)=>typeof e==='object'&&e&&'status' in e?Number((e as {status:unknown}).status):0;
@@ -34,18 +34,18 @@ export function OwnerNotificationDeliveryControl(){
       onSuccess:async()=>{await query.refetch();setDraft(null);setReason('');
         setNotice({tone:'ok',text:'Delivery controls saved with your audit reason. No test message was sent.'});},
       onError:e=>{const s=errorStatus(e);setNotice({tone:'error',text:s===409?'Another Owner change was saved first (version conflict). Your draft is kept; reload the current controls, review, and save again.':
-        s===403||s===404?'These controls are Owner-only and available in Development only.':s===400||s===422?'The server rejected this change. Check the reason (5–500 characters) and recipient selection.':
+        s===403||s===404?'These controls require an active Platform Owner account.':s===400||s===422?'The server rejected this change. Check the reason (5–500 characters) and recipient selection.':
         'Change was not confirmed saved. Refresh to check the current state before retrying.'});},
     });
   };
   return <div className="space-y-4 rounded-xl border p-4" aria-label="Notification delivery controls" data-testid="owner-delivery-control">
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div><h3 className="font-bold">Global notification delivery</h3>
-        <p className="text-xs">Development only. Controls start disabled and paused. Pausing or resuming here affects notification delivery only — protected payment and worker pauses are unchanged. Resume delivers only fresh non-financial notices created after the change; nothing queued earlier is replayed. Existing recipient consent remains required. There are no paid tests or test-send buttons.</p></div>
+        <p className="text-xs">Controls start disabled and paused. Production requires its own explicit Owner selections; Development controls never activate Production. Pausing or resuming here affects notification delivery only — protected payment and worker pauses are unchanged. Resume delivers only fresh non-financial notices created after the change; nothing queued earlier is replayed. Existing recipient consent remains required. There are no paid tests or test-send buttons.</p></div>
       <button type="button" className="min-h-10 rounded-lg border px-3 text-sm" disabled={query.isFetching} onClick={()=>void query.refetch()}>{query.isFetching?'Refreshing…':'Refresh'}</button>
     </div>
     {query.isLoading?<div className="space-y-2" aria-busy="true"><div className="h-4 w-2/3 animate-pulse rounded bg-current opacity-10"/><div className="h-4 w-1/2 animate-pulse rounded bg-current opacity-10"/><div className="h-20 animate-pulse rounded bg-current opacity-10"/></div>
-    :query.isError||!view||!current||!server?<p role="alert" className="text-sm">{[403,404].includes(errorStatus(query.error))?'Delivery controls are Owner-only and available in Development only.':'Could not load delivery controls.'} <button type="button" className="underline" onClick={()=>void query.refetch()}>Retry</button></p>
+    :query.isError||!view||!current||!server?<p role="alert" className="text-sm">{[403,404].includes(errorStatus(query.error))?'Delivery controls require an active Platform Owner account.':'Could not load delivery controls.'} <button type="button" className="underline" onClick={()=>void query.refetch()}>Retry</button></p>
     :<>
       <div className="rounded-lg border p-3 text-sm">
         <p className="font-semibold">Notification delivery: {current.paused?'Paused':'Running'}{draft&&draft.paused!==server.paused&&' (unsaved)'}</p>

@@ -17,6 +17,12 @@ afterEach(()=>vi.unstubAllEnvs());
 it("starts no provider/claim work until the Owner explicitly resumes a channel",async()=>{
   await ownerNotificationWorkerTick({} as any);expect(fixture.dispatch).not.toHaveBeenCalled();
 });
+it("Production polling remains inert with default paused controls and no channel/recipient activation",async()=>{
+  vi.stubEnv("NODE_ENV","production");vi.stubEnv("REPLIT_DEPLOYMENT","1");
+  await ownerNotificationWorkerTick({} as any);
+  expect(fixture.dispatch).not.toHaveBeenCalled();
+  expect(fixture.controls).toEqual(disabledDeliveryControls());
+});
 it("runs only selected notification transports without invoking protected workers",async()=>{
   fixture.controls={...disabledDeliveryControls(),paused:false,smsEnabled:true,activatedAt:"2026-11-10T00:00:00Z"};
   fixture.dispatch.mockImplementation(async(_pool,_limit,options)=>{

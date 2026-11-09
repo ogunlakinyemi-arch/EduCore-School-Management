@@ -17,8 +17,9 @@ evidence and idempotent ownership/history protections.
 school-registration/referral provenance and commission entitlement. Adoption
 links an existing school; it never creates a second school or transfers
 financial attribution. Do not add scheduled reminders, paid dependencies,
-attachments or outreach. Production permission applies only to Field Operations:
-never bundle teacher Telegram schemas/features, teacher period notifications,
-Owner notification controls or BRO commission actions into that release.
-Missing primary/recovery evidence or an unrelated Publish diff blocks release;
-preparing reviewed code/SQL is not evidence of Production execution or deployment.
+attachments or outreach. The later 2026-11-09 authorization expanded release
+preparation to completed teacher Telegram, teacher period notifications and Owner
+notification controls, with delivery paused by default. It did not authorize
+Production access/execution during preparation, commission-action activation or
+arbitrary Development-only tools. Missing primary/recovery evidence or an
+unrelated Publish diff blocks execution; reviewed code/SQL is not deployment proof.

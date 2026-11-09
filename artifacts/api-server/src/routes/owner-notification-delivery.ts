@@ -1,7 +1,7 @@
 import {Router} from "express";
 import {pool,type DatabasePoolClient} from "@workspace/db";
 import {AuthError,getUserContext,requireAuthentication} from "../middlewares/auth";
-import {deliveryControlInput,loadOwnerDeliveryControls,ownerNotificationDevelopment,pushTestCandidates} from "../services/owner-notification-controls";
+import {deliveryControlInput,loadOwnerDeliveryControls,ownerNotificationDevelopment,ownerDeliveryControlEventType,pushTestCandidates} from "../services/owner-notification-controls";
 import {ownerNotificationWorkerStatus} from "../services/owner-notification-worker";
 import {bulkSmsConfigurationReady} from "../services/bulksmsnigeria-provider";
 import {validVapidConfiguration,vapidConfiguration} from "../services/web-push-configuration";
@@ -13,9 +13,9 @@ router.use((req,res,next)=>{
   try{
     const ctx=getUserContext(req);
     if(!ctx.roles.some(r=>r.role==="PLATFORM_OWNER"&&r.status==="ACTIVE"))throw new AuthError(403,"Owner only");
-    if(!ownerNotificationDevelopment())throw new AuthError(404,"Development notification controls only");
+    if(!ownerNotificationDevelopment())throw new AuthError(404,"Notification controls unavailable");
     next();
-  }catch(e){res.status(e instanceof AuthError?e.statusCode:403).json({error:"Owner Development controls unavailable"});}
+  }catch(e){res.status(e instanceof AuthError?e.statusCode:403).json({error:"Owner notification controls unavailable"});}
 });
 const configuration=()=>({SMS:bulkSmsConfigurationReady(),PUSH:validVapidConfiguration(vapidConfiguration()),
   TELEGRAM:!!process.env.TELEGRAM_BOT_TOKEN&&!!process.env.SESSION_SECRET&&process.env.SESSION_SECRET.length>=32});
@@ -52,10 +52,10 @@ router.put("/communication/owner-delivery-controls",async(req,res)=>{
     const {expectedVersion:_version,reason,...controls}=input;
     const activatedAt=new Date().toISOString();
     await db.query(`INSERT INTO audit_logs(actor_user_id,"user",role,action,module,event_type,result,school_id,metadata)
-      VALUES($1,$2,'PLATFORM_OWNER','Updated Development notification-only delivery controls',
-        'OwnerNotificationDelivery','DEVELOPMENT_DELIVERY_CONTROLS_UPDATED','SUCCESS',NULL,$3::jsonb)`,
+      VALUES($1,$2,'PLATFORM_OWNER','Updated notification-only delivery controls',
+        'OwnerNotificationDelivery',$4,'SUCCESS',NULL,$3::jsonb)`,
       [ctx.user.id,ctx.user.email,JSON.stringify({controls:{...controls,pushParentIds:[...new Set(controls.pushParentIds)]},
-        previous,reason,activatedAt})]);
+        previous,reason,activatedAt}),ownerDeliveryControlEventType()]);
     await db.query("COMMIT");
     res.json(await view());
   }catch(e){

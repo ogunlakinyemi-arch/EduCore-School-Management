@@ -9,7 +9,7 @@ import {DatabasePool} from "@workspace/db/driver";
 import {refreshTelegramHealth,getTelegramHealth,createTelegramProvider} from "./telegram-provider";
 import {createParentTelegramChallenge,acceptTelegramUpdate,confirmParentTelegramLink,telegramRecipient,checkTelegramRuntimeHealth,
   revokeParentTelegramLink,sealTelegramChat,openTelegramChat} from "./telegram-links";
-import {dispatchCommunicationDeliveries,queueCommunicationNotification} from "./communication-service";
+import {dispatchCommunicationDeliveries as dispatchRaw,queueCommunicationNotification} from "./communication-service";
 import {createTelegramDirectoryInvitation,parentTelegramInvitationStatus} from "./telegram-onboarding";
 import {inspectTelegramStorage} from "./telegram-storage-readiness";
 import {notificationLaunchSql} from "./notification-launch-boundary";
@@ -40,6 +40,9 @@ const botFetch=vi.fn(async (_url:any,options:any)=>{
 let dir:string,postgres:ChildProcess,db:any;
 let server:any,base:string;
 const nativeFetch=fetch;
+// Mock-only explicit approval scope; no real providers are used by this fixture.
+const dispatchCommunicationDeliveries:typeof dispatchRaw=async(pool,batch,options)=>
+  withOwnerNotificationScope(await loadOwnerDeliveryControls(pool),()=>dispatchRaw(pool,batch,options));
 beforeAll(async()=>{
   for(const [key,value]of Object.entries(fixtureEnv))vi.stubEnv(key,value);
   for(const key of ["VAPID_PUBLIC_KEY","VAPID_PRIVATE_KEY","VAPID_SUBJECT"])vi.stubEnv(key,"");
@@ -118,7 +121,10 @@ beforeEach(async()=>{
     INSERT INTO parent_student_relationships VALUES(1,1,'ACTIVE'),(2,2,'ACTIVE');
     INSERT INTO school_memberships VALUES(1,1,'PARENT','ACTIVE'),(2,2,'PARENT','ACTIVE');
     INSERT INTO audit_logs(role,module,event_type,result,metadata) VALUES('PLATFORM_OWNER','NotificationPolicy',
-      'GLOBAL_CHANNEL_POLICY_UPDATED','SUCCESS','{"policy":{"events":{"ATTENDANCE_ENTRY":{"allowed":["IN_APP","TELEGRAM"],"defaults":["IN_APP"]},"SYSTEM":{"allowed":["IN_APP","PUSH"],"defaults":["IN_APP"]}},"schools":{}}}');`);
+       'GLOBAL_CHANNEL_POLICY_UPDATED','SUCCESS','{"policy":{"events":{"ATTENDANCE_ENTRY":{"allowed":["IN_APP","TELEGRAM"],"defaults":["IN_APP"]},"SYSTEM":{"allowed":["IN_APP","PUSH"],"defaults":["IN_APP"]}},"schools":{}}}');
+     INSERT INTO audit_logs(role,module,event_type,result,metadata) VALUES('PLATFORM_OWNER','OwnerNotificationDelivery',
+       'PRODUCTION_DELIVERY_CONTROLS_UPDATED','SUCCESS',
+       '{"controls":{"paused":false,"smsEnabled":false,"pushEnabled":false,"telegramEnabled":true,"pushParentIds":[]},"activatedAt":"2026-10-23T12:34:38.000Z"}');`);
   botFetch.mockClear();await refreshTelegramHealth(true,process.env,botFetch as any);botFetch.mockClear();
 });
 async function tx<T>(fn:(client:any)=>Promise<T>){const c=await db.connect();try{await c.query("BEGIN");
@@ -287,7 +293,7 @@ describe("teacher Telegram Development prerequisite",()=>{
     expect(await teacherPeriodStillCurrent(db,record,change==="EXPIRED"?new Date("2026-11-09T07:00:00Z"):tick)).toBe(false);
     expect(botFetch).not.toHaveBeenCalled();
   });
-  it("respects Owner channel selection, pause and payment locks and rejects deployed teacher APIs",async()=>{
+  it("respects Owner channel selection, pause and payment locks and rejects invalid deployed Development configuration",async()=>{
     await teacherLink();
     await db.query(`UPDATE schools SET communication_defaults='{"ACADEMIC":["IN_APP","PUSH"]}'`);
     await queueTeacherPeriodNotifications(db,tick);
@@ -304,6 +310,66 @@ describe("teacher Telegram Development prerequisite",()=>{
     expect((await request("POST","/link",{schoolId:1,consent:true,audience:"TEACHER"})).status).toBe(404);
     expect((await request("DELETE","/link?audience=TEACHER")).status).toBe(404);
     expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("allows Production teacher linking but defaults scheduling/delivery to paused without Production approval",async()=>{
+    vi.stubEnv("NODE_ENV","production");vi.stubEnv("REPLIT_DEPLOYMENT","1");
+    await refreshTelegramHealth(true,process.env,botFetch as any);botFetch.mockClear();
+    await db.query("DELETE FROM audit_logs WHERE event_type='PRODUCTION_DELIVERY_CONTROLS_UPDATED'");
+    expect((await loadOwnerDeliveryControls(db)).paused).toBe(true);
+    const response=await request("POST","/link",{schoolId:1,consent:true,audience:"TEACHER"});
+    expect(response.status).toBe(200);
+    const challenge=await response.json() as {url:string};
+    expect(await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(challenge.url),777005)))).toBe(true);
+    await tx(c=>confirmTeacherTelegramLink(c,100,1));
+    expect((await teacherTelegramStatus(db,100,1)).linked).toBe(true);
+    await queueTeacherPeriodNotifications(db,tick);
+    expect((await db.query("SELECT * FROM communication_notifications")).rows).toEqual([]);
+    const summary=await dispatchRaw(db,10,{providers:{...mocks(),telegram:createTelegramProvider(process.env,botFetch as any)},
+      channels:["TELEGRAM"]});
+    expect(summary.claimed).toBe(0);expect(botFetch).not.toHaveBeenCalled();
+    // Explicit fixture-only approval proves the Production scheduler can run;
+    // it does not mutate application controls or make any real provider call.
+    await db.query(`INSERT INTO audit_logs(role,module,event_type,result,metadata)
+      VALUES('PLATFORM_OWNER','OwnerNotificationDelivery','PRODUCTION_DELIVERY_CONTROLS_UPDATED','SUCCESS',
+      '{"controls":{"paused":false,"smsEnabled":false,"pushEnabled":false,"telegramEnabled":true,"pushParentIds":[]},"activatedAt":"2026-11-09T00:00:00Z"}')`);
+    await queueTeacherPeriodNotifications(db,tick);
+    await queueTeacherPeriodNotifications(db,tick);
+    await queueTeacherPeriodNotifications(db,new Date("2026-11-09T07:45:00Z"));
+    expect((await db.query("SELECT count(*)::int AS n FROM communication_notifications WHERE recipient_user_id=100")).rows[0].n).toBe(2);
+    expect(botFetch).not.toHaveBeenCalled();
+    expect((await request("DELETE","/link?audience=TEACHER")).status).toBe(200);
+  });
+  it("teacher Production migration repeats safely, preserves parent data and refuses trigger drift",async()=>{
+    await link();
+    const parentSnapshot=async()=>JSON.stringify((await db.query(`SELECT * FROM (
+      SELECT 'profile' AS kind,to_jsonb(p) AS row FROM parents p
+      UNION ALL SELECT 'link',to_jsonb(l) FROM parent_telegram_links l
+      UNION ALL SELECT 'challenge',to_jsonb(c) FROM telegram_link_challenges c
+      ) records ORDER BY kind,row::text`)).rows);
+    const saved=await parentSnapshot();
+    await db.query(`DROP TRIGGER parent_telegram_account_exclusive ON parent_telegram_links;
+      DROP TRIGGER teacher_telegram_account_exclusive ON teacher_telegram_links;
+      DROP FUNCTION telegram_account_chat_exclusive();
+      DROP TABLE teacher_telegram_challenges,teacher_telegram_links;`);
+    const migration=await readFile(new URL("../../../../lib/db/reviewed-releases/teacher-telegram-production.sql",import.meta.url),"utf8");
+    await db.query(migration);await db.query(migration);
+    expect(await parentSnapshot()).toBe(saved);
+    await teacherLink(100,777006);
+    const teacherSnapshot=JSON.stringify((await db.query("SELECT * FROM teacher_telegram_links ORDER BY user_id")).rows);
+    await db.query(migration);
+    expect(JSON.stringify((await db.query("SELECT * FROM teacher_telegram_links ORDER BY user_id")).rows)).toBe(teacherSnapshot);
+    expect(await parentSnapshot()).toBe(saved);
+    for(const file of ["recent-features-preflight.sql","recent-features-postflight.sql"])
+      await db.query(await readFile(new URL("../../../../lib/db/reviewed-releases/"+file,import.meta.url),"utf8"));
+    expect(await parentSnapshot()).toBe(saved);
+    await db.query("ALTER TABLE parent_telegram_links DISABLE TRIGGER parent_telegram_account_exclusive");
+    const c=await db.connect();
+    try{
+      await expect(c.query(migration)).rejects.toThrow("differs from approved definition");
+      await c.query("ROLLBACK");
+    }finally{c.release();}
+    await db.query("ALTER TABLE parent_telegram_links ENABLE TRIGGER parent_telegram_account_exclusive");
+    expect(await parentSnapshot()).toBe(saved);
   });
   it.each(["BEFORE","END","CANCELLED","RESCHEDULED","EXPIRED","WITHDRAWN"])(
     "routes teacher Telegram %s through the existing adapter only while current and consenting",async trigger=>{
@@ -764,10 +830,15 @@ describe("Telegram real SQL: linking, consent and outbox safety; no external net
     vi.stubEnv("VAPID_PUBLIC_KEY",keys.getPublicKey().toString("base64url"));vi.stubEnv("VAPID_PRIVATE_KEY",keys.getPrivateKey().toString("base64url"));
     vi.stubEnv("VAPID_SUBJECT","mailto:fixture@example.invalid");
     expect((await parentTelegramInvitationStatus(db,1,1)).pushAvailable).toBe(false);
-    await db.query(`INSERT INTO communication_push_devices VALUES(1,1,'ACTIVE',$1,'fixture-session')`,
+    await db.query(`INSERT INTO communication_push_devices(user_id,school_id,status,subscription,session_id) VALUES(1,1,'ACTIVE',$1,'fixture-session')`,
       [JSON.stringify({endpoint:"https://fcm.googleapis.com/fixture",keys:{p256dh:keys.getPublicKey().toString("base64url"),auth:Buffer.alloc(16,9).toString("base64url")}})]);
     expect((await parentTelegramInvitationStatus(db,1,1)).pushAvailable).toBe(true);
-    const invitation=await tx(c=>createTelegramDirectoryInvitation(c,1,1,1));
+    await db.query(`UPDATE audit_logs SET metadata=jsonb_set(jsonb_set(metadata,'{controls,pushEnabled}','true'),
+      '{controls,pushParentIds}','[1]') WHERE event_type='PRODUCTION_DELIVERY_CONTROLS_UPDATED'`);
+    await db.query(`UPDATE schools SET communication_defaults=communication_defaults||'{"SYSTEM":["IN_APP","PUSH"]}'::jsonb
+      WHERE id=1`);
+    const invitation=await withOwnerNotificationScope(await loadOwnerDeliveryControls(db),
+      ()=>tx(c=>createTelegramDirectoryInvitation(c,1,1,1)));
     expect((await db.query("SELECT channel FROM communication_deliveries ORDER BY channel")).rows)
       .toEqual([{channel:"IN_APP"},{channel:"PUSH"}]);
     const notice=(await db.query("SELECT body,link FROM communication_notifications")).rows[0];

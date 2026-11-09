@@ -26,7 +26,7 @@ function parentSession(req:Request){
   return ctx.user.id;
 }
 function teacherSession(req:Request){
-  if(!ownerNotificationDevelopment())throw new AuthError(404,"Teacher Telegram is Development only");
+  if(!ownerNotificationDevelopment())throw new AuthError(404,"Teacher Telegram unavailable");
   const ctx=getUserContext(req);
   if(isOwner(req)||!ctx.roles.some(r=>r.role==="TEACHER"&&r.status==="ACTIVE"))
     throw new AuthError(403,"Authenticated teacher required");

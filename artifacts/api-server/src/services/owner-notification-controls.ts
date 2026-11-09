@@ -10,7 +10,12 @@ export type DeliveryControls={paused:boolean;smsEnabled:boolean;pushEnabled:bool
   pushParentIds:number[];version:number;activatedAt:string|null};
 export const disabledDeliveryControls=():DeliveryControls=>({paused:true,smsEnabled:false,pushEnabled:false,
   telegramEnabled:false,pushParentIds:[],version:0,activatedAt:null});
-export const ownerNotificationDevelopment=(env:NodeJS.ProcessEnv=process.env)=>env.NODE_ENV==="development"&&!env.REPLIT_DEPLOYMENT;
+// Historical helper name retained to keep this release limited to its existing
+// feature call sites. Production uses the same consent/selection/paused boundary.
+export const ownerNotificationDevelopment=(env:NodeJS.ProcessEnv=process.env)=>
+  env.NODE_ENV==="production"||(env.NODE_ENV==="development"&&!env.REPLIT_DEPLOYMENT);
+export const ownerDeliveryControlEventType=()=>process.env.NODE_ENV==="production"
+  ?"PRODUCTION_DELIVERY_CONTROLS_UPDATED":"DEVELOPMENT_DELIVERY_CONTROLS_UPDATED";
 const scope=new AsyncLocalStorage<DeliveryControls>();
 export const ownerNotificationScope=()=>ownerNotificationDevelopment()?scope.getStore():undefined;
 /** Only the isolated delivery worker enters this scope. Never used by financial jobs. */
@@ -22,8 +27,9 @@ export function ownerTransportAllowed(channel:"SMS"|"PUSH"|"TELEGRAM",userId?:nu
 }
 export async function loadOwnerDeliveryControls(db:Db):Promise<DeliveryControls>{
   const row=(await db.query(`SELECT id,metadata,"timestamp" AS created_at FROM audit_logs
-    WHERE module='OwnerNotificationDelivery' AND event_type='DEVELOPMENT_DELIVERY_CONTROLS_UPDATED'
-      AND role='PLATFORM_OWNER' AND school_id IS NULL AND result='SUCCESS' ORDER BY id DESC LIMIT 1`)).rows[0];
+    WHERE module='OwnerNotificationDelivery' AND event_type=$1
+      AND role='PLATFORM_OWNER' AND school_id IS NULL AND result='SUCCESS' ORDER BY id DESC LIMIT 1`,
+    [ownerDeliveryControlEventType()])).rows[0];
   if(!row)return disabledDeliveryControls();
   const parsed=deliveryControlInput.omit({expectedVersion:true,reason:true}).safeParse(row.metadata?.controls);
   if(!parsed.success)return disabledDeliveryControls();
