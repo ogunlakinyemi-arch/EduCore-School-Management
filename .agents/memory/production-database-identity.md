@@ -28,6 +28,13 @@ PITR. This is owner-provided UI evidence, not an API-verified runtime binding
 or a resource-bound isolated restore drill. It does not establish the current
 availability of any point on a later date.
 
+On 2026-11-09, new screenshots were inspected showing the selected Production
+Database's Settings with seven-day PITR and scheduled backup retention enabled
+and an observed recent backup, plus its Overview. Accept these as current
+owner-provided recovery UI evidence for that date. They do not expose the serving
+deployment's binding, establish a writable primary session or test restoration.
+Do not ask for the same backup-enabled screenshots again or call backups absent.
+
 **Why:** Deployment availability, database identity and backup recoverability
 are separate evidence requirements. A rolled-back Development schema rehearsal
 also does not test restoration of Production data.

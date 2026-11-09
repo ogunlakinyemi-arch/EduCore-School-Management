@@ -36,12 +36,20 @@ Read-only Production SQL returned:
 | Existing BRO tables | `bro_field_leads`, `bro_field_claims`, `bro_field_transfers` | Present |
 | Required guard functions | `0` | Missing |
 | Required protection triggers | `0` | Missing |
-| Current resource-bound recovery evidence | Not exposed through available metadata | **Not independently verified in this preflight** |
+| Recovery UI evidence received 2026-11-09 | Production Database Settings: PITR on for the last 7 days; scheduled backups on, kept 7 days; last backup 14 hours ago at capture | **Current UI recovery evidence inspected; runtime resource binding and primary execution remain separate** |
 
 Earlier Owner confirmations of Production binding/backups are documented and
-remain acknowledged. No new approval is being requested. The existing redacted
-confirmation/resource evidence and a currently available recovery point must be
-correlated with the serving app's actual primary before execution.
+remain acknowledged. No new approval is being requested. The supplied Settings
+screenshot supports configured recovery and an observed recent backup; it does
+not show a tested restoration or an individual backup identifier. The second
+screenshot shows the Production Database overview and tables, not the deployed
+application's database binding or a writable primary session. These are not
+reasons to call backups absent or ask for the same screenshots again.
+
+Still required before execution: correlate this Production resource with the
+serving app and establish an authorized, non-replica primary-console/platform
+execution path. Agent's available connection remains read-only. No Production
+DDL was attempted on the basis of these screenshots.
 
 ### Publish isolation check
 
@@ -124,8 +132,9 @@ Before release:
 
 1. Correlate the serving deployment's configured database with the exact
    Production primary resource; verify that connection is not a replica.
-2. Inspect the existing resource-bound recovery confirmation and current backup
-   or PITR point, including access and the applicable restore procedure.
+2. Use the inspected current recovery UI evidence and existing confirmation for
+   that same resource; confirm operator recovery access and the applicable restore
+   procedure. Do not repeat the request for backup-enabled screenshots.
 3. Have the authorized operator execute the exact reviewed SQL through the
    supported primary-console/platform path and inspect all four function bodies,
    trigger bindings and enablement afterward.
