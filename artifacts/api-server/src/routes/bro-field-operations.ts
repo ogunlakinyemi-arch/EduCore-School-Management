@@ -74,7 +74,7 @@ router.get("/bro-field/options",read(async(_req,res)=>{
     WHERE u.status='ACTIVE' AND EXISTS(SELECT 1 FROM partner_profiles p WHERE p.status='ACTIVE'
       AND (p.user_id=u.id OR EXISTS(SELECT 1 FROM partner_profile_users pu
         WHERE pu.partner_profile_id=p.id AND pu.user_id=u.id AND pu.status='ACTIVE'))) ORDER BY u.id`)).rows:[];
-  const conflicts=a.owner?(await pool.query(`SELECT actor_user_id AS "actorUserId",created_at AS "createdAt",
+  const conflicts=a.owner?(await pool.query(`SELECT actor_user_id AS "actorUserId","timestamp" AS "createdAt",
     metadata->'snapshot'->>'schoolName' AS "schoolName",
     (metadata->'snapshot'->>'leadId')::int AS "leadId",(metadata->'snapshot'->>'schoolId')::int AS "schoolId"
     FROM audit_logs WHERE module='BROFieldOperations' AND event_type='DUPLICATE_CONFLICT' ORDER BY id DESC LIMIT 100`)).rows:[];
@@ -82,7 +82,7 @@ router.get("/bro-field/options",read(async(_req,res)=>{
 }));
 router.get("/bro-field/leads/:id",read(async(req,res)=>{
   const lead=await broLeadAccess(pool,id(req.params.id),actor(res));
-  const history=(await pool.query(`SELECT actor_user_id AS "actorUserId",action,created_at AS "createdAt",
+  const history=(await pool.query(`SELECT actor_user_id AS "actorUserId",action,"timestamp" AS "createdAt",
     metadata->'snapshot' AS snapshot FROM audit_logs WHERE module='BROFieldOperations'
     AND metadata->>'leadId'=$1::int::text ORDER BY id DESC`,[lead.id])).rows;
   const transfers=(await pool.query("SELECT * FROM bro_field_transfers WHERE lead_id=$1 ORDER BY id DESC",[lead.id])).rows.map(broTransferView);

@@ -32,7 +32,7 @@ beforeAll(async()=>{
     CREATE TABLE school_memberships(user_id int,role text,status text);
     CREATE TABLE school_partner_attributions(school_id int,partner_profile_id int,status text);
     CREATE TABLE audit_logs(id serial PRIMARY KEY,actor_user_id int,"user" text NOT NULL,role text,action text,
-      module text,event_type text,result text,metadata jsonb,created_at timestamptz DEFAULT now());`);
+      module text,event_type text,result text,metadata jsonb,"timestamp" timestamptz NOT NULL DEFAULT now());`);
   await db.query(await readFile(new URL("../../../../lib/db/dev-reconciliation/bro-field-operations.sql",import.meta.url),"utf8"));
   const app=express().use(express.json()).use(router);
   server=await new Promise<any>(resolve=>{const s=app.listen(0,"127.0.0.1",()=>resolve(s));});
@@ -61,6 +61,35 @@ const input=(extra:any={})=>({schoolName:"Alpha Academy",address:"1 Example Road
 const call=(method:string,url:string,body?:any,user=1)=>fetch(base+url,{method,
   headers:{"content-type":"application/json","x-fixture-user":String(user)},...(body?{body:JSON.stringify(body)}:{})});
 const create=async(extra:any={},user=1)=>{const r=await call("POST","/leads",input(extra),user);expect(r.status).toBe(200);return r.json() as Promise<any>;};
+it("loads Owner and BRO options, lists and dated visit history with the real audit timestamp column",async()=>{
+  const lead=await create();
+  expect((await call("PUT",`/leads/${lead.id}`,input({notes:"Second visit"}))).status).toBe(200);
+  expect((await call("POST","/leads",input(),2)).status).toBe(409);
+  const saved=(await db.query(`SELECT action,"timestamp" FROM audit_logs ORDER BY id`)).rows;
+  for(const user of [1,3]){
+    const optionsResponse=await call("GET","/options",undefined,user);
+    expect(optionsResponse.status).toBe(200);
+    const options:any=await optionsResponse.json();
+    expect(options.isOwner).toBe(user===3);
+    expect(Array.isArray(options.schools)).toBe(true);
+    if(user===3){
+      expect(options.conflicts).toHaveLength(1);
+      expect(options.conflicts[0].createdAt).toBe(saved.find((r:any)=>r.action==="DUPLICATE_CONFLICT").timestamp.toISOString());
+    }else expect(options.conflicts).toEqual([]);
+    const listResponse=await call("GET","/leads",undefined,user);
+    expect(listResponse.status).toBe(200);
+    expect((await listResponse.json() as any[]).map(r=>r.id)).toEqual([lead.id]);
+    const detailResponse=await call("GET",`/leads/${lead.id}`,undefined,user);
+    expect(detailResponse.status).toBe(200);
+    const detail:any=await detailResponse.json();
+    expect(detail.history.map((h:any)=>h.action)).toEqual(["VISIT_UPDATED","LEAD_CREATED"]);
+    for(const h of detail.history){
+      expect(h.createdAt).toBe(saved.find((r:any)=>r.action===h.action).timestamp.toISOString());
+      expect(h).not.toHaveProperty("timestamp");
+    }
+    expect(detail.history.map((h:any)=>h.snapshot.notes)).toEqual(["Second visit","Development fixture only"]);
+  }
+});
 it("isolates BRO lists, details and edits; rejects arbitrary ownership fields",async()=>{
   const lead=await create();
   expect(await (await call("GET","/leads",undefined,2)).json()).toEqual([]);
