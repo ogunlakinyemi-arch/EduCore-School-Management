@@ -3,6 +3,7 @@ import {logger} from "../lib/logger";
 import {telegramApi,getTelegramHealth,telegramRuntimeEnabled,TelegramApiError} from "./telegram-provider";
 import {checkTelegramRuntimeHealth,acceptTelegramUpdate} from "./telegram-links";
 import {dispatchCommunicationDeliveries} from "./communication-service";
+import {ownerNotificationDevelopment} from "./owner-notification-controls";
 let running=false,lastHealth=0;
 /** Allowlisted categories only: never log provider bodies, URLs, tokens or chat IDs. */
 export function telegramPollFailure(error:unknown):string {
@@ -46,6 +47,8 @@ export async function telegramWorkerTick(){
         await db.query("UPDATE telegram_poll_state SET last_update_id=$1 WHERE id=1",[last]);
         await db.query(`UPDATE telegram_link_challenges SET pending_ciphertext=NULL,chat_hash=NULL
           WHERE expires_at<=now() AND pending_ciphertext IS NOT NULL`);
+        if(ownerNotificationDevelopment())await db.query(`UPDATE teacher_telegram_challenges
+          SET pending_ciphertext=NULL,chat_hash=NULL WHERE expires_at<=now() AND pending_ciphertext IS NOT NULL`);
         await db.query("COMMIT");
       }catch(error){await db.query("ROLLBACK");logger.warn({channel:"TELEGRAM",category:telegramPollFailure(error)},"Telegram linking temporarily unavailable");}
       finally{await db.query("SELECT pg_advisory_unlock(31971,1)");}

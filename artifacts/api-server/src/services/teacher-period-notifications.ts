@@ -56,7 +56,7 @@ export function periodNotices(period: Period, timezone: string, now: Date, dispa
       eventKey: `${teacherPeriodPrefix}${period.id}:${period.date}:${trigger}`,
       subject: trigger === "BEFORE" ? "Teaching period starts in five minutes" : "Teaching period ended",
       body: `${period.subject} · ${period.className}${period.section ? ` (${period.section})` : ""} · ${period.date} · ${time}. Scheduled ${trigger === "BEFORE" ? "start" : "end"}: ${trigger === "BEFORE" ? period.startTime.slice(0,5) : period.endTime.slice(0,5)}.`,
-      link: null, channels: ["IN_APP", "PUSH"] as Array<"IN_APP" | "PUSH">,
+      link: null, channels: ["IN_APP", "PUSH", "TELEGRAM"] as Array<"IN_APP" | "PUSH" | "TELEGRAM">,
       useSchoolDefaults: false,
     }];
   });

@@ -18,6 +18,7 @@ import {notificationText} from "@workspace/api-zod";
 import {loadOwnerDeliveryControls,ownerNotificationDevelopment,ownerNotificationScope,
   ownerDeliveryClaimSql,financialNotification,ownerTransportAllowed} from "./owner-notification-controls";
 import { teacherPeriodPrefix, teacherPeriodStillCurrent } from "./teacher-period-notifications";
+import {teacherTelegramRecipient} from "./teacher-telegram";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -436,6 +437,9 @@ export async function queueCommunicationNotification(
   // Explicit campaign selections may narrow, never expand, the effective set.
   let enabledChannels = input.useSchoolDefaults === false
     ? effective.filter(c => input.channels.includes(c)) : effective;
+  if(input.eventKey?.startsWith(teacherPeriodPrefix)&&enabledChannels.includes("TELEGRAM")
+    &&(input.schoolId===null||!await teacherTelegramRecipient(client,input.recipientUserId,input.schoolId)))
+    enabledChannels=enabledChannels.filter(c=>c!=="TELEGRAM");
   if (enabledChannels.includes("SMS")) {
     const consent = await client.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
       WHERE user_id=$1 AND category=$2 AND channel='SMS' AND (school_id=$3 OR school_id IS NULL)
@@ -1029,7 +1033,7 @@ export async function dispatchCommunicationDeliveries(
       continue;
     }
     if (record.eventKey?.startsWith(teacherPeriodPrefix)
-      && (delivery.channel !== "PUSH" || !await teacherPeriodStillCurrent(pool,record,now()))) {
+      && (!["PUSH","TELEGRAM"].includes(delivery.channel) || !await teacherPeriodStillCurrent(pool,record,now()))) {
       await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='TIMETABLE_CHANGED_OR_EXPIRED',
         last_error='Teacher period is no longer current',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
         [delivery.id,normalizedDate(now())]);
@@ -1091,7 +1095,9 @@ export async function dispatchCommunicationDeliveries(
       summary.failed++;continue;
     }
     const target = delivery.channel === "TELEGRAM"
-      ? await telegramRecipient(pool,Number(record.recipientUserId),record.schoolId===null?null:Number(record.schoolId),
+      ? record.eventKey?.startsWith(teacherPeriodPrefix)
+        ? record.schoolId===null?null:await teacherTelegramRecipient(pool,Number(record.recipientUserId),Number(record.schoolId))
+        : await telegramRecipient(pool,Number(record.recipientUserId),record.schoolId===null?null:Number(record.schoolId),
         record.subjectStudentId==null?null:Number(record.subjectStudentId),record.category)
       : delivery.channel === "SMS" ? record.phone : record.email;
     if(delivery.channel==="TELEGRAM"&&!target){
@@ -1120,7 +1126,7 @@ export async function dispatchCommunicationDeliveries(
     try {
       const providerResult = delivery.channel === "TELEGRAM"
         ? await telegramProvider!.send({to:target!,idempotencyKey:`communication-${record.notificationId}-telegram`,
-          body:record.subjectStudentId!=null?notificationText(`${record.subject??"School update"}\n${record.body}`).slice(0,4096)
+          body:record.subjectStudentId!=null||record.eventKey?.startsWith(teacherPeriodPrefix)?notificationText(`${record.subject??"School update"}\n${record.body}`).slice(0,4096)
             :`Yetenia EduCore: ${dispatchEvent.replaceAll("_"," ").toLowerCase()} update. Sign in to EduCore to view the details.`})
         : delivery.channel === "PUSH"
         ? await dispatchPushDevices(pool, record, pushProvider, options.pushSessionActive)

@@ -50,3 +50,4 @@ export * from "./deferred-partner-commissions";
 export * from "./partner-account-reapplications";
 export * from "./hosted-manual-payments";
 export * from "./payment-receipts";
+export * from "./teacher-telegram";

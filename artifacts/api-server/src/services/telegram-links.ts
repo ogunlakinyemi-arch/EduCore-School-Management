@@ -4,6 +4,7 @@ import {familyChildSchoolScope} from "../lib/family-child-school-scope";
 import {loadNotificationPolicy,allowedNotificationChannels,policyEvents} from "./notification-channel-policy";
 import {getTelegramHealth,refreshTelegramHealth} from "./telegram-provider";
 import {inspectTelegramStorage} from "./telegram-storage-readiness";
+import {acceptTeacherTelegramUpdate} from "./teacher-telegram";
 type Db={query:(sql:string,values?:any[])=>Promise<{rows:any[]}>};
 const key=(env:NodeJS.ProcessEnv)=> {
   if(!env.SESSION_SECRET||env.SESSION_SECRET.length<32)throw new Error("Telegram encryption unavailable");
@@ -94,6 +95,8 @@ export async function acceptTelegramUpdate(db:Db,update:any,env:NodeJS.ProcessEn
   if(!health.ready||message?.chat?.type!=="private"||!Number.isSafeInteger(message.chat.id)||message.chat.id<=0
     ||message.from?.id!==message.chat.id||message.from?.is_bot===true)return false;
   const chat=String(message.chat.id),hash=telegramChatHash(chat,env);
+  const teacherHandled=await acceptTeacherTelegramUpdate(db,message,env);
+  if(teacherHandled&&!/^\/(stop|unlink)$/.test(message.text??""))return true;
   if(message.contact){
     // Only a user's explicitly shared OWN contact is eligible for comparison.
     if(message.contact.user_id!==message.from.id)return false;
@@ -126,7 +129,7 @@ export async function acceptTelegramUpdate(db:Db,update:any,env:NodeJS.ProcessEn
         SELECT id,email,'PARENT','Telegram bot consent withdrawal','Communication','TELEGRAM_CONSENT_WITHDRAWN','SUCCESS','{}'::jsonb
         FROM app_users WHERE id=$1`,[owner.user_id]);
     }
-    return owners.length>0;
+    return owners.length>0||teacherHandled;
   }
   const token=/^\/(?:start|link) ([A-Za-z0-9_-]{43})$/.exec(message.text)?.[1];if(!token)return false;
   const row=(await db.query(`SELECT id,parent_id AS "parentId",school_id AS "schoolId" FROM telegram_link_challenges

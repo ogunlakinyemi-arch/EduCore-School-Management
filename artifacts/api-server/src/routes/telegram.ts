@@ -9,6 +9,8 @@ import {parentTelegramInvitationStatus,telegramDirectoryParent,createTelegramDir
 import {dispatchCommunicationDeliveries} from "../services/communication-service";
 import {logger} from "../lib/logger";
 import {inspectTelegramStorage} from "../services/telegram-storage-readiness";
+import {createTeacherTelegramChallenge,confirmTeacherTelegramLink,revokeTeacherTelegramLink,teacherTelegramStatus} from "../services/teacher-telegram";
+import {ownerNotificationDevelopment} from "../services/owner-notification-controls";
 const router=Router();
 router.use(requireAuthentication());
 const run=(fn:(req:Request,res:any)=>Promise<void>)=>(req:Request,res:any,next:any)=>{void fn(req,res).catch(e=>{
@@ -21,6 +23,13 @@ const isOwner=(req:Request)=>getUserContext(req).roles.some(r=>r.role==="PLATFOR
 function parentSession(req:Request){
   const ctx=getUserContext(req);
   if(isOwner(req)||!ctx.roles.some(r=>r.role==="PARENT"&&r.status==="ACTIVE"))throw new AuthError(403,"Authenticated parent only");
+  return ctx.user.id;
+}
+function teacherSession(req:Request){
+  if(!ownerNotificationDevelopment())throw new AuthError(404,"Teacher Telegram is Development only");
+  const ctx=getUserContext(req);
+  if(isOwner(req)||!ctx.roles.some(r=>r.role==="TEACHER"&&r.status==="ACTIVE"))
+    throw new AuthError(403,"Authenticated teacher required");
   return ctx.user.id;
 }
 function sameOrigin(req:Request){
@@ -47,7 +56,11 @@ async function transaction(userId:number,fn:(db:any)=>Promise<any>){
   }catch(e){await db.query("ROLLBACK");throw e;}finally{db.release();}
 }
 router.get("/status",run(async(req,res)=>{
-  const {schoolId}=z.object({schoolId:z.coerce.number().int().positive().optional()}).strict().parse(req.query);
+  const {schoolId,audience}=z.object({schoolId:z.coerce.number().int().positive().optional(),
+    audience:z.literal("TEACHER").optional()}).strict().parse(req.query);
+  if(audience==="TEACHER"){
+    res.set("Cache-Control","no-store").json(await teacherTelegramStatus(pool,teacherSession(req),schoolId));return;
+  }
   const h=getTelegramHealth(),{botId:_botId,...safe}=h,userId=getUserContext(req).user.id;
   let eligible=false,parent:any=null;
   if(schoolId&&!isOwner(req)&&getUserContext(req).roles.some(r=>r.role==="PARENT"&&r.status==="ACTIVE")){
@@ -101,8 +114,13 @@ router.post("/health",run(async(req,res)=>{
     policyAllowed:false,pending:false,pendingAccountLabel:null});
 }));
 router.post("/link",run(async(req,res)=>{
-  sameOrigin(req);const userId=parentSession(req);
-  const q=z.object({schoolId:z.number().int().positive(),consent:z.literal(true)}).strict().parse(req.body);
+  sameOrigin(req);
+  const q=z.object({schoolId:z.number().int().positive(),consent:z.literal(true),audience:z.literal("TEACHER").optional()}).strict().parse(req.body);
+  if(q.audience==="TEACHER"){
+    const userId=teacherSession(req);
+    res.set("Cache-Control","no-store").json(await transaction(userId,db=>createTeacherTelegramChallenge(db,userId,q.schoolId)));return;
+  }
+  const userId=parentSession(req);
   const result=await transaction(userId,async db=>{
     const result=await createParentTelegramChallenge(db,userId,q.schoolId);
     await audit(db,userId,q.schoolId,"TELEGRAM_LINK_REQUESTED");return result;
@@ -110,8 +128,14 @@ router.post("/link",run(async(req,res)=>{
   res.set("Cache-Control","no-store").json(result);
 }));
 router.post("/link/confirm",run(async(req,res)=>{
-  sameOrigin(req);const userId=parentSession(req);
-  const q=z.object({schoolId:z.number().int().positive(),consent:z.literal(true)}).strict().parse(req.body);
+  sameOrigin(req);
+  const q=z.object({schoolId:z.number().int().positive(),consent:z.literal(true),audience:z.literal("TEACHER").optional()}).strict().parse(req.body);
+  if(q.audience==="TEACHER"){
+    const userId=teacherSession(req);
+    await transaction(userId,db=>confirmTeacherTelegramLink(db,userId,q.schoolId));
+    res.set("Cache-Control","no-store").json({linked:true});return;
+  }
+  const userId=parentSession(req);
   await transaction(userId,async db=>{
     await confirmParentTelegramLink(db,userId,q.schoolId);
     await audit(db,userId,q.schoolId,"TELEGRAM_ACCOUNT_LINKED");
@@ -120,6 +144,11 @@ router.post("/link/confirm",run(async(req,res)=>{
 }));
 router.delete("/link",run(async(req,res)=>{
   sameOrigin(req);const userId=getUserContext(req).user.id;
+  const {audience}=z.object({audience:z.literal("TEACHER").optional()}).strict().parse(req.query);
+  if(audience==="TEACHER"){
+    await transaction(userId,db=>revokeTeacherTelegramLink(db,userId));
+    res.set("Cache-Control","no-store").json({unlinked:true});return;
+  }
   await transaction(userId,async db=>{
     await revokeParentTelegramLink(db,userId);await audit(db,userId,null,"TELEGRAM_CONSENT_WITHDRAWN");
   });
