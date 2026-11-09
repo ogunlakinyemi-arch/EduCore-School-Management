@@ -1,0 +1,186 @@
+paths:
+  /bro-field/leads:
+    get:
+      operationId: listBroFieldLeads
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string}}
+        - {name: ownerId, in: query, schema: {type: integer}}
+        - {name: followUp, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: Development-only own leads or Owner oversight.
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/BroFieldLead"}}
+    post:
+      operationId: createBroFieldLead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BroFieldLeadInput"}
+      responses:
+        "200":
+          description: Created lead, never a new school or commission.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BroFieldLead"}
+  /bro-field/leads/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer}}
+    get:
+      operationId: getBroFieldLead
+      responses:
+        "200":
+          description: Authorized record and immutable visit/transfer history.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BroFieldDetail"}
+    put:
+      operationId: updateBroFieldLead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BroFieldLeadInput"}
+      responses:
+        "200":
+          description: Version-safe own-record update.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BroFieldLead"}
+  /bro-field/options:
+    get:
+      operationId: getBroFieldOptions
+      responses:
+        "200":
+          description: Nonfinancial school references and Owner-only BRO directory/conflicts.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BroFieldOptions"}
+  /bro-field/leads/{id}/transfers:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer}}
+    post:
+      operationId: requestBroFieldTransfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BroFieldTransferInput"}
+      responses:
+        "200":
+          description: Pending request; ownership does not change.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BroFieldTransfer"}
+  /bro-field/transfers/{id}/decision:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer}}
+    post:
+      operationId: decideBroFieldTransfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BroFieldDecisionInput"}
+      responses:
+        "200":
+          description: Owner decision with mandatory reason.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BroFieldTransfer"}
+components:
+  schemas:
+    BroFieldLeadInput:
+      type: object
+      required: [schoolName, address, visitDate, personMet, notes, interestLevel, status, expectedVersion]
+      properties:
+        schoolName: {type: string}
+        address: {type: string}
+        contactPerson: {type: [string, "null"]}
+        contactPhone: {type: [string, "null"]}
+        visitDate: {type: string}
+        personMet: {type: string}
+        notes: {type: string}
+        interestLevel: {type: string, enum: [Unknown, Low, Medium, High]}
+        status: {type: string, enum: [Visited, Interested, Demo Scheduled, Negotiation, Adopted, Not Interested, Follow-up]}
+        nextFollowUpDate: {type: [string, "null"]}
+        schoolId: {type: [integer, "null"]}
+        expectedVersion: {type: integer}
+    BroFieldLead:
+      allOf:
+        - {$ref: "#/components/schemas/BroFieldLeadInput"}
+        - type: object
+          required: [id, originalOwnerId, currentOwnerId, version, createdAt, updatedAt]
+          properties:
+            id: {type: integer}
+            originalOwnerId: {type: integer}
+            currentOwnerId: {type: [integer, "null"]}
+            version: {type: integer}
+            createdAt: {type: string}
+            updatedAt: {type: string}
+    BroFieldTransferInput:
+      type: object
+      required: [targetOwnerId, reason]
+      properties:
+        targetOwnerId: {type: [integer, "null"]}
+        reason: {type: string, minLength: 5, maxLength: 500}
+    BroFieldDecisionInput:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: {type: string, enum: [APPROVED, REJECTED]}
+        reason: {type: string, minLength: 5, maxLength: 500}
+    BroFieldTransfer:
+      type: object
+      required: [id, leadId, fromOwnerId, targetOwnerId, status, reason, decisionReason, decidedBy, createdAt]
+      properties:
+        id: {type: integer}
+        leadId: {type: integer}
+        fromOwnerId: {type: [integer, "null"]}
+        targetOwnerId: {type: [integer, "null"]}
+        status: {type: string}
+        reason: {type: string}
+        decisionReason: {type: [string, "null"]}
+        decidedBy: {type: [integer, "null"]}
+        createdAt: {type: string}
+    BroFieldHistory:
+      type: object
+      required: [actorUserId, action, createdAt, snapshot]
+      properties:
+        actorUserId: {type: integer}
+        action: {type: string}
+        createdAt: {type: string}
+        snapshot: {type: object, additionalProperties: true}
+    BroFieldDetail:
+      type: object
+      required: [lead, history, transfers]
+      properties:
+        lead: {$ref: "#/components/schemas/BroFieldLead"}
+        history: {type: array, items: {$ref: "#/components/schemas/BroFieldHistory"}}
+        transfers: {type: array, items: {$ref: "#/components/schemas/BroFieldTransfer"}}
+    BroFieldReference:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+    BroFieldConflict:
+      type: object
+      required: [actorUserId, createdAt, schoolName, leadId, schoolId]
+      properties:
+        actorUserId: {type: integer}
+        createdAt: {type: string}
+        schoolName: {type: string}
+        leadId: {type: [integer, "null"]}
+        schoolId: {type: [integer, "null"]}
+    BroFieldOptions:
+      type: object
+      required: [isOwner, schools, bros, conflicts]
+      properties:
+        isOwner: {type: boolean}
+        schools: {type: array, items: {$ref: "#/components/schemas/BroFieldReference"}}
+        bros: {type: array, items: {$ref: "#/components/schemas/BroFieldReference"}}
+        conflicts: {type: array, items: {$ref: "#/components/schemas/BroFieldConflict"}}

@@ -8,6 +8,237 @@
 import * as zod from 'zod';
 
 
+export const ListBroFieldLeadsQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional(),
+  "ownerId": zod.coerce.number().int().optional(),
+  "followUp": zod.coerce.string().optional()
+})
+
+export const ListBroFieldLeadsResponseItem = zod.object({
+  "schoolName": zod.string(),
+  "address": zod.string(),
+  "contactPerson": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "visitDate": zod.string(),
+  "personMet": zod.string(),
+  "notes": zod.string(),
+  "interestLevel": zod.enum(['Unknown', 'Low', 'Medium', 'High']),
+  "status": zod.enum(['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up']),
+  "nextFollowUpDate": zod.string().nullish(),
+  "schoolId": zod.number().int().nullish(),
+  "expectedVersion": zod.number().int()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "originalOwnerId": zod.number().int(),
+  "currentOwnerId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+export const ListBroFieldLeadsResponse = zod.array(ListBroFieldLeadsResponseItem)
+
+
+export const CreateBroFieldLeadBody = zod.object({
+  "schoolName": zod.string(),
+  "address": zod.string(),
+  "contactPerson": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "visitDate": zod.string(),
+  "personMet": zod.string(),
+  "notes": zod.string(),
+  "interestLevel": zod.enum(['Unknown', 'Low', 'Medium', 'High']),
+  "status": zod.enum(['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up']),
+  "nextFollowUpDate": zod.string().nullish(),
+  "schoolId": zod.number().int().nullish(),
+  "expectedVersion": zod.number().int()
+})
+
+export const CreateBroFieldLeadResponse = zod.object({
+  "schoolName": zod.string(),
+  "address": zod.string(),
+  "contactPerson": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "visitDate": zod.string(),
+  "personMet": zod.string(),
+  "notes": zod.string(),
+  "interestLevel": zod.enum(['Unknown', 'Low', 'Medium', 'High']),
+  "status": zod.enum(['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up']),
+  "nextFollowUpDate": zod.string().nullish(),
+  "schoolId": zod.number().int().nullish(),
+  "expectedVersion": zod.number().int()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "originalOwnerId": zod.number().int(),
+  "currentOwnerId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+
+
+export const GetBroFieldLeadParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetBroFieldLeadResponse = zod.object({
+  "lead": zod.object({
+  "schoolName": zod.string(),
+  "address": zod.string(),
+  "contactPerson": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "visitDate": zod.string(),
+  "personMet": zod.string(),
+  "notes": zod.string(),
+  "interestLevel": zod.enum(['Unknown', 'Low', 'Medium', 'High']),
+  "status": zod.enum(['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up']),
+  "nextFollowUpDate": zod.string().nullish(),
+  "schoolId": zod.number().int().nullish(),
+  "expectedVersion": zod.number().int()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "originalOwnerId": zod.number().int(),
+  "currentOwnerId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "history": zod.array(zod.object({
+  "actorUserId": zod.number().int(),
+  "action": zod.string(),
+  "createdAt": zod.string(),
+  "snapshot": zod.record(zod.string(), zod.unknown())
+})),
+  "transfers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "leadId": zod.number().int(),
+  "fromOwnerId": zod.number().int().nullable(),
+  "targetOwnerId": zod.number().int().nullable(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "decisionReason": zod.string().nullable(),
+  "decidedBy": zod.number().int().nullable(),
+  "createdAt": zod.string()
+}))
+})
+
+
+export const UpdateBroFieldLeadParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateBroFieldLeadBody = zod.object({
+  "schoolName": zod.string(),
+  "address": zod.string(),
+  "contactPerson": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "visitDate": zod.string(),
+  "personMet": zod.string(),
+  "notes": zod.string(),
+  "interestLevel": zod.enum(['Unknown', 'Low', 'Medium', 'High']),
+  "status": zod.enum(['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up']),
+  "nextFollowUpDate": zod.string().nullish(),
+  "schoolId": zod.number().int().nullish(),
+  "expectedVersion": zod.number().int()
+})
+
+export const UpdateBroFieldLeadResponse = zod.object({
+  "schoolName": zod.string(),
+  "address": zod.string(),
+  "contactPerson": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "visitDate": zod.string(),
+  "personMet": zod.string(),
+  "notes": zod.string(),
+  "interestLevel": zod.enum(['Unknown', 'Low', 'Medium', 'High']),
+  "status": zod.enum(['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up']),
+  "nextFollowUpDate": zod.string().nullish(),
+  "schoolId": zod.number().int().nullish(),
+  "expectedVersion": zod.number().int()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "originalOwnerId": zod.number().int(),
+  "currentOwnerId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+
+
+export const GetBroFieldOptionsResponse = zod.object({
+  "isOwner": zod.boolean(),
+  "schools": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "bros": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "conflicts": zod.array(zod.object({
+  "actorUserId": zod.number().int(),
+  "createdAt": zod.string(),
+  "schoolName": zod.string(),
+  "leadId": zod.number().int().nullable(),
+  "schoolId": zod.number().int().nullable()
+}))
+})
+
+
+export const RequestBroFieldTransferParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const requestBroFieldTransferBodyReasonMin = 5;
+export const requestBroFieldTransferBodyReasonMax = 500;
+
+
+
+export const RequestBroFieldTransferBody = zod.object({
+  "targetOwnerId": zod.number().int().nullable(),
+  "reason": zod.string().min(requestBroFieldTransferBodyReasonMin).max(requestBroFieldTransferBodyReasonMax)
+})
+
+export const RequestBroFieldTransferResponse = zod.object({
+  "id": zod.number().int(),
+  "leadId": zod.number().int(),
+  "fromOwnerId": zod.number().int().nullable(),
+  "targetOwnerId": zod.number().int().nullable(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "decisionReason": zod.string().nullable(),
+  "decidedBy": zod.number().int().nullable(),
+  "createdAt": zod.string()
+})
+
+
+export const DecideBroFieldTransferParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const decideBroFieldTransferBodyReasonMin = 5;
+export const decideBroFieldTransferBodyReasonMax = 500;
+
+
+
+export const DecideBroFieldTransferBody = zod.object({
+  "decision": zod.enum(['APPROVED', 'REJECTED']),
+  "reason": zod.string().min(decideBroFieldTransferBodyReasonMin).max(decideBroFieldTransferBodyReasonMax)
+})
+
+export const DecideBroFieldTransferResponse = zod.object({
+  "id": zod.number().int(),
+  "leadId": zod.number().int(),
+  "fromOwnerId": zod.number().int().nullable(),
+  "targetOwnerId": zod.number().int().nullable(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "decisionReason": zod.string().nullable(),
+  "decidedBy": zod.number().int().nullable(),
+  "createdAt": zod.string()
+})
+
+
 /**
  * @summary Database-backed readiness, separate from process liveness
  */

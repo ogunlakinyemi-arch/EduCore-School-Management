@@ -50,6 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import NotFound from '@/pages/not-found';
 import { PartnerNfcOwnerControl } from '@/pages/partner/nfc-owner-control';
+import FieldOperationsPage from '@/pages/partner/field-operations';
 import TermCommissionsPage from '@/pages/partner/term-commissions';
 import { clearPayoutDraft, readPayoutDraft, savePayoutDraft, type PayoutDraft } from '@/lib/partner-payout-retry';
 
@@ -1083,6 +1084,13 @@ export default function PartnerManagement() {
             Attribution Conflicts
           </button>
         </Link>
+        {import.meta.env.DEV && (
+          <Link href="/partners/field-operations">
+            <button data-testid="link-owner-field-operations" className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/field-operations' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
+              Field Operations
+            </button>
+          </Link>
+        )}
         {isOwner && import.meta.env.DEV && (
           <Link href="/partners/live-readiness">
             <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/live-readiness' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
@@ -1098,6 +1106,7 @@ export default function PartnerManagement() {
         <Route path="/partners/payouts" component={PayoutsOverview} />
         <Route path="/partners/conflicts" component={AttributionConflicts} />
         <Route path="/partners/live-readiness" component={LiveReadinessPage} />
+        <Route path="/partners/field-operations" component={FieldOperationsPage} />
         <Route path="/partners/:id">
           {params => <PartnerDetail id={Number(params.id)} />}
         </Route>

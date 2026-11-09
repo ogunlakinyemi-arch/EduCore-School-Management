@@ -13740,6 +13740,138 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type BroFieldLeadInputInterestLevel = typeof BroFieldLeadInputInterestLevel[keyof typeof BroFieldLeadInputInterestLevel];
+
+
+export const BroFieldLeadInputInterestLevel = {
+  Unknown: 'Unknown',
+  Low: 'Low',
+  Medium: 'Medium',
+  High: 'High',
+} as const;
+
+export type BroFieldLeadInputStatus = typeof BroFieldLeadInputStatus[keyof typeof BroFieldLeadInputStatus];
+
+
+export const BroFieldLeadInputStatus = {
+  Visited: 'Visited',
+  Interested: 'Interested',
+  Demo_Scheduled: 'Demo Scheduled',
+  Negotiation: 'Negotiation',
+  Adopted: 'Adopted',
+  Not_Interested: 'Not Interested',
+  'Follow-up': 'Follow-up',
+} as const;
+
+export interface BroFieldLeadInput {
+  schoolName: string;
+  address: string;
+  /** @nullable */
+  contactPerson?: string | null;
+  /** @nullable */
+  contactPhone?: string | null;
+  visitDate: string;
+  personMet: string;
+  notes: string;
+  interestLevel: BroFieldLeadInputInterestLevel;
+  status: BroFieldLeadInputStatus;
+  /** @nullable */
+  nextFollowUpDate?: string | null;
+  /** @nullable */
+  schoolId?: number | null;
+  expectedVersion: number;
+}
+
+export type BroFieldLead = BroFieldLeadInput & ({
+  id: number;
+  originalOwnerId: number;
+  /** @nullable */
+  currentOwnerId: number | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+});
+
+export interface BroFieldTransferInput {
+  /** @nullable */
+  targetOwnerId: number | null;
+  /**
+     * @minLength 5
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type BroFieldDecisionInputDecision = typeof BroFieldDecisionInputDecision[keyof typeof BroFieldDecisionInputDecision];
+
+
+export const BroFieldDecisionInputDecision = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface BroFieldDecisionInput {
+  decision: BroFieldDecisionInputDecision;
+  /**
+     * @minLength 5
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface BroFieldTransfer {
+  id: number;
+  leadId: number;
+  /** @nullable */
+  fromOwnerId: number | null;
+  /** @nullable */
+  targetOwnerId: number | null;
+  status: string;
+  reason: string;
+  /** @nullable */
+  decisionReason: string | null;
+  /** @nullable */
+  decidedBy: number | null;
+  createdAt: string;
+}
+
+export type BroFieldHistorySnapshot = { [key: string]: unknown };
+
+export interface BroFieldHistory {
+  actorUserId: number;
+  action: string;
+  createdAt: string;
+  snapshot: BroFieldHistorySnapshot;
+}
+
+export interface BroFieldDetail {
+  lead: BroFieldLead;
+  history: BroFieldHistory[];
+  transfers: BroFieldTransfer[];
+}
+
+export interface BroFieldReference {
+  id: number;
+  name: string;
+}
+
+export interface BroFieldConflict {
+  actorUserId: number;
+  createdAt: string;
+  schoolName: string;
+  /** @nullable */
+  leadId: number | null;
+  /** @nullable */
+  schoolId: number | null;
+}
+
+export interface BroFieldOptions {
+  isOwner: boolean;
+  schools: BroFieldReference[];
+  bros: BroFieldReference[];
+  conflicts: BroFieldConflict[];
+}
+
 export type DatabaseReadinessDependency = typeof DatabaseReadinessDependency[keyof typeof DatabaseReadinessDependency];
 
 
@@ -24461,6 +24593,13 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type ListBroFieldLeadsParams = {
+q?: string;
+status?: string;
+ownerId?: number;
+followUp?: string;
+};
 
 export type GetMyStudentPlatformAccess200StudentsItemStatus = typeof GetMyStudentPlatformAccess200StudentsItemStatus[keyof typeof GetMyStudentPlatformAccess200StudentsItemStatus];
 

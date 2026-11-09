@@ -127,6 +127,13 @@ import type {
   BiometricEnrollment,
   BiometricEnrollmentInput,
   BiometricProviderEventInput,
+  BroFieldDecisionInput,
+  BroFieldDetail,
+  BroFieldLead,
+  BroFieldLeadInput,
+  BroFieldOptions,
+  BroFieldTransfer,
+  BroFieldTransferInput,
   BulkAssignFeeStructureParams,
   CampusPresencePage,
   CancelNfcPaymentLink200,
@@ -476,6 +483,7 @@ import type {
   ListAdmissionApplicationsParams,
   ListAttendanceDiscrepanciesParams,
   ListAuditLogsParams,
+  ListBroFieldLeadsParams,
   ListCardReplacementsParams,
   ListCardsParams,
   ListChildAcademicAssignmentsParams,
@@ -1013,6 +1021,557 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListBroFieldLeadsUrl = (params?: ListBroFieldLeadsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/bro-field/leads?${stringifiedParams}` : `/api/bro-field/leads`
+}
+
+export const listBroFieldLeads = async (params?: ListBroFieldLeadsParams, options?: Parameters<typeof customFetch>[1]): Promise<BroFieldLead[]> => {
+
+  return customFetch<BroFieldLead[]>(getListBroFieldLeadsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBroFieldLeadsQueryKey = (params?: ListBroFieldLeadsParams,) => {
+    return [
+    `/api/bro-field/leads`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListBroFieldLeadsQueryOptions = <TData = Awaited<ReturnType<typeof listBroFieldLeads>>, TError = ErrorType<unknown>>(params?: ListBroFieldLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBroFieldLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBroFieldLeadsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBroFieldLeads>>> = ({ signal }) => listBroFieldLeads(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBroFieldLeads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBroFieldLeadsQueryResult = NonNullable<Awaited<ReturnType<typeof listBroFieldLeads>>>
+export type ListBroFieldLeadsQueryError = ErrorType<unknown>
+
+
+
+export function useListBroFieldLeads<TData = Awaited<ReturnType<typeof listBroFieldLeads>>, TError = ErrorType<unknown>>(
+ params?: ListBroFieldLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBroFieldLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBroFieldLeadsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBroFieldLeadUrl = () => {
+
+
+
+
+  return `/api/bro-field/leads`
+}
+
+export const createBroFieldLead = async (broFieldLeadInput: BroFieldLeadInput, options?: Parameters<typeof customFetch>[1]): Promise<BroFieldLead> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BroFieldLead>(getCreateBroFieldLeadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(broFieldLeadInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBroFieldLeadMutationKey = () => ['createBroFieldLead'] as const;
+
+export const getCreateBroFieldLeadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBroFieldLead>>, TError,CreateBroFieldLeadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBroFieldLead>>, TError,CreateBroFieldLeadMutationVariables, TContext> => {
+
+const mutationKey = getCreateBroFieldLeadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBroFieldLead>>, CreateBroFieldLeadMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBroFieldLead(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBroFieldLeadMutationResult = NonNullable<Awaited<ReturnType<typeof createBroFieldLead>>>
+    export type CreateBroFieldLeadMutationBody = BodyType<BroFieldLeadInput>
+    export type CreateBroFieldLeadMutationError = ErrorType<unknown>
+    export type CreateBroFieldLeadMutationVariables = {data: BodyType<BroFieldLeadInput>}
+
+    export const useCreateBroFieldLead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBroFieldLead>>, TError,CreateBroFieldLeadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBroFieldLead>>,
+        TError,
+        CreateBroFieldLeadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateBroFieldLeadMutationOptions(options));
+    }
+
+export const getGetBroFieldLeadUrl = (id: number,) => {
+
+
+
+
+  return `/api/bro-field/leads/${id}`
+}
+
+export const getBroFieldLead = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<BroFieldDetail> => {
+
+  return customFetch<BroFieldDetail>(getGetBroFieldLeadUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBroFieldLeadQueryKey = (id: number,) => {
+    return [
+    `/api/bro-field/leads/${id}`
+    ] as const;
+    }
+
+
+export const getGetBroFieldLeadQueryOptions = <TData = Awaited<ReturnType<typeof getBroFieldLead>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBroFieldLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBroFieldLeadQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBroFieldLead>>> = ({ signal }) => getBroFieldLead(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBroFieldLead>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBroFieldLeadQueryResult = NonNullable<Awaited<ReturnType<typeof getBroFieldLead>>>
+export type GetBroFieldLeadQueryError = ErrorType<unknown>
+
+
+
+export function useGetBroFieldLead<TData = Awaited<ReturnType<typeof getBroFieldLead>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBroFieldLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBroFieldLeadQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBroFieldLeadUrl = (id: number,) => {
+
+
+
+
+  return `/api/bro-field/leads/${id}`
+}
+
+export const updateBroFieldLead = async (id: number,
+    broFieldLeadInput: BroFieldLeadInput, options?: Parameters<typeof customFetch>[1]): Promise<BroFieldLead> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BroFieldLead>(getUpdateBroFieldLeadUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(broFieldLeadInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateBroFieldLeadMutationKey = () => ['updateBroFieldLead'] as const;
+
+export const getUpdateBroFieldLeadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBroFieldLead>>, TError,UpdateBroFieldLeadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBroFieldLead>>, TError,UpdateBroFieldLeadMutationVariables, TContext> => {
+
+const mutationKey = getUpdateBroFieldLeadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBroFieldLead>>, UpdateBroFieldLeadMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBroFieldLead(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBroFieldLeadMutationResult = NonNullable<Awaited<ReturnType<typeof updateBroFieldLead>>>
+    export type UpdateBroFieldLeadMutationBody = BodyType<BroFieldLeadInput>
+    export type UpdateBroFieldLeadMutationError = ErrorType<unknown>
+    export type UpdateBroFieldLeadMutationVariables = {id: number;data: BodyType<BroFieldLeadInput>}
+
+    export const useUpdateBroFieldLead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBroFieldLead>>, TError,UpdateBroFieldLeadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBroFieldLead>>,
+        TError,
+        UpdateBroFieldLeadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateBroFieldLeadMutationOptions(options));
+    }
+
+export const getGetBroFieldOptionsUrl = () => {
+
+
+
+
+  return `/api/bro-field/options`
+}
+
+export const getBroFieldOptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<BroFieldOptions> => {
+
+  return customFetch<BroFieldOptions>(getGetBroFieldOptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBroFieldOptionsQueryKey = () => {
+    return [
+    `/api/bro-field/options`
+    ] as const;
+    }
+
+
+export const getGetBroFieldOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getBroFieldOptions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBroFieldOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBroFieldOptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBroFieldOptions>>> = ({ signal }) => getBroFieldOptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBroFieldOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBroFieldOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getBroFieldOptions>>>
+export type GetBroFieldOptionsQueryError = ErrorType<unknown>
+
+
+
+export function useGetBroFieldOptions<TData = Awaited<ReturnType<typeof getBroFieldOptions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBroFieldOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBroFieldOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestBroFieldTransferUrl = (id: number,) => {
+
+
+
+
+  return `/api/bro-field/leads/${id}/transfers`
+}
+
+export const requestBroFieldTransfer = async (id: number,
+    broFieldTransferInput: BroFieldTransferInput, options?: Parameters<typeof customFetch>[1]): Promise<BroFieldTransfer> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BroFieldTransfer>(getRequestBroFieldTransferUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(broFieldTransferInput)
+  }
+);}
+
+
+
+
+
+export const getRequestBroFieldTransferMutationKey = () => ['requestBroFieldTransfer'] as const;
+
+export const getRequestBroFieldTransferMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestBroFieldTransfer>>, TError,RequestBroFieldTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestBroFieldTransfer>>, TError,RequestBroFieldTransferMutationVariables, TContext> => {
+
+const mutationKey = getRequestBroFieldTransferMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestBroFieldTransfer>>, RequestBroFieldTransferMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  requestBroFieldTransfer(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestBroFieldTransferMutationResult = NonNullable<Awaited<ReturnType<typeof requestBroFieldTransfer>>>
+    export type RequestBroFieldTransferMutationBody = BodyType<BroFieldTransferInput>
+    export type RequestBroFieldTransferMutationError = ErrorType<unknown>
+    export type RequestBroFieldTransferMutationVariables = {id: number;data: BodyType<BroFieldTransferInput>}
+
+    export const useRequestBroFieldTransfer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestBroFieldTransfer>>, TError,RequestBroFieldTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestBroFieldTransfer>>,
+        TError,
+        RequestBroFieldTransferMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestBroFieldTransferMutationOptions(options));
+    }
+
+export const getDecideBroFieldTransferUrl = (id: number,) => {
+
+
+
+
+  return `/api/bro-field/transfers/${id}/decision`
+}
+
+export const decideBroFieldTransfer = async (id: number,
+    broFieldDecisionInput: BroFieldDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<BroFieldTransfer> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BroFieldTransfer>(getDecideBroFieldTransferUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(broFieldDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideBroFieldTransferMutationKey = () => ['decideBroFieldTransfer'] as const;
+
+export const getDecideBroFieldTransferMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideBroFieldTransfer>>, TError,DecideBroFieldTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideBroFieldTransfer>>, TError,DecideBroFieldTransferMutationVariables, TContext> => {
+
+const mutationKey = getDecideBroFieldTransferMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideBroFieldTransfer>>, DecideBroFieldTransferMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  decideBroFieldTransfer(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideBroFieldTransferMutationResult = NonNullable<Awaited<ReturnType<typeof decideBroFieldTransfer>>>
+    export type DecideBroFieldTransferMutationBody = BodyType<BroFieldDecisionInput>
+    export type DecideBroFieldTransferMutationError = ErrorType<unknown>
+    export type DecideBroFieldTransferMutationVariables = {id: number;data: BodyType<BroFieldDecisionInput>}
+
+    export const useDecideBroFieldTransfer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideBroFieldTransfer>>, TError,DecideBroFieldTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideBroFieldTransfer>>,
+        TError,
+        DecideBroFieldTransferMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideBroFieldTransferMutationOptions(options));
+    }
 
 export const getGetDatabaseReadinessUrl = () => {
 

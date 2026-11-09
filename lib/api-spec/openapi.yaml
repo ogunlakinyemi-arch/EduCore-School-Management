@@ -43,6 +43,16 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /bro-field/leads:
+    $ref: "./bro-field.yaml#/paths/~1bro-field~1leads"
+  /bro-field/leads/{id}:
+    $ref: "./bro-field.yaml#/paths/~1bro-field~1leads~1{id}"
+  /bro-field/options:
+    $ref: "./bro-field.yaml#/paths/~1bro-field~1options"
+  /bro-field/leads/{id}/transfers:
+    $ref: "./bro-field.yaml#/paths/~1bro-field~1leads~1{id}~1transfers"
+  /bro-field/transfers/{id}/decision:
+    $ref: "./bro-field.yaml#/paths/~1bro-field~1transfers~1{id}~1decision"
   /readyz:
     $ref: "./pilot-readiness.yaml#/paths/~1readyz"
   /platform/pilot-readiness:

@@ -110,6 +110,7 @@
 - [NFC discovery policy](nfc-discovery-policy.md) — discover received school scans without changing working hardware mode, keys or attendance eligibility.
 - [Test-account archives](test-account-archive-policy.md) — revoke existing test access and re-entry, preserve Owner/history, and refuse mixed legitimate-tenant identities.
 - [BRO terminology boundary](bro-terminology-boundary.md) — user-facing Business Relationship Officer (BRO) wording is a copy-only rename; preserve Partner identifiers and the same functionality and payments.
+- [BRO field operations](bro-field-operations-policy.md) — individual lead ownership; Owner-approved transfers/releases never reassign school referral provenance or financial rights.
 - [Managed role lifecycle](managed-role-lifecycle.md) — custom-role upgrade support is not a Publish ACL contract; separate local permission proof from platform provisioning and credential lifecycle.
 - [Payment receipt policy](payment-receipt-policy.md) — private uploads are evidence only; school review controls payment status, and Owners confirm already-completed school transfers.
 - [Owner daily school payouts](owner-school-payout-policy.md) — explicit Owner approval, verified bank/funding, durable references and reconciliation; subaccount support is not payout readiness.
