@@ -596,7 +596,7 @@ router.get("/communication/preferences", async (req, res): Promise<void> => {
       schoolId,
       preferences: result.rows.map((preference) => ({
         ...preference,
-        mandatory: preference.mandatory ?? ["ACCOUNT", "SECURITY"].includes(preference.category),
+        mandatory: preference.channel === "SMS" ? false : preference.mandatory ?? ["ACCOUNT", "SECURITY"].includes(preference.category),
       })),
     });
   } catch (error) {
@@ -615,10 +615,10 @@ router.put("/communication/preferences", async (req, res): Promise<void> => {
     if (!categories.has(body.category) || !channels.has(body.channel) || typeof body.enabled !== "boolean") {
       throw new AuthError(400, "category, channel, and enabled are invalid");
     }
-    if (body.channel === "SMS" && body.enabled) {
-      throw new AuthError(400, "SMS notifications are not available");
+    if (body.channel === "SMS" && body.enabled && !["ATTENDANCE","SECURITY"].includes(body.category)) {
+      throw new AuthError(400, "SMS is restricted to emergency and student absence notifications");
     }
-    if (body.enabled === false && ["ACCOUNT", "SECURITY"].includes(body.category)) {
+    if (body.enabled === false && body.channel !== "SMS" && ["ACCOUNT", "SECURITY"].includes(body.category)) {
       throw new AuthError(400, "Account and security notifications cannot be disabled");
     }
     await client.query("BEGIN");
@@ -651,6 +651,7 @@ router.put("/communication/preferences", async (req, res): Promise<void> => {
     );
     await client.query("COMMIT");
     const { id: _id, ...publicPreference } = preference;
+    if (publicPreference.channel === "SMS") publicPreference.mandatory = false;
     res.json(publicPreference);
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);

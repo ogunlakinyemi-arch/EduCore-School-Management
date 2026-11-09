@@ -41,7 +41,8 @@ An HTTP 401 from Resend domain listing does not alone establish an invalid sendi
 **How to apply:** Inspect the sanitized provider error category, not just the HTTP status. Keep domain verification and sending verification separate; use an explicitly approved controlled-recipient send to establish sending access.
 
 The Owner requests supported IN-APP, EMAIL, PUSH and TELEGRAM channels across
-notification categories, with SMS unavailable until separately approved. Older
+notification categories. SMS was subsequently approved only for emergency and
+student absence; see [Restricted SMS scope](sms-emergency-absence-policy.md). Older
 attendance/emergency SMS permission is not current authorization to enable SMS.
 School choices cannot expand Owner permissions.
 

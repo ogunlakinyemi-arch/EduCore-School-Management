@@ -6,8 +6,7 @@ export const CATEGORY_LABEL: Partial<Record<CommunicationCategory, string>> = { 
 export function categoryLabel(c: CommunicationCategory): string { return CATEGORY_LABEL[c] ?? c.replaceAll('_', ' '); }
 
 export function channelSetupAvailable(c: Pick<CommunicationChannelAvailabilityChannelsItem, 'available' | 'setupAvailable' | 'channel'>): boolean {
-  if (c.channel === 'SMS') return false;
-  return c.channel === 'EMAIL' || c.channel === 'PUSH' ? (c.setupAvailable ?? c.available) : c.available;
+  return c.channel === 'EMAIL' || c.channel === 'PUSH' || c.channel === 'SMS' ? (c.setupAvailable ?? c.available) : c.available;
 }
 
 export function channelTruth(c: Pick<CommunicationChannelAvailabilityChannelsItem, 'available' | 'setupAvailable' | 'status' | 'channel'>): string {

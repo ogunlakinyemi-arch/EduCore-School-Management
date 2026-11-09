@@ -18,12 +18,14 @@ export function Preferences({ schoolId }: { schoolId: number }) {
   // Missing persisted rows use the same enabled default as the delivery service.
   const topics = ['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY'] as const;
   const channels = ['IN_APP', 'SMS', 'EMAIL', 'PUSH', 'TELEGRAM'] as const;
-  const available = (channel: typeof channels[number]) => channel !== 'SMS' &&
+  const available = (channel: typeof channels[number]) =>
     ch.data?.channels.some(c => c.channel === channel && channelSetupAvailable(c)) === true &&
     (channel !== 'TELEGRAM' || telegramGate(tg.data));
   const preferences = topics.flatMap(category => channels.map(channel =>
     pq.data?.preferences.find(p => p.category === category && p.channel === channel) ??
-    { schoolId, category, channel, enabled: true, mandatory: category === 'ACCOUNT' || category === 'SECURITY' }));
+    { schoolId, category, channel, enabled: channel !== 'SMS', mandatory: category === 'ACCOUNT' || category === 'SECURITY' }))
+    .filter(p => p.channel !== 'SMS' || ['ATTENDANCE','SECURITY'].includes(p.category))
+    .map(p => p.channel === 'SMS' ? {...p,mandatory:false} : p);
   return <div className="space-y-5">
     {ch.data?.launchHeld && <p role="status" className="rounded-xl border p-4 text-sm">Configured Email and Browser Push preferences can be prepared. Sending remains held by the launch cutoff; setup does not release TEST notifications.</p>}
     <WebPushControl schoolId={schoolId} />

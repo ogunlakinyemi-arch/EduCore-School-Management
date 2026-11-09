@@ -1,6 +1,7 @@
 import { logger } from "../lib/logger";
 import {createTelegramProvider,type TelegramProvider} from "./telegram-provider";
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
+import {BulkSmsNigeriaProvider,bulkSmsConfigurationReady} from "./bulksmsnigeria-provider";
 
 export type CommunicationChannel = "sms" | "email" | "push" | "telegram";
 export type ProviderDeliveryStatus = "SIMULATED" | "ACCEPTED" | "DELIVERED" | "FAILED";
@@ -39,6 +40,7 @@ export interface SmsMessage {
   to: string;
   body: string;
   idempotencyKey?: string;
+  event?: string;
 }
 
 export interface EmailMessage {
@@ -462,6 +464,10 @@ export function createSmsProvider(
 ): SmsProvider {
   if (developmentPaymentNotificationsSuppressed(env)) return suppressedNotificationProvider("sms");
   const selected = configuredProviderName(env.COMMUNICATION_SMS_PROVIDER);
+  if (selected === "bulksmsnigeria") {
+    if (!bulkSmsConfigurationReady(env)) throw new CommunicationProviderConfigurationError("sms",selected);
+    return new BulkSmsNigeriaProvider(env.BULKSMSNIGERIA_API_TOKEN!,env.BULKSMSNIGERIA_SENDER_ID!,options);
+  }
   if (selected === "development" || selected === "dev" || selected === "test") {
     return new DevelopmentCommunicationProvider("sms");
   }

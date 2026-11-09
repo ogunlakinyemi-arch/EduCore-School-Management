@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {defaultNotificationPolicy} from "./notification-channel-policy";
 import type {
   CommunicationProviderAdapters,
@@ -30,6 +30,43 @@ function notificationInput(
     ...overrides,
   };
 }
+
+describe("scoped SMS activation consent and isolation",()=>{
+  afterEach(()=>vi.unstubAllEnvs());
+  function smsPolicy(event="ATTENDANCE_ABSENCE") {
+    const p=defaultNotificationPolicy();
+    p.events[event as keyof typeof p.events]!.defaults=["IN_APP","SMS"];
+    return p;
+  }
+  it.each([true,false,undefined])("queues absence only with explicit SMS consent %s",async consent=>{
+    const {client,calls}=queueClient({policy:smsPolicy(),
+      preferences:consent===undefined?[]:[{channel:"SMS",enabled:consent}]});
+    await queueCommunicationNotification(client,notificationInput({category:"ATTENDANCE",eventKey:"attendance:1:ABSENT",
+      subjectStudentId:321,channels:["IN_APP","SMS"]}));
+    expect(calls.some(c=>c.sql.includes("INSERT INTO communication_deliveries")&&c.values?.[1]==="SMS")).toBe(consent===true);
+  });
+  it.each([{recipient:false},{subjectAuthorized:false}])("keeps foreign school/student recipients blocked %j",async denied=>{
+    const {client,calls}=queueClient({...denied,policy:smsPolicy(),preferences:[{channel:"SMS",enabled:true}]});
+    expect(await queueCommunicationNotification(client,notificationInput({category:"ATTENDANCE",eventKey:"attendance:1:ABSENT",
+      subjectStudentId:321,channels:["SMS"]}))).toBeNull();
+    expect(calls.some(c=>c.sql.includes("INSERT INTO communication_deliveries"))).toBe(false);
+  });
+  it.each([true,false,undefined])("rechecks emergency SMS consent before transport %s",async consent=>{
+    vi.stubEnv("NODE_ENV","test");vi.stubEnv("REPLIT_DEPLOYMENT","");
+    vi.stubEnv("COMMUNICATION_SMS_PROVIDER","bulksmsnigeria");
+    vi.stubEnv("BULKSMSNIGERIA_API_TOKEN","synthetic-token");vi.stubEnv("BULKSMSNIGERIA_SENDER_ID","FixtureSMS");
+    const record={id:42,channel:"SMS",notificationId:33,recipientUserId:17,schoolId:9,
+      subjectStudentId:null,category:"SECURITY",eventKey:"campaign:1:EMERGENCY",subject:"Fictional",body:"Fictional",
+      phone:"+2348012345678",email:null,schoolAuthorized:true,userStatus:"ACTIVE"};
+    const {pool}=dispatchPool({record,policy:smsPolicy("EMERGENCY"),preferenceEnabled:consent});
+    const send=vi.fn(async()=>({provider:"fixture",channel:"sms" as const,status:"ACCEPTED" as const,accepted:true,delivered:false}));
+    await dispatchCommunicationDeliveries(pool,1,{channels:["SMS"],providers:{
+      sms:{provider:"fixture",channel:"sms",send},
+      email:{provider:"fixture",channel:"email",send:vi.fn()},
+    }});
+    expect(send).toHaveBeenCalledTimes(consent===true?1:0);
+  });
+});
 
 function queueClient(options: {
   policy?: ReturnType<typeof defaultNotificationPolicy>;

@@ -433,10 +433,10 @@ router.get("/communication/channels", asyncRoute(async (_req, res) => {
     launchHeld: !notificationLaunchBoundary().allowed,
     channels: (["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const).map(channel => ({
       channel, available: availability[channel],
-      setupAvailable: channel === "EMAIL" || channel === "PUSH" ? configuration[channel] : availability[channel],
+      setupAvailable: channel === "EMAIL" || channel === "PUSH" || channel === "SMS" ? configuration[channel] : availability[channel],
       status: availability[channel] ? "AVAILABLE" : channel === "SMS" ? "UNAVAILABLE" : "CONFIGURATION_REQUIRED",
       detail: channel === "IN_APP" ? "Notifications are stored in the authenticated inbox."
-        : channel === "SMS" ? "SMS notifications are not available."
+        : channel === "SMS" ? "BulkSMSNigeria: emergency and student absence only. Requires configured credentials, explicit opt-in and school/Owner selection. Development safety pauses still apply; acceptance is not delivery."
         : channel === "PUSH" ? "Requires a valid matching VAPID pair and subject, browser permission, an active subscription, policy and consent. Configuration is not proof of receipt."
         : channel === "EMAIL" ? emailSetupDetail()
         : "Requires Production opt-in, independently validated bot/storage readiness, policy and a parent-owned consented chat. Provider acceptance is not receipt.",

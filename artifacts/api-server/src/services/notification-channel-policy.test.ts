@@ -23,7 +23,7 @@ describe("Owner notification channel governance",()=>{
   it.each(["FINANCE","PAYMENT","SUBSCRIPTION","NFC_REMINDER","ACADEMIC","ANNOUNCEMENT","SECURITY"])("blocks default SMS for %s",event=>{
     expect(allowedNotificationChannels(defaultNotificationPolicy(),event,9)).not.toContain("SMS");
   });
-  it.each(["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","EMERGENCY"])("keeps SMS disabled for %s",event=>{
+  it.each(["ATTENDANCE_ENTRY","ATTENDANCE_EXIT"])("keeps SMS disabled for %s",event=>{
     expect(allowedNotificationChannels(defaultNotificationPolicy(),event,9)).not.toContain("SMS");
   });
   it("maps gate entry/exit, absence, card/subscription and emergency events separately",()=>{
@@ -69,8 +69,8 @@ describe("Owner notification channel governance",()=>{
     expect(result).toEqual({IN_APP:true,SMS:false,EMAIL:false,PUSH:false,TELEGRAM:false});
   });
   it("permits non-SMS channels across every default category without making them defaults",()=>{
-    for(const rule of Object.values(defaultNotificationPolicy().events)){
-      expect(rule?.allowed).toEqual(["IN_APP","EMAIL","PUSH","TELEGRAM"]);
+    for(const [event,rule] of Object.entries(defaultNotificationPolicy().events)){
+      expect(rule?.allowed).toEqual(["IN_APP","EMAIL","PUSH","TELEGRAM",...(["EMERGENCY","ATTENDANCE_ABSENCE"].includes(event)?["SMS"]:[])]);
       expect(rule?.defaults).toEqual(["IN_APP"]);
     }
   });

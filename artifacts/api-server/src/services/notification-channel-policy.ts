@@ -4,6 +4,8 @@ import { validVapidConfiguration, vapidConfiguration, vapidConfigurationProblem 
 import { developmentPaymentNotificationsSuppressed } from "../lib/development-payment-notification-policy";
 import {getTelegramHealth} from "./telegram-provider";
 import { notificationLaunchBoundary } from "./notification-launch-boundary";
+import {bulkSmsConfigurationReady} from "./bulksmsnigeria-provider";
+import {smsEventAllowed} from "./sms-event-policy";
 export const policyEvents = ["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","NFC_REMINDER","SUBSCRIPTION",
   "EMERGENCY","ATTENDANCE","ACADEMIC","ASSIGNMENT","FINANCE","PAYMENT","ANNOUNCEMENT","ACCOUNT","SYSTEM","PARTNER","SECURITY"] as const;
 export const policyChannels = ["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const;
@@ -19,7 +21,7 @@ export type NotificationChannelPolicy = z.infer<typeof notificationPolicySchema>
 type Db = {query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
 export function defaultNotificationPolicy():NotificationChannelPolicy {
   return {events:Object.fromEntries(policyEvents.map(event=>[event,{
-    allowed:["IN_APP","EMAIL","PUSH","TELEGRAM"],
+    allowed:["IN_APP","EMAIL","PUSH","TELEGRAM",...(smsEventAllowed(event)?["SMS"]:[])],
     defaults:["IN_APP"],
   }])),schools:{}} as NotificationChannelPolicy;
 }
@@ -34,7 +36,8 @@ export async function loadNotificationPolicy(db:Db):Promise<NotificationChannelP
   return notificationPolicySchema.parse(r.rows[0].policy);
 }
 export function globallyAllowedChannels(policy:NotificationChannelPolicy):Set<PolicyChannel>{
-  return new Set(Object.values(policy.events).flatMap(rule=>rule?.allowed??[]));
+  return new Set(Object.entries(policy.events).flatMap(([event,rule])=>
+    (rule?.allowed??[]).filter(channel=>channel!=="SMS"||smsEventAllowed(event))));
 }
 export type PolicyValidationIssue = "UNAVAILABLE_DEFAULT" | "OVERRIDE_NOT_GLOBALLY_ALLOWED";
 /**
@@ -73,9 +76,8 @@ export function allowedNotificationChannels(policy:NotificationChannelPolicy,eve
   if(!configured)return [];
   const school=schoolId===null?undefined:policy.schools[String(schoolId)];
   if(school?.enabled===false)return [];
-  // SMS is not operationally available. Retain saved policy/history, but never
-  // queue or dispatch it until a separately approved SMS implementation release.
-  return configured.allowed.filter(c=>c!=="SMS"&&(!school||school.allowed.includes(c)));
+  // Preserve saved policy, but never allow SMS outside the approved two events.
+  return configured.allowed.filter(c=>(c!=="SMS"||smsEventAllowed(event))&&(!school||school.allowed.includes(c)));
 }
 /** Allowed is a ceiling, never a selection. An absent event override inherits
  * the Owner default; an explicit empty override selects no channels. */
@@ -114,7 +116,7 @@ export function notificationChannelConfiguration(env:NodeJS.ProcessEnv=process.e
     try { const p=createEmailProvider(env);return ["resend","http-email"].includes(p.provider); }
     catch{return false;}
   };
-  return {IN_APP:true,SMS:false,EMAIL:emailReady(),
+  return {IN_APP:true,SMS:bulkSmsConfigurationReady(env),EMAIL:emailReady(),
     PUSH:!developmentPaymentNotificationsSuppressed(env)&&validVapidConfiguration(vapidConfiguration(env)),
     TELEGRAM:getTelegramHealth(env).ready};
 }
@@ -153,7 +155,9 @@ export function notificationChannelReadiness(env: NodeJS.ProcessEnv = process.en
   const pushProblem=vapidConfigurationProblem(vapidConfiguration(env));
   const details:Record<PolicyChannel,string>={
     IN_APP:"In-App is available under existing user and school permissions.",
-    SMS:"SMS is disabled.",
+    SMS:bulkSmsConfigurationReady(env)
+      ?"BulkSMSNigeria is configured for emergency and student absence only. Explicit recipient opt-in and current school/Owner selections are required; sending and receipt are not verified."
+      :"SMS requires COMMUNICATION_SMS_PROVIDER=bulksmsnigeria, BULKSMSNIGERIA_API_TOKEN and BULKSMSNIGERIA_SENDER_ID.",
     EMAIL:emailSetupDetail(env),
     PUSH:pushMissing.length
       ?`Push configuration is incomplete: ${pushMissing.join(", ")}.`

@@ -14,7 +14,6 @@ export function OwnerNotificationPolicyControl(){
   const policy=draft??query.data?.policy;
   const availability:Partial<Record<typeof channels[number],boolean>>=query.data?.availability??{};
   const channelState=(channel:typeof channels[number])=>{
-    if(channel==='SMS')return 'Disabled';
     const status=query.data?.readiness?.[channel];
     if(status?.configurationReady&&status.deliveryHold)return /launch|EDUCORE_NOTIFICATION_LIVE_FROM/i.test(status.deliveryHold)
       ?'Configured — delivery held by launch safeguard':'Configured — delivery held by safety controls';
@@ -22,7 +21,8 @@ export function OwnerNotificationPolicyControl(){
     return availability[channel]?'Delivery available':'Readiness details unavailable — refresh after the reporting update is published';
   };
   // Channels allowed for at least one event; school overrides may only opt into these.
-  const globalAllowed=new Set(policy?Object.values(policy.events).flatMap(rule=>rule.allowed):[]);
+  const globalAllowed=new Set(policy?Object.entries(policy.events).flatMap(([event,rule])=>
+    rule.allowed.filter(channel=>channel!=='SMS'||['EMERGENCY','ATTENDANCE_ABSENCE'].includes(event))):[]);
   const savedSchools=query.data?.policy.schools??{};
   const schools=directory.data?.schools??[];
   const selectedSchool=schools.find(item=>String(item.id)===school);
@@ -40,7 +40,7 @@ export function OwnerNotificationPolicyControl(){
   };
   return <section className="panel mb-6 space-y-4 p-5" aria-label="Platform notification policy">
     <h2 className="display-font text-xl font-bold">Owner notification controls</h2>
-    <p className="text-sm">Allowed means globally permitted for that event, not prohibited and not automatically selected. Default is a separate selection inherited by schools without an override. Provider readiness and delivery safeguards are separate from both. No real school is required to check configuration. SMS remains disabled.</p>
+    <p className="text-sm">Allowed means globally permitted for that event, not prohibited and not automatically selected. Default is a separate selection inherited by schools without an override. Provider readiness and delivery safeguards are separate from both. No real school is required to check configuration. SMS is restricted to emergency and student absence, with explicit recipient opt-in.</p>
     {query.isLoading?<p>Loading policy…</p>:query.isError?<p role="alert">Could not load policy. <button onClick={()=>void query.refetch()}>Retry</button></p>:policy&&<>
       {query.data?.readiness&&<div className="space-y-3 rounded-xl border p-3" aria-label="External channel readiness">
         <h3 className="font-bold">Configuration and delivery holds</h3>
@@ -63,10 +63,10 @@ export function OwnerNotificationPolicyControl(){
           <div>{rule.defaults.includes(channel)?'Default selected':'Not selected as a default — no automatic send'}</div>
           <div>{channelState(channel)}</div>
           <label className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} allowed`}
-            disabled={save.isPending||channel==='SMS'} checked={rule.allowed.includes(channel)}
+            disabled={save.isPending||(channel==='SMS'&&!['EMERGENCY','ATTENDANCE_ABSENCE'].includes(event))} checked={rule.allowed.includes(channel)}
             onChange={e=>change(event,channel,'allowed',e.target.checked)}/>Allowed</label>
           <label className="inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} default`}
-            disabled={save.isPending||channel==='SMS'||!rule.allowed.includes(channel)||(!availability[channel]&&!rule.defaults.includes(channel))} checked={rule.defaults.includes(channel)}
+            disabled={save.isPending||(channel==='SMS'&&!['EMERGENCY','ATTENDANCE_ABSENCE'].includes(event))||!rule.allowed.includes(channel)||(!availability[channel]&&!rule.defaults.includes(channel))} checked={rule.defaults.includes(channel)}
             onChange={e=>change(event,channel,'defaults',e.target.checked)}/>Default</label>
         </div>)}</div>
       </fieldset>)}</div>
@@ -97,7 +97,7 @@ export function OwnerNotificationPolicyControl(){
         <label className="mr-4 inline-flex min-h-10 items-center gap-2"><input type="checkbox" checked={permission.enabled} disabled={save.isPending}
           onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,enabled:e.target.checked}}})}/>Notifications permitted</label>
         {channels.map(channel=><label key={channel} className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`School ${id} ${channel} permitted`}
-          disabled={save.isPending||channel==='SMS'||(!globalAllowed.has(channel)&&!(permission.allowed.includes(channel)&&savedSchools[id]?.allowed.includes(channel)))} checked={permission.allowed.includes(channel)}
+          disabled={save.isPending||(!globalAllowed.has(channel)&&!(permission.allowed.includes(channel)&&savedSchools[id]?.allowed.includes(channel)))} checked={permission.allowed.includes(channel)}
           onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,allowed:e.target.checked?[...permission.allowed,channel]:permission.allowed.filter(c=>c!==channel)}}})}/>{channel}</label>)}
         <button type="button" disabled={save.isPending} onClick={()=>{const schools={...policy.schools};delete schools[id];setDraft({...policy,schools});}} className="ml-3 underline">Use global permissions</button>
       </fieldset>)}

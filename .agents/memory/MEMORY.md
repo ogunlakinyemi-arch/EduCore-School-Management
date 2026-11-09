@@ -122,3 +122,4 @@
 - [Hardware identity correction](hardware-identity-correction-policy.md) — retain primary ID/key and both histories; Production execution requires the supported serving workflow and fresh checks.
 - [Owner card grace](owner-student-card-grace-policy.md) — audited administrative controls and exact-card temporary payment permission; never settlement, activation or a safety override.
 - [Invoice logo fallback](invoice-logo-fallback-policy.md) — private school branding must not block parent invoice printing; other document requirements remain separate.
+- [Restricted SMS scope](sms-emergency-absence-policy.md) — emergency and student absence only; explicit opt-in, preserved pauses and separate configuration/send evidence.

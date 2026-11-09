@@ -12,6 +12,7 @@ import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import {telegramRecipient} from "./telegram-links";
 import {createTelegramProvider,getTelegramHealth} from "./telegram-provider";
 import { notificationLaunchBoundary, notificationLaunchSql } from "./notification-launch-boundary";
+import {smsNotificationAllowed} from "./sms-event-policy";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -430,6 +431,13 @@ export async function queueCommunicationNotification(
   // Explicit campaign selections may narrow, never expand, the effective set.
   let enabledChannels = input.useSchoolDefaults === false
     ? effective.filter(c => input.channels.includes(c)) : effective;
+  if (enabledChannels.includes("SMS")) {
+    const consent = await client.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
+      WHERE user_id=$1 AND category=$2 AND channel='SMS' AND (school_id=$3 OR school_id IS NULL)
+      ORDER BY CASE WHEN school_id=$3 THEN 0 ELSE 1 END LIMIT 1`,[input.recipientUserId,input.category,input.schoolId]);
+    if (!smsNotificationAllowed(input.category,input.eventKey,input.subjectStudentId) || consent.rows[0]?.enabled !== true)
+      enabledChannels = enabledChannels.filter(channel=>channel!=="SMS");
+  }
   if (!mandatoryCategories.has(input.category)) {
     const preferences = await client.query<{
       channel: CommunicationDeliveryChannel;
@@ -961,7 +969,7 @@ export async function dispatchCommunicationDeliveries(
     options.notificationIds.some(id=>!Number.isSafeInteger(id)||id<1)))throw new TypeError("Invalid notification scope");
   // Unavailable Telegram is deferred, not claimed and exhausted before its
   // explicitly enabled worker has validated credentials/storage.
-  const availableChannels=selectedChannels.filter(channel=>channel!=="SMS"
+  const availableChannels=selectedChannels.filter(channel=>(channel!=="SMS"||notificationChannelAvailability().SMS)
     &&(channel!=="EMAIL"||!!options.providers?.email||options.allowConfiguredProviders!==true||notificationChannelAvailability().EMAIL)
     &&(channel!=="TELEGRAM"||!!telegramProvider)
     &&(channel!=="PUSH"||!!pushProvider&&(!("configured" in pushProvider)||pushProvider.configured)));
@@ -992,6 +1000,17 @@ export async function dispatchCommunicationDeliveries(
       continue;
     }
     const dispatchEvent=notificationEvent(record.category,record.eventKey);
+    if (delivery.channel === "SMS") {
+      const consent = await pool.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
+        WHERE user_id=$1 AND category=$2 AND channel='SMS' AND (school_id=$3 OR school_id IS NULL)
+        ORDER BY CASE WHEN school_id=$3 THEN 0 ELSE 1 END LIMIT 1`,[record.recipientUserId,record.category,record.schoolId]);
+      if (!smsNotificationAllowed(record.category,record.eventKey,record.subjectStudentId) || consent.rows[0]?.enabled !== true) {
+        await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='SMS_SCOPE_OR_CONSENT_REQUIRED',
+          last_error='SMS requires an emergency or student absence event and explicit recipient consent',
+          updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now())]);
+        summary.skipped++;continue;
+      }
+    }
     const schoolChoices=record.schoolId===null?undefined:(await pool.query<{defaults:Record<string,string[]>}>(
       `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`,[record.schoolId])).rows[0]?.defaults;
     if (!effectiveNotificationChannels(await loadNotificationPolicy(pool), dispatchEvent,
@@ -1063,6 +1082,7 @@ export async function dispatchCommunicationDeliveries(
           to: target!,
           body: record.body,
           idempotencyKey: `communication-${record.notificationId}-sms`,
+          event: dispatchEvent,
         })
         : await providers.email.send({
           to: target!,
