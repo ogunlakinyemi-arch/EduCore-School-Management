@@ -833,6 +833,16 @@ async function loadDispatchRecord(
             )
             AND (
               n.subject_class_id IS NULL
+              OR (
+                ${ownerNotificationDevelopment() ? "TRUE" : "FALSE"}
+                AND n.category='ACADEMIC' AND n.event_key LIKE 'TEACHER_PERIOD:%'
+                AND n.subject_student_id IS NULL
+                AND EXISTS (SELECT 1 FROM school_memberships teacher_role
+                  WHERE teacher_role.user_id=u.id AND teacher_role.school_id=n.school_id
+                    AND teacher_role.role='TEACHER' AND upper(teacher_role.status)='ACTIVE')
+                -- The exact timetable/assignment/class/expiry is revalidated
+                -- by teacherPeriodStillCurrent before any transport is used.
+              )
               OR EXISTS (
                 SELECT 1
                 FROM school_classes target_class
@@ -1102,8 +1112,9 @@ export async function dispatchCommunicationDeliveries(
       : delivery.channel === "SMS" ? record.phone : record.email;
     if(delivery.channel==="TELEGRAM"&&!target){
       await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='TELEGRAM_LINK_OR_CONSENT_REQUIRED',
-        last_error='Verified parent relationship and Telegram consent required',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
-        [delivery.id,normalizedDate(now())]);
+        last_error=$3,updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
+        [delivery.id,normalizedDate(now()),record.eventKey?.startsWith(teacherPeriodPrefix)
+          ?"Active teacher link and Telegram consent required":"Verified parent relationship and Telegram consent required"]);
       summary.skipped++;continue;
     }
     if (delivery.channel !== "PUSH" && !target?.trim()) {

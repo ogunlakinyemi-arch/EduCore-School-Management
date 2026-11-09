@@ -1523,7 +1523,8 @@ export const AssessSchoolAttendanceResponse = zod.object({
 
 
 export const GetTelegramStatusQueryParams = zod.object({
-  "schoolId": zod.coerce.number().int().min(1).optional()
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "audience": zod.enum(['TEACHER']).optional()
 })
 
 export const GetTelegramStatusResponse = zod.object({
@@ -1538,6 +1539,7 @@ export const GetTelegramStatusResponse = zod.object({
   "linked": zod.boolean(),
   "consented": zod.boolean(),
   "parentEligible": zod.boolean(),
+  "teacherEligible": zod.boolean().optional(),
   "policyAllowed": zod.boolean(),
   "pending": zod.boolean(),
   "pendingAccountLabel": zod.string().nullable(),
@@ -1560,6 +1562,7 @@ export const CheckTelegramHealthResponse = zod.object({
   "linked": zod.boolean(),
   "consented": zod.boolean(),
   "parentEligible": zod.boolean(),
+  "teacherEligible": zod.boolean().optional(),
   "policyAllowed": zod.boolean(),
   "pending": zod.boolean(),
   "pendingAccountLabel": zod.string().nullable(),
@@ -1575,7 +1578,8 @@ export const CheckTelegramHealthResponse = zod.object({
 
 export const CreateTelegramLinkBody = zod.object({
   "schoolId": zod.number().int().min(1),
-  "consent": zod.literal(true)
+  "consent": zod.literal(true),
+  "audience": zod.enum(['TEACHER']).optional()
 })
 
 export const CreateTelegramLinkResponse = zod.object({
@@ -1583,6 +1587,10 @@ export const CreateTelegramLinkResponse = zod.object({
   "expiresAt": zod.string()
 })
 
+
+export const UnlinkTelegramQueryParams = zod.object({
+  "audience": zod.enum(['TEACHER']).optional()
+})
 
 export const UnlinkTelegramResponse = zod.object({
   "unlinked": zod.boolean()
@@ -1594,7 +1602,8 @@ export const UnlinkTelegramResponse = zod.object({
 
 export const ConfirmTelegramLinkBody = zod.object({
   "schoolId": zod.number().int().min(1),
-  "consent": zod.literal(true)
+  "consent": zod.literal(true),
+  "audience": zod.enum(['TEACHER']).optional()
 })
 
 export const ConfirmTelegramLinkResponse = zod.object({

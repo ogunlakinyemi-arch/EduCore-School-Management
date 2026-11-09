@@ -5,6 +5,7 @@ paths:
       tags: [communication]
       parameters:
         - {name: schoolId, in: query, schema: {type: integer, minimum: 1}}
+        - {name: audience, in: query, schema: {type: string, enum: [TEACHER]}}
       responses:
         "200":
           description: Sanitized delivery configuration and own-parent linking state; no credentials/chat IDs
@@ -35,6 +36,7 @@ paths:
               properties:
                 schoolId: {type: integer, minimum: 1}
                 consent: {type: boolean, const: true}
+                audience: {type: string, enum: [TEACHER]}
       responses:
         "200":
           description: Single-use ten-minute private-chat start link; confirmation in EduCore is required
@@ -49,6 +51,8 @@ paths:
     delete:
       operationId: unlinkTelegram
       tags: [communication]
+      parameters:
+        - {name: audience, in: query, schema: {type: string, enum: [TEACHER]}}
       responses:
         "200":
           description: Withdraw own consent, revoke pending tokens and cancel queued Telegram deliveries
@@ -69,6 +73,7 @@ paths:
               properties:
                 schoolId: {type: integer, minimum: 1}
                 consent: {type: boolean, enum: [true]}
+                audience: {type: string, enum: [TEACHER]}
       responses:
         "200":
           description: Authenticated parent confirms the private chat that consumed their token
@@ -130,6 +135,7 @@ components:
         linked: {type: boolean}
         consented: {type: boolean}
         parentEligible: {type: boolean}
+        teacherEligible: {type: boolean}
         policyAllowed: {type: boolean}
         pending: {type: boolean}
         pendingAccountLabel: {type: [string, "null"]}

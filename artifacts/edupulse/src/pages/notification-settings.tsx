@@ -11,13 +11,15 @@ import { SchoolCommunicationDefaultsControl } from '@/components/school-communic
 import { OwnerNotificationPolicyControl } from '@/components/owner-notification-policy';
 import { OwnerTelegramHealth, ParentTelegramControl } from '@/components/telegram-control';
 import { useSchoolAdminAccess } from '@/components/shared';
-import { useGetParentCommunicationChannels, getGetParentCommunicationChannelsQueryKey } from '@workspace/api-client-react';
+import { useGetParentCommunicationChannels, getGetParentCommunicationChannelsQueryKey, useGetAuthorizedContext } from '@workspace/api-client-react';
 import { channelSetupAvailable } from './parent-communication/comm-contract';
 
 export function NotificationSettings({ standalone = false, globalOnly = false }: { standalone?: boolean; globalOnly?: boolean }) {
   const { schoolId: tenantSchoolId } = useTenant();
   const schoolId = globalOnly ? 0 : tenantSchoolId;
   const schoolAccess = useSchoolAdminAccess();
+  const identity = useGetAuthorizedContext().data;
+  const teacher = !!identity?.roles.some(r => r.role === 'TEACHER' && r.status === 'ACTIVE' && r.schoolId === schoolId);
   const capability = useGetParentCommunicationChannels({ query: { queryKey: getGetParentCommunicationChannelsQueryKey(), staleTime: 30000 } });
   const available = (channel: CommunicationChannel) => channel !== 'SMS' &&
     capability.data?.channels.some(c => c.channel === channel && channelSetupAvailable(c)) === true;
@@ -71,7 +73,7 @@ export function NotificationSettings({ standalone = false, globalOnly = false }:
       </section>
       <section className="panel h-fit overflow-hidden">
         <WebPushControl schoolId={schoolId || null} />
-        {schoolId > 0 && !schoolAccess.isPlatformOwner && <div className="p-5 md:p-6"><ParentTelegramControl key={schoolId} schoolId={schoolId} /></div>}
+        {schoolId > 0 && !schoolAccess.isPlatformOwner && (!teacher || import.meta.env.DEV) && <div className="p-5 md:p-6"><ParentTelegramControl key={`${schoolId}:${teacher}`} schoolId={schoolId} teacher={teacher} /></div>}
         <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><Smartphone size={22} className="text-[hsl(var(--primary))]" /><h2 className="display-font mt-3 text-xl font-bold">Push device readiness</h2><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Device references are for development testing. Registering one does not subscribe this browser to Web Push or prove that any real notification will arrive.</p></div>
         <div className="p-5 md:p-6">
           <label className="block text-xs font-bold" htmlFor="device-reference">Opaque test device reference</label>

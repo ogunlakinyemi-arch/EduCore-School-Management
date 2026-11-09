@@ -14,7 +14,10 @@ import {createTelegramDirectoryInvitation,parentTelegramInvitationStatus} from "
 import {inspectTelegramStorage} from "./telegram-storage-readiness";
 import {notificationLaunchSql} from "./notification-launch-boundary";
 import {dispatchPushDevices} from "./web-push-dispatch";
-import {ownerDeliveryClaimSql,pushTestCandidates} from "./owner-notification-controls";
+import {ownerDeliveryClaimSql,pushTestCandidates,loadOwnerDeliveryControls,withOwnerNotificationScope} from "./owner-notification-controls";
+import {createTeacherTelegramChallenge,confirmTeacherTelegramLink,teacherTelegramRecipient,
+  revokeTeacherTelegramLink,teacherTelegramStatus} from "./teacher-telegram";
+import {queueTeacherPeriodNotifications,teacherPeriodStillCurrent} from "./teacher-period-notifications";
 
 const state=vi.hoisted(()=>({pool:null as any,userId:1,role:"PARENT",anonymous:false}));
 vi.mock("@workspace/db",async original=>({...await original<any>(),pool:{
@@ -73,6 +76,17 @@ beforeAll(async()=>{
     CREATE TABLE communication_templates(channel text,CONSTRAINT communication_templates_channel_check CHECK(channel IN ('IN_APP','SMS','EMAIL','PUSH')));`);
   await db.query(await readFile(new URL("../../../../lib/db/drizzle/0172_telegram_notifications.sql",import.meta.url),"utf8"));
   await db.query(await readFile(new URL("../../../../lib/db/drizzle/0173_telegram_storage_readiness.sql",import.meta.url),"utf8"));
+  await db.query(`CREATE TABLE employees(id int PRIMARY KEY,user_id int,school_id int,employee_type text,employment_status text);
+    ALTER TABLE parents ADD COLUMN email text;
+    ALTER TABLE audit_logs ADD COLUMN "timestamp" timestamptz DEFAULT now();
+    CREATE TABLE academic_sessions(id int,school_id int,start_date date,end_date date);
+    CREATE TABLE academic_terms(id int,school_id int,academic_session_id int,start_date date,end_date date);
+    CREATE TABLE subjects(id int,school_id int,name text);
+    CREATE TABLE teacher_class_assignments(school_id int,employee_id int,academic_session_id int,
+      school_class_id int,status text,section text,start_date date,end_date date,assignment_type text,subject_id int);
+    CREATE TABLE academic_timetable_entries(id int,school_id int,teacher_employee_id int,school_class_id int,
+      subject_id int,academic_session_id int,academic_term_id int,section text,start_time time,end_time time,status text,weekday text);`);
+  await db.query(await readFile(new URL("../../../../lib/db/dev-reconciliation/teacher-telegram.sql",import.meta.url),"utf8"));
   const app=express().use(express.json()).use("/communication/telegram",telegramRouter);
   app.use((e:any,_req:any,res:any,_next:any)=>res.status(e.statusCode??500).json({error:e.message}));
   await new Promise<void>(resolve=>{server=app.listen(0,"127.0.0.1",()=>resolve());});
@@ -86,12 +100,15 @@ afterAll(async()=>{
   if(dir)await rm(dir,{recursive:true,force:true});vi.unstubAllEnvs();vi.unstubAllGlobals();
 });
 beforeEach(async()=>{
+  for(const [key,value]of Object.entries(fixtureEnv))vi.stubEnv(key,value);
   state.userId=1;state.role="PARENT";state.anonymous=false;
   vi.stubEnv("REPLIT_DOMAINS",new URL(base).host);
   vi.stubEnv("EDUCORE_PRODUCTION_TELEGRAM_ENABLED","true");
   vi.stubEnv("EDUCORE_TELEGRAM_ALLOWED_ORIGINS","");
   for(const key of ["VAPID_PUBLIC_KEY","VAPID_PRIVATE_KEY","VAPID_SUBJECT"])vi.stubEnv(key,"");
   await db.query(`TRUNCATE telegram_link_challenges,parent_telegram_links,telegram_poll_state,
+    teacher_telegram_links,teacher_telegram_challenges,employees,academic_sessions,academic_terms,subjects,
+    teacher_class_assignments,academic_timetable_entries,school_classes,
     schools,app_users,school_memberships,students,parents,parent_student_relationships,audit_logs,
     communication_notifications,communication_deliveries,communication_preferences,communication_push_devices RESTART IDENTITY CASCADE;
     INSERT INTO schools VALUES(1,'Fixture school','active','{"ATTENDANCE_ENTRY":["TELEGRAM"]}'),(2,'Other','active','{}');
@@ -119,6 +136,222 @@ async function notification(eventKey="PARENT_EVENT:SCHOOL_ENTRY:1:1:1",channel="
   await db.query("INSERT INTO communication_deliveries(notification_id,channel) VALUES($1,$2)",[n,channel]);return n;
 }
 const mocks=()=>({sms:{provider:"mock-sms",channel:"sms" as const,send:vi.fn()},email:{provider:"mock-email",channel:"email" as const,send:vi.fn()}});
+describe("teacher Telegram Development prerequisite",()=>{
+  const tick=new Date("2026-11-09T06:55:00Z");
+  beforeEach(async()=>{
+    vi.stubEnv("NODE_ENV","development");vi.stubEnv("REPLIT_DEPLOYMENT","");
+    vi.stubEnv("EDUCORE_DEVELOPMENT_WORKERS_PAUSED","false");
+    vi.stubEnv("EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED","false");
+    await refreshTelegramHealth(true,process.env,botFetch as any);botFetch.mockClear();
+    await db.query(`INSERT INTO app_users(id,email,status) VALUES(100,'teacher100@example.invalid','ACTIVE'),(101,'teacher101@example.invalid','ACTIVE');
+      INSERT INTO employees VALUES(10,100,1,'TEACHER','ACTIVE'),(11,101,1,'TEACHER','ACTIVE');
+      INSERT INTO school_memberships VALUES(100,1,'TEACHER','ACTIVE'),(101,1,'TEACHER','ACTIVE');
+      INSERT INTO school_classes VALUES(20,1,'Year 1','');
+      INSERT INTO subjects VALUES(30,1,'Maths');
+      INSERT INTO academic_sessions VALUES(40,1,'2026-09-01','2027-07-31');
+      INSERT INTO academic_terms VALUES(50,1,40,'2026-09-01','2026-12-20');
+      INSERT INTO teacher_class_assignments VALUES(1,10,40,20,'ACTIVE','','2026-09-01',NULL,'SUBJECT_TEACHER',30),
+        (1,10,40,20,'ACTIVE','','2026-09-01',NULL,'CLASS_TEACHER',NULL);
+      INSERT INTO academic_timetable_entries VALUES(60,1,10,20,30,40,50,'','08:00','08:45','ACTIVE','MONDAY');
+      UPDATE schools SET communication_defaults='{"ACADEMIC":["IN_APP","PUSH","TELEGRAM"],"ATTENDANCE_ENTRY":["TELEGRAM"]}' WHERE id=1;
+      INSERT INTO audit_logs(module,event_type,role,result,metadata) VALUES
+        ('NotificationPolicy','GLOBAL_CHANNEL_POLICY_UPDATED','PLATFORM_OWNER','SUCCESS',
+         '{"policy":{"events":{"ACADEMIC":{"allowed":["IN_APP","PUSH","TELEGRAM"],"defaults":["IN_APP"]},"ATTENDANCE_ENTRY":{"allowed":["TELEGRAM"],"defaults":["TELEGRAM"]}},"schools":{}}}'),
+        ('OwnerNotificationDelivery','DEVELOPMENT_DELIVERY_CONTROLS_UPDATED','PLATFORM_OWNER','SUCCESS',
+         '{"controls":{"paused":false,"smsEnabled":false,"pushEnabled":false,"telegramEnabled":true,"pushParentIds":[]},"activatedAt":"2026-11-09T00:00:00Z"}');`);
+    state.userId=100;state.role="TEACHER";
+  });
+  async function teacherLink(user=100,chat=777001){
+    const challenge=await tx(c=>createTeacherTelegramChallenge(c,user,1));
+    expect(await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(challenge.url),chat)))).toBe(true);
+    await tx(c=>confirmTeacherTelegramLink(c,user,1));
+    return challenge;
+  }
+  const request=(method:string,path:string,body?:any)=>nativeFetch(base+"/communication/telegram"+path,{
+    method,headers:{"content-type":"application/json",Origin:new URL(base).origin},
+    ...(body?{body:JSON.stringify(body)}:{})});
+  it("requires authenticated teacher, current employment, explicit consent and same-origin confirmation",async()=>{
+    state.anonymous=true;expect((await request("POST","/link",{schoolId:1,consent:true,audience:"TEACHER"})).status).toBe(401);
+    state.anonymous=false;
+    expect((await request("POST","/link",{schoolId:1,consent:false,audience:"TEACHER"})).status).toBe(400);
+    state.role="PARENT";
+    expect((await request("POST","/link",{schoolId:1,consent:true,audience:"TEACHER"})).status).toBe(403);
+    state.role="TEACHER";
+    expect((await request("POST","/link",{schoolId:2,consent:true,audience:"TEACHER"})).status).toBe(403);
+    const response=await request("POST","/link",{schoolId:1,consent:true,audience:"TEACHER"});
+    expect(response.status).toBe(200);
+    const challenge=await response.json() as any;
+    expect(tokenFrom(challenge.url)).toMatch(/^t_[A-Za-z0-9_-]{43}$/);
+    expect((await request("POST","/link/confirm",{schoolId:1,consent:true,audience:"TEACHER"})).status).toBe(409);
+    expect(await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(challenge.url))))).toBe(true);
+    state.userId=101;
+    expect((await request("POST","/link/confirm",{schoolId:1,consent:true,audience:"TEACHER"})).status).toBe(409);
+    state.userId=100;
+    expect((await request("POST","/link/confirm",{schoolId:1,consent:true,audience:"TEACHER"})).status).toBe(200);
+    const status=await (await request("GET","/status?schoolId=1&audience=TEACHER")).json() as any;
+    expect(status.linked).toBe(true);expect(status.teacherEligible).toBe(true);
+    expect(JSON.stringify(status)).not.toContain("888001");
+    expect(await teacherTelegramRecipient(db,100,1)).toBe("888001");
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("rejects expired, replayed, group and forged-chat challenges; disconnect withdraws consent",async()=>{
+    const challenge=await tx(c=>createTeacherTelegramChallenge(c,100,1)),token=tokenFrom(challenge.url);
+    const group=start(token);group.message.chat.type="group";
+    expect(await tx(c=>acceptTelegramUpdate(c,group))).toBe(false);
+    const forged=start(token);forged.message.from.id=222;
+    expect(await tx(c=>acceptTelegramUpdate(c,forged))).toBe(false);
+    await db.query("UPDATE teacher_telegram_challenges SET created_at=now()-interval '11 minutes',expires_at=now()-interval '1 minute'");
+    expect(await tx(c=>acceptTelegramUpdate(c,start(token)))).toBe(false);
+    const linked=await teacherLink();
+    expect(await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(linked.url),777001)))).toBe(false);
+    await db.query("INSERT INTO communication_preferences(user_id,school_id,category,channel,enabled) VALUES(100,1,'ACADEMIC','TELEGRAM',false)");
+    expect(await teacherTelegramRecipient(db,100,1)).toBeNull();
+    expect((await request("DELETE","/link?audience=TEACHER")).status).toBe(200);
+    expect(await teacherTelegramRecipient(db,100,1)).toBeNull();
+    expect((await db.query("SELECT chat_ciphertext,chat_hash,consented_at,revoked_at FROM teacher_telegram_links")).rows[0])
+      .toMatchObject({chat_ciphertext:null,chat_hash:null,consented_at:null,revoked_at:expect.any(Date)});
+  });
+  it("protects chat uniqueness across teacher accounts and both parent/teacher directions",async()=>{
+    await teacherLink(100,777001);
+    const challenge=await tx(c=>createTeacherTelegramChallenge(c,101,1));
+    await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(challenge.url),777001)));
+    await expect(tx(c=>confirmTeacherTelegramLink(c,101,1))).rejects.toMatchObject({code:"23505"});
+    // Parent confirmation is still its original flow, with cross-account protection added by the DB.
+    const parent=await tx(c=>createParentTelegramChallenge(c,1,1));
+    await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(parent.url),777001)));
+    await expect(tx(c=>confirmParentTelegramLink(c,1,1))).rejects.toMatchObject({code:"23505"});
+    await tx(c=>revokeTeacherTelegramLink(c,100));
+    await tx(c=>confirmParentTelegramLink(c,1,1));
+    expect(await telegramRecipient(db,1,1,1,"ATTENDANCE")).toBe("777001");
+    const next=await tx(c=>createTeacherTelegramChallenge(c,100,1));
+    await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(next.url),777001)));
+    await expect(tx(c=>confirmTeacherTelegramLink(c,100,1))).rejects.toMatchObject({code:"23505"});
+    expect((await db.query("SELECT * FROM parent_telegram_links")).rows).toHaveLength(1);
+  });
+  it("serializes concurrent confirmations of one chat and retains one account only",async()=>{
+    for(const user of [100,101]){
+      const challenge=await tx(c=>createTeacherTelegramChallenge(c,user,1));
+      await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(challenge.url),777001)));
+    }
+    const results=await Promise.allSettled([tx(c=>confirmTeacherTelegramLink(c,100,1)),tx(c=>confirmTeacherTelegramLink(c,101,1))]);
+    expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+    expect((await db.query("SELECT * FROM teacher_telegram_links WHERE consented_at IS NOT NULL")).rows).toHaveLength(1);
+  });
+  it("enforces cross-role uniqueness even when parent and teacher confirm concurrently",async()=>{
+    const teacher=await tx(c=>createTeacherTelegramChallenge(c,100,1));
+    const parent=await tx(c=>createParentTelegramChallenge(c,1,1));
+    await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(teacher.url),777001)));
+    await tx(c=>acceptTelegramUpdate(c,start(tokenFrom(parent.url),777001)));
+    const results=await Promise.allSettled([tx(c=>confirmTeacherTelegramLink(c,100,1)),tx(c=>confirmParentTelegramLink(c,1,1))]);
+    expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+    expect((await db.query(`SELECT chat_hash FROM teacher_telegram_links WHERE consented_at IS NOT NULL
+      UNION ALL SELECT chat_hash FROM parent_telegram_links WHERE consented_at IS NOT NULL`)).rows).toHaveLength(1);
+  });
+  it("keeps parent linkage and consent independent when the same account has both roles",async()=>{
+    await link(888001);
+    await db.query(`INSERT INTO employees VALUES(1,1,1,'TEACHER','ACTIVE');
+      INSERT INTO school_memberships VALUES(1,1,'TEACHER','ACTIVE')`);
+    await teacherLink(1,888001);
+    await tx(c=>revokeTeacherTelegramLink(c,1));
+    expect(await telegramRecipient(db,1,1,1,"ATTENDANCE")).toBe("888001");
+    expect(await teacherTelegramRecipient(db,1,1)).toBeNull();
+    expect(await tx(c=>acceptTelegramUpdate(c,{message:{chat:{id:888001,type:"private"},from:{id:888001},text:"/stop"}}))).toBe(true);
+    expect(await telegramRecipient(db,1,1,1,"ATTENDANCE")).toBeNull();
+  });
+  it("queues both teacher triggers exactly once, skips unlinked Telegram, and audits without provider sends",async()=>{
+    await queueTeacherPeriodNotifications(db,tick);
+    expect((await db.query("SELECT channel FROM communication_deliveries ORDER BY channel")).rows).toEqual([{channel:"IN_APP"},{channel:"PUSH"}]);
+    // Revoke the fictional first intent only inside this disposable fixture.
+    await db.query("TRUNCATE communication_deliveries,communication_notifications");
+    await teacherLink();
+    await Promise.all([queueTeacherPeriodNotifications(db,tick),queueTeacherPeriodNotifications(db,tick)]);
+    await queueTeacherPeriodNotifications(db,tick);
+    await queueTeacherPeriodNotifications(db,new Date("2026-11-09T07:45:00Z"));
+    const rows=(await db.query("SELECT channel,count(*)::int AS count FROM communication_deliveries GROUP BY channel ORDER BY channel")).rows;
+    expect(rows).toEqual([{channel:"IN_APP",count:2},{channel:"PUSH",count:2},{channel:"TELEGRAM",count:2}]);
+    const messages=(await db.query("SELECT body,event_key FROM communication_notifications ORDER BY id")).rows;
+    expect(messages[0].event_key).toContain(":BEFORE");expect(messages[1].event_key).toContain(":END");
+    expect(messages[0].body).toContain("08:00–08:45 Africa/Lagos");
+    expect((await db.query("SELECT * FROM audit_logs WHERE event_type='TEACHER_TELEGRAM_ACCOUNT_LINKED'")).rows).toHaveLength(1);
+    expect(botFetch).not.toHaveBeenCalled();
+    await tx(c=>revokeTeacherTelegramLink(c,100));
+    expect((await db.query("SELECT * FROM communication_deliveries WHERE channel='TELEGRAM' AND status='CANCELLED'")).rows).toHaveLength(2);
+    expect((await db.query("SELECT * FROM communication_deliveries WHERE channel='IN_APP' AND status='SENT'")).rows).toHaveLength(2);
+  });
+  it.each(["CANCELLED","RESCHEDULED","EXPIRED"])("rejects stale teacher Telegram intent %s before adapter access",async change=>{
+    await teacherLink();await queueTeacherPeriodNotifications(db,tick);
+    const record=(await db.query(`SELECT event_key AS "eventKey",school_id AS "schoolId",recipient_user_id AS "recipientUserId",body,subject FROM communication_notifications`)).rows[0];
+    expect(await teacherPeriodStillCurrent(db,record,tick)).toBe(true);
+    if(change==="CANCELLED")await db.query("UPDATE academic_timetable_entries SET status='CANCELLED'");
+    if(change==="RESCHEDULED")await db.query("UPDATE academic_timetable_entries SET start_time='08:10'");
+    expect(await teacherPeriodStillCurrent(db,record,change==="EXPIRED"?new Date("2026-11-09T07:00:00Z"):tick)).toBe(false);
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("respects Owner channel selection, pause and payment locks and rejects deployed teacher APIs",async()=>{
+    await teacherLink();
+    await db.query(`UPDATE schools SET communication_defaults='{"ACADEMIC":["IN_APP","PUSH"]}'`);
+    await queueTeacherPeriodNotifications(db,tick);
+    expect((await db.query("SELECT * FROM communication_deliveries WHERE channel='TELEGRAM'")).rows).toEqual([]);
+    await db.query("TRUNCATE communication_deliveries,communication_notifications");
+    vi.stubEnv("EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED","true");
+    await queueTeacherPeriodNotifications(db,tick);
+    expect((await db.query("SELECT * FROM communication_notifications")).rows).toEqual([]);
+    vi.stubEnv("EDUCORE_DEVELOPMENT_PAYMENT_TEST_NOTIFICATIONS_DISABLED","false");
+    await db.query(`UPDATE audit_logs SET metadata=jsonb_set(metadata,'{controls,paused}','true') WHERE module='OwnerNotificationDelivery'`);
+    await queueTeacherPeriodNotifications(db,tick);
+    expect((await db.query("SELECT * FROM communication_notifications")).rows).toEqual([]);
+    vi.stubEnv("REPLIT_DEPLOYMENT","1");
+    expect((await request("POST","/link",{schoolId:1,consent:true,audience:"TEACHER"})).status).toBe(404);
+    expect((await request("DELETE","/link?audience=TEACHER")).status).toBe(404);
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it.each(["BEFORE","END","CANCELLED","RESCHEDULED","EXPIRED","WITHDRAWN"])(
+    "routes teacher Telegram %s through the existing adapter only while current and consenting",async trigger=>{
+    await teacherLink();
+    const now=trigger==="END"?new Date("2026-11-09T07:45:00Z"):tick;
+    await queueTeacherPeriodNotifications(db,now);
+    await db.query("UPDATE communication_deliveries SET next_attempt_at=$1 WHERE channel='TELEGRAM'",[now]);
+    if(trigger==="CANCELLED")await db.query("UPDATE academic_timetable_entries SET status='CANCELLED'");
+    if(trigger==="RESCHEDULED")await db.query("UPDATE academic_timetable_entries SET start_time='08:10'");
+    if(trigger==="WITHDRAWN")await db.query("UPDATE communication_preferences SET enabled=false WHERE user_id=100 AND channel='TELEGRAM'");
+    if(trigger==="WITHDRAWN")await db.query("INSERT INTO communication_preferences(user_id,school_id,category,channel,enabled) VALUES(100,1,'ACADEMIC','TELEGRAM',false)");
+    const send=vi.fn(async(_input:any)=>({provider:"fixture-telegram",channel:"telegram" as const,
+      status:"ACCEPTED" as const,accepted:true,delivered:false}));
+    const controls=await loadOwnerDeliveryControls(db);
+    const result=await withOwnerNotificationScope(controls,()=>dispatchCommunicationDeliveries(db,10,{
+      providers:{...mocks(),telegram:{provider:"fixture-telegram",channel:"telegram",send}},
+      channels:["TELEGRAM"],now:()=>trigger==="EXPIRED"?new Date("2026-11-09T07:00:00Z"):now,
+    }));
+    const valid=trigger==="BEFORE"||trigger==="END";
+    expect(send.mock.calls.length,JSON.stringify({result,deliveries:(await db.query(
+      "SELECT channel,status,error_code,last_error FROM communication_deliveries")).rows})).toBe(valid?1:0);
+    if(valid){
+      expect(result.accepted).toBe(1);
+      expect(send.mock.calls[0][0]).toMatchObject({to:"777001",body:expect.stringContaining("Maths · Year 1")});
+      await withOwnerNotificationScope(controls,()=>dispatchCommunicationDeliveries(db,10,{
+        providers:{...mocks(),telegram:{provider:"fixture-telegram",channel:"telegram",send}},
+        channels:["TELEGRAM"],now:()=>now,
+      }));
+      expect(send).toHaveBeenCalledOnce();
+    }
+    expect(botFetch).not.toHaveBeenCalled();
+  });
+  it("holds the teacher adapter when Owner Telegram is disabled and never consumes an attempt",async()=>{
+    await teacherLink();await queueTeacherPeriodNotifications(db,tick);
+    await db.query(`UPDATE communication_deliveries SET next_attempt_at=$1 WHERE channel='TELEGRAM'`,[tick]);
+    await db.query(`UPDATE audit_logs SET metadata=jsonb_set(metadata,'{controls,telegramEnabled}','false')
+      WHERE module='OwnerNotificationDelivery'`);
+    const send=vi.fn();
+    const controls=await loadOwnerDeliveryControls(db);
+    const result=await withOwnerNotificationScope(controls,()=>dispatchCommunicationDeliveries(db,10,{
+      providers:{...mocks(),telegram:{provider:"fixture-telegram",channel:"telegram",send}},
+      channels:["TELEGRAM"],now:()=>tick,
+    }));
+    expect(result.claimed).toBe(0);expect(send).not.toHaveBeenCalled();
+    expect((await db.query("SELECT attempts,status FROM communication_deliveries WHERE channel='TELEGRAM'")).rows[0])
+      .toEqual({attempts:0,status:"QUEUED"});
+  });
+});
 describe("Telegram real SQL: linking, consent and outbox safety; no external network",()=>{
   it("Owner push allowlist discovery requires explicit consent and valid active registration without exposing subscriptions",async()=>{
     const keys=createECDH("prime256v1");keys.generateKeys();

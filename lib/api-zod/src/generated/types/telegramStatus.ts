@@ -20,6 +20,7 @@ export interface TelegramStatus {
   linked: boolean;
   consented: boolean;
   parentEligible: boolean;
+  teacherEligible?: boolean;
   policyAllowed: boolean;
   pending: boolean;
   /** @nullable */

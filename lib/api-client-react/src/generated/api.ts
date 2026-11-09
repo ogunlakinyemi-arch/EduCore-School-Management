@@ -949,6 +949,7 @@ import type {
   TransportTermInvoiceGeneration,
   UnauthenticatedResponse,
   UnlinkTelegram200,
+  UnlinkTelegramParams,
   UpdateAcademicAssessmentParams,
   UpdateAcademicAssignmentParams,
   UpdateAcademicGradingRuleParams,
@@ -4499,17 +4500,24 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateTelegramLinkMutationOptions(options));
     }
 
-export const getUnlinkTelegramUrl = () => {
+export const getUnlinkTelegramUrl = (params?: UnlinkTelegramParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/communication/telegram/link`
+  return stringifiedParams.length > 0 ? `/api/communication/telegram/link?${stringifiedParams}` : `/api/communication/telegram/link`
 }
 
-export const unlinkTelegram = async ( options?: Parameters<typeof customFetch>[1]): Promise<UnlinkTelegram200> => {
+export const unlinkTelegram = async (params?: UnlinkTelegramParams, options?: Parameters<typeof customFetch>[1]): Promise<UnlinkTelegram200> => {
 
-  return customFetch<UnlinkTelegram200>(getUnlinkTelegramUrl(),
+  return customFetch<UnlinkTelegram200>(getUnlinkTelegramUrl(params),
   {
     ...options,
     method: 'DELETE'
@@ -4525,8 +4533,8 @@ export const unlinkTelegram = async ( options?: Parameters<typeof customFetch>[1
 export const getUnlinkTelegramMutationKey = () => ['unlinkTelegram'] as const;
 
 export const getUnlinkTelegramMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,UnlinkTelegramMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,UnlinkTelegramMutationVariables, TContext> => {
 
 const mutationKey = getUnlinkTelegramMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -4538,10 +4546,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkTelegram>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkTelegram>>, UnlinkTelegramMutationVariables> = (props) => {
+          const {params} = props ?? {};
 
-
-          return  unlinkTelegram(requestOptions)
+          return  unlinkTelegram(params,requestOptions)
         }
 
 
@@ -4554,14 +4562,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UnlinkTelegramMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkTelegram>>>
 
     export type UnlinkTelegramMutationError = ErrorType<unknown>
-
+    export type UnlinkTelegramMutationVariables = {params?: UnlinkTelegramParams}
 
     export const useUnlinkTelegram = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTelegram>>, TError,UnlinkTelegramMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof unlinkTelegram>>,
         TError,
-        void,
+        UnlinkTelegramMutationVariables,
         TContext
       > => {
       return useMutation(getUnlinkTelegramMutationOptions(options));

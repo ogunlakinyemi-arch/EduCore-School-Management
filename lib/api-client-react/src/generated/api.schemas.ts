@@ -14662,6 +14662,7 @@ export interface TelegramStatus {
   linked: boolean;
   consented: boolean;
   parentEligible: boolean;
+  teacherEligible?: boolean;
   policyAllowed: boolean;
   pending: boolean;
   /** @nullable */
@@ -24955,12 +24956,28 @@ export type GetTelegramStatusParams = {
  * @minimum 1
  */
 schoolId?: number;
+audience?: GetTelegramStatusAudience;
 };
+
+export type GetTelegramStatusAudience = typeof GetTelegramStatusAudience[keyof typeof GetTelegramStatusAudience];
+
+
+export const GetTelegramStatusAudience = {
+  TEACHER: 'TEACHER',
+} as const;
+
+export type CreateTelegramLinkBodyAudience = typeof CreateTelegramLinkBodyAudience[keyof typeof CreateTelegramLinkBodyAudience];
+
+
+export const CreateTelegramLinkBodyAudience = {
+  TEACHER: 'TEACHER',
+} as const;
 
 export type CreateTelegramLinkBody = {
   /** @minimum 1 */
   schoolId: number;
   consent: true;
+  audience?: CreateTelegramLinkBodyAudience;
 };
 
 export type CreateTelegramLink200 = {
@@ -24968,14 +24985,33 @@ export type CreateTelegramLink200 = {
   expiresAt: string;
 };
 
+export type UnlinkTelegramParams = {
+audience?: UnlinkTelegramAudience;
+};
+
+export type UnlinkTelegramAudience = typeof UnlinkTelegramAudience[keyof typeof UnlinkTelegramAudience];
+
+
+export const UnlinkTelegramAudience = {
+  TEACHER: 'TEACHER',
+} as const;
+
 export type UnlinkTelegram200 = {
   unlinked: boolean;
 };
+
+export type ConfirmTelegramLinkBodyAudience = typeof ConfirmTelegramLinkBodyAudience[keyof typeof ConfirmTelegramLinkBodyAudience];
+
+
+export const ConfirmTelegramLinkBodyAudience = {
+  TEACHER: 'TEACHER',
+} as const;
 
 export type ConfirmTelegramLinkBody = {
   /** @minimum 1 */
   schoolId: number;
   consent: true;
+  audience?: ConfirmTelegramLinkBodyAudience;
 };
 
 export type ConfirmTelegramLink200 = {

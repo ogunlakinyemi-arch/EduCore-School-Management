@@ -15,6 +15,21 @@ import { ParentTelegramControl, OwnerTelegramHealth, telegramGate } from './tele
 const base = { configured: true, ready: true, reason: 'ok', botUsername: 'b', linked: false, consented: false, parentEligible: true, policyAllowed: true, pending: false, pendingAccountLabel: null };
 const render = (o: object) => { st.s = { ...base, ...o }; return renderToStaticMarkup(<ParentTelegramControl schoolId={3} />); };
 describe('telegram control', () => {
+  it('teacher mode requires teaching eligibility and explicit consent without parent claims', () => {
+    const previous=st.ctx;
+    st.ctx={isPlatformOwner:false,roles:[{schoolId:3,role:'TEACHER',status:'ACTIVE'}]};
+    st.s={...base,parentEligible:false,teacherEligible:true};
+    let h=renderToStaticMarkup(<ParentTelegramControl schoolId={3} teacher />);
+    expect(h).toContain('teaching period reminders');
+    expect(h).toMatch(/button-telegram-start[^>]*disabled/);
+    expect(h).not.toContain('verified linked children');
+    st.s={...base,parentEligible:false,teacherEligible:true,pending:true,pendingAccountLabel:'@teacher'};
+    h=renderToStaticMarkup(<ParentTelegramControl schoolId={3} teacher />);
+    expect(h).toContain('@teacher');
+    expect(h).toMatch(/button-telegram-confirm[^>]*disabled/);
+    expect(h).toContain('Unlink and withdraw consent');
+    st.ctx=previous;
+  });
   it('shows missing schema requirements without claiming that publishing code repairs storage', () => {
     st.health = {configured:true,ready:false,reason:'SCHEMA_NOT_READY',diagnosticOk:true,
       storageReady:false,storageMissing:['channel_check:communication_templates']};

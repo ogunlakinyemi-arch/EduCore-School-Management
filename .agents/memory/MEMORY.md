@@ -125,4 +125,4 @@
 - [Invoice logo fallback](invoice-logo-fallback-policy.md) — private school branding must not block parent invoice printing; other document requirements remain separate.
 - [Restricted SMS scope](sms-emergency-absence-policy.md) — emergency and student absence only; explicit opt-in, preserved pauses and separate configuration/send evidence.
 - [Notification time display](notification-time-policy.md) — explicit Africa/Lagos WAT for event/created times; preserve UTC storage, distinguish instants and handle rollover.
-- [Teacher period notices](teacher-period-notification-policy.md) — Development-only In-app/push; teacher Telegram deferred; preserve pauses, consent and current timetable evidence.
+- [Teacher period notices](teacher-period-notification-policy.md) — Development-only In-app/push/Telegram; independent teacher consent, unchanged parent scope and current timetable evidence.

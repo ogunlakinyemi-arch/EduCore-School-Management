@@ -32,7 +32,7 @@ export async function createTeacherTelegramChallenge(db:Db,userId:number,schoolI
     throw new AuthError(403,"Active teacher and Owner Telegram permission required");
   const count=(await db.query(`SELECT count(*)::int AS count FROM teacher_telegram_challenges
     WHERE user_id=$1 AND created_at>now()-interval '10 minutes'`,[userId])).rows[0]?.count??0;
-  if(count>=5)throw new AuthError(429,"Wait ten minutes before requesting another link");
+  if(count>=5)throw new AuthError(409,"Wait ten minutes before requesting another link");
   await db.query(`UPDATE teacher_telegram_challenges SET revoked_at=now(),pending_ciphertext=NULL,chat_hash=NULL
     WHERE user_id=$1 AND confirmed_at IS NULL AND revoked_at IS NULL`,[userId]);
   const token=`t_${randomBytes(32).toString("base64url")}`;

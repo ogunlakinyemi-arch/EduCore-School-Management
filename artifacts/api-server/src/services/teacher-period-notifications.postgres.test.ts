@@ -75,7 +75,7 @@ it("triggers five minutes before and at the end, never outside the due minute",a
   const first=await notices();
   expect(first).toHaveLength(1);expect(first[0].eventKey).toBe("TEACHER_PERIOD:60:2026-11-09:BEFORE");
   expect(first[0].body).toContain("Maths · Year 1");expect(first[0].body).toContain("08:00–08:45 Africa/Lagos");
-  expect(first[0].channels).toEqual(["IN_APP","PUSH"]);expect(first[0].useSchoolDefaults).toBe(false);
+  expect(first[0].channels).toEqual(["IN_APP","PUSH","TELEGRAM"]);expect(first[0].useSchoolDefaults).toBe(false);
   expect(await notices(new Date("2026-11-09T06:54:59Z"))).toEqual([]);
   expect(await notices(new Date("2026-11-09T06:56:00Z"))).toEqual([]);
   expect((await notices(new Date("2026-11-09T07:45:00Z")))[0].eventKey).toMatch(/:END$/);
