@@ -374,3 +374,22 @@ Field SMS acceptance work remains separate; none was marked complete here.
 Source integration is ready for review within the approved inactive boundary.
 This report does not request or imply shared migrations, runtime activation,
 message sending, financial operation, preview activation, publication or deployment.
+
+## Owner free academic-term grants — subsequent Development source feature
+
+The separately requested Owner free-term feature is implemented in source.
+Its exact changed-file list, calendar/authorization/duplicate-grant safeguards,
+preservation evidence and remaining operational gates are recorded in
+`docs/owner-free-academic-terms-completion-report.md`.
+
+Evidence: 150 distinct backend checks across a full run and affected
+continuation; 40 distinct frontend checks across full/targeted runs; passing
+library/API/frontend types and disposable API/web builds. These counts are
+separate from the earlier consolidated update's evidence above.
+
+Candidate `0183_owner_free_academic_terms.sql` was tested only in disposable
+PostgreSQL and remains unapplied to shared Development/Production. No shared
+restart, real grant/suspension, worker/payment/SMS activation, provider-setting
+change, publication or deployment occurred. The new Owner journey still needs
+separately authorized authenticated runtime acceptance after approved schema
+and service delivery.

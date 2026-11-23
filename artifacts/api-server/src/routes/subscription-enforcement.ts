@@ -6,8 +6,10 @@ import { readSchoolSubscription, readSchoolEnforcementSummary } from "../service
 import { readManualSchoolState, changeManualSchoolLock } from "../services/school-subscription-lock";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import { createLiveFamilyAccessRouter } from "./flutterwave-live-family-access";
+import { createOwnerFreeAcademicTermsRouter } from "./owner-free-academic-terms";
 
 const router = Router();
+router.use(createOwnerFreeAcademicTermsRouter());
 router.use(createLiveFamilyAccessRouter({pool}));
 router.use("/subscription-enforcement", requireAuthentication());
 const positive = z.coerce.number().int().positive();

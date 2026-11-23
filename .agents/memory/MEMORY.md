@@ -126,3 +126,4 @@
 - [Restricted SMS scope](sms-emergency-absence-policy.md) — emergency/absence plus separately consented Owner field follow-up; preserve pauses and distinguish configuration from sending.
 - [Notification time display](notification-time-policy.md) — explicit Africa/Lagos WAT for event/created times; preserve UTC storage, distinguish instants and handle rollover.
 - [Teacher period notices](teacher-period-notification-policy.md) — Production preparation approved; independent consent, separate paused Production controls and no implied migration/send permission.
+- [Owner free academic terms](owner-free-academic-term-policy.md) — any existing school, one saved calendar term; non-payment entitlement, immutable audit and no inherited next-term waiver.

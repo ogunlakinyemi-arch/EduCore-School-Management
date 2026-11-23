@@ -15930,6 +15930,75 @@ export const GetSubscriptionEnforcementOverviewResponseItem = zod.object({
 export const GetSubscriptionEnforcementOverviewResponse = zod.array(GetSubscriptionEnforcementOverviewResponseItem)
 
 
+
+
+
+export const GetOwnerFreeAcademicTermsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetOwnerFreeAcademicTermsResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "ready": zod.boolean(),
+  "terms": zod.array(zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "name": zod.string(),
+  "sessionName": zod.string(),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "status": zod.enum(['TRIAL_GRANTED', 'ACTIVE', 'COMPLETED', 'PAYMENT_REQUIRED', 'PAID', 'SUSPENDED']),
+  "grantId": zod.number().int().nullable(),
+  "calendarChanged": zod.boolean()
+})),
+  "history": zod.array(zod.object({
+  "id": zod.number().int(),
+  "grantId": zod.number().int(),
+  "actorUserId": zod.number().int(),
+  "actorName": zod.string(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "createdAt": zod.string(),
+  "startDate": zod.string(),
+  "endDate": zod.string()
+}))
+})
+
+
+export const ChangeOwnerFreeAcademicTermParams = zod.object({
+  "action": zod.enum(['grant', 'suspend'])
+})
+
+
+
+
+export const changeOwnerFreeAcademicTermBodyStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const changeOwnerFreeAcademicTermBodyEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const changeOwnerFreeAcademicTermBodyReasonMin = 5;
+export const changeOwnerFreeAcademicTermBodyReasonMax = 500;
+
+
+
+export const ChangeOwnerFreeAcademicTermBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "startDate": zod.string().regex(changeOwnerFreeAcademicTermBodyStartDateRegExp),
+  "endDate": zod.string().regex(changeOwnerFreeAcademicTermBodyEndDateRegExp),
+  "reason": zod.string().min(changeOwnerFreeAcademicTermBodyReasonMin).max(changeOwnerFreeAcademicTermBodyReasonMax),
+  "confirmed": zod.literal(true)
+})
+
+export const ChangeOwnerFreeAcademicTermResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "action": zod.string()
+})
+
+
 export const GetMySubscriptionEnforcementResponseItem = zod.object({
   "environment": zod.enum(['LIVE']).optional(),
   "audiences": zod.array(zod.enum(['student', 'parent'])).optional(),

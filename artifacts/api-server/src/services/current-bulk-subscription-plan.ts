@@ -34,7 +34,8 @@ export async function planCurrentBulkSubscriptions(pool: CurrentPool, actorId: n
   return financialTransaction(pool,async c=>{
     await schoolAuthority(c,actorId,input.schoolId);
     await requireCurrentLifecycle(c);
-    const rollout=await readStudentRollout(c,input.schoolId,input.termId,
+    const {readStudentUsageRollout}=await import("./student-platform-rollout");
+    const rollout=await readStudentUsageRollout(c,input.schoolId,input.termId,
       deps.now?new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit"})
         .format(deps.now()):undefined);
     demand(rollout.chargeable,"FREE_OR_INELIGIBLE_TERM");

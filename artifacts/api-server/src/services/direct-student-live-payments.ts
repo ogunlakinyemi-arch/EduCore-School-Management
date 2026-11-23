@@ -40,7 +40,8 @@ export async function directStudentReadiness(pool:StudentSubscriptionSqlPool,sco
   }finally{schemaClient.release();}
   const c=await pool.connect();
   try{
-    const rollout=await readStudentRollout(c,scope.schoolId,scope.termId);
+    const {readStudentUsageRollout}=await import("./student-platform-rollout");
+    const rollout=await readStudentUsageRollout(c,scope.schoolId,scope.termId);
     if(!rollout.chargeable)return{ready:false as const,blockers:["FREE_ROLLOUT_NO_PLATFORM_PAYMENT",rollout.reason]};
     const review=await findApprovedDirectReview(c,scope,report.evidenceDigest,config);
     if(!review)return{ready:false as const,blockers:["ACTIVE_3200_RULE_AND_EXPLICIT_MATCHING_RECONCILIATION_APPROVAL_REQUIRED"]};
@@ -59,7 +60,9 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
   try{
     await beginFinancialTransaction(c);
     await requireFinancialActor(c,input.actorId,input.assistanceId?undefined:input.schoolId);
-    if(!(await readStudentRollout(c,input.schoolId,input.termId)).chargeable)block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
+    await c.query("SELECT pg_advisory_xact_lock(7749,$1::integer)",[input.schoolId]);
+    const {readStudentUsageRollout}=await import("./student-platform-rollout");
+    if(!(await readStudentUsageRollout(c,input.schoolId,input.termId)).chargeable)block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
     if((await c.query("SELECT to_regclass('public.current_bulk_allocations') IS NOT NULL AS present")).rows[0]?.present){
       const batchClaim=(await c.query(`SELECT id FROM current_bulk_allocations
         WHERE school_id=$1 AND student_id=$2 AND academic_term_id=$3 LIMIT 1`,

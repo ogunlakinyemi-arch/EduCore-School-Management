@@ -1,0 +1,95 @@
+paths:
+  /owner/free-academic-terms:
+    get:
+      operationId: getOwnerFreeAcademicTerms
+      tags: [OwnerFreeAcademicTerms]
+      parameters:
+        - in: query
+          name: schoolId
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: Owner-only saved calendar, grants and immutable history.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schoolId, ready, terms, history]
+                properties:
+                  schoolId: {type: integer}
+                  ready: {type: boolean}
+                  terms:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, sessionId, name, sessionName, startDate, endDate, status, grantId, calendarChanged]
+                      properties:
+                        id: {type: integer}
+                        sessionId: {type: integer}
+                        name: {type: string}
+                        sessionName: {type: string}
+                        startDate: {type: string}
+                        endDate: {type: string}
+                        status: {type: string, enum: [TRIAL_GRANTED, ACTIVE, COMPLETED, PAYMENT_REQUIRED, PAID, SUSPENDED]}
+                        grantId: {type: integer, nullable: true}
+                        calendarChanged: {type: boolean}
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, grantId, actorUserId, actorName, schoolId, sessionId, termId, status, reason, createdAt, startDate, endDate]
+                      properties:
+                        id: {type: integer}
+                        grantId: {type: integer}
+                        actorUserId: {type: integer}
+                        actorName: {type: string}
+                        schoolId: {type: integer}
+                        sessionId: {type: integer}
+                        termId: {type: integer}
+                        status: {type: string}
+                        reason: {type: string}
+                        createdAt: {type: string}
+                        startDate: {type: string}
+                        endDate: {type: string}
+  /owner/free-academic-terms/{action}:
+    post:
+      operationId: changeOwnerFreeAcademicTerm
+      tags: [OwnerFreeAcademicTerms]
+      parameters:
+        - in: path
+          name: action
+          required: true
+          schema: {type: string, enum: [grant, suspend]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FreeAcademicTermSelection'
+      responses:
+        '200':
+          description: Committed action; refetch status before further action.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schoolId, termId, action]
+                properties:
+                  schoolId: {type: integer}
+                  termId: {type: integer}
+                  action: {type: string}
+components:
+  schemas:
+    FreeAcademicTermSelection:
+      type: object
+      additionalProperties: false
+      required: [schoolId, sessionId, termId, startDate, endDate, reason, confirmed]
+      properties:
+        schoolId: {type: integer, minimum: 1}
+        sessionId: {type: integer, minimum: 1}
+        termId: {type: integer, minimum: 1}
+        startDate: {type: string, pattern: '^\d{4}-\d{2}-\d{2}$'}
+        endDate: {type: string, pattern: '^\d{4}-\d{2}-\d{2}$'}
+        reason: {type: string, minLength: 5, maxLength: 500}
+        confirmed: {type: boolean, enum: [true]}

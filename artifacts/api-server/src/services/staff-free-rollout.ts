@@ -1,4 +1,4 @@
-import {initialStudentFreePeriod,readStudentRollout} from "./student-platform-rollout";
+import {initialStudentFreePeriod,readStudentUsageRollout as readStudentRollout} from "./student-platform-rollout";
 export const STAFF_FREE_TERM_POLICY=Object.freeze({
   approvedOn:"2026-10-27",effectiveOn:"2026-10-27",normalPriceMinor:200000,
 });

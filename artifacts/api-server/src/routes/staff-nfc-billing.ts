@@ -1038,6 +1038,7 @@ router.post("/staff-nfc/subscriptions/:subscriptionId/checkout", wrap(async (req
   let reservation: any;
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(7749,$1::integer)",[query.schoolId]);
     const subscriptionResult = await client.query<any>(
       `SELECT s.id,s.employee_id AS "employeeId",s.school_id AS "schoolId",
               s.academic_session_id AS "sessionId",s.academic_term_id AS "termId",

@@ -1,6 +1,7 @@
 import { StudentSubscriptionStatusPage } from '@/components/student-subscription-guard';
 import { useEffect, useRef, useState } from 'react';
 import { ConnectedFinancePanel } from '@/components/current-finance-panel';
+import { OwnerFreeAcademicTerms } from '@/components/owner-free-academic-terms';
 import { CurrentSubscriptionPolicy } from '@/components/current-subscription-policy';
 import { SchoolBillingDashboard } from '@/components/school-billing-dashboard';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -673,5 +674,5 @@ export function SubscriptionsRoute() {
   if (!staff && context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE')) return <StudentSubscriptionStatusPage />;
   if (!staff) return <StudentNfcFamilyPage />;
   const schoolAdmin=context?.isPlatformOwner!==true&&!!schoolId&&context?.roles?.some(r=>r.role==='SCHOOL_ADMIN'&&r.schoolId===schoolId&&r.status==='ACTIVE')===true;
-  return <><SubscriptionsPage />{schoolAdmin&&<PlatformPaymentForm key={`${context?.user?.id}:${schoolId}`} schoolId={schoolId!} identity={String(context?.user?.id)} />}<div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div></>;
+  return <><SubscriptionsPage />{context?.isPlatformOwner===true&&<OwnerFreeAcademicTerms key={`owner-free-terms-${context?.user?.id ?? 'unknown'}`} />}{schoolAdmin&&<PlatformPaymentForm key={`${context?.user?.id}:${schoolId}`} schoolId={schoolId!} identity={String(context?.user?.id)} />}<div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div></>;
 }

@@ -1,6 +1,6 @@
 import type { CommunicationQueryClient } from "./communication-service";
 import { assertManualSchoolUnlocked } from "./school-subscription-lock";
-import { initialStudentFreePeriod,lagosDate,readStudentRollout } from "./student-platform-rollout";
+import { initialStudentFreePeriod,lagosDate,readStudentUsageRollout as readStudentRollout } from "./student-platform-rollout";
 import {verifiedBulkStudentIds} from "./current-bulk-payment-evidence";
 
 export type StudentPlatformAccess={
@@ -26,7 +26,7 @@ export async function readStudentTermPlatformAccess(db:CommunicationQueryClient,
     const eligible=await db.query(`SELECT st.id FROM students st JOIN schools sc ON sc.id=st.school_id
       WHERE st.id=$2 AND st.school_id=$1 AND lower(st.status)='active' AND lower(sc.status)='active'`,
       [schoolId,studentId]);
-    return eligible.rows.length===1?{schoolId,studentId,termId:null,status:"NOT_REQUIRED",restricted:false}:base;
+    return eligible.rows.length===1?{schoolId,studentId,termId:rollout?.termId??null,status:"NOT_REQUIRED",restricted:false}:base;
   }
   const terms=await db.query<{id:number;name:string}>(`SELECT t.id,t.name FROM academic_terms t
     JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id

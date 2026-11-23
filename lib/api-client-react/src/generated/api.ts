@@ -153,6 +153,7 @@ import type {
   CareGrant,
   CareGrantInput,
   ChangeEmployeeNfcCardStatusBody,
+  ChangeOwnerFreeAcademicTerm200,
   ClassInput,
   ClassSubjectAssignment,
   ClassSubjectAssignmentInput,
@@ -359,6 +360,7 @@ import type {
   FlutterwaveSplitRefundInput,
   FlutterwaveTransactionSplitEvidence,
   ForbiddenResponse,
+  FreeAcademicTermSelection,
   GenerateCurrentTermTransportInvoicesParams,
   GenerateSchoolCalendarBody,
   GenerateStaffNfcTermSubscriptionsParams,
@@ -409,6 +411,8 @@ import type {
   GetOwnerAttendanceRecordsParams,
   GetOwnerBankTransferInstructions200,
   GetOwnerBankTransferInstructionsParams,
+  GetOwnerFreeAcademicTerms200,
+  GetOwnerFreeAcademicTermsParams,
   GetOwnerHardwareCorrection200,
   GetOwnerStudentCardReadinessParams,
   GetOwnerUidInventoryParams,
@@ -36897,6 +36901,167 @@ export function useGetSubscriptionEnforcementOverview<TData = Awaited<ReturnType
 
 
 
+
+export const getGetOwnerFreeAcademicTermsUrl = (params: GetOwnerFreeAcademicTermsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/owner/free-academic-terms?${stringifiedParams}` : `/api/owner/free-academic-terms`
+}
+
+export const getOwnerFreeAcademicTerms = async (params: GetOwnerFreeAcademicTermsParams, options?: Parameters<typeof customFetch>[1]): Promise<GetOwnerFreeAcademicTerms200> => {
+
+  return customFetch<GetOwnerFreeAcademicTerms200>(getGetOwnerFreeAcademicTermsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerFreeAcademicTermsQueryKey = (params?: GetOwnerFreeAcademicTermsParams,) => {
+    return [
+    `/api/owner/free-academic-terms`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOwnerFreeAcademicTermsQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerFreeAcademicTerms>>, TError = ErrorType<unknown>>(params: GetOwnerFreeAcademicTermsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerFreeAcademicTerms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerFreeAcademicTermsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerFreeAcademicTerms>>> = ({ signal }) => getOwnerFreeAcademicTerms(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerFreeAcademicTerms>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerFreeAcademicTermsQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerFreeAcademicTerms>>>
+export type GetOwnerFreeAcademicTermsQueryError = ErrorType<unknown>
+
+
+
+export function useGetOwnerFreeAcademicTerms<TData = Awaited<ReturnType<typeof getOwnerFreeAcademicTerms>>, TError = ErrorType<unknown>>(
+ params: GetOwnerFreeAcademicTermsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerFreeAcademicTerms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerFreeAcademicTermsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getChangeOwnerFreeAcademicTermUrl = (action: 'grant' | 'suspend',) => {
+
+
+
+
+  return `/api/owner/free-academic-terms/${action}`
+}
+
+export const changeOwnerFreeAcademicTerm = async (action: 'grant' | 'suspend',
+    freeAcademicTermSelection: FreeAcademicTermSelection, options?: Parameters<typeof customFetch>[1]): Promise<ChangeOwnerFreeAcademicTerm200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ChangeOwnerFreeAcademicTerm200>(getChangeOwnerFreeAcademicTermUrl(action),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(freeAcademicTermSelection)
+  }
+);}
+
+
+
+
+
+export const getChangeOwnerFreeAcademicTermMutationKey = () => ['changeOwnerFreeAcademicTerm'] as const;
+
+export const getChangeOwnerFreeAcademicTermMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeOwnerFreeAcademicTerm>>, TError,ChangeOwnerFreeAcademicTermMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changeOwnerFreeAcademicTerm>>, TError,ChangeOwnerFreeAcademicTermMutationVariables, TContext> => {
+
+const mutationKey = getChangeOwnerFreeAcademicTermMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changeOwnerFreeAcademicTerm>>, ChangeOwnerFreeAcademicTermMutationVariables> = (props) => {
+          const {action,data} = props ?? {};
+
+          return  changeOwnerFreeAcademicTerm(action,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangeOwnerFreeAcademicTermMutationResult = NonNullable<Awaited<ReturnType<typeof changeOwnerFreeAcademicTerm>>>
+    export type ChangeOwnerFreeAcademicTermMutationBody = BodyType<FreeAcademicTermSelection>
+    export type ChangeOwnerFreeAcademicTermMutationError = ErrorType<unknown>
+    export type ChangeOwnerFreeAcademicTermMutationVariables = {action: 'grant' | 'suspend';data: BodyType<FreeAcademicTermSelection>}
+
+    export const useChangeOwnerFreeAcademicTerm = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeOwnerFreeAcademicTerm>>, TError,ChangeOwnerFreeAcademicTermMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof changeOwnerFreeAcademicTerm>>,
+        TError,
+        ChangeOwnerFreeAcademicTermMutationVariables,
+        TContext
+      > => {
+      return useMutation(getChangeOwnerFreeAcademicTermMutationOptions(options));
+    }
 
 export const getGetMySubscriptionEnforcementUrl = () => {
 

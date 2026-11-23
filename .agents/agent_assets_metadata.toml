@@ -910,3 +910,17 @@ mtime_ms = 1795432329578
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f96b4f6a-a30c-49e0-82aa-9bc224e77021/ecfb95f6-9d36-47f4-b4b8-5433bcef9118"
 storage_version_token = "1795432409298765"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "FiRL-EBZ_TnOVzra_7xhD"
+uri = "file://docs/owner-free-academic-terms-completion-report.md"
+type = "text"
+title = "Owner free academic-term grants — completion report"
+description = "Development-source implementation, exact files, 150 backend and 40 frontend distinct checks, and unapplied migration/runtime gates."
+logical_id = "49e676e6-7f99-4e6a-a9e0-1ae449b12f86"
+content_hash = "sha256:1aa63a494a0d6477afb687e6f8b3d8785a5e629afcfbe83842e4d4c16ba2d157"
+size = 12755
+mtime_ms = 1795439206728
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/49e676e6-7f99-4e6a-a9e0-1ae449b12f86/8b1b28a6-ad7c-43f0-ba19-7eff48a5ee86"
+storage_version_token = "1795439223922100"
+content_type = "text/markdown"

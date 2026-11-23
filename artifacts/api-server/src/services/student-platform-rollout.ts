@@ -1,3 +1,4 @@
+import {readFreeTermGrant} from "./owner-free-academic-term-read";
 /** Business approval is not merchant/release approval. Never creates obligations or payments. */
 export const STUDENT_LAUNCH_POLICY = Object.freeze({
   approvedOn: "2026-10-27", effectiveOn: "2026-10-27",
@@ -44,4 +45,14 @@ export async function readStudentRollout(db:{query:(sql:string,values?:any[])=>P
     FROM academic_terms t JOIN academic_sessions s ON s.id=t.academic_session_id AND s.school_id=t.school_id
     WHERE t.school_id=$1 ORDER BY t.start_date,t.id`,[schoolId]);
   return studentRolloutDecision(rows,schoolId,termId,today);
+}
+
+/** Prospective ordinary platform usage/checkout only. Historical verification,
+ * BRO accrual and physical-card payment evidence retain the base rollout above. */
+export async function readStudentUsageRollout(db:Parameters<typeof readStudentRollout>[0],
+  schoolId:number,termId?:number,today=lagosDate()) {
+  const rollout=await readStudentRollout(db,schoolId,termId,today);
+  if(!rollout.chargeable||!rollout.termId)return rollout;
+  const grant=await readFreeTermGrant(db,schoolId,rollout.termId,today);
+  return grant?.active?{...rollout,chargeable:false,freeAccess:true,reason:"OWNER_FREE_ACADEMIC_TERM"}:rollout;
 }

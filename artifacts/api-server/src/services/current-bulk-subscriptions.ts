@@ -61,7 +61,9 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
  for(const studentId of ids)reviews.set(studentId,await (deps.review??(s=>defaultReview(pool,s)))({...input,studentId}));
  const batch=await financialTransaction(pool,async c=>{
    await currentSchoolAuthority(c,actorId,input.schoolId);await requireCurrentExtensions(c);
-   const rollout=await readStudentRollout(c,input.schoolId,input.termId,deps.now?lagosDate(deps.now()):undefined);
+   await c.query("SELECT pg_advisory_xact_lock(7749,$1::integer)",[input.schoolId]);
+   const {readStudentUsageRollout}=await import("./student-platform-rollout");
+   const rollout=await readStudentUsageRollout(c,input.schoolId,input.termId,deps.now?lagosDate(deps.now()):undefined);
    demand(rollout.chargeable,"FREE_OR_INELIGIBLE_TERM");
    const prior=(await c.query("SELECT * FROM current_payment_batches WHERE request_key=$1",[input.key])).rows[0];
    if(prior){

@@ -16075,6 +16075,25 @@ export interface SubscriptionAccessStatus {
   restrictionReason?: SubscriptionAccessStatusRestrictionReason;
 }
 
+export interface FreeAcademicTermSelection {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  endDate: string;
+  /**
+     * @minLength 5
+     * @maxLength 500
+     */
+  reason: string;
+  confirmed: true;
+}
+
 export interface DeferredCommission {
   id: number;
   partnerId: number;
@@ -26964,6 +26983,65 @@ export type GetSubscriptionEnforcementOverviewParams = {
  * @minimum 1
  */
 schoolId?: number;
+};
+
+export type GetOwnerFreeAcademicTermsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetOwnerFreeAcademicTerms200TermsItemStatus = typeof GetOwnerFreeAcademicTerms200TermsItemStatus[keyof typeof GetOwnerFreeAcademicTerms200TermsItemStatus];
+
+
+export const GetOwnerFreeAcademicTerms200TermsItemStatus = {
+  TRIAL_GRANTED: 'TRIAL_GRANTED',
+  ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
+  PAID: 'PAID',
+  SUSPENDED: 'SUSPENDED',
+} as const;
+
+export type GetOwnerFreeAcademicTerms200TermsItem = {
+  id: number;
+  sessionId: number;
+  name: string;
+  sessionName: string;
+  startDate: string;
+  endDate: string;
+  status: GetOwnerFreeAcademicTerms200TermsItemStatus;
+  grantId: number | null;
+  calendarChanged: boolean;
+};
+
+export type GetOwnerFreeAcademicTerms200HistoryItem = {
+  id: number;
+  grantId: number;
+  actorUserId: number;
+  actorName: string;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  status: string;
+  reason: string;
+  createdAt: string;
+  startDate: string;
+  endDate: string;
+};
+
+export type GetOwnerFreeAcademicTerms200 = {
+  schoolId: number;
+  ready: boolean;
+  terms: GetOwnerFreeAcademicTerms200TermsItem[];
+  history: GetOwnerFreeAcademicTerms200HistoryItem[];
+};
+
+export type ChangeOwnerFreeAcademicTerm200 = {
+  schoolId: number;
+  termId: number;
+  action: string;
 };
 
 export type GetMyLiveSubscriptionAccessParams = {

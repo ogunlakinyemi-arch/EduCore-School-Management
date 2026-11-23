@@ -9,7 +9,7 @@ import { hostedLiveSelected, readHostedSubscriptionCoverage } from "./hosted-sub
 import { assertManualSchoolUnlocked, readManualSchoolState, readSubscriptionScopeCounts } from "./school-subscription-lock";
 import { readStudentTermPlatformAccess } from "./student-platform-access";
 import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
-import { initialStudentFreePeriod,readStudentRollout } from "./student-platform-rollout";
+import { initialStudentFreePeriod,readStudentUsageRollout as readStudentRollout } from "./student-platform-rollout";
 import {
   assertLiveApplicationContext,readLiveSchoolSubscriptionStudents,releasedLiveApplicationContext,
   type LiveApplicationContext,
