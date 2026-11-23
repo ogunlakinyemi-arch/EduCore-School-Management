@@ -63,6 +63,9 @@ vi.mock('@/components/student-nfc-obligations', () => ({
   StudentNfcObligationsPanel: () => <div data-testid="mock-nfc-panel" />,
   StudentNfcFamilyPage: () => <div data-testid="mock-nfc-family" />,
 }));
+vi.mock('@/components/owner-free-academic-terms', () => ({
+  OwnerFreeAcademicTerms: () => <section id="free-academic-terms" tabIndex={-1} data-testid="mock-owner-free-terms">Free academic terms</section>,
+}));
 
 vi.mock('@/components/school-document', () => ({
   SchoolDocumentHeader: ({ branding }: any) => <header data-testid="school-document-header" data-logo-url={branding.logoUrl}>{branding.name}</header>,
@@ -70,7 +73,7 @@ vi.mock('@/components/school-document', () => ({
 }));
 
 vi.mock('@/components/current-finance-panel', () => ({ ConnectedFinancePanel: () => null }));
-import { SubscriptionsPage } from './subscriptions';
+import { SubscriptionsPage, SubscriptionsRoute } from './subscriptions';
 
 const payment = (overrides: Record<string, unknown> = {}) => ({
   paymentId: 12,
@@ -144,6 +147,24 @@ afterEach(async () => {
 });
 
 describe('trusted student-subscription payment workflow', () => {
+  it('puts an accessible free-term shortcut before the Owner subscription view', async () => {
+    state.owner = true;
+    state.roles = [{role:'PLATFORM_OWNER',schoolId:null,status:'ACTIVE'}];
+    await act(async () => root.render(<SubscriptionsRoute />));
+    const link=host.querySelector<HTMLAnchorElement>('a[href="#free-academic-terms"]')!;
+    const target=host.querySelector<HTMLElement>('#free-academic-terms')!;
+    expect(link.textContent).toContain('Jump to Free academic terms');
+    expect(host.firstElementChild?.getAttribute('aria-label')).toBe('Subscription sections');
+    await act(async () => link.click());
+    expect(document.activeElement).toBe(target);
+  });
+
+  it('does not offer Owner free-term navigation to a school accountant', async () => {
+    await act(async () => root.render(<SubscriptionsRoute />));
+    expect(host.querySelector('[data-testid="owner-subscription-shortcut"]')).toBeNull();
+    expect(host.querySelector('#free-academic-terms')).toBeNull();
+  });
+
   it('does not accept Flutterwave success status as payment and sends the contract payload only after server lookup', async () => {
     const persistedPayment = payment();
     saveStudentCheckoutAttempts(7, [{

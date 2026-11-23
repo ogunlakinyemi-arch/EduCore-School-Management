@@ -42,6 +42,7 @@ async function pickAll() { render(); select('select-free-term-school', '2'); sel
 
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  window.history.replaceState(null, '', '/subscriptions');
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
   st.data = { ready: true, terms: [term()], history: [] }; st.loading = false; st.error = false;
   st.mutateAsync.mockReset(); st.invalidate.mockReset(); st.refetch.mockReset();
@@ -49,6 +50,14 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); });
 
 describe('owner free academic term helpers', () => {
+  it('focuses the named section when a direct fragment link mounts after authorization', () => {
+    window.history.replaceState(null, '', '/subscriptions#free-academic-terms');
+    render();
+    const section=$('owner-free-academic-terms');
+    expect(section.id).toBe('free-academic-terms');
+    expect(section.getAttribute('aria-labelledby')).toBe('free-terms-heading');
+    expect(document.activeElement).toBe(section);
+  });
   it('formats calendar dates without timezone shift', () => { expect(calendarDate('2027-01-01')).toBe('01 Jan 2027'); });
   it('validates trimmed reason 5-500', () => { expect(reasonValid('   abcd ')).toBe(false); expect(reasonValid(' abcde ')).toBe(true); expect(reasonValid('x'.repeat(501))).toBe(false); });
   it('gates grant and suspend', () => {

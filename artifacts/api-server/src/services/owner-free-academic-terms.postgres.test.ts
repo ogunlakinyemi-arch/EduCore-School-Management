@@ -1,5 +1,8 @@
 import {afterAll,beforeAll,beforeEach,describe,expect,it,vi} from "vitest";
 import {Pool} from "pg";
+import {getTableName} from "drizzle-orm";
+import {getTableConfig} from "drizzle-orm/pg-core";
+import {ownerFreeAcademicTerms,ownerFreeAcademicTermEvents} from "../../../../lib/db/src/schema/owner-free-academic-terms";
 import {readFile} from "node:fs/promises";
 import {changeFreeTermGrant,freeTermStorageReady,readFreeTermGrant} from "./owner-free-academic-terms";
 import {readStudentRollout,readStudentUsageRollout} from "./student-platform-rollout";
@@ -74,6 +77,85 @@ describe.skipIf(process.env.RUN_FREE_TERM_POSTGRES!=="1")("Owner free academic t
   afterAll(async()=>{vi.useRealTimers();await db.end();});
   it("uses the real candidate schema, including enabled immutable-history guards",async()=>{
     expect(await freeTermStorageReady(db)).toBe(true);
+  });
+  it("matches the review ORM's columns and constraints and the exact SQL function/trigger definitions",async()=>{
+    for(const table of [ownerFreeAcademicTerms,ownerFreeAcademicTermEvents]){
+      const model=getTableConfig(table),name=getTableName(table);
+      const cols=(await q(`SELECT a.attname AS name,format_type(a.atttypid,a.atttypmod) AS type,
+        a.attnotnull AS "notNull",a.atthasdef AS "hasDefault"
+        FROM pg_attribute a WHERE a.attrelid=to_regclass($1) AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum`,[`public.${name}`])).rows;
+      expect(cols).toEqual(model.columns.map(c=>({name:c.name,type:c.getSQLType().replace("serial","integer"),
+        notNull:c.notNull,hasDefault:c.hasDefault})));
+      const constraints=(await q(`SELECT conname AS name,contype AS type,confdeltype AS "onDelete",convalidated AS valid,
+        ARRAY(SELECT a.attname::text FROM unnest(c.conkey) WITH ORDINALITY k(id,n)
+          JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=k.id ORDER BY k.n) AS columns,
+        CASE WHEN contype='f' THEN (SELECT relname FROM pg_class WHERE oid=c.confrelid) END AS "foreignTable",
+        ARRAY(SELECT a.attname::text FROM unnest(c.confkey) WITH ORDINALITY k(id,n)
+          JOIN pg_attribute a ON a.attrelid=c.confrelid AND a.attnum=k.id ORDER BY k.n) AS "foreignColumns"
+        FROM pg_constraint c WHERE conrelid=to_regclass($1) ORDER BY conname`,[`public.${name}`])).rows;
+      const expectedNames=[`${name}_pkey`,...model.uniqueConstraints.map(c=>c.name),
+        ...model.checks.map(c=>c.name),...model.foreignKeys.map(f=>f.getName())].sort();
+      expect(constraints.map(c=>c.name)).toEqual(expectedNames);
+      expect(constraints.every(c=>c.valid)).toBe(true);
+      for(const fk of model.foreignKeys){
+        const ref=fk.reference();
+        expect(constraints.find(c=>c.name===fk.getName())).toMatchObject({type:"f",onDelete:"r",
+          columns:ref.columns.map(c=>c.name),foreignTable:getTableName(ref.foreignTable),
+          foreignColumns:ref.foreignColumns.map(c=>c.name)});
+      }
+      for(const unique of model.uniqueConstraints)
+        expect(constraints.find(c=>c.name===unique.name)).toMatchObject({type:"u",columns:unique.columns.map(c=>c.name)});
+      const defaults=(await q(`SELECT column_name,column_default FROM information_schema.columns WHERE table_schema='public'
+        AND table_name=$1 AND column_default IS NOT NULL ORDER BY ordinal_position`,[name])).rows;
+      expect(defaults.find(c=>c.column_name==="id")?.column_default).toContain("nextval(");
+      expect(defaults.find(c=>c.column_name==="created_at")?.column_default).toBe("now()");
+      if(name==="owner_free_academic_terms")
+        expect(defaults.find(c=>c.column_name==="status")?.column_default).toBe("'TRIAL_GRANTED'::text");
+      const rights=(await q(`SELECT (has_table_privilege(current_user,$1,'SELECT')
+        AND has_table_privilege(current_user,$1,'INSERT')) AS tables,
+        has_sequence_privilege(current_user,pg_get_serial_sequence($1,'id'),'USAGE') AS sequence`,[`public.${name}`])).rows[0];
+      expect(rights).toEqual({tables:true,sequence:true});
+    }
+    const migration=await readFile("../../lib/db/drizzle/0183_owner_free_academic_terms.sql","utf8");
+    const normal=(s:string)=>s.trim().replace(/\s+/g," ");
+    for(const [,name,body] of migration.matchAll(/CREATE OR REPLACE FUNCTION (\w+)\(\) RETURNS trigger[\s\S]*?AS \$\$([\s\S]*?)\$\$/g)){
+      const fn=(await q(`SELECT p.prosrc,l.lanname,p.prosecdef,p.provolatile,p.prorettype::regtype::text AS returns
+        FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_language l ON l.oid=p.prolang
+        WHERE n.nspname='public' AND p.proname=$1 AND p.pronargs=0`,[name])).rows;
+      expect(fn).toHaveLength(1);
+      expect({...fn[0],prosrc:normal(fn[0].prosrc)}).toEqual({
+        prosrc:normal(body),lanname:"plpgsql",prosecdef:false,provolatile:"v",returns:"trigger"});
+    }
+    const triggers=(await q(`SELECT t.tgname AS name,c.relname AS table,p.proname AS function,t.tgtype AS type,
+      t.tgenabled AS enabled FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_proc p ON p.oid=t.tgfoid
+      WHERE NOT t.tgisinternal AND t.tgrelid IN (to_regclass('public.owner_free_academic_terms'),
+        to_regclass('public.owner_free_academic_term_events')) ORDER BY t.tgname`)).rows;
+    expect(triggers).toEqual([
+      {name:"owner_free_term_events_immutable",table:"owner_free_academic_term_events",function:"reject_free_term_evidence_mutation",type:58,enabled:"O"},
+      {name:"owner_free_terms_immutable",table:"owner_free_academic_terms",function:"reject_free_term_evidence_mutation",type:58,enabled:"O"},
+      {name:"owner_free_terms_scope",table:"owner_free_academic_terms",function:"validate_free_term_scope",type:7,enabled:"O"},
+    ]);
+  });
+  it("enforces every candidate CHECK in PostgreSQL, not only in request validation",async()=>{
+    for(const [column,value,constraint] of [
+      ["reason","bad","owner_free_academic_terms_reason_check"],
+      ["status","PAID","owner_free_academic_terms_status_check"],
+      ["end_date","2026-01-01","owner_free_academic_terms_check"],
+    ]){
+      if(column==="end_date")await q("UPDATE academic_terms SET end_date=$1 WHERE id=2",[value]);
+      // Quoted identifiers are exclusively the three constant fixture columns above.
+      await expect(q(`INSERT INTO owner_free_academic_terms
+        (school_id,academic_session_id,academic_term_id,start_date,end_date,actor_user_id,reason${column==="status"?",status":""})
+        VALUES(1,1,2,'2027-01-12',${column==="end_date"?"$1":"'2027-04-10'"},1,${column==="reason"?"$1":"'Fixture reason'"}${column==="status"?",$1":""})`,[value]))
+        .rejects.toMatchObject({code:"23514",constraint});
+      if(column==="end_date")await q("UPDATE academic_terms SET end_date='2027-04-10' WHERE id=2");
+    }
+    await changeFreeTermGrant(db,1,selection,"grant");
+    const id=(await q("SELECT id FROM owner_free_academic_terms")).rows[0].id;
+    await expect(q("INSERT INTO owner_free_academic_term_events(grant_id,actor_user_id,status,reason) VALUES($1,1,'PAID','Fixture reason')",[id]))
+      .rejects.toMatchObject({code:"23514",constraint:"owner_free_academic_term_events_status_check"});
+    await expect(q("INSERT INTO owner_free_academic_term_events(grant_id,actor_user_id,status,reason) VALUES($1,1,'SUSPENDED','bad')",[id]))
+      .rejects.toMatchObject({code:"23514",constraint:"owner_free_academic_term_events_reason_check"});
   });
   it("fails closed on partially delivered/disabled guards rather than rebilling an existing free grant",async()=>{
     await changeFreeTermGrant(db,1,selection,"grant");

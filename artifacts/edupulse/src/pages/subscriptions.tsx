@@ -674,5 +674,22 @@ export function SubscriptionsRoute() {
   if (!staff && context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE')) return <StudentSubscriptionStatusPage />;
   if (!staff) return <StudentNfcFamilyPage />;
   const schoolAdmin=context?.isPlatformOwner!==true&&!!schoolId&&context?.roles?.some(r=>r.role==='SCHOOL_ADMIN'&&r.schoolId===schoolId&&r.status==='ACTIVE')===true;
-  return <><SubscriptionsPage />{context?.isPlatformOwner===true&&<OwnerFreeAcademicTerms key={`owner-free-terms-${context?.user?.id ?? 'unknown'}`} />}{schoolAdmin&&<PlatformPaymentForm key={`${context?.user?.id}:${schoolId}`} schoolId={schoolId!} identity={String(context?.user?.id)} />}<div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div></>;
+  return <>
+    {context?.isPlatformOwner === true && (
+      <nav aria-label="Subscription sections" className="panel mb-4 flex flex-wrap items-center justify-between gap-3 p-4" data-testid="owner-subscription-shortcut">
+        <div>
+          <p className="font-bold">Free academic terms</p>
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">Owner grants for one school's saved term. Not a payment or database approval.</p>
+        </div>
+        <a href="#free-academic-terms" className="rounded-xl bg-[hsl(var(--primary))] px-4 py-2 text-sm font-bold text-[hsl(var(--primary-foreground))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          onClick={() => document.getElementById('free-academic-terms')?.focus()}>
+          Jump to Free academic terms
+        </a>
+      </nav>
+    )}
+    <SubscriptionsPage />
+    {context?.isPlatformOwner===true&&<OwnerFreeAcademicTerms key={`owner-free-terms-${context?.user?.id ?? 'unknown'}`} />}
+    {schoolAdmin&&<PlatformPaymentForm key={`${context?.user?.id}:${schoolId}`} schoolId={schoolId!} identity={String(context?.user?.id)} />}
+    <div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div>
+  </>;
 }

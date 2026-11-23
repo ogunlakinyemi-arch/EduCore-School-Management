@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CalendarCheck2, History, RefreshCw, ShieldAlert } from 'lucide-react';
 import {
@@ -87,9 +87,14 @@ export function OwnerFreeAcademicTerms() {
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const list: School[] = schools.data ?? [];
   const school = list.find(s => s.id === schoolId);
+  useEffect(() => {
+    // The Owner component may mount after sign-in/context loading, after the
+    // browser's initial fragment lookup. Restore the requested destination.
+    if (window.location.hash === '#free-academic-terms') document.getElementById('free-academic-terms')?.focus();
+  }, []);
 
   return (
-    <section className="panel mt-6 min-w-0 p-5 md:p-6" data-testid="owner-free-academic-terms" aria-labelledby="free-terms-heading">
+    <section id="free-academic-terms" tabIndex={-1} className="panel mt-6 min-w-0 scroll-mt-6 p-5 md:p-6" data-testid="owner-free-academic-terms" aria-labelledby="free-terms-heading">
       <div className="mb-4 flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--accent)/.18)] text-[hsl(var(--accent-foreground))]"><CalendarCheck2 size={18} /></span>
         <div className="min-w-0">
