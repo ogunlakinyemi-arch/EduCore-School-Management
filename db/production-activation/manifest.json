@@ -1,0 +1,409 @@
+{
+  "format": 1,
+  "authority": "REVIEW_ONLY_NO_EXECUTION_AUTHORIZED",
+  "sources": [
+    {
+      "key": "rules",
+      "path": "lib/db/drizzle/0175_owner_subscription_rule_management.sql",
+      "sha256": "b0c3d4b4393a51976f7a90c8c217ee5bc22780b4eee2f06e07beccf0d0f386c4"
+    },
+    {
+      "key": "direct",
+      "path": "lib/db/drizzle/0176_direct_student_live_preparation.sql",
+      "sha256": "75f2e3ae95edf564e6431fa5a407cc4536bf9020866f028cbcd416761dd5348e"
+    },
+    {
+      "key": "reviews",
+      "path": "lib/db/drizzle/0177_direct_student_live_release_reviews.sql",
+      "sha256": "bd713d5305a8cc115988c428a2dd5aeaaffd776eef6b27975571acf5b71fc698"
+    },
+    {
+      "key": "bro",
+      "path": "lib/db/drizzle/0178_independent_bro_term_commissions.sql",
+      "sha256": "55b82ce5f79a1f39b3620959379b0ee92d9366bae65e4caccb2550223d5ace6d"
+    },
+    {
+      "key": "repair",
+      "path": "lib/db/drizzle/0179_restore_direct_and_bro_guards.sql",
+      "sha256": "09e2f989c23d80d580bc2428ddd38b962715f11d0c70700e975ab5ca9809c21b"
+    },
+    {
+      "key": "pricing",
+      "path": "lib/db/drizzle/0180_version_split_amounts_check.sql",
+      "sha256": "38e52035dc21ec468e76f987f396f58e4ee3cc9b6a9442b0a7fd1d9de755604a"
+    },
+    {
+      "key": "lifecycle",
+      "path": "lib/db/drizzle/0181_current_subscription_lifecycle.sql",
+      "sha256": "dd9c559b3d43b18801e090cd567de32d04f605bea2d35987368a1a78bf9273fe"
+    },
+    {
+      "key": "extensions",
+      "path": "lib/db/drizzle/0182_current_bulk_withdrawals_field_sms.sql",
+      "sha256": "acdcf3d7ef2ad1671be347fc0d4477d72ad7425e66144c2fd779eb14d7dedacf"
+    },
+    {
+      "key": "free",
+      "path": "lib/db/drizzle/0183_owner_free_academic_terms.sql",
+      "sha256": "620727863cc3b8d40d42be7929686f3e90eb0a3f05f7d4b6136bc23787608d0b"
+    }
+  ],
+  "groups": [
+    {
+      "id": "student",
+      "tables": [
+        "subscription_rule_proposals",
+        "subscription_payment_assistance_requests",
+        "student_direct_live_reviews",
+        "student_direct_live_obligations",
+        "student_direct_live_attempts",
+        "student_direct_live_events",
+        "student_direct_live_release_requests",
+        "student_direct_live_release_decisions",
+        "student_direct_live_review_bindings",
+        "bro_term_commission_entitlements"
+      ],
+      "functions": [
+        {
+          "name": "guard_student_direct_history",
+          "bodySha256": "3be7fef26d615bdf8e3552265209ce19a93019f225b2c0c807174a222c5444a2"
+        },
+        {
+          "name": "guard_student_direct_attempt",
+          "bodySha256": "f53c220f5e1fe430da38f6fec3c30d1628f9b9bb8aa43bfa08d050999b1fc522"
+        },
+        {
+          "name": "guard_bro_term_commission_history",
+          "bodySha256": "f1d132cb2f020c1800ba43cbe4c735b14accc356778afdfa2a51ef0155219493"
+        },
+        {
+          "name": "guard_bro_term_commission_scope",
+          "bodySha256": "fc2f51e05366d36dd3b183ab21e73678cfa028773d24435f9a93208eb4467e76"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "student_direct_review_history",
+          "events": "UPDATE OR DELETE",
+          "table": "student_direct_live_reviews",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "student_direct_obligation_history",
+          "events": "UPDATE OR DELETE",
+          "table": "student_direct_live_obligations",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "student_direct_event_history",
+          "events": "UPDATE OR DELETE",
+          "table": "student_direct_live_events",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "student_direct_attempt_history",
+          "events": "UPDATE OR DELETE",
+          "table": "student_direct_live_attempts",
+          "level": "ROW",
+          "fn": "guard_student_direct_attempt",
+          "type": 27
+        },
+        {
+          "name": "student_direct_release_request_history",
+          "events": "UPDATE OR DELETE",
+          "table": "student_direct_live_release_requests",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "student_direct_release_decision_history",
+          "events": "UPDATE OR DELETE",
+          "table": "student_direct_live_release_decisions",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "student_direct_release_binding_history",
+          "events": "UPDATE OR DELETE",
+          "table": "student_direct_live_review_bindings",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "bro_term_commission_append_only",
+          "events": "UPDATE OR DELETE",
+          "table": "bro_term_commission_entitlements",
+          "level": "ROW",
+          "fn": "guard_bro_term_commission_history",
+          "type": 27
+        },
+        {
+          "name": "bro_term_commission_scope_guard",
+          "events": "INSERT",
+          "table": "bro_term_commission_entitlements",
+          "level": "ROW",
+          "fn": "guard_bro_term_commission_scope",
+          "type": 7
+        }
+      ]
+    },
+    {
+      "id": "current",
+      "tables": [
+        "current_subscription_operations",
+        "current_subscription_operation_events",
+        "current_subscription_reference_claims",
+        "current_payment_batches",
+        "current_bulk_allocations",
+        "current_bulk_confirmations",
+        "current_bulk_events",
+        "current_bulk_bro_entitlements",
+        "current_bro_withdrawals",
+        "current_bro_withdrawal_lines",
+        "current_bro_withdrawal_decisions",
+        "bro_field_sms_permissions",
+        "bro_field_sms_campaigns",
+        "bro_field_sms_recipients",
+        "bro_field_sms_events"
+      ],
+      "functions": [
+        {
+          "name": "guard_current_bulk_scope",
+          "bodySha256": "c141cfc78b3b0ce5c82b5a99859d3b1b8e43c62b4d27d06f2b3fa544af093d08"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "current_subscription_operations_history",
+          "events": "UPDATE OR DELETE",
+          "table": "current_subscription_operations",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "current_subscription_events_history",
+          "events": "UPDATE OR DELETE",
+          "table": "current_subscription_operation_events",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "current_subscription_claims_history",
+          "events": "UPDATE OR DELETE",
+          "table": "current_subscription_reference_claims",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "name": "current_bulk_allocation_scope",
+          "events": "INSERT",
+          "table": "current_bulk_allocations",
+          "level": "ROW",
+          "fn": "guard_current_bulk_scope",
+          "type": 7
+        },
+        {
+          "name": "current_bulk_bro_scope",
+          "events": "INSERT",
+          "table": "current_bulk_bro_entitlements",
+          "level": "ROW",
+          "fn": "guard_current_bulk_scope",
+          "type": 7
+        },
+        {
+          "table": "current_payment_batches",
+          "name": "current_payment_batches_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "current_bulk_allocations",
+          "name": "current_bulk_allocations_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "current_bulk_confirmations",
+          "name": "current_bulk_confirmations_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "current_bulk_events",
+          "name": "current_bulk_events_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "current_bulk_bro_entitlements",
+          "name": "current_bulk_bro_entitlements_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "current_bro_withdrawals",
+          "name": "current_bro_withdrawals_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "current_bro_withdrawal_lines",
+          "name": "current_bro_withdrawal_lines_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "current_bro_withdrawal_decisions",
+          "name": "current_bro_withdrawal_decisions_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "bro_field_sms_permissions",
+          "name": "bro_field_sms_permissions_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "bro_field_sms_campaigns",
+          "name": "bro_field_sms_campaigns_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "bro_field_sms_recipients",
+          "name": "bro_field_sms_recipients_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        },
+        {
+          "table": "bro_field_sms_events",
+          "name": "bro_field_sms_events_history",
+          "events": "UPDATE OR DELETE",
+          "level": "ROW",
+          "fn": "guard_student_direct_history",
+          "type": 27
+        }
+      ]
+    },
+    {
+      "id": "free-terms",
+      "tables": [
+        "owner_free_academic_terms",
+        "owner_free_academic_term_events"
+      ],
+      "functions": [
+        {
+          "name": "reject_free_term_evidence_mutation",
+          "bodySha256": "7e9b0e2685f64d74bf2b54109f11dc0d128908ccf7feebdae6eab1290094e5bc"
+        },
+        {
+          "name": "validate_free_term_scope",
+          "bodySha256": "98d238548e2e65a604ece34e83c0ea262e4ee25c3c875c75906e8f13d1ee6b72"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "owner_free_terms_immutable",
+          "events": "UPDATE OR DELETE OR TRUNCATE",
+          "table": "owner_free_academic_terms",
+          "level": "STATEMENT",
+          "fn": "reject_free_term_evidence_mutation",
+          "type": 58
+        },
+        {
+          "name": "owner_free_term_events_immutable",
+          "events": "UPDATE OR DELETE OR TRUNCATE",
+          "table": "owner_free_academic_term_events",
+          "level": "STATEMENT",
+          "fn": "reject_free_term_evidence_mutation",
+          "type": 58
+        },
+        {
+          "name": "owner_free_terms_scope",
+          "events": "INSERT",
+          "table": "owner_free_academic_terms",
+          "level": "ROW",
+          "fn": "validate_free_term_scope",
+          "type": 7
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "db/production-activation/student.functions.sql",
+      "sha256": "edcef5625875cff6250fc3452d594f69eea6cb01d681fad9c4995a452b50aa06"
+    },
+    {
+      "path": "db/production-activation/student.triggers.sql",
+      "sha256": "7965b243c8efdc9a3ff7b627e1582309fe4d988850021a033cb653dad132b923"
+    },
+    {
+      "path": "db/production-activation/student.verify.sql",
+      "sha256": "38ab424c252364994727b147fae9da5236d02f87ef365e1972054de7bf2552a7"
+    },
+    {
+      "path": "db/production-activation/current.functions.sql",
+      "sha256": "4a6a1c628b22476b09b0277fa2e5da8742100e6ea391cb110d1e5c9dac8ab2c2"
+    },
+    {
+      "path": "db/production-activation/current.triggers.sql",
+      "sha256": "000dac5cbdc2be167578e1a0cd5a3ff690478603d950dd3afc22edadcc4932b0"
+    },
+    {
+      "path": "db/production-activation/current.verify.sql",
+      "sha256": "77c520338875aed1303b13a0a772a084d7ecc36df1bbcc13305d1fd71ea403e7"
+    },
+    {
+      "path": "db/production-activation/free-terms.functions.sql",
+      "sha256": "83ac30950b311975bfac4239176d7730d40c8e477acb6989bf592001df067860"
+    },
+    {
+      "path": "db/production-activation/free-terms.triggers.sql",
+      "sha256": "894eabd602565be3664c1c883b78a2f0ce4bd75056c711f92023a40de1f6491e"
+    },
+    {
+      "path": "db/production-activation/free-terms.verify.sql",
+      "sha256": "cb88c9f9099646e1068dd0f2eea60083430c110c33093e1eedbf2be06af2d190"
+    },
+    {
+      "path": "db/production-activation/capture-definitions.sql",
+      "sha256": "f8536a0f3536668de87df7f21c45ac14852e6392cfe69a52649ff0e70491e784"
+    }
+  ]
+}
