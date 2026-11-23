@@ -3,7 +3,27 @@ name: Restricted SMS scope
 description: Owner-approved SMS events and the boundary between configuration and sending.
 ---
 
-SMS is approved only for emergency notifications and student absence notifications.
+## Field Operations follow-up exception
+
+The user additionally approved building an Owner-controlled SMS follow-up for
+schools recorded as visited but not onboarded. Owner previews the message and
+recipients, chooses selected or all eligible contacts, and confirms bulk dispatch.
+Recheck actual onboarding at send time; deduplicate campaign/recipient sends,
+retain provider outcome/audit evidence and retry only proven failures, not unknown
+acceptance or successful sends. No WhatsApp integration is authorized.
+
+**Why:** The user explicitly requested this Field Operations purpose using the
+already configured SMS provider, alongside the existing financial integration.
+
+**How to apply:** Add a narrowly scoped Owner-only purpose rather than mislabel
+follow-up as emergency/absence or remove global SMS safeguards. Preserve existing
+permissions, opt-outs, sender configuration and worker suppressions. Building the
+feature does not authorize test messages, real dispatch or worker activation.
+
+## Existing parent/school notification restriction
+
+Outside that explicit Field Operations exception, SMS is approved only for
+emergency notifications and student absence notifications.
 Arrival, exit, late entry, finance, invoices, announcements, ordinary messages,
 marketing and all other events are excluded. Emergency SMS still requires an
 explicit recipient opt-in; mandatory in-app security does not imply SMS consent.

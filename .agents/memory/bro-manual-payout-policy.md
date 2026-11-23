@@ -3,6 +3,31 @@ name: BRO manual payout and beneficiary policy
 description: Owner records external transfers only; full payable balance and verified registered-person bank evidence.
 ---
 
+## Current ₦150 withdrawal-request workflow
+
+Verified eligible student/term payments automatically earn individual ₦150
+entitlements, independently funded rather than deducted from the ₦3,200 fee.
+Ten qualifying students therefore mean ₦1,500. BRO and Platform Owner dashboards
+must show consistent student counts and earned/pending/approved/available/paid
+totals, with each BRO limited to their own eligible earnings.
+
+BROs may request withdrawal against their own eligible accrued entitlements.
+Platform Owner approves or rejects each student entitlement inside that request.
+The decision is the entitlement's approval: do not add a redundant second
+approval stage before the payout workflow. Requested, approved and available
+are distinct from independently verified paid funds.
+
+**Why:** The user explicitly chose withdrawal requests with per-student Owner
+decisions and consistent dashboard totals while retaining the ₦150 rate.
+
+**How to apply:** Preserve eligibility/maturity, individual approval, frozen
+verified-bank evidence, adverse-event holds, concurrency and recovery controls.
+Use supported payout evidence, never an approval checkbox as proof of credit.
+This product decision does not authorize real transfers or runtime activation.
+Keep the historical manual workflow below distinct from new withdrawal requests.
+
+## Retained manual payout and beneficiary policy
+
 BRO commission remains internal until the Owner records a separately completed
 bank transfer. Select the BRO, use the complete actual available payable balance,
 and preserve existing pending-approval, held, deferred-export and historical
