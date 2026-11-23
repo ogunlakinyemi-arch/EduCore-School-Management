@@ -8,5 +8,7 @@ export function AuthQueryProvider({ children }: { children: ReactNode }) {
   const { userId } = useAuth();
   const queryClient = useMemo(() => new QueryClient(), [userId]);
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  // Changing the cache alone leaves child-local paginated inbox rows mounted.
+  // Remount only for an actual identity change, never token/device rotation.
+  return <QueryClientProvider key={userId??'anonymous'} client={queryClient}>{children}</QueryClientProvider>;
 }

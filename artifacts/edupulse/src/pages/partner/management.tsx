@@ -53,6 +53,7 @@ import { PartnerNfcOwnerControl } from '@/pages/partner/nfc-owner-control';
 import FieldOperationsPage from '@/pages/partner/field-operations';
 import TermCommissionsPage from '@/pages/partner/term-commissions';
 import { ConnectedFinancePanel } from '@/components/current-finance-panel';
+import { broPrimaryNav, broSecondaryNav, isBroNavActive, visibleBroNav } from '@/pages/partner/bro-navigation';
 import { clearPayoutDraft, readPayoutDraft, savePayoutDraft, type PayoutDraft } from '@/lib/partner-payout-retry';
 
 const inviteSchema = z.object({
@@ -1068,45 +1069,27 @@ export default function PartnerManagement() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl">
       <LiveReadinessAccess isOwner={isOwner} />
-      <div data-testid="partner-navigation" className="mb-8 flex min-w-0 max-w-full flex-wrap gap-2 border-b border-[hsl(var(--border))] pb-2">
-        <Link href="/partners">
-          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners' || location.match(/^\/partners\/\d+$/) ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
-            Business Relationship Officers
-          </button>
-        </Link>
-        <Link href="/partners/term-commissions">
-          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/term-commissions' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))]")}>
-            Term commissions & payouts
-          </button>
-        </Link>
-        <Link href="/partners/payouts">
-          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/payouts' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
-            Payouts
-          </button>
-        </Link>
-        <Link href="/partners/conflicts">
-          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/conflicts' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
-            Attribution Conflicts
-          </button>
-        </Link>
-        <Link href="/partners/finance">
-          <button data-testid="link-owner-connected-finance" className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/finance' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
-            Connected finance
-          </button>
-        </Link>
-          <Link href="/partners/field-operations">
-            <button data-testid="link-owner-field-operations" className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/field-operations' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
-              Field Operations
-            </button>
-          </Link>
-        {isOwner && import.meta.env.DEV && (
-          <Link href="/partners/live-readiness">
-            <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/live-readiness' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
-              LIVE readiness
-            </button>
-          </Link>
-        )}
-      </div>
+      <nav data-testid="partner-navigation" aria-label="BRO oversight" className="mb-8 min-w-0 max-w-full border-b border-[hsl(var(--border))] pb-3">
+        <div className="eyebrow mb-2">BRO oversight · Platform Owner · all schools</div>
+        <ol className="flex min-w-0 snap-x gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {visibleBroNav(broPrimaryNav, { isOwner, dev: !!import.meta.env.DEV }).map((item, i) => {
+            const active = isBroNavActive(item.href, location);
+            return <li key={item.href} className="shrink-0 snap-start">
+              <Link href={item.href} data-testid={item.testId} aria-current={active ? 'page' : undefined}
+                className={cx('flex min-w-[9.5rem] flex-col rounded-xl border px-3 py-2 text-left', active ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/.07)] text-[hsl(var(--primary))]' : 'border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/.5)]')}>
+                <span className="text-sm font-bold"><span className="mr-1 font-mono text-[11px] opacity-60">{i + 1}</span>{item.label}</span>
+                <span className="text-[11px] text-[hsl(var(--muted-foreground))]">{item.hint}</span>
+              </Link></li>;
+          })}
+        </ol>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span className="font-bold text-[hsl(var(--muted-foreground))]">Evidence & details:</span>
+          {visibleBroNav(broSecondaryNav, { isOwner, dev: !!import.meta.env.DEV }).map(item => (
+            <Link key={item.href} href={item.href} data-testid={item.testId} aria-current={isBroNavActive(item.href, location) ? 'page' : undefined}
+              className={cx('underline-offset-2 hover:underline', isBroNavActive(item.href, location) ? 'font-bold text-[hsl(var(--primary))] underline' : 'text-[hsl(var(--foreground))]')}>{item.label}</Link>
+          ))}
+        </div>
+      </nav>
 
       <Switch>
         <Route path="/partners" component={PartnersOverview} />

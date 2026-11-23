@@ -233,6 +233,12 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
+        <Link href="/partners/finance" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--primary)/.35)] bg-[hsl(var(--primary)/.06)] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.6)]" data-testid="link-owner-bro-decisions">
+          <CircleDollarSign size={16} />BRO withdrawal decisions
+        </Link>
+        <Link href="/subscription-payment-rules" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-rules">
+          <FileClock size={16} />Payment rules
+        </Link>
         <Link href="/schools" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-school-directory">
           <Building2 size={16} />School directory
         </Link>
@@ -246,7 +252,7 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
           <FileClock size={16} />Audit trail
         </Link>
         <Link href="/communications" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-communications">
-          <UsersRound size={16} /> Communications Center — Send Message to Schools
+          <UsersRound size={16} />Message schools
         </Link>
       </div>
       

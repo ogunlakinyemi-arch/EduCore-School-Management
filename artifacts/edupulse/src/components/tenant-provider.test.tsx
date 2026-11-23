@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, useEffect } from 'react';
+import { act, useEffect,useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, useQuery } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -85,6 +85,17 @@ describe('TenantProvider authorization lifecycle', () => {
     vi.restoreAllMocks();
   });
 
+  it('preserves local inbox pagination on device/token refresh but drops it on account switches',async()=>{
+    function InboxState(){const [older,setOlder]=useState<string[]>([]);return <div>
+      <button onClick={()=>setOlder(['Private older message'])}>Load older</button><p>{older.join(',')}</p></div>;}
+    const render=()=>act(async()=>root.render(<AuthQueryProvider><InboxState/></AuthQueryProvider>));
+    await render();await act(async()=>container.querySelector('button')!.click());
+    expect(container.textContent).toContain('Private older message');
+    await render();expect(container.textContent).toContain('Private older message');
+    state.userId='another-account';await render();expect(container.textContent).not.toContain('Private older message');
+    state.userId=null;await render();expect(container.textContent).not.toContain('Private older message');
+    state.userId='owner';await render();expect(container.textContent).not.toContain('Private older message');
+  });
   it('loads once without resetting or remounting the active authorization query', async () => {
     const reset = vi.spyOn(QueryClient.prototype, 'resetQueries');
 

@@ -4,6 +4,7 @@ import { Ban, Eye, FileClock, FilePlus2, Handshake, Landmark, Layers3, Lock, Pen
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, cx, date } from '@/components/shared';
 import { DirectAssistanceCheckout } from '@/components/direct-assistance-checkout';
 import {BroCommissionAccruals,type BroCommissionSnapshot} from '@/components/bro-commission-accruals';
+import { GuidedSteps } from '@/components/owner-guided-steps';
 import { useOwnerPaymentOptions } from '@/components/owner-payment-options';
 
 /* ---------- Types ---------- */
@@ -206,6 +207,22 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
     </div>
 
     {flash && <div role="status" className="panel mb-6 flex items-center justify-between gap-3 p-4 text-sm font-semibold" data-testid="status-flash"><span>{flash}</span><button type="button" className="text-xs underline" onClick={() => setFlash('')} data-testid="button-dismiss-flash">Dismiss</button></div>}
+
+    <section className="panel mb-6 p-5" data-testid="section-rule-journey">
+      <div className="eyebrow">Rule journey · from your recorded proposals</div>
+      <h2 className="display-font mb-3 text-lg font-bold">Draft, evidence, preview, approval, activation</h2>
+      <GuidedSteps label="Rule lifecycle" testId="rule-journey" steps={(() => {
+        const st = (x: string) => proposals.filter(p => p.status.toUpperCase() === x).length;
+        const drafts = st('DRAFT'), scheduled = st('SCHEDULED'), active = st('ACTIVE');
+        return [
+          { id: 'draft', title: 'Draft the rule', state: proposals.length ? 'done' : 'open', detail: proposals.length ? `${drafts} draft, ${scheduled} scheduled, ${active} active proposal(s). Drafts are never billable.` : 'No proposal yet. Use "New rule draft" below. Fixed amounts: ₦3,200 per student, ₦2,000 per staff, ₦150 BRO entitlement funded separately.' },
+          { id: 'evidence', title: 'Attach merchant evidence', state: 'open', detail: <>Evidence is bound to an exact school, term and rule in <Link href="/direct-flutterwave-live-readiness" className="font-bold underline" data-testid="link-journey-readiness">Direct Flutterwave LIVE readiness</Link>. A receipt or upload is not proof of bank credit.</> },
+          { id: 'preview', title: 'Preview the effect', state: drafts ? 'open' : 'na', detail: drafts ? 'Use "Preview activation" on a draft. The server reports blockers and a digest; nothing changes.' : 'No draft waiting for preview.' },
+          { id: 'approval', title: 'Approve the exact preview', state: scheduled || active ? 'done' : 'open', detail: scheduled || active ? 'At least one rule is scheduled or active from its own effective date.' : 'Approval requires a fresh preview digest and your explicit confirmation.' },
+          { id: 'activation', title: 'Collection starts at the school gate', state: 'blocked', detail: "Current term is free with no platform payment due. Collection begins only at each school's saved January 2027 second term, and LIVE checkout needs a separate authorization. Historical ₦5,000/₦100 records stay unchanged." },
+        ];
+      })()} />
+    </section>
 
     <div className="mb-6 grid gap-3 sm:grid-cols-3" data-testid="legend-states">
       <Info label="Intent" value={<span className="text-sm">A draft price. Not billable.</span>} />

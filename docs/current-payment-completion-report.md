@@ -152,6 +152,10 @@ procedural-delivery claim is introduced.
 
 ## Verification
 
+The table in this section is the retained earlier connected-finance evidence.
+The current Owner/notification follow-up and its distinct results are recorded
+below; repeated executions are not additional passing tests.
+
 All following checks used clean child environments, fictional fixtures and fake
 HTTP/provider functions. No server/application bundle was executed.
 
@@ -203,6 +207,144 @@ pnpm --filter @workspace/edupulse exec vitest run \
   src/components/current-finance-panel.test.tsx \
   src/pages/partner/own-commissions.test.tsx
 ```
+
+## Owner workflows and notification continuity — 2026-11-23
+
+### Confirmed finance defects closed
+
+The earlier findings are retained here explicitly: **PENDING refund
+reconciliation disappeared**, and **All Schools allowed a schoolless term query
+whose error hid the scope selectors**. Both are now corrected in
+`artifacts/edupulse/src/components/current-finance-panel.tsx` and covered by
+interactive component regressions. PROCESSING → PENDING → SUCCEEDED uses only
+`REFUND_RECONCILE`, never refund redispatch. School-first term selection,
+atomic school/term reset, error/unavailable recovery and the query helper's
+schoolless-term guard preserve unknown balances as unknown.
+
+`current-finance-overview.ts` now reports submitted requests separately from
+pending Owner decisions. Requested totals include submitted lines at later
+stages; these are overlapping lifecycle figures, not amounts to add together.
+Failed/reversed totals count the latest payout attempt per entitlement, not
+every historical retry. Scoped requests contain only in-scope entitlement lines;
+the visible total is the sum of those lines, without rewriting the frozen
+request. Actual paid totals still require independently verified payout success.
+The isolated withdrawal test checks the new totals before request, pending
+decision, approval and prepared-but-unpaid payout.
+
+### Durable notification continuity
+
+- `auth-query-provider.tsx` now remounts account-local state only when the
+  signed-in identity changes. Replacing only the query cache previously left
+  child-local paginated inbox rows mounted across account switches.
+  Same-identity refreshes retain state; device/token refreshes are not treated
+  as account changes. No persistent inbox, unread or delivery history is deleted.
+- `communication-service.ts` keeps selected, authorized Telegram work queued
+  while a personal link is missing or service health becomes unavailable.
+  These no-send holds do not consume provider attempts and recheck after five
+  minutes. Teacher notices no longer disappear at queue creation merely because
+  the teacher's verified connection is temporarily missing.
+- `telegram-delivery-continuity.ts` distinguishes missing linkage from revoked
+  consent, inactive family/teacher relationships and explicit preference
+  denial. Dispatch rechecks school selection, Owner controls, launch cutoff,
+  current recipient authorization, campaign expiry and current timetable
+  applicability before transport. No new arbitrary expiry policy was invented:
+  campaigns use their saved expiry, teacher reminders use timetable validity,
+  and other notices retain the existing policy.
+- Only the old **FAILED / TELEGRAM_UNAVAILABLE** no-provider-attempt branch may
+  recover beyond its formerly exhausted attempt count. **CANCELLED** records
+  (including legacy conflated link/consent cancellations), delivered/accepted
+  work and **PROVIDER_OUTCOME_UNKNOWN** are not revived.
+- `telegram-delivery-withdrawal.ts` atomically cancels queued/proven-failed work
+  when Telegram consent or an effective preference is withdrawn. Claimed work
+  becomes an unknown-outcome hold rather than a false unsent cancellation.
+  Existing unknown outcomes and sent/in-app records remain intact. Global
+  preference withdrawal respects explicit school-level overrides.
+- `telegram-links.ts`, `teacher-telegram.ts` and the preferences route reuse
+  that withdrawal behavior. Existing fresh personal challenge, signed-in
+  confirmation, encryption and parent/teacher eligibility remain authoritative;
+  no Admin invitation or arbitrary chat ID binds an account.
+- Inbox channel labels and next actions distinguish waiting, accepted versus
+  delivered, expired, cancelled, retry-limited and uncertain work. Telegram
+  failures do not suppress an independently selected IN_APP record. Created and
+  scheduled-check display use explicit Africa/Lagos WAT; stored UTC timestamps
+  and original notification creation times are unchanged.
+- Existing provider retry-after, bounded worker claims, SKIP LOCKED claims,
+  per-channel uniqueness and unknown-acceptance protections are reused, not
+  replaced. A running provider operation cannot be recalled by withdrawal;
+  processing-time uncertainty is held for reconciliation, never replayed.
+
+### Owner workflow, readiness and SMS presentation
+
+- BRO navigation keeps five primary destinations and two evidence/detail
+  destinations, retaining all seven original routes and role/build gates.
+  The Owner sidebar groups the same authorized links without dropping advanced
+  functions. Home shortcuts include withdrawal decisions and payment rules.
+- Payout labels now say **Prepare payout** and explain external completion,
+  recording and independent reconciliation. Preparation is not transfer proof.
+- `owner-guided-steps.tsx` maps the eight actual readiness codes explicitly.
+  TEST/LIVE, current blockers, review versus activation and retired N/A
+  split/hosted workflows are distinct. Independent webhook and bank/settlement
+  evidence not separately reported by the endpoint is explicitly **unverified**,
+  not inferred from HTTPS configuration or school/term reconciliation.
+- Rules expose drafting, evidence, preview, approval and activation stages
+  without changing rule authority. NGN 3,200 student, NGN 2,000 staff and the
+  separately funded NGN 150 BRO entitlement, free current term, saved January
+  2027 second-term calendar gates and immutable NGN 5,000/100 history remain
+  unchanged.
+- `field-sms-diagnostics.ts` and `field-sms-campaigns.tsx` distinguish route,
+  session/permission, unapplied lifecycle/extension schema, missing financial
+  guards, runtime/Owner holds and provider configuration. `bro-field-sms.ts`
+  separates Owner pause, authorization and activation-review holds using existing
+  saved controls only. Diagnostics disclose no private provider payload and
+  perform no provider request, configuration change or activation.
+  Existing permission, frozen preview, explicit confirmation, eligibility,
+  history, deduplication and proven-failure retry remain in place.
+
+### Current focused evidence
+
+All checks below used clean child environments, local disposable PostgreSQL or
+fictional component fixtures and fake provider functions. API test network
+guards prohibit external traffic. No shared workflow or application bundle was
+started or restarted.
+
+| Current evidence | Distinct result |
+|---|---|
+| `services/communication-service.test.ts` | 70 passed across full + one targeted correction; one stale fixture had to satisfy SMS scope/consent before testing Owner policy |
+| `services/telegram.postgres.test.ts` | 59 passed across full + targeted continuation; parallel fixture insertion required matching rows by notification identity, not insertion order |
+| `services/current-finance-integration.postgres.test.ts` | 23 passed, including real PostgreSQL withdrawals, bulk checkout/allocation/receipts/refunds, SMS continuation and new summary assertions |
+| `routes/communication-inbox.test.ts` | 21 passed |
+| Backend distinct union | **173 checks across 4 files**, using the stated full/targeted evidence; not one combined all-green execution |
+| `components/current-finance-panel.test.tsx` | 23 passed, including interactive refunds/scope and rendered SMS diagnostics |
+| `components/tenant-provider.test.tsx` | 3 passed, including child-local state isolation across identities |
+| `components/owner-workflow.test.tsx` | 8 passed, preserving routes, permissions and truthful readiness grouping |
+| `lib/notification-continuity.test.ts` | 17 passed |
+| Frontend distinct focused union | **51 checks across 4 files**; broader helper checks are retained but not added again |
+| API/frontend TypeScript checks | Passed |
+| Disposable API/frontend production builds | Passed, under ignored `generated-artifacts/owner-continuity/`; never executed |
+| Build advisory | Frontend remains a roughly 2.8 MB minified entry chunk; not a build failure |
+| Diff/whitespace check | Passed |
+
+The original financial baseline and earlier UI/backend evidence above remain
+historical, not extra new passes. The broader frontend helper pass included
+overlapping files and is not added to the distinct totals. Test selectors'
+skipped cases are not counted as newly executed.
+
+### Explicitly unverified and inactive
+
+The five current screenshot files were not positively located, so no
+screenshot-based comparison or visual acceptance is claimed. No authenticated
+browser or shared-preview pass was performed: the approved boundary did not
+authorize shared runtime/data operations, and no separately approved isolated
+authenticated browser fixture was established. Source/DOM checks are not proof
+of mobile fit, real sign-in/device transitions, bank credit, receipt printing or
+physical Telegram/SMS delivery.
+
+No migration was added in this follow-up. Candidates **0181 and 0182 remain
+unapplied to shared Development/Production**, and the supported procedural
+schema delivery blocker remains. All new behavior is source-connected and
+disposable-fixture verified, **not activated or operationally accepted**.
+Previously queued worker-restart, signed-in Owner layout, withdrawal/bulk and
+Field SMS acceptance work remains separate; none was marked complete here.
 
 ## Remaining blockers and unverified boundaries
 

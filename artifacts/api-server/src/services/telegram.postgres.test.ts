@@ -18,6 +18,7 @@ import {ownerDeliveryClaimSql,pushTestCandidates,loadOwnerDeliveryControls,withO
 import {createTeacherTelegramChallenge,confirmTeacherTelegramLink,teacherTelegramRecipient,
   revokeTeacherTelegramLink,teacherTelegramStatus} from "./teacher-telegram";
 import {queueTeacherPeriodNotifications,teacherPeriodStillCurrent} from "./teacher-period-notifications";
+import {withdrawTelegramDeliveries} from "./telegram-delivery-withdrawal";
 
 const state=vi.hoisted(()=>({pool:null as any,userId:1,role:"PARENT",anonymous:false}));
 vi.mock("@workspace/db",async original=>({...await original<any>(),pool:{
@@ -63,6 +64,7 @@ beforeAll(async()=>{
     CREATE TABLE school_classes(id int PRIMARY KEY,school_id int,name text,section text);
     CREATE TABLE audit_logs(id serial PRIMARY KEY,actor_user_id int,"user" text,role text,school_id int,
       action text,module text,event_type text,result text,metadata jsonb);
+    CREATE TABLE communication_campaigns(id int PRIMARY KEY,school_id int,status text,expires_at timestamptz);
     CREATE TABLE communication_notifications(id serial PRIMARY KEY,recipient_user_id int,school_id int,
       subject_student_id int,subject_class_id int,category text,event_key text,subject text,body text,link text,created_at timestamptz DEFAULT now());
     CREATE UNIQUE INDEX notification_events ON communication_notifications(school_id,event_key,recipient_user_id)
@@ -113,7 +115,7 @@ beforeEach(async()=>{
     teacher_telegram_links,teacher_telegram_challenges,employees,academic_sessions,academic_terms,subjects,
     teacher_class_assignments,academic_timetable_entries,school_classes,
     schools,app_users,school_memberships,students,parents,parent_student_relationships,audit_logs,
-    communication_notifications,communication_deliveries,communication_preferences,communication_push_devices RESTART IDENTITY CASCADE;
+    communication_campaigns,communication_notifications,communication_deliveries,communication_preferences,communication_push_devices RESTART IDENTITY CASCADE;
     INSERT INTO schools VALUES(1,'Fixture school','active','{"ATTENDANCE_ENTRY":["TELEGRAM"]}'),(2,'Other','active','{}');
     INSERT INTO app_users VALUES(1,'parent1@example.invalid',NULL,'ACTIVE'),(2,'parent2@example.invalid',NULL,'ACTIVE');
     INSERT INTO parents VALUES(1,1,1,'ACTIVE',NULL),(2,2,2,'ACTIVE',NULL);
@@ -142,6 +144,101 @@ async function notification(eventKey="PARENT_EVENT:SCHOOL_ENTRY:1:1:1",channel="
   await db.query("INSERT INTO communication_deliveries(notification_id,channel) VALUES($1,$2)",[n,channel]);return n;
 }
 const mocks=()=>({sms:{provider:"mock-sms",channel:"sms" as const,send:vi.fn()},email:{provider:"mock-email",channel:"email" as const,send:vi.fn()}});
+describe("durable Telegram reconnect continuity",()=>{
+  const fake=()=>{
+    const send=vi.fn(async(_input:{to:string;body:string;idempotencyKey:string})=>({provider:"fixture-telegram",channel:"telegram" as const,status:"ACCEPTED" as const,
+      accepted:true,delivered:false,providerMessageId:"fixture-receipt"}));
+    return {send,providers:{...mocks(),telegram:{provider:"fixture-telegram",channel:"telegram" as const,send}}};
+  };
+  it("keeps missing-link work and the original inbox, then resumes once on a fresh confirmed account under concurrent workers",async()=>{
+    const id=await notification();await db.query(`INSERT INTO communication_deliveries(notification_id,channel,status)
+      VALUES($1,'IN_APP','DELIVERED')`,[id]);
+    const before=(await db.query("SELECT created_at FROM communication_notifications WHERE id=$1",[id])).rows[0];
+    const {send,providers}=fake();
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers});
+    expect(send).not.toHaveBeenCalled();
+    expect((await db.query("SELECT status,attempts,error_code FROM communication_deliveries WHERE channel='TELEGRAM'")).rows[0])
+      .toEqual({status:"QUEUED",attempts:0,error_code:"TELEGRAM_WAITING_FOR_LINK"});
+    await link(888009);
+    const now=()=>new Date(Date.now()+6*60_000);
+    await Promise.all([1,2].map(()=>dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers,now})));
+    expect(send).toHaveBeenCalledTimes(1);expect(send.mock.calls[0]?.[0]).toMatchObject({to:"888009",idempotencyKey:`communication-${id}-telegram`});
+    expect((await db.query("SELECT status FROM communication_deliveries WHERE channel='IN_APP'")).rows[0].status).toBe("DELIVERED");
+    expect((await db.query("SELECT created_at FROM communication_notifications WHERE id=$1",[id])).rows[0]).toEqual(before);
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers,now});
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+  it("does not revive waiting work after explicit consent withdrawal and later relinking",async()=>{
+    await notification();const {send,providers}=fake();
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers});
+    await tx(c=>revokeParentTelegramLink(c,1));await link(888010);
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers,now:()=>new Date(Date.now()+6*60_000)});
+    expect(send).not.toHaveBeenCalled();
+    expect((await db.query("SELECT status,error_code FROM communication_deliveries")).rows[0])
+      .toEqual({status:"CANCELLED",error_code:"TELEGRAM_CONSENT_WITHDRAWN"});
+  });
+  it("atomically holds claimed/uncertain work and preserves sent and in-app deliveries on withdrawal",async()=>{
+    const ids=await Promise.all([1,2,3,4].map(n=>notification(`PARENT_EVENT:SCHOOL_ENTRY:1:1:${100+n}`)));
+    await db.query("UPDATE communication_deliveries SET status='PROCESSING' WHERE notification_id=$1",[ids[0]]);
+    await db.query("UPDATE communication_deliveries SET status='FAILED',error_code='PROVIDER_OUTCOME_UNKNOWN' WHERE notification_id=$1",[ids[1]]);
+    await db.query("UPDATE communication_deliveries SET status='SENT' WHERE notification_id=$1",[ids[2]]);
+    await db.query("INSERT INTO communication_deliveries(notification_id,channel,status) VALUES($1,'IN_APP','READ')",[ids[0]]);
+    await tx(c=>revokeParentTelegramLink(c,1));
+    const rows=(await db.query("SELECT notification_id,status,error_code FROM communication_deliveries WHERE channel='TELEGRAM'")).rows;
+    const byId=new Map(rows.map((r:any)=>[r.notification_id,r])) as Map<number,any>;
+    expect(ids.map(id=>byId.get(id).status)).toEqual(["FAILED","FAILED","SENT","CANCELLED"]);
+    expect(ids.slice(0,2).every(id=>byId.get(id).error_code==="PROVIDER_OUTCOME_UNKNOWN")).toBe(true);
+    expect((await db.query("SELECT status FROM communication_deliveries WHERE channel='IN_APP'")).rows[0].status).toBe("READ");
+  });
+  it("cancels effective opt-outs immediately while preserving explicit school overrides and inbox history",async()=>{
+    const id=await notification();
+    await db.query(`INSERT INTO communication_preferences VALUES(1,NULL,'ATTENDANCE','TELEGRAM',false),(1,1,'ATTENDANCE','TELEGRAM',true)`);
+    await tx(c=>withdrawTelegramDeliveries(c,1,{category:"ATTENDANCE",preferenceChange:true}));
+    expect((await db.query("SELECT status FROM communication_deliveries WHERE notification_id=$1",[id])).rows[0].status).toBe("QUEUED");
+    await db.query(`UPDATE communication_preferences SET enabled=false WHERE school_id=1`);
+    await tx(c=>withdrawTelegramDeliveries(c,1,{category:"ATTENDANCE",schoolId:1,preferenceChange:true}));
+    expect((await db.query("SELECT status FROM communication_deliveries WHERE notification_id=$1",[id])).rows[0].status).toBe("CANCELLED");
+    await db.query(`UPDATE communication_preferences SET enabled=true`);
+    await link();const {send,providers}=fake();
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers});
+    expect(send).not.toHaveBeenCalled();expect((await db.query("SELECT id FROM communication_notifications")).rows).toHaveLength(1);
+  });
+  it("recovers only the legacy provider-not-attempted outage failure, not uncertain acceptance or cancelled work",async()=>{
+    await link();const recover=await notification("PARENT_EVENT:SCHOOL_ENTRY:1:1:10");
+    const unknown=await notification("PARENT_EVENT:SCHOOL_ENTRY:1:1:11"),cancelled=await notification("PARENT_EVENT:SCHOOL_ENTRY:1:1:12");
+    await db.query(`UPDATE communication_deliveries SET status='FAILED',attempts=5,error_code='TELEGRAM_UNAVAILABLE' WHERE notification_id=$1`,[recover]);
+    await db.query(`UPDATE communication_deliveries SET status='FAILED',attempts=0,error_code='PROVIDER_OUTCOME_UNKNOWN' WHERE notification_id=$1`,[unknown]);
+    await db.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='TELEGRAM_LINK_OR_CONSENT_REQUIRED' WHERE notification_id=$1`,[cancelled]);
+    const {send,providers}=fake();await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers});
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toMatchObject({idempotencyKey:`communication-${recover}-telegram`});
+    expect((await db.query("SELECT status FROM communication_deliveries WHERE notification_id=$1",[unknown])).rows[0].status).toBe("FAILED");
+    expect((await db.query("SELECT status FROM communication_deliveries WHERE notification_id=$1",[cancelled])).rows[0].status).toBe("CANCELLED");
+  });
+  it("cancels expired campaign work without a provider attempt or removing its inbox record",async()=>{
+    await db.query(`INSERT INTO communication_campaigns VALUES(1,1,'SENT',now()-interval '1 minute')`);
+    const id=await notification("COMMUNICATION_CAMPAIGN:1:1:STUDENT:1");const {send,providers}=fake();
+    await db.query(`UPDATE communication_notifications SET category='ANNOUNCEMENT' WHERE id=$1`,[id]);
+    await db.query(`UPDATE schools SET communication_defaults='{"ANNOUNCEMENT":["IN_APP","TELEGRAM"]}' WHERE id=1;
+      UPDATE audit_logs SET metadata=jsonb_set(metadata,'{policy,events,ANNOUNCEMENT}',
+        '{"allowed":["IN_APP","TELEGRAM"],"defaults":["IN_APP"]}'::jsonb,true) WHERE module='NotificationPolicy'`);
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers});
+    expect(send).not.toHaveBeenCalled();
+    expect((await db.query("SELECT status,error_code FROM communication_deliveries WHERE notification_id=$1",[id])).rows[0])
+      .toEqual({status:"CANCELLED",error_code:"NOTICE_EXPIRED_OR_CANCELLED"});
+    expect((await db.query("SELECT id FROM communication_notifications WHERE id=$1",[id])).rows).toHaveLength(1);
+  });
+  it.each(["preference","relationship","school-selection"])("rechecks %s before resuming after relink",async(kind)=>{
+    await notification();const {send,providers}=fake();
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers});await link();
+    if(kind==="preference")await db.query(`INSERT INTO communication_preferences VALUES(1,1,'ATTENDANCE','TELEGRAM',false)`);
+    if(kind==="relationship")await db.query("UPDATE parent_student_relationships SET status='INACTIVE' WHERE parent_id=1");
+    if(kind==="school-selection")await db.query(`UPDATE schools SET communication_defaults='{"ATTENDANCE_ENTRY":["IN_APP"]}' WHERE id=1`);
+    await dispatchCommunicationDeliveries(db,10,{channels:["TELEGRAM"],providers,now:()=>new Date(Date.now()+6*60_000)});
+    expect(send).not.toHaveBeenCalled();
+    expect((await db.query("SELECT status FROM communication_deliveries")).rows[0].status).toBe("CANCELLED");
+  });
+});
 describe("teacher Telegram Development prerequisite",()=>{
   const tick=new Date("2026-11-09T06:55:00Z");
   beforeEach(async()=>{
@@ -264,9 +361,9 @@ describe("teacher Telegram Development prerequisite",()=>{
     expect(await tx(c=>acceptTelegramUpdate(c,{message:{chat:{id:888001,type:"private"},from:{id:888001},text:"/stop"}}))).toBe(true);
     expect(await telegramRecipient(db,1,1,1,"ATTENDANCE")).toBeNull();
   });
-  it("queues both teacher triggers exactly once, skips unlinked Telegram, and audits without provider sends",async()=>{
+  it("queues both teacher triggers exactly once, retains unlinked Telegram, and audits without provider sends",async()=>{
     await queueTeacherPeriodNotifications(db,tick);
-    expect((await db.query("SELECT channel FROM communication_deliveries ORDER BY channel")).rows).toEqual([{channel:"IN_APP"},{channel:"PUSH"}]);
+    expect((await db.query("SELECT channel FROM communication_deliveries ORDER BY channel")).rows).toEqual([{channel:"IN_APP"},{channel:"PUSH"},{channel:"TELEGRAM"}]);
     // Revoke the fictional first intent only inside this disposable fixture.
     await db.query("TRUNCATE communication_deliveries,communication_notifications");
     await teacherLink();
@@ -283,6 +380,21 @@ describe("teacher Telegram Development prerequisite",()=>{
     await tx(c=>revokeTeacherTelegramLink(c,100));
     expect((await db.query("SELECT * FROM communication_deliveries WHERE channel='TELEGRAM' AND status='CANCELLED'")).rows).toHaveLength(2);
     expect((await db.query("SELECT * FROM communication_deliveries WHERE channel='IN_APP' AND status='SENT'")).rows).toHaveLength(2);
+  });
+  it("holds unlinked teacher reminders but never resumes an expired period after a valid late connection",async()=>{
+    await queueTeacherPeriodNotifications(db,tick);
+    await db.query("UPDATE communication_deliveries SET next_attempt_at=$1 WHERE channel='TELEGRAM'",[tick]);
+    const send=vi.fn();
+    const providers={...mocks(),telegram:{provider:"fixture",channel:"telegram" as const,send}};
+    await dispatchCommunicationDeliveries(db,5,{channels:["TELEGRAM"],providers,now:()=>tick});
+    expect((await db.query("SELECT status,error_code,attempts FROM communication_deliveries WHERE channel='TELEGRAM'")).rows[0])
+      .toEqual({status:"QUEUED",error_code:"TELEGRAM_WAITING_FOR_LINK",attempts:0});
+    await teacherLink();
+    await dispatchCommunicationDeliveries(db,5,{channels:["TELEGRAM"],providers,now:()=>new Date("2026-11-09T07:00:00Z")});
+    expect(send).not.toHaveBeenCalled();
+    expect((await db.query("SELECT status,error_code FROM communication_deliveries WHERE channel='TELEGRAM'")).rows[0])
+      .toEqual({status:"CANCELLED",error_code:"TIMETABLE_CHANGED_OR_EXPIRED"});
+    expect((await db.query("SELECT count(*)::int AS n FROM communication_notifications")).rows[0].n).toBe(1);
   });
   it.each(["CANCELLED","RESCHEDULED","EXPIRED"])("rejects stale teacher Telegram intent %s before adapter access",async change=>{
     await teacherLink();await queueTeacherPeriodNotifications(db,tick);

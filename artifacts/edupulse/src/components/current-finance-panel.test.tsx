@@ -3,12 +3,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import { describe, it, expect, vi } from 'vitest';
-const f = vi.hoisted(() => ({ result: {} as Record<string, unknown>, mutateAsync:vi.fn() }));
+const f = vi.hoisted(() => ({ result: {} as Record<string, unknown>, mutateAsync:vi.fn(),queries:[] as any[] }));
 vi.mock('@clerk/react', () => ({ useUser: () => ({ user: { id: 'user-a' } }) }));
 vi.mock('@tanstack/react-query', async o => ({ ...await o<typeof import('@tanstack/react-query')>(), useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock('@workspace/api-client-react', async o => ({
   ...await o<typeof import('@workspace/api-client-react')>(),
-  useGetCurrentFinanceOverview: () => f.result,
+  useGetCurrentFinanceOverview: (params:any) => {f.queries.push(params);return f.result;},
   useActOnCurrentFinance: () => ({ mutateAsync: f.mutateAsync, isPending: false }),
   useGetFieldSmsCampaigns: () => f.result,
   usePreviewFieldSmsCampaign: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -23,8 +23,72 @@ const overview = { owner: false, bro: true, schools: [], terms: [], blockers: ['
   summary: { studentCount: 10, earnedMinor: 150000, pendingMinor: 0, approvedMinor: 15000, availableMinor: 135000, paidMinor: 0 },
   entitlements: [{ key: 'D:1', studentId: 1, studentName: 'Amaka Obi', schoolId: 2, schoolName: 'Lekki Hills', termId: 3, termName: 'First Term', amountMinor: 15000, state: 'ACCRUED', requestId: null, available: true }],
   requests: [], payments: [], refunds: [], payouts: [], batches: [], eligibleStudents: [] };
+async function ownerDom(){
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;
+  const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+  const render=async()=>{await act(async()=>root.render(<ConnectedFinancePanel mode="owner"/>));};
+  const click=async(id:string)=>{const el=host.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`)!;expect(el).not.toBeNull();await act(async()=>el.click());};
+  const select=async(id:string,value:string)=>{const el=host.querySelector<HTMLSelectElement>(`[data-testid="${id}"]`)!;
+    await act(async()=>{el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));});};
+  return {host,render,click,select,close:async()=>{await act(async()=>root.unmount());host.remove();delete(globalThis as any).IS_REACT_ACT_ENVIRONMENT;}};
+}
 
 describe('connected finance', () => {
+  it.each([
+    [404,undefined,'FIELD_SMS_ROUTE_UNAVAILABLE'],
+    [503,'CURRENT_FINANCIAL_SCHEMA_NOT_APPLIED','storage is not applied'],
+    [503,'CURRENT_EXTENSIONS_MIGRATION_AND_HISTORY_GUARDS_REQUIRED','history guards are missing'],
+    [403,undefined,'Platform Owner permission'],
+    [503,undefined,'readiness could not be confirmed'],
+  ])('shows actionable Field SMS failure %s / %s without implying activation',(status,error,label)=>{
+    f.result={isLoading:false,isError:true,error:{status,data:error?{error}:undefined},refetch:vi.fn()};
+    const html=renderToStaticMarkup(<FieldSmsCampaigns/>);
+    expect(html).toContain(label);expect(html).toContain('Nothing was enabled, probed or sent');
+    expect(html).not.toContain('button-send');expect(html).not.toContain('Field SMS is not enabled on this server');
+  });
+  it('keeps asynchronous refunds reconcilable through PROCESSING, PENDING and independently confirmed success',async()=>{
+    f.mutateAsync.mockReset();f.mutateAsync.mockResolvedValueOnce({state:'PENDING'}).mockResolvedValueOnce({state:'SUCCEEDED'});
+    const refund={id:8,studentName:'Fictional Student',amountMinor:10000,source:'DIRECT',sourceId:1,state:'PROCESSING'};
+    const data={...overview,owner:true,bro:false,refunds:[refund]};
+    f.result={data,isError:false,isLoading:false,refetch:vi.fn()};const dom=await ownerDom();
+    try{
+      await dom.render();await dom.click('button-reconcile-refund-8');
+      f.result={...f.result,data:{...data,refunds:[{...refund,state:'PENDING'}]}};await dom.render();
+      expect(dom.host.querySelector('[data-testid="button-reconcile-refund-8"]')).not.toBeNull();
+      await dom.click('button-reconcile-refund-8');
+      expect(f.mutateAsync.mock.calls.map(([r])=>r.data.action)).toEqual(['REFUND_RECONCILE','REFUND_RECONCILE']);
+      f.result={...f.result,data:{...data,refunds:[{...refund,state:'SUCCEEDED'}]}};await dom.render();
+      expect(dom.host.querySelector('[data-testid="button-reconcile-refund-8"]')).toBeNull();
+      expect(dom.host.querySelector('[data-testid="button-dispatch-refund-8"]')).toBeNull();
+    }finally{await dom.close();}
+  });
+  it.each(['DISPATCHED','UNKNOWN'])('offers only status reconciliation for a %s refund',state=>{
+    f.result={isError:false,isLoading:false,data:{...overview,owner:true,bro:false,
+      refunds:[{id:8,studentName:'Fictional Student',amountMinor:10000,source:'DIRECT',sourceId:1,state}]}};
+    const html=renderToStaticMarkup(<ConnectedFinancePanel mode="owner"/>);
+    expect(html).toContain('button-reconcile-refund-8');expect(html).not.toContain('button-dispatch-refund-8');
+  });
+  it('requires school before term, resets incompatible terms and retains scope recovery on errors',async()=>{
+    f.queries=[];const data={...overview,owner:true,bro:false,
+      schools:[{id:2,name:'Fictional School A'},{id:3,name:'Fictional School B'}],
+      terms:[{id:21,schoolId:2,name:'Term A'},{id:31,schoolId:3,name:'Term B'}]};
+    f.result={data,isError:false,isLoading:false,refetch:vi.fn()};const dom=await ownerDom();
+    try{
+      await dom.render();
+      expect(dom.host.querySelector<HTMLSelectElement>('[data-testid="select-finance-term"]')!.disabled).toBe(true);
+      await dom.select('select-finance-school','2');await dom.select('select-finance-term','21');
+      expect(f.queries.at(-1)).toEqual({schoolId:2,termId:21});
+      await dom.select('select-finance-school','3');
+      expect(f.queries.at(-1)).toEqual({schoolId:3});
+      f.result={isError:true,error:{status:400},isLoading:false,refetch:vi.fn()};await dom.render();
+      expect(dom.host.querySelector('[data-testid="select-finance-school"]')).not.toBeNull();
+      await dom.click('button-reset-finance-scope');
+      expect(f.queries.at(-1)).toEqual({});
+      expect(f.queries.every(q=>!q.termId||!!q.schoolId)).toBe(true);
+      f.result={isError:true,error:{status:503},isLoading:false,refetch:vi.fn()};await dom.render();
+      expect(dom.host.querySelector('[data-testid="button-reset-finance-scope"]')).not.toBeNull();
+    }finally{await dom.close();}
+  });
   it('converts NGN to integer minor units', () => {
     expect(toMinor('1,500')).toBe(150000); expect(toMinor('12.5')).toBe(1250);
     expect(toMinor('0')).toBeNull(); expect(toMinor('-3')).toBeNull(); expect(toMinor('1.234')).toBeNull();

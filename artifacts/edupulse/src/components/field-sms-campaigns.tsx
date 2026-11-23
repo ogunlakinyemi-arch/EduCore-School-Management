@@ -7,7 +7,8 @@ import {
 } from '@workspace/api-client-react';
 import { MessageSquareText, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Button, Field, StatusPill } from '@/components/shared';
-import { apiErrorText, isDefinitiveRejection, isUnavailable, newKey } from '@/lib/current-finance';
+import { apiErrorText, isDefinitiveRejection, newKey } from '@/lib/current-finance';
+import {fieldSmsDiagnostic} from '@/lib/field-sms-diagnostics';
 
 type Lead = { id: number; schoolName: string; contactPhone: string | null; allowed: boolean; eligible: boolean; reason: string | null };
 type Recipient = { leadId: number; schoolName: string; phone: string; state: string; providerReference?: string | null; error?: string | null; retryable?:boolean };
@@ -58,8 +59,12 @@ export function FieldSmsCampaigns() {
   </section>;
 
   if (q.isLoading) return wrap(<div className="space-y-3 p-5">{[0, 1, 2].map(i => <div key={i} className="skeleton h-12 rounded-xl" />)}</div>);
-  if (q.isError && isUnavailable(q.error)) return wrap(<div className="flex gap-3 p-5" role="status"><ShieldAlert size={18} className="text-[hsl(var(--accent))]" /><p className="text-sm">Field SMS is not enabled on this server. No message can be sent.</p></div>);
-  if (q.isError || !isSms(q.data)) return wrap(<div className="p-5" role="alert"><p className="text-sm">{q.isError ? apiErrorText(q.error, 'SMS campaigns could not be loaded.') : 'Unexpected server response.'}</p><Button className="mt-3" variant="outline" onClick={() => void q.refetch()}>Retry</Button></div>);
+  if(q.isError){const d=fieldSmsDiagnostic(q.error);return wrap(<div className="flex gap-3 p-5" role="alert" data-testid="sms-readiness-error">
+    <ShieldAlert size={18} className="shrink-0 text-[hsl(var(--accent))]"/><div><h3 className="font-bold">{d.title}</h3>
+      <p className="mt-2 text-sm">{d.next}</p><p className={`mt-2 break-words font-mono text-xs ${muted}`}>{d.code}</p>
+      <p className="mt-2 text-xs">Nothing was enabled, probed or sent by this diagnostic.</p>
+      <Button className="mt-3" variant="outline" onClick={()=>void q.refetch()}>Refresh readiness</Button></div></div>);}
+  if (!isSms(q.data)) return wrap(<div className="p-5" role="alert"><p className="text-sm">Unexpected server response. Readiness is unknown; no sending is available.</p><Button className="mt-3" variant="outline" onClick={() => void q.refetch()}>Retry</Button></div>);
   const data = q.data;
   const eligible = data.leads.filter(l => l.eligible && l.allowed);
   const leadIds = [...picked].filter(id => eligible.some(l => l.id === id)).sort((a, b) => a - b);
@@ -97,7 +102,10 @@ export function FieldSmsCampaigns() {
 
   return wrap(<div className="grid gap-0 lg:grid-cols-[1.1fr_1fr]">
     <div className="border-b border-[hsl(var(--border))] p-5 lg:border-b-0 lg:border-r">
-      {blocked && <div role="status" className="mb-4 rounded-xl border border-[hsl(var(--accent)/.5)] bg-[hsl(var(--accent)/.08)] p-3 text-sm" data-testid="sms-blocked">SMS sending is blocked: {data.blockedReason}</div>}
+      {blocked && <div role="status" className="mb-4 rounded-xl border border-[hsl(var(--accent)/.5)] bg-[hsl(var(--accent)/.08)] p-3 text-sm" data-testid="sms-blocked">
+        <b>SMS sending is blocked: {data.blockedReason}</b>
+        <p className="mt-2">{fieldSmsDiagnostic(data.blockedReason).title}</p><p className="mt-1">{fieldSmsDiagnostic(data.blockedReason).next}</p>
+      </div>}
       <div className="mb-2 flex items-center justify-between"><h3 className="font-bold">Contacts</h3>
         <label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" className="!w-4 h-4" checked={all} onChange={e => { setAll(e.target.checked); resetPreview(); }} data-testid="check-sms-all" />All eligible ({eligible.length})</label></div>
       {data.leads.length === 0 ? <p className={`rounded-xl border border-dashed p-4 text-sm ${muted}`}>No field leads with contact numbers yet.</p> :

@@ -780,8 +780,14 @@ describe("communication delivery dispatcher", () => {
   });
 
   it("rechecks Owner policy before dispatch of an already queued SMS",async()=>{
-    const policy=defaultNotificationPolicy();policy.events.ATTENDANCE!.allowed=["IN_APP"];
-    const {pool,calls}=dispatchPool({policy});
+    // Use an eligible, consented absence fixture so this reaches the policy
+    // check rather than correctly stopping at the earlier SMS-scope guard.
+    const policy=defaultNotificationPolicy();policy.events.ATTENDANCE_ABSENCE!.allowed=["IN_APP"];
+    const {pool,calls}=dispatchPool({policy,preferenceEnabled:true,record:{
+      id:42,channel:"SMS",notificationId:33,recipientUserId:17,schoolId:9,subjectStudentId:321,subjectClassId:null,
+      category:"ATTENDANCE",eventKey:"attendance:1:ABSENT",subject:"Absence",body:"Fictional absence notice",
+      email:null,phone:"+2348012345678",schoolAuthorized:true,userStatus:"ACTIVE",
+    }});
     const send=vi.fn(async()=>({provider:"test",channel:"sms" as const,status:"SIMULATED" as const,accepted:false,delivered:false}));
     expect((await dispatchCommunicationDeliveries(pool,5,{providers:testProviders(send)})).skipped).toBe(1);
     expect(send).not.toHaveBeenCalled();

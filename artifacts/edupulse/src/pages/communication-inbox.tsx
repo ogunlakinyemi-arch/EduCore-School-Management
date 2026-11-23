@@ -4,8 +4,9 @@ import { Link } from 'wouter';
 import { Bell, CheckCheck, MailOpen, ArrowRight, RefreshCw } from 'lucide-react';
 import { useListCommunicationNotifications, useMarkCommunicationNotificationRead, useMarkAllCommunicationNotificationsRead, useArchiveCommunicationNotification, useUnarchiveCommunicationNotification, getListCommunicationNotificationsQueryKey } from '@workspace/api-client-react';
 import type { CommunicationNotification } from '@workspace/api-client-react';
-import { PageHeading, Button, EmptyState, ErrorState, SkeletonPage, date, time, cx } from '@/components/shared';
-import { inboxItems, visibleCommunicationNotifications, inboxArchiveView, canArchiveNotification } from './communication-contract';
+import { PageHeading, Button, EmptyState, ErrorState, SkeletonPage, cx } from '@/components/shared';
+import {notificationTime} from '../../../../lib/api-zod/src/notification-time';
+import { inboxItems, visibleCommunicationNotifications, inboxArchiveView, canArchiveNotification,deliveryStatusLabel,deliveryNextAction } from './communication-contract';
 
 // Only system-generated finance/payment notices live in the separate finance bell.
 const safeLink = (link: string | null) => link && link.startsWith('/') && !link.startsWith('//') && !link.includes('\\') ? link : null;
@@ -88,7 +89,16 @@ export function CommunicationInbox({ standalone = false }: { standalone?: boolea
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2"><span className="eyebrow">{item.category.replaceAll('_', ' ')}</span>{!item.isRead && <span className="h-2 w-2 rounded-full bg-[hsl(var(--primary))]" aria-label="Unread" />}</div>
             <h3 className="mt-1 font-bold">{item.subject || 'School update'}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[hsl(var(--muted-foreground))]">{item.body}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-[hsl(var(--muted-foreground))]"><span>{date(item.createdAt)} at {time(item.createdAt)}</span>{safeLink(item.link) && <Link href={safeLink(item.link)!} className="inline-flex items-center gap-1 font-bold text-[hsl(var(--primary))]" data-testid={`link-message-${item.id}`}>Open related page <ArrowRight size={13} /></Link>}{!item.isRead && <button type="button" onClick={() => void onRead(item.id)} disabled={mark.isPending} className="font-bold text-[hsl(var(--primary))] disabled:opacity-50" data-testid={`button-read-message-${item.id}`}>Mark read</button>}</div>
+            <ul className="mt-3 space-y-2 text-xs" aria-label="Independent channel delivery states">
+              {item.deliveries.map(d=><li key={d.id} data-testid={`message-channel-${item.id}-${d.channel}`}>
+                <strong>{d.channel==='IN_APP'?'In-app':d.channel==='TELEGRAM'?'Telegram':d.channel}:</strong>{' '}
+                {d.channel==='IN_APP'?'Saved in your inbox · independent of devices and Telegram':deliveryStatusLabel(d)}
+                {d.channel!=='IN_APP'&&deliveryNextAction(d)&&<p className="mt-1 text-[hsl(var(--muted-foreground))]">{deliveryNextAction(d)}</p>}
+                {d.channel!=='IN_APP'&&d.status==='QUEUED'&&d.errorCode!=='PROVIDER_OUTCOME_UNKNOWN'&&
+                  <p className="mt-1 text-[hsl(var(--muted-foreground))]">Scheduled recheck: {notificationTime(d.nextAttemptAt)}. Current authorization and retry limits still apply.</p>}
+              </li>)}
+            </ul>
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-[hsl(var(--muted-foreground))]"><span>{notificationTime(item.createdAt)}</span>{safeLink(item.link) && <Link href={safeLink(item.link)!} className="inline-flex items-center gap-1 font-bold text-[hsl(var(--primary))]" data-testid={`link-message-${item.id}`}>Open related page <ArrowRight size={13} /></Link>}{!item.isRead && <button type="button" onClick={() => void onRead(item.id)} disabled={mark.isPending} className="font-bold text-[hsl(var(--primary))] disabled:opacity-50" data-testid={`button-read-message-${item.id}`}>Mark read</button>}</div>
             {(showArchived || canArchiveNotification(item.category)) &&
               <button type="button" onClick={() => void onArchive(item.id, !showArchived)}
                 disabled={archive.isPending || restore.isPending}

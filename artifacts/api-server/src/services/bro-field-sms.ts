@@ -73,6 +73,11 @@ export async function readFieldSms(pool:CurrentPool,actorId:number,deps:FieldSms
    for(const r of (await c.query("SELECT id FROM bro_field_sms_campaigns ORDER BY id DESC LIMIT 50")).rows)
      campaigns.push(await campaignView(c,Number(r.id)));
    let blockedReason=await transportAllowed(c,deps)?null:"SMS_TRANSPORT_PAUSED_OR_NOT_ENABLED";
+   if(blockedReason&&!deps.transportAllowed){
+     const controls=await loadOwnerDeliveryControls(c);
+     blockedReason=controls.paused?"SMS_DELIVERY_PAUSED_BY_OWNER":!controls.smsEnabled?"SMS_NOT_AUTHORIZED_BY_OWNER":
+       !controls.activatedAt?"SMS_ACTIVATION_REVIEW_REQUIRED":blockedReason;
+   }
    if(!blockedReason&&!deps.provider)try{
      const controls=await loadOwnerDeliveryControls(c);
      await withOwnerNotificationScope(controls,async()=>createSmsProvider());

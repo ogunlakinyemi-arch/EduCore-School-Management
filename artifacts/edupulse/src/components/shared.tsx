@@ -155,7 +155,8 @@ export function Shell({ children }: { children: ReactNode }) {
     if (item.href === '/library' && teacherOnly && !librarianDuty) return false;
     return !item.roles || item.roles.some(role => roles.includes(role));
   });
-  const sections = buildNavSections(visibleNav.map(i => i.href), navMode(roles, isActivationOfficer || isCompanyAccountant || isPlatformOwner));
+  const sections = buildNavSections(visibleNav.map(i => i.href), navMode(roles, isActivationOfficer || isCompanyAccountant, isPlatformOwner));
+  const ownerNavMode = isPlatformOwner && !isActivationOfficer && !isCompanyAccountant;
   const name = context?.user?.name ?? 'Yetenia EduCore user';
   const roleDisplay = isActivationOfficer ? 'Device Activation Officer' : isCompanyAccountant ? 'Company Accountant' : isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
@@ -245,7 +246,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 {sections.map(section => {
                   const items = section.hrefs.map(h => byHref.get(h)).filter((i): i is NavItem => !!i);
                   const hasActive = items.some(i => isNavActive(i.href, location, search));
-                  const expanded = hasActive || openSections.includes(section.id);
+                  const expanded = ownerNavMode || hasActive || openSections.includes(section.id);
                   const panelId = `nav-section-${section.id}`;
                   return (
                     <div key={section.id}>

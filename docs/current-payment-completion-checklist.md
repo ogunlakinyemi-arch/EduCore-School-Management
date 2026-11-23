@@ -58,7 +58,35 @@ stated isolated checks, **not shared/runtime or LIVE activation**.
 - [x] Replace the former disconnected-state report with actual connected,
   blocked and unverified evidence.
 
-## Closed operational gates and outstanding acceptance
+## Owner and notification follow-up source evidence
+
+- [x] Retain and close the two specific UI findings with interactive regressions:
+  PENDING refund reconciliation and school-first/error-recoverable term scope.
+- [x] Keep current requested/pending/failed/reversed BRO figures and scoped
+  student detail distinct from bank-verified money.
+- [x] Keep durable Telegram no-send waits without reviving cancelled, accepted,
+  expired or uncertain work; preserve independently selected in-app history.
+- [x] Preserve current school/relationship/preferences, launch cutoff and
+  timetable/campaign expiry on recovery; keep fresh personal link confirmation.
+- [x] Isolate account-local inbox pagination while retaining same-identity state.
+- [x] Atomically hold processing-time uncertainty on consent withdrawal; retain
+  sent and in-app history and respect school-level preference overrides.
+- [x] Preserve all seven BRO routes and authorized Owner links while grouping
+  primary work and secondary evidence; use truthful preparation/payout wording.
+- [x] Guide actual readiness and rule stages; show missing independent webhook
+  or bank evidence as unverified and retired workflows as inapplicable.
+- [x] Explain safe SMS route/schema/guard/control/permission/provider blockers
+  without enabling anything or performing a health/provider request.
+- [x] Record 173 distinct backend and 51 distinct frontend focused checks across
+  full and targeted continuations; do not count overlapping helper/baseline runs
+  again. See the report for per-file results and corrected fixture findings.
+- [x] Pass API/frontend types, disposable builds and diff checks; do not run the
+  built applications or replace shared output. Retain the bundle-size advisory.
+- [ ] Separately authorize and verify shared-runtime, authenticated responsive
+  browser and actual device/account transitions; no current screenshot
+  comparison, receipt-printing or physical provider delivery is claimed.
+
+## Retained operational gates
 
 - [ ] Establish an independently bound collection-reversal evidence capability.
 - [ ] Establish independently verified incoming BRO recovery evidence.

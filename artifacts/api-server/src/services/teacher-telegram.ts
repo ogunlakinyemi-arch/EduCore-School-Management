@@ -4,6 +4,7 @@ import {getTelegramHealth} from "./telegram-provider";
 import {sealTelegramChat,openTelegramChat,telegramTokenHash,telegramChatHash} from "./telegram-links";
 import {loadNotificationPolicy,allowedNotificationChannels} from "./notification-channel-policy";
 import {ownerNotificationDevelopment} from "./owner-notification-controls";
+import {withdrawTelegramDeliveries} from "./telegram-delivery-withdrawal";
 type Db={query:(sql:string,values?:any[])=>Promise<{rows:any[]}>};
 const development=()=>{if(!ownerNotificationDevelopment())throw new AuthError(404,"Teacher Telegram unavailable");};
 export async function eligibleTelegramTeacher(db:Db,userId:number,schoolId:number){
@@ -101,10 +102,7 @@ export async function revokeTeacherTelegramLink(db:Db,userId:number){
     chat_hash=NULL,updated_at=now() WHERE user_id=$1`,[userId]);
   await db.query(`UPDATE teacher_telegram_challenges SET revoked_at=now(),pending_ciphertext=NULL,chat_hash=NULL
     WHERE user_id=$1 AND confirmed_at IS NULL`,[userId]);
-  await db.query(`UPDATE communication_deliveries d SET status='CANCELLED',error_code='TELEGRAM_CONSENT_WITHDRAWN',
-    last_error='Teacher Telegram consent withdrawn',updated_at=now() FROM communication_notifications n
-    WHERE n.id=d.notification_id AND n.recipient_user_id=$1 AND n.event_key LIKE 'TEACHER_PERIOD:%'
-    AND d.channel='TELEGRAM' AND d.status IN ('QUEUED','FAILED')`,[userId]);
+  await withdrawTelegramDeliveries(db,userId,{teacherOnly:true});
   await audit(db,userId,null,"TEACHER_TELEGRAM_CONSENT_WITHDRAWN");
 }
 export async function teacherTelegramRecipient(db:Db,userId:number,schoolId:number){

@@ -46,7 +46,8 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
     WHERE ($1::boolean OR e.partner_profile_id=$2) AND ($3::int IS NULL OR e.school_id=$3)
     AND ($4::int IS NULL OR e.academic_term_id=$4)`,[actor.owner,actor.partnerId,schoolId??null,termId??null])).rows:[];
   const entitlements:any[]=[];
-  const summary={studentCount:allEntitlements.length,earnedMinor:allEntitlements.length*15000,pendingMinor:0,approvedMinor:0,availableMinor:0,paidMinor:0};
+  const summary={studentCount:allEntitlements.length,earnedMinor:allEntitlements.length*15000,pendingMinor:0,approvedMinor:0,availableMinor:0,paidMinor:0,
+    requestedMinor:0,pendingApprovalMinor:0,failedMinor:0,reversedMinor:0};
   const payouts=[];
   for(const e of allEntitlements){
    const phase=e.journal_id?await state(c,Number(e.journal_id)):"REQUESTED";
@@ -58,25 +59,34 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
    const available=["APPROVED","FAILED"].includes(phase)&&e.decision==="APPROVED"&&!held&&money.netPaidMinor===320000
      &&!!activeBro&&e.term_end<lagosDate(now);
    if(phase==="REQUESTED"&&!held)summary.pendingMinor+=15000;
+   if(e.request_id)summary.requestedMinor+=15000;
+   if(e.request_id&&phase==="REQUESTED"&&!held&&e.decision==null)summary.pendingApprovalMinor+=15000;
    if(phase==="APPROVED")summary.approvedMinor+=15000;
    if(available)summary.availableMinor+=15000;
    entitlements.push({key:e.key,studentId:Number(e.student_id),studentName:e.student_name,
      schoolId:Number(e.school_id),schoolName:e.school_name,termId:Number(e.academic_term_id),termName:e.term_name,
      amountMinor:15000,state:held&&phase==="REQUESTED"?"HELD":phase,requestId:e.request_id?Number(e.request_id):null,available});
+   let latestPayout:{state:string;amount:number}|null=null;
    if(e.journal_id)for(const p of (await c.query(`SELECT * FROM current_subscription_operations
      WHERE parent_id=$1 AND kind='BRO_PAYOUT' ORDER BY id`,[e.journal_id])).rows){
      const phase=await state(c,Number(p.id));if(phase==="SUCCEEDED")summary.paidMinor+=Number(p.amount_minor);
+     latestPayout={state:phase,amount:Number(p.amount_minor)};
      payouts.push({id:Number(p.id),entitlementKey:e.key,amountMinor:Number(p.amount_minor),state:phase,
        reference:referenceFor(Number(p.id)),maskedAccountNumber:p.snapshot.bank?.maskedAccountNumber??null});
    }
+   // Count only the latest attempt per entitlement, not every historical failed retry.
+   if(latestPayout?.state==="FAILED")summary.failedMinor+=latestPayout.amount;
+   if(latestPayout?.state==="REVERSED")summary.reversedMinor+=latestPayout.amount;
   }
   const requests=[];
   for(const r of (actor.owner||actor.partnerId)?(await c.query(`SELECT r.*,COALESCE(to_jsonb(p)->>'full_name','BRO #'||p.id::text) AS bro_name
     FROM current_bro_withdrawals r JOIN partner_profiles p ON p.id=r.partner_profile_id
     WHERE $1::boolean OR r.partner_profile_id=$2 ORDER BY r.id DESC`,[actor.owner,actor.partnerId])).rows:[]){
-    const lines=(await c.query(`SELECT l.*,d.decision,d.reason FROM current_bro_withdrawal_lines l
+    const allLines=(await c.query(`SELECT l.*,d.decision,d.reason FROM current_bro_withdrawal_lines l
       LEFT JOIN current_bro_withdrawal_decisions d ON d.line_id=l.id WHERE request_id=$1 ORDER BY l.id`,[r.id])).rows;
-    requests.push({id:Number(r.id),partnerId:Number(r.partner_profile_id),broName:r.bro_name,totalMinor:Number(r.amount_minor),
+    const lines=schoolId||termId?allLines.filter(l=>entitlements.some(e=>e.key===(l.bulk_entitlement_id?`B:${l.bulk_entitlement_id}`:`D:${l.entitlement_id}`))):allLines;
+    if(!lines.length)continue;
+    requests.push({id:Number(r.id),partnerId:Number(r.partner_profile_id),broName:r.bro_name,totalMinor:lines.length*15000,
       createdAt:new Date(r.created_at).toISOString(),lines:lines.map(l=>{
         const key=l.bulk_entitlement_id?`B:${l.bulk_entitlement_id}`:`D:${l.entitlement_id}`;
         return {entitlementKey:key,studentName:entitlements.find(e=>e.key===key)?.studentName??"Retained entitlement",

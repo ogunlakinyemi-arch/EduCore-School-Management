@@ -10,7 +10,8 @@ import {
 
 /* Local DTOs matching the backend current-finance contract. */
 export type Source = 'DIRECT' | 'BULK';
-export type FinanceSummary = { studentCount: number; earnedMinor: number; pendingMinor: number; approvedMinor: number; availableMinor: number; paidMinor: number };
+export type FinanceSummary = { studentCount: number; earnedMinor: number; pendingMinor: number; approvedMinor: number; availableMinor: number; paidMinor: number;
+  requestedMinor?:number;pendingApprovalMinor?:number;failedMinor?:number;reversedMinor?:number };
 export type Entitlement = { key: string; studentId: number; studentName: string; schoolId: number; schoolName: string; termId: number; termName: string; amountMinor: number; state: string; requestId: number | null; available: boolean };
 export type RequestLine = { entitlementKey: string; studentName: string; state: string; reason: string | null };
 export type WithdrawalRequest = { id: number; partnerId: number; broName: string; totalMinor: number; createdAt: string; lines: RequestLine[] };
@@ -82,7 +83,7 @@ export function isOverview(d: unknown): d is FinanceOverview {
 
 export function useCurrentFinance(params: { schoolId?: number; termId?: number }, enabled = true) {
   const { user } = useUser();
-  const clean = { ...(params.schoolId ? { schoolId: params.schoolId } : {}), ...(params.termId ? { termId: params.termId } : {}) };
+  const clean = { ...(params.schoolId ? { schoolId: params.schoolId } : {}), ...(params.schoolId&&params.termId ? { termId: params.termId } : {}) };
   return useGetCurrentFinanceOverview(clean, { query: {
     queryKey: [...getGetCurrentFinanceOverviewQueryKey(clean), user?.id ?? 'anonymous'],
     enabled: enabled && !!user?.id, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,

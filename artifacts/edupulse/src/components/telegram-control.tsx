@@ -49,6 +49,7 @@ export function ParentTelegramControl({ schoolId, teacher = false }: { schoolId:
   const canStart = parentRole && !!s && eligible && s.ready && s.policyAllowed && !s.linked;
   return <section className="panel p-5" aria-label="Telegram" data-testid="panel-telegram">
     <div className="eyebrow">Telegram</div>
+    <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Your in-app inbox and unread history stay with your EduCore account, not this device or Telegram. After reinstalling or changing Telegram accounts, use a fresh personal link and confirm the account shown. Reconnection resumes only current, authorized unsent work; it never resends delivered or uncertain messages.</p>
     <p className={q.isError || (s && !s.ready) ? notificationErrorClass : 'mt-2 text-sm'} role={q.isError || (s && !s.ready) ? 'alert' : 'status'} data-testid="text-telegram-state">{state}</p>
     {s?.pending && s.pendingAccountLabel && <p className="mt-1 text-sm" data-testid="text-telegram-pending">Waiting to confirm Telegram account: {s.pendingAccountLabel}</p>}
     {q.isError && <button type="button" className="mt-2 text-xs font-bold underline" onClick={() => void q.refetch()}>Retry</button>}

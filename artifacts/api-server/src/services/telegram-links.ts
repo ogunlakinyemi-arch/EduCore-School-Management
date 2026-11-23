@@ -5,6 +5,7 @@ import {loadNotificationPolicy,allowedNotificationChannels,policyEvents} from ".
 import {getTelegramHealth,refreshTelegramHealth} from "./telegram-provider";
 import {inspectTelegramStorage} from "./telegram-storage-readiness";
 import {acceptTeacherTelegramUpdate} from "./teacher-telegram";
+import {withdrawTelegramDeliveries} from "./telegram-delivery-withdrawal";
 type Db={query:(sql:string,values?:any[])=>Promise<{rows:any[]}>};
 const key=(env:NodeJS.ProcessEnv)=> {
   if(!env.SESSION_SECRET||env.SESSION_SECRET.length<32)throw new Error("Telegram encryption unavailable");
@@ -171,9 +172,7 @@ export async function revokeParentTelegramLink(db:Db,userId:number){
     chat_hash=NULL,updated_at=now() WHERE parent_id=$1`,[parent.id]);
   await db.query(`UPDATE telegram_link_challenges SET revoked_at=now(),pending_ciphertext=NULL,chat_hash=NULL
     WHERE parent_id=$1 AND confirmed_at IS NULL`,[parent.id]);
-  await db.query(`UPDATE communication_deliveries d SET status='CANCELLED',error_code='TELEGRAM_CONSENT_WITHDRAWN',
-    last_error='Telegram consent withdrawn',updated_at=now() FROM communication_notifications n
-    WHERE n.id=d.notification_id AND n.recipient_user_id=$1 AND d.channel='TELEGRAM' AND d.status IN ('QUEUED','FAILED')`,[userId]);
+  await withdrawTelegramDeliveries(db,userId);
 }
 export async function telegramRecipient(db:Db,userId:number,schoolId:number|null,studentId:number|null,category:string){
   if(!getTelegramHealth().ready||schoolId===null)return null;

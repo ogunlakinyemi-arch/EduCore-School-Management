@@ -1,4 +1,4 @@
-export type NavMode = 'admin' | 'teacher' | 'flat';
+export type NavMode = 'admin' | 'teacher' | 'owner' | 'flat';
 export type NavGroupDef = { id: string; label: string; hrefs: string[] };
 export type NavSection = { id: string; label: string; hrefs: string[] };
 
@@ -31,6 +31,16 @@ export const adminGroups: NavGroupDef[] = [
   { id: 'settings', label: 'Settings', hrefs: ['/users', '/people/imports', '/school-branding', '/notification-settings'] },
 ];
 
+/** Platform Owner groups: platform-wide work only. Every group renders expanded, so nothing is hidden. */
+export const ownerGroups: NavGroupDef[] = [
+  { id: 'owner-schools', label: 'Schools & people', hrefs: ['/schools', '/account-applications', '/records', '/students', '/users', '/company-employees'] },
+  { id: 'owner-bro', label: 'BRO oversight', hrefs: ['/partners'] },
+  { id: 'owner-platform-finance', label: 'Platform collections & rules', hrefs: ['/subscription-payment-rules', '/direct-flutterwave-live-readiness', '/payment-settlement?tab=schools', '/subscriptions', '/subscription-enforcement', '/finance-workspace'] },
+  { id: 'owner-nfc', label: 'NFC cards & devices', hrefs: ['/cards', '/card-replacements', '/employee-nfc', '/devices', '/card-uid-inventory', '/nfc-scan-audit', '/activation', '/activation/history'] },
+  { id: 'owner-monitoring', label: 'School monitoring', hrefs: ['/platform/attendance', '/results', '/curriculum-management', '/transport', '/security'] },
+  { id: 'owner-comms-audit', label: 'Messages, reports & audit', hrefs: ['/communications', '/reporting', '/audit'] },
+];
+
 export const teacherGroups: NavGroupDef[] = [
   { id: 'my-classes', label: 'My Classes', hrefs: ['/classes', '/students', '/student-care', '/behaviour'] },
   { id: 'my-subjects', label: 'My Subjects', hrefs: ['/subjects', '/curriculum', '/lesson-notes'] },
@@ -46,8 +56,9 @@ export const teacherGroups: NavGroupDef[] = [
   { id: 'profile', label: 'Profile', hrefs: ['/my-employee-nfc', '/my-nfc-subscription', '/notification-settings'] },
 ];
 
-export function navMode(roles: string[], restricted: boolean): NavMode {
+export function navMode(roles: string[], restricted: boolean, globalOwner = false): NavMode {
   if (restricted) return 'flat';
+  if (globalOwner) return 'owner';
   if (roles.includes('SCHOOL_ADMIN')) return 'admin';
   if (roles.includes('TEACHER')) return 'teacher';
   return 'flat';
@@ -56,7 +67,7 @@ export function navMode(roles: string[], restricted: boolean): NavMode {
 /** Groups already-authorized hrefs. Unlisted authorized links go to "More"; nothing is added or dropped. */
 export function buildNavSections(visibleHrefs: string[], mode: NavMode): NavSection[] {
   if (mode === 'flat') return [];
-  const defs = mode === 'admin' ? adminGroups : teacherGroups;
+  const defs = mode === 'admin' ? adminGroups : mode === 'owner' ? ownerGroups : teacherGroups;
   const visible = new Set(visibleHrefs.filter(h => h !== '/'));
   const used = new Set<string>();
   const sections: NavSection[] = [];

@@ -8,6 +8,7 @@ import { validVapidConfiguration, vapidConfiguration } from "../services/web-pus
 import { notificationLaunchBoundary } from "../services/notification-launch-boundary";
 import { AuthError, getUserContext, requireAuthentication } from "../middlewares/auth";
 
+import {withdrawTelegramDeliveries} from "../services/telegram-delivery-withdrawal";
 const router: IRouter = Router();
 router.use(requireAuthentication());
 router.get("/communication/push-configuration", (req, res) => {
@@ -644,6 +645,8 @@ router.put("/communication/preferences", async (req, res): Promise<void> => {
       values,
     );
     const preference = result.rows[0];
+    if(body.channel==="TELEGRAM"&&body.enabled===false)
+      await withdrawTelegramDeliveries(client,context.user.id,{category:body.category,schoolId,preferenceChange:true});
     await auditAction(
       client, context, schoolId, "changed notification preference",
       "COMMUNICATION_PREFERENCE_CHANGED", preference.id,

@@ -63,14 +63,22 @@ async function collected(){
  await verifyCurrentBulk(f.pool,2,b.id,"998877",bulk);return b;
 }
 it("BRO requests own entitlements; one Owner line decision unlocks the existing payout preparation",async()=>{
+ expect((await readCurrentFinanceOverview(f.pool,6,undefined,undefined,now())).summary).toMatchObject({
+   requestedMinor:0,pendingApprovalMinor:0,paidMinor:0,failedMinor:0,reversedMinor:0});
  const r=await requestCurrentBroWithdrawal(f.pool,6,["D:1"],key("withdraw"),"Withdraw my verified earnings");
+ expect((await readCurrentFinanceOverview(f.pool,6,undefined,undefined,now())).summary).toMatchObject({
+   requestedMinor:15000,pendingApprovalMinor:15000,paidMinor:0});
  await expect(requestCurrentBroWithdrawal(f.pool,7,["D:1"],key("foreign"),"Foreign attempt")).rejects.toThrow("OWN_ENTITLEMENT_REQUIRED");
  await expect(decideCurrentBroWithdrawal(f.pool,6,{requestId:r.id,entitlementKey:"D:1",decision:"APPROVED",
    key:key("notowner"),reason:"Not the Owner"},caps)).rejects.toThrow("FINANCIAL_ACTOR_NOT_AUTHORIZED");
  await decideCurrentBroWithdrawal(f.pool,1,{requestId:r.id,entitlementKey:"D:1",decision:"APPROVED",
    key:key("approve"),reason:"Owner reviewed student"},caps);
+ expect((await readCurrentFinanceOverview(f.pool,6,undefined,undefined,now())).summary).toMatchObject({
+   requestedMinor:15000,pendingApprovalMinor:0,approvedMinor:15000,availableMinor:15000,paidMinor:0});
  const p=await initiateCurrentBroPayout(f.pool,1,1,key("payout"),"Prepare external payout",caps);
  expect(p.state).toBe("PENDING");
+ expect((await readCurrentFinanceOverview(f.pool,6,undefined,undefined,now())).summary).toMatchObject({
+   requestedMinor:15000,pendingApprovalMinor:0,availableMinor:0,paidMinor:0});
  expect((await f.pool.query("SELECT count(*) FROM current_subscription_operation_events WHERE state='APPROVED'")).rows[0].count).toBe("1");
 });
 it("concurrent withdrawal requests cannot claim an entitlement twice",async()=>{

@@ -14,6 +14,7 @@ import { Button, PageHeading, cx } from '@/components/shared';
 import { hasActiveGlobalOwner } from '@/components/navigation-model';
 import { entry, note, FRESH_MS } from '@/pages/payroll-common';
 import {PilotCalendarReadiness} from "@/components/pilot-calendar-readiness";
+import { GuidedSteps, groupReadiness } from '@/components/owner-guided-steps';
 import {PaymentReadinessGuidance} from "@/components/payment-readiness-guidance";
 
 export const POLICY = 'NEW_ONLY_PRESERVE_LEGACY';
@@ -165,6 +166,19 @@ function ScopeWorkspace({ actor, scope, rule }: { actor: number; scope: Scope; r
 
   return <>
     <PaymentReadinessGuidance checks={r?.checks ?? []} />
+    {r && <section className="panel p-5" data-testid="section-guided-checklist">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><div className="eyebrow">Guided checklist · from server checks only</div><h2 className="display-font text-lg font-bold">What is verified, what is missing</h2></div>
+        <span className={cx('rounded-md border px-2 py-0.5 font-mono text-xs font-bold', String(r.facts.environment).toUpperCase() === 'LIVE' ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-sky-300 bg-sky-50 text-sky-900')} data-testid="badge-environment">
+          {String(r.facts.environment).toUpperCase() === 'LIVE' ? 'LIVE environment reported' : `${String(r.facts.environment).toUpperCase()} environment, not LIVE`}</span>
+      </div>
+      <p className={cx(note, 'my-3')}>Each step reflects the actual reported checks. TEST success does not prove LIVE capability, and collection readiness does not prove BRO payout capability. Retired split/hosted prerequisites are not required here.</p>
+      <GuidedSteps label="Flutterwave prerequisites" testId="guided-readiness" steps={[
+        ...groupReadiness(r.checks),
+        { id: 'review', title: 'Owner review recorded', state: reviews.some(v => v.status === 'APPROVED') ? 'done' : open ? 'open' : 'open', detail: reviews.some(v => v.status === 'APPROVED') ? 'An approval is recorded for this scope. It schedules the rule only.' : open ? 'A review is open. Decide it in step 04 below.' : 'No approved review. Create one in step 03 once evidence is ready.' },
+        { id: 'switch', title: 'Separate LIVE authorization', state: 'blocked', detail: 'Never performed on this screen. LIVE is enabled only by an independently authorized operational switch after every step above is verified.' },
+      ]} />
+    </section>}
     <section className="panel overflow-hidden" data-testid="section-readiness">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] p-5">
         <div><div className="eyebrow">02 · Read-only readiness</div><h2 className="display-font text-lg font-bold">Release checks</h2></div>

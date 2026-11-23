@@ -19,6 +19,7 @@ import {loadOwnerDeliveryControls,ownerNotificationDevelopment,ownerNotification
   ownerDeliveryClaimSql,financialNotification,ownerTransportAllowed} from "./owner-notification-controls";
 import { teacherPeriodPrefix, teacherPeriodStillCurrent } from "./teacher-period-notifications";
 import {teacherTelegramRecipient} from "./teacher-telegram";
+import {missingTelegramDestination,communicationCampaignCurrent} from "./telegram-delivery-continuity";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -437,8 +438,9 @@ export async function queueCommunicationNotification(
   // Explicit campaign selections may narrow, never expand, the effective set.
   let enabledChannels = input.useSchoolDefaults === false
     ? effective.filter(c => input.channels.includes(c)) : effective;
-  if(input.eventKey?.startsWith(teacherPeriodPrefix)&&enabledChannels.includes("TELEGRAM")
-    &&(input.schoolId===null||!await teacherTelegramRecipient(client,input.recipientUserId,input.schoolId)))
+  if(enabledChannels.includes("TELEGRAM")&&await missingTelegramDestination(client,{
+    recipientUserId:input.recipientUserId,schoolId:input.schoolId,subjectStudentId:input.subjectStudentId??null,category:input.category,
+  },!!input.eventKey?.startsWith(teacherPeriodPrefix))!=="TELEGRAM_WAITING_FOR_LINK")
     enabledChannels=enabledChannels.filter(c=>c!=="TELEGRAM");
   if (enabledChannels.includes("SMS")) {
     const consent = await client.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
@@ -696,7 +698,7 @@ async function claimCommunicationDeliveries(
             AND ($5::int[] IS NULL OR notification_id=ANY($5::int[]))
              AND ${notificationLaunchSql("$6")}
              ${ownerScope?`AND ${ownerDeliveryClaimSql("$7","$8")}`:""}
-           AND attempts < $2
+           AND (attempts < $2 OR (channel='TELEGRAM' AND status='FAILED' AND error_code='TELEGRAM_UNAVAILABLE'))
            AND next_attempt_at <= $3
             AND status IN ('QUEUED','FAILED')
             AND error_code IS DISTINCT FROM 'PROVIDER_OUTCOME_UNKNOWN'
@@ -706,7 +708,8 @@ async function claimCommunicationDeliveries(
        )
        UPDATE communication_deliveries d
        SET status = 'PROCESSING',
-           attempts = d.attempts + 1,
+           attempts = CASE WHEN d.channel='TELEGRAM' AND d.status='FAILED' AND d.error_code='TELEGRAM_UNAVAILABLE'
+             THEN 1 ELSE d.attempts + 1 END,
            last_attempt_at = $3,
            error_code = NULL,
            last_error = NULL,
@@ -1096,13 +1099,20 @@ export async function dispatchCommunicationDeliveries(
         summary.skipped++; continue;
       }
     }
+    if(delivery.channel==="TELEGRAM"&&!await communicationCampaignCurrent(pool,record.eventKey,record.schoolId,now())){
+      await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='NOTICE_EXPIRED_OR_CANCELLED',
+        last_error='The original campaign expired or was cancelled; inbox history is retained.',updated_at=$2
+        WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now())]);
+      summary.skipped++;continue;
+    }
     if (await duplicateCampaignDelivery(pool, record)) { summary.skipped += 1; continue; }
 
     if(delivery.channel==="TELEGRAM"&&(!telegramProvider||(!providers.telegram&&!getTelegramHealth().ready))){
-      await pool.query(`UPDATE communication_deliveries SET status='FAILED',error_code='TELEGRAM_UNAVAILABLE',
-        last_error='Telegram health/configuration unavailable',attempts=$2,updated_at=$3 WHERE id=$1 AND status='PROCESSING'`,
-        [delivery.id,maxAttempts,normalizedDate(now())]);
-      summary.failed++;continue;
+      await pool.query(`UPDATE communication_deliveries SET status='QUEUED',error_code='TELEGRAM_UNAVAILABLE',
+        last_error='Waiting for Telegram service recovery. No provider send was attempted.',
+        attempts=greatest(attempts-1,0),next_attempt_at=$2::timestamptz+interval '5 minutes',
+        updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now())]);
+      summary.skipped++;continue;
     }
     const target = delivery.channel === "TELEGRAM"
       ? record.eventKey?.startsWith(teacherPeriodPrefix)
@@ -1111,10 +1121,14 @@ export async function dispatchCommunicationDeliveries(
         record.subjectStudentId==null?null:Number(record.subjectStudentId),record.category)
       : delivery.channel === "SMS" ? record.phone : record.email;
     if(delivery.channel==="TELEGRAM"&&!target){
-      await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='TELEGRAM_LINK_OR_CONSENT_REQUIRED',
-        last_error=$3,updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
-        [delivery.id,normalizedDate(now()),record.eventKey?.startsWith(teacherPeriodPrefix)
-          ?"Active teacher link and Telegram consent required":"Verified parent relationship and Telegram consent required"]);
+      const reason=await missingTelegramDestination(pool,record,!!record.eventKey?.startsWith(teacherPeriodPrefix));
+      const waiting=reason==="TELEGRAM_WAITING_FOR_LINK";
+      await pool.query(`UPDATE communication_deliveries SET status=$3,error_code=$4,
+        last_error=$5,attempts=CASE WHEN $6 THEN greatest(attempts-1,0) ELSE attempts END,
+        next_attempt_at=$2::timestamptz+interval '5 minutes',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
+        [delivery.id,normalizedDate(now()),waiting?"QUEUED":"CANCELLED",reason,
+          waiting?"Waiting for your personal Telegram connection and confirmation. Inbox history is unchanged."
+            :"Telegram consent or recipient permission is no longer valid; this delivery will not resume.",waiting]);
       summary.skipped++;continue;
     }
     if (delivery.channel !== "PUSH" && !target?.trim()) {
