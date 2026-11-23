@@ -21,6 +21,10 @@ const state = vi.hoisted(() => ({
 const poolMock = vi.hoisted(() => ({
   query: vi.fn(async (sql: string, values: unknown[] = []) => {
     state.calls.push({ sql, values });
+    if (sql.includes("SELECT id,name FROM schools WHERE id=$1")) {
+      return { rows: [{ id: state.bankInvoiceSchoolId, name: "Example School" }] };
+    }
+    if (sql.includes("action='finance settings: verified school bank'")) return { rows: [{ id: 1 }] };
     if (sql.includes("FROM fee_invoices i") && sql.includes("WHERE i.id=$1 AND EXISTS")) {
       if (!sql.includes("p.status='ACTIVE'") || !sql.includes("r.status='ACTIVE'")) {
         throw new Error("Parent bank-details query is missing active relationship filters");

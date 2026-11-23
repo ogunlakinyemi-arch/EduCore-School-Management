@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "./financial-transaction";
 /** Independent BRO expense. Never changes a collection, split, legacy ledger or payout. */
 import {lagosDate,readStudentRollout} from "./student-platform-rollout";
 import {inspectFinancialGuards} from "./financial-guard-schema";
@@ -52,7 +53,7 @@ export async function accrueBroCommission(pool:Pool,scope:{schoolId:number;stude
   actor:{id:number;email:string;clerkUserId:string}){
   const c=await pool.connect();
   try{
-    await c.query("BEGIN");
+    await beginFinancialTransaction(c);
     const result=await accrueBroCommissionInTransaction(c,scope,actor);
     await c.query("COMMIT");
     return result;

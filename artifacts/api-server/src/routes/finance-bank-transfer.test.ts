@@ -141,6 +141,11 @@ const poolMock = vi.hoisted(() => {
         state.transferSubmitted = true;
         return result([makePaymentView()]);
       }
+      if (sql.includes("pg_advisory_xact_lock(1946482034, 1)")) return result();
+      if (sql.includes("FROM pg_catalog.pg_trigger")) return result([{ ready: true }]);
+      if (sql.includes("SELECT invoice_id FROM fee_payments")) return result(
+        state.payment.id === Number(values[0]) && state.payment.school_id === Number(values[1])
+          ? [{ invoice_id: state.payment.invoice_id }] : []);
       if (sql.includes("FROM fee_payments") && sql.includes("FOR UPDATE")) {
         return result(state.payment.id === Number(values[0]) && state.payment.school_id === Number(values[1])
           ? [{ ...state.payment }]

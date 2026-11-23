@@ -1,4 +1,5 @@
 import type { Request } from "express";
+import { beginFinancialTransaction } from "./financial-transaction";
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { AuthError, assertResourceId } from "../middlewares/auth";
 import { payoutBankSnapshot, BRO_MANUAL_POLICY } from "./bro-payout-records";
@@ -23,7 +24,7 @@ export async function updateManualPartnerPayout(req: Request, audit: Audit) {
     throw new AuthError(400,"Confirm that you independently completed the external bank transfer before marking Paid.");
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const current = await client.query(
       `SELECT id,status,payment_reference,method,amount,currency,partner_profile_id FROM partner_payouts WHERE id=$1 FOR UPDATE`, [id]);
     const row = current.rows[0];

@@ -1,4 +1,5 @@
 import { nfcPayableTermPredicate } from "./nfc-payable-term";
+import { beginFinancialTransaction } from "../services/financial-transaction";
 import type { VerifiedPayment, ExpectedPayment } from "./fee-providers";
 import { validateSplitCollection, recordSplitCollection } from "../services/flutterwave-split-checkout";
 import { isSplitDevelopment } from "./flutterwave-split-policy";
@@ -212,7 +213,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
   const client = await database.connect();
   let processingError: unknown;
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const locked = await client.query(
       `SELECT p.id,p.subscription_id AS "subscriptionId",p.school_id AS "schoolId",
               p.student_id AS "studentId",p.academic_session_id AS "sessionId",

@@ -36,6 +36,7 @@ import { holdSignedDeferredAdverseEvent } from "./deferred-commission-adverse-ev
 import { studentSubscriptionFlutterwaveWebhookRouter } from "../routes/student-subscription-webhooks";
 import { FlutterwaveTestAdapter } from "../lib/fee-providers";
 import {requestSplitRefund,verifySplitRefund} from "./flutterwave-split-refunds";
+import { beginFinancialTransaction } from "./financial-transaction";
 let directory: string, postgres: ChildProcess, migration: string;
 let server: ReturnType<express.Express["listen"]>,base:string;
 // Real PostgreSQL constraints/triggers and transactions. No application database,
@@ -147,6 +148,15 @@ afterAll(async()=>{
   if(directory) await rm(directory,{recursive:true,force:true});
 });
 const approve=(ids:number[],key="commission-bulk-fixture-1")=>approveCommissionBatch({commissionIds:ids,idempotencyKey:key},1);
+async function waitForGateWaiters(count: number) {
+  for (let attempt=0; attempt<200; attempt++) {
+    const row=(await state.pool.query(`SELECT count(*)::int n FROM pg_locks
+      WHERE locktype='advisory' AND classid=1946482034 AND objid=1 AND NOT granted`)).rows[0];
+    if(row.n===count) return;
+    await new Promise(resolve=>setTimeout(resolve,5));
+  }
+  throw new Error(`Expected ${count} financial gate waiters`);
+}
 describe("deferred commission native SQL evidence and atomic batch approval",()=>{
   it("explicit LIVE approval/export never falls back to SANDBOX batch IDs",async()=>{
     await expect(approveCommissionBatch({environment:"LIVE",merchantScope:"merchant_fixture_live",
@@ -215,7 +225,7 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
     expect(await ownDeferredCommissionTotals(1)).toMatchObject({approvedMinor:20000,pendingMinor:0,paidMinor:0});
     expect((await exportCommissionBatch(result.id,1)).id).toBe(result.id);
     expect((await state.pool.query("SELECT count(*)::int n FROM audit_logs")).rows[0].n).toBe(2);
-    await expect(updateManualPartnerPayout({params:{payoutId:"1"},body:{status:"PAID",paymentReference:"invented"}} as any,vi.fn()))
+    await expect(updateManualPartnerPayout({params:{payoutId:"1"},body:{status:"PAID",paymentReference:"invented",confirmExternalTransfer:true}} as any,vi.fn()))
       .rejects.toThrow("export only");
   });
   it("concurrent same-key approvals replay; a new key cannot approve a claimed entry",async()=>{
@@ -225,6 +235,83 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
     await expect(approve([1],"different-approval-key")).rejects.toThrow("Every selected");
     expect((await state.pool.query("SELECT count(*)::int n FROM partner_payouts")).rows[0].n).toBe(1);
   });
+  it.each([false,true])("serializes approval and adverse event in either order without losing sibling entitlements: adverse first=%s",async adverseFirst=>{
+    await payment(1);await payment(2);
+    const blocker=await state.pool.connect();
+    await beginFinancialTransaction(blocker);
+    // Use the actual fixture reference, not a guessed payment identity.
+    const reference=(await state.pool.query("SELECT reference FROM student_subscription_payments WHERE id=1")).rows[0].reference;
+    const hold=()=>holdSignedDeferredAdverseEvent(Buffer.from(JSON.stringify({
+      event:"chargeback.initiated",data:{tx_ref:reference},
+    })));
+    const approval=()=>approve([1,2]).then(value=>({value,error:null}),error=>({value:null,error}));
+    let first: Promise<unknown> | undefined, second: Promise<unknown> | undefined;
+    try {
+      first=adverseFirst?hold():approval();
+      await waitForGateWaiters(1);
+      second=adverseFirst?approval():hold();
+      await waitForGateWaiters(2);
+      // Neither writer acquired a payment/ledger lock while waiting at the gate.
+      await blocker.query("COMMIT");
+      const results=await Promise.all([first,second]);
+      const approved=results[adverseFirst?1:0] as Awaited<ReturnType<typeof approval>>;
+      if(adverseFirst) expect(approved.error?.message).toContain("Every selected");
+      else {
+        expect(approved.error).toBeNull();
+        await expect(exportCommissionBatch(approved.value.id,1)).rejects.toThrow("exception");
+      }
+      const ledger=(await state.pool.query("SELECT id,status,payout_id FROM commission_ledger ORDER BY id")).rows;
+      expect(ledger[0].status).toBe("HELD");
+      expect(ledger[1].status).toBe(adverseFirst?"PENDING":"APPROVED");
+      expect(ledger).toHaveLength(2);
+      if(!adverseFirst) expect(ledger[1].payout_id).not.toBeNull();
+    } finally {
+      await blocker.query("ROLLBACK");blocker.release();
+      await Promise.allSettled([first,second].filter(Boolean) as Promise<unknown>[]);
+    }
+  });
+  it.each(["term","eligibility","payout-link","payout-amount"])("revalidates %s before export and preserves the approval history",async change=>{
+    await payment(1);const batch=await approve([1]);
+    if(change==="term") await state.pool.query("UPDATE academic_terms SET end_date=CURRENT_DATE+1");
+    if(change==="eligibility") await state.pool.query("UPDATE partner_profiles SET status=NULL WHERE id=1");
+    if(change==="payout-link") await state.pool.query("UPDATE commission_ledger SET payout_id=NULL WHERE id=1");
+    if(change==="payout-amount") await state.pool.query("UPDATE partner_payouts SET amount=99");
+    await expect(exportCommissionBatch(batch.id,1)).rejects.toThrow("evidence changed");
+    expect((await state.pool.query("SELECT count(*)::int n FROM partner_payout_batch_items")).rows[0].n).toBe(1);
+    expect((await state.pool.query("SELECT count(*)::int n FROM audit_logs")).rows[0].n).toBe(1);
+  });
+  it("upgrades the versioned split CHECK without changing Legacy/SCV2/SCV3 rows",async()=>{
+    await payment(1,1,1,"legacy_fixture_payment_1");
+    await payment(2,1,1,"SCV2_fixture_payment_2");
+    await payment(3,1,1,"SCV3_fixture_payment_3");
+    await payment(4,null,1,"SCV3_fixture_payment_4");
+    const before=(await state.pool.query("SELECT * FROM flutterwave_split_payments ORDER BY payment_id")).rows;
+    const sql=await readFile(new URL("../../../../lib/db/drizzle/0180_version_split_amounts_check.sql",import.meta.url),"utf8");
+    await state.pool.query(sql);
+    expect((await state.pool.query("SELECT * FROM flutterwave_split_payments ORDER BY payment_id")).rows).toEqual(before);
+    const names=(await state.pool.query(`SELECT conname FROM pg_constraint
+      WHERE conrelid='flutterwave_split_payments'::regclass AND conname LIKE 'flw_split_amounts%'`)).rows;
+    expect(names).toEqual([{conname:"flw_split_amounts_v3_ck"}]);
+    await expect(state.pool.query("UPDATE flutterwave_split_payments SET school_amount_minor=200000 WHERE payment_id=3"))
+      .rejects.toMatchObject({code:"23514"});
+  });
+  it("rolls back the split CHECK upgrade when retained rows are incompatible",async()=>{
+    await payment(1);
+    // Model an older, weaker CHECK only inside this disposable fixture.
+    await state.pool.query(`ALTER TABLE flutterwave_split_payments DROP CONSTRAINT flw_split_amounts_ck;
+      ALTER TABLE flutterwave_split_payments ADD CONSTRAINT flw_split_amounts_ck CHECK(school_amount_minor IN(190000,200000))`);
+    await state.pool.query("UPDATE flutterwave_split_payments SET platform_amount_minor=1 WHERE payment_id=1");
+    const sql=await readFile(new URL("../../../../lib/db/drizzle/0180_version_split_amounts_check.sql",import.meta.url),"utf8");
+    const client=await state.pool.connect();
+    try {
+      await expect(client.query(sql)).rejects.toMatchObject({code:"23514"});
+      await client.query("ROLLBACK");
+      const names=(await client.query(`SELECT conname FROM pg_constraint
+        WHERE conrelid='flutterwave_split_payments'::regclass AND conname LIKE 'flw_split_amounts%'`)).rows;
+      expect(names).toEqual([{conname:"flw_split_amounts_ck"}]);
+      expect((await client.query("SELECT platform_amount_minor FROM flutterwave_split_payments")).rows[0].platform_amount_minor).toBe(1);
+    } finally {client.release();}
+  });
   it("does not allow an idempotency key to change its selected commissions",async()=>{
     await payment(1);await payment(2);
     await approve([1]);await expect(approve([2])).rejects.toThrow("bound to different");
@@ -232,6 +319,7 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
   });
   it("term not ended or partially ineligible selection rolls back the entire batch",async()=>{
     await payment(1);await payment(2,1,2);
+    expect((await deferredCommissionEvidence()).find(row=>row.id===2)?.eligible).toBe(false);
     await expect(approve([1,2])).rejects.toThrow("past its school term end");
     expect((await state.pool.query("SELECT count(*)::int n FROM partner_payout_batches")).rows[0].n).toBe(0);
     expect((await state.pool.query("SELECT distinct status FROM commission_ledger")).rows).toEqual([{status:"PENDING"}]);
@@ -364,7 +452,7 @@ describe("deferred commission native SQL evidence and atomic batch approval",()=
     expect((await post({"verif-hash":"synthetic-transfer-denial-hash"})).status).toBe(401);
     vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH","synthetic-transfer-denial-hash");
     expect((await post({"verif-hash":"synthetic-transfer-denial-hash"})).status).toBe(202);
-    await expect(updateManualPartnerPayout({params:{payoutId:"1"},body:{status:"PAID",paymentReference:"invented-paid-proof"}} as any,vi.fn()))
+    await expect(updateManualPartnerPayout({params:{payoutId:"1"},body:{status:"PAID",paymentReference:"invented-paid-proof",confirmExternalTransfer:true}} as any,vi.fn()))
       .rejects.toThrow("export only");
     expect((await state.pool.query("SELECT status FROM commission_ledger")).rows[0].status).toBe("APPROVED");
     expect((await state.pool.query("SELECT status,paid_at FROM partner_payouts")).rows[0]).toMatchObject({status:"PENDING",paid_at:null});

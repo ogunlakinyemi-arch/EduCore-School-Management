@@ -57,6 +57,8 @@ const poolMock = vi.hoisted(() => ({
   connect: vi.fn(async () => {
     const client = {
       query: async (sql: string, values: unknown[] = []) => {
+        if (sql.includes("/* fee-payment-lock-order */")) return { rows: [] };
+        if (sql.includes("pg_advisory_xact_lock(1946482034, 1)")) return { rows: [] };
         state.clientCalls.push({ sql, values });
         if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return { rows: [] };
         if(sql.includes("SELECT 1 FROM fee_invoice_lines l WHERE")) return {rows:[]};

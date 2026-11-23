@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "../services/financial-transaction";
 import { Router, type NextFunction, type Request } from "express";
 import { partnerPayoutRequest } from "../lib/partner-payout-request";
 import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
@@ -1813,7 +1814,7 @@ router.patch("/platform/partners/:partnerId/status", run(async(req,res)=>{
   const client=await pool.connect();
   let r;
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     r=await client.query(`UPDATE partner_profiles SET status=$1,activated_at=CASE WHEN $1='ACTIVE' THEN NOW() ELSE activated_at END,
       deactivated_at=CASE WHEN $1='DEACTIVATED' THEN NOW() ELSE deactivated_at END,updated_at=NOW() WHERE id=$2 RETURNING id,user_id`,[status,id]);
     if(r.rows[0]?.user_id) {
@@ -1930,7 +1931,7 @@ router.patch("/platform/partner-commissions/:commissionId/status", run(async(req
   const allowed:Record<string,string[]>={PENDING:["APPROVED","HELD","CANCELLED"],APPROVED:["PAYABLE","HELD","CANCELLED"],PAYABLE:["HELD","CANCELLED"],HELD:["APPROVED","CANCELLED"]};
   const client=await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const current=await client.query(`SELECT status,payout_id,to_jsonb(l)->>'payment_id' AS deferred_payment_id FROM commission_ledger l WHERE id=$1 FOR UPDATE`,[id]);
     if(!current.rows[0])throw new AuthError(404,"Commission not found");
     if(current.rows[0].deferred_payment_id) throw new AuthError(409,"Deferred commissions require the term-end bulk approval workflow");
@@ -2000,7 +2001,7 @@ router.post("/platform/partner-payouts", run(async (req, res) => {
 
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     // Same-key requests serialize across processes and Owners before touching commissions.
     // A disconnected caller can retry after COMMIT; rollback leaves no claimed key.
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { beginFinancialTransaction } from "./financial-transaction";
 import type { StudentSubscriptionSqlClient, StudentSubscriptionSqlPool } from "../lib/student-subscription-billing";
 import { HOSTED_HISTORY_GUARD_BODY, HostedPaymentError, hostedAmounts } from "../lib/hosted-manual-policy";
 
@@ -7,7 +8,7 @@ export type HostedRow = Record<string, any>;
 export async function hostedTransaction<T>(pool: StudentSubscriptionSqlPool,
   operation: (client: StudentSubscriptionSqlClient) => Promise<T>): Promise<T> {
   const c = await pool.connect();
-  try { await c.query("BEGIN"); const r = await operation(c); await c.query("COMMIT"); return r; }
+  try { await beginFinancialTransaction(c); const r = await operation(c); await c.query("COMMIT"); return r; }
   catch (e) { try { await c.query("ROLLBACK"); } catch {} throw e; }
   finally { c.release(); }
 }

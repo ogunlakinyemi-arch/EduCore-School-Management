@@ -32,6 +32,7 @@ const dbMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const query = vi.fn(async (sql: string, values: any[] = []) => {
     state.calls.push({ sql, values });
+    if (sql.includes("pg_advisory_xact_lock(1946482034, 1)")) return result();
     if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK"
         || sql.startsWith("SAVEPOINT") || sql.startsWith("RELEASE SAVEPOINT")
         || sql.startsWith("ROLLBACK TO SAVEPOINT")) return result();

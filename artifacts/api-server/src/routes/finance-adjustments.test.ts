@@ -45,6 +45,11 @@ const dbMock = vi.hoisted(() => {
       state.adjustments.push(row);
       return result([view(row)]);
     }
+    if (sql.includes("pg_advisory_xact_lock(1946482034, 1)")) return result();
+    if (sql.includes("SELECT invoice_id FROM fee_adjustments")) {
+      const row = state.adjustments.find((item) => item.id === Number(values[0]) && item.school_id === Number(values[1]));
+      return result(row ? [{ invoice_id: row.invoice_id }] : []);
+    }
     if (sql.includes("SELECT * FROM fee_adjustments")) {
       const row = state.adjustments.find((item) => item.id === Number(values[0]) && item.school_id === Number(values[1]));
       return result(row ? [{ ...row }] : []);

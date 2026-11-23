@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "./financial-transaction";
 import { rejectLegacySplitInitiation } from "./retired-payment-workflows";
 import { pool } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
@@ -39,7 +40,7 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
   if (!isSplitDevelopment()) return undefined;
   const db = await pool.connect();
   try {
-    await db.query("BEGIN");
+    await beginFinancialTransaction(db);
     const p = (await db.query(
       `SELECT p.*,sub.term FROM student_subscription_payments p JOIN subscriptions sub ON sub.id=p.subscription_id
        WHERE p.id=$1 FOR UPDATE OF p`, [paymentId],
@@ -63,7 +64,9 @@ export async function prepareSplitCheckout(paymentId: number): Promise<FixedSpli
     if (policy.version >= 2) {
       const constraint = (await db.query(
         `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
-          WHERE conrelid='flutterwave_split_payments'::regclass AND conname='flw_split_amounts_ck'`,
+          WHERE conrelid='flutterwave_split_payments'::regclass
+            AND conname IN ('flw_split_amounts_v3_ck','flw_split_amounts_ck')
+          ORDER BY CASE conname WHEN 'flw_split_amounts_v3_ck' THEN 0 ELSE 1 END LIMIT 1`,
       )).rows[0];
       if (!constraint?.definition?.includes(`SCV${policy.version}_`)) {
         throw new AuthError(409, "TEST split database policy upgrade is required before new-policy checkout");

@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "../services/financial-transaction";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createHash } from "node:crypto";
 import { pool } from "@workspace/db";
@@ -61,7 +62,7 @@ async function persistWebhookReceipt(identity: SignedWebhookIdentity): Promise<{
 }> {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const school = identity.reference
       ? (await client.query(
         `SELECT school_id FROM student_subscription_payments

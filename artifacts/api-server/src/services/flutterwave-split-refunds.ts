@@ -1,4 +1,5 @@
 import { pool } from "@workspace/db";
+import { beginFinancialTransaction, financialTransaction } from "./financial-transaction";
 import { AuthError } from "../middlewares/auth";
 import { requireSplitDevelopment, cumulativeRefundShares } from "../lib/flutterwave-split-policy";
 import { splitProvider } from "./flutterwave-split-provider";
@@ -17,7 +18,7 @@ export async function requestSplitRefund(paymentId: number, actorId: number,
   const db = await pool.connect();
   let adjustment: any, transactionId: string;
   try {
-    await db.query("BEGIN");
+    await beginFinancialTransaction(db);
     const payment = (await db.query(
       `SELECT s.*,p.status AS collection_status,p.provider_transaction_id
        FROM flutterwave_split_payments s JOIN student_subscription_payments p ON p.id=s.payment_id
@@ -52,17 +53,17 @@ export async function requestSplitRefund(paymentId: number, actorId: number,
       providerTransactionId:transactionId!,amountMinor:input.amountMinor,currency:"NGN",reason:input.reason,
     });
     if (result.providerTransactionId !== transactionId! || result.amountMinor !== input.amountMinor) throw new Error("Mismatch");
-    const saved = (await pool.query(
+    const saved = (await financialTransaction(pool, client => client.query(
       `UPDATE flutterwave_split_adjustments SET provider_refund_id=$1,status='PROCESSING',updated_at=NOW()
        WHERE id=$2 AND status='REQUESTING' RETURNING *`, [result.providerRefundId,adjustment.id],
-    )).rows[0];
+    ))).rows[0];
     // POST success, including "completed", is not customer completion. A separate read is mandatory.
     return adjustmentView(saved);
   } catch {
-    const saved = (await pool.query(
+    const saved = (await financialTransaction(pool, client => client.query(
       "UPDATE flutterwave_split_adjustments SET status='OUTCOME_UNKNOWN',updated_at=NOW() WHERE id=$1 AND status='REQUESTING' RETURNING *",
       [adjustment.id],
-    )).rows[0];
+    ))).rows[0];
     return adjustmentView(saved);
   }
 }
@@ -80,7 +81,7 @@ export async function verifySplitRefund(id: number) {
       || verified.amountMinor !== first.amount_minor) throw new AuthError(409, "Refund does not match its frozen transaction and amount");
   const db = await pool.connect();
   try {
-    await db.query("BEGIN");
+    await beginFinancialTransaction(db);
     const split = (await db.query("SELECT * FROM flutterwave_split_payments WHERE payment_id=$1 FOR UPDATE", [first.payment_id])).rows[0];
     let row = (await db.query("SELECT * FROM flutterwave_split_adjustments WHERE id=$1 FOR UPDATE", [id])).rows[0];
     if (["CONFIRMED","FAILED"].includes(row.status)) { await db.query("COMMIT"); return adjustmentView(row); }

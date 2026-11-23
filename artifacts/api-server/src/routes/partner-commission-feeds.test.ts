@@ -32,6 +32,7 @@ beforeEach(()=>{
     if(sql.includes("FROM deferred_partner_commission_evidence"))return {rows:f.evidence};
     if(sql.includes("FROM partner_payout_batches"))return {rows:f.batches};
     if(sql.includes("FROM partner_payouts"))return {rows:f.payouts};
+    if(sql.includes("FROM audit_logs"))return {rows:[]};
     throw Error("Unexpected SQL in read-only regression fixture");
   });
 });
@@ -63,7 +64,9 @@ describe("published BRO feeds: authorized reads, not split execution",()=>{
       snapshot:{amountMinor:10000,currency:"NGN",items:[]},execution_mode:"EXPORT_ONLY"}];
     f.payouts=[{id:9,partnerId:2,amount:100,currency:"NGN",status:"PAID",paymentReference:"FICTIONAL-HISTORY"}];
     expect(await (await fetch(base+paths[1])).json()).toMatchObject([{id:8,status:"APPROVED",amountMinor:10000}]);
-    expect(await (await fetch(base+paths[2])).json()).toEqual(f.payouts);
+    const payouts=await (await fetch(base+paths[2])).json();
+    expect(payouts).toMatchObject(f.payouts);
+    expect(payouts).toMatchObject([{bankDetailsAvailable:false,bankDetails:null,paidBy:null}]);
     expect(f.connect).not.toHaveBeenCalled();
   });
   it.each(paths)("surfaces a real read failure for %s and permits a safe GET retry",async path=>{

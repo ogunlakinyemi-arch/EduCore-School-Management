@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { beginFinancialTransaction, requireFeeAllocationTrigger } from "../services/financial-transaction";
+import { lockFeePaymentRows } from "../services/fee-payment-locks";
 import { acceptSchoolFeeBankProof, lookupSchoolFeeBank, schoolFeeBankIdentity,
   schoolFeeBankVerified, schoolBankFingerprint, SCHOOL_FEE_BANK_POLICY } from "../services/school-fee-bank-verification";
 import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
@@ -687,7 +689,7 @@ router.post("/school/finance/structures/:structureId/corrections", async(req,res
     const parsedInput=feeCorrectionInput.safeParse(req.body);
     if(!parsedInput.success)throw new AuthError(400,parsedInput.error.issues[0]?.message??"Invalid correction");
     const input=parsedInput.data;
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-correction-request:${schoolId}:${input.requestKey}`]);
     const prior=(await client.query(`SELECT record_id AS id,metadata FROM audit_logs WHERE school_id=$1 AND module='Finance'
       AND action='fee structure: Created published fee correction draft' AND metadata->>'correctionRequestKey'=$2 ORDER BY id LIMIT 1`,[schoolId,input.requestKey])).rows[0];
@@ -713,7 +715,7 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     const { structureId } = parsed(PublishFeeStructureParams, req.params);
     const schoolId = schoolIdForMutation(req, PublishFeeStructureQueryParams, ["SCHOOL_ADMIN"]);
     const context = getUserContext(req);
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-structure:${schoolId}:${structureId}`]);
     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended('fee-publication:'||school_id||':'||academic_session_id||':'||academic_term_id||':'||school_class_id,0))
       FROM fee_structures WHERE id=$1 AND school_id=$2`,[structureId,schoolId]);
@@ -773,7 +775,7 @@ router.post("/school/finance/assignments", async (req, res): Promise<void> => {
     const schoolId = schoolIdForMutation(req, AssignFeeStructureQueryParams, schoolRoles);
     const body = parsed(AssignFeeStructureBody, req.body);
     const context = getUserContext(req);
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-structure:${schoolId}:${body.structureId}`]);
     const found = await client.query(
       `SELECT id FROM fee_invoices WHERE school_id=$1 AND student_id=$2 AND structure_id=$3`,
@@ -827,7 +829,7 @@ router.post("/school/finance/bulk-assignments", async (req, res): Promise<void> 
     const schoolId = schoolIdForMutation(req, BulkAssignFeeStructureQueryParams, schoolRoles);
     const body = parsed(BulkAssignFeeStructureBody, req.body);
     const context = getUserContext(req);
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`fee-structure:${schoolId}:${body.structureId}`]);
     const structureResult = await client.query(
       `SELECT fs.*,t.start_date::text AS term_start_date,t.end_date::text AS term_end_date
@@ -1192,7 +1194,7 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
     const storedIdempotencyKey = body.proofReceiptId
       ? `BANK_RECEIPT:${context.user.id}:${body.proofReceiptId}`
       : `BANK_TRANSFER:${context.user.id}:${headers["Idempotency-Key"]}`;
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     if (body.proofReceiptId) {
       const receipt = await requireParentReceipt(client, context, body.proofReceiptId, invoiceId, body.amountMinor, transferDate);
       // Internal submission identity, NOT a claimed bank transaction reference.
@@ -1284,11 +1286,14 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
       throw new AuthError(400, "Evidence reference and reviewer notes must contain at least three non-whitespace characters");
     }
     const context = getUserContext(req);
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
+    const identity = await client.query(`SELECT invoice_id FROM fee_payments WHERE id=$1 AND school_id=$2`, [paymentId, schoolId]);
+    if (!identity.rows[0]) throw new AuthError(404, "Payment not found");
+    const invoice = await client.query(`SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`, [identity.rows[0].invoice_id, schoolId]);
+    if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
     const payment = await client.query(`SELECT * FROM fee_payments WHERE id=$1 AND school_id=$2 FOR UPDATE`, [paymentId, schoolId]);
     if (!payment.rows[0]) throw new AuthError(404, "Payment not found");
-    const invoice = await client.query(`SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`, [payment.rows[0].invoice_id, schoolId]);
-    if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
+    if (payment.rows[0].invoice_id !== invoice.rows[0].id) throw new AuthError(409, "Payment invoice changed");
     if (payment.rows[0].status === "VERIFIED") {
       const metadata = payment.rows[0].verification_metadata;
       if (payment.rows[0].verified_by !== context.user.id
@@ -1332,6 +1337,7 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
     payableAmount(payment.rows[0].amount_minor, invoice.rows[0].outstanding_minor);
     const selectedAmount=await selectedFeeAmount(client,invoice.rows[0],payment.rows[0].selected_line_ids,true);
     if(selectedAmount!==null&&selectedAmount!==payment.rows[0].amount_minor) throw new AuthError(409,"Selected fee balances changed; review this transfer before verification");
+    await requireFeeAllocationTrigger(client);
     const updated = await client.query(
       `UPDATE fee_payments SET status='VERIFIED',verified_by=$1,verified_at=NOW(),
          verification_evidence_ref=$2,reviewer_notes=$3,verification_metadata=$4
@@ -1419,7 +1425,7 @@ router.post("/school/finance/payments/:paymentId/reject", async (req, res): Prom
     const body = parsed(RejectManualBankTransferBody, req.body);
     const reason = body.reason.trim();
     if (!reason) throw new AuthError(400, "A rejection reason is required");
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const current = await client.query(
       `SELECT status,rejection_reason FROM fee_payments WHERE id=$1 AND school_id=$2 FOR UPDATE`,
       [paymentId, schoolId],
@@ -1462,22 +1468,22 @@ router.post("/school/finance/payments/:paymentId/refunds", async (req, res): Pro
     const context = getUserContext(req);
     const reason = body.reason.trim();
     const idempotencyKey = headers["Idempotency-Key"];
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const paymentIdentity = await client.query(
       `SELECT invoice_id FROM fee_payments WHERE id=$1 AND school_id=$2`,
       [paymentId, schoolId],
     );
     if (!paymentIdentity.rows[0]) throw new AuthError(404, "Payment not found");
-    const payment = await client.query(
-      `SELECT * FROM fee_payments WHERE id=$1 AND school_id=$2 AND invoice_id=$3 FOR UPDATE`,
-      [paymentId, schoolId, paymentIdentity.rows[0].invoice_id],
-    );
-    if (!payment.rows[0]) throw new AuthError(404, "Payment not found");
     const invoice = await client.query(
       `SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`,
       [paymentIdentity.rows[0].invoice_id, schoolId],
     );
     if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
+    const payment = await client.query(
+      `SELECT * FROM fee_payments WHERE id=$1 AND school_id=$2 AND invoice_id=$3 FOR UPDATE`,
+      [paymentId, schoolId, paymentIdentity.rows[0].invoice_id],
+    );
+    if (!payment.rows[0]) throw new AuthError(404, "Payment not found");
     const replay = await client.query(
       `SELECT ${refundShape} FROM fee_refunds WHERE school_id=$1 AND idempotency_key=$2`,
       [schoolId, idempotencyKey],
@@ -1598,22 +1604,22 @@ router.post("/school/finance/refunds/:refundId/approve", async (req, res): Promi
       throw new AuthError(400, "Refund ledger evidence reference and reviewer notes are required");
     }
     const context = getUserContext(req);
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const refundIdentity = await client.query(
       `SELECT payment_id,invoice_id FROM fee_refunds WHERE id=$1 AND school_id=$2`,
       [refundId, schoolId],
     );
     if (!refundIdentity.rows[0]) throw new AuthError(404, "Refund not found");
-    const payment = await client.query(
-      `SELECT * FROM fee_payments WHERE id=$1 AND school_id=$2 AND invoice_id=$3 FOR UPDATE`,
-      [refundIdentity.rows[0].payment_id, schoolId, refundIdentity.rows[0].invoice_id],
-    );
-    if (!payment.rows[0]) throw new AuthError(404, "Payment not found");
     const invoice = await client.query(
       `SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`,
       [refundIdentity.rows[0].invoice_id, schoolId],
     );
     if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
+    const payment = await client.query(
+      `SELECT * FROM fee_payments WHERE id=$1 AND school_id=$2 AND invoice_id=$3 FOR UPDATE`,
+      [refundIdentity.rows[0].payment_id, schoolId, refundIdentity.rows[0].invoice_id],
+    );
+    if (!payment.rows[0]) throw new AuthError(404, "Payment not found");
     const current = await client.query(
       `SELECT * FROM fee_refunds WHERE id=$1 AND school_id=$2 AND payment_id=$3 AND invoice_id=$4 FOR UPDATE`,
       [refundId, schoolId, refundIdentity.rows[0].payment_id, invoice.rows[0].id],
@@ -1755,7 +1761,7 @@ router.post("/school/finance/invoices/:invoiceId/adjustments", async (req, res):
         || (hasPercentage && body.kind !== "DISCOUNT")) {
       throw new AuthError(400, "Provide exactly one fixed amount or percentage; percentages are supported for discounts only");
     }
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const invoice = await client.query(
       `SELECT id,subtotal_minor,paid_minor,total_minor,outstanding_minor
        FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR SHARE`,
@@ -1813,9 +1819,15 @@ router.post("/school/finance/adjustments/:adjustmentId/approve", async (req, res
     const { adjustmentId } = parsed(ApproveFeeAdjustmentParams, req.params);
     const schoolId = schoolIdForMutation(req, ApproveFeeAdjustmentQueryParams, ["SCHOOL_ADMIN"]);
     const context = getUserContext(req);
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
+    const identity = await client.query(`SELECT invoice_id FROM fee_adjustments WHERE id=$1 AND school_id=$2`, [adjustmentId, schoolId]);
+    if (!identity.rows[0]) throw new AuthError(404, "Adjustment not found");
+    const invoice = await client.query(`SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`, [identity.rows[0].invoice_id, schoolId]);
+    const invoiceRow = invoice.rows[0];
+    if (!invoiceRow) throw new AuthError(404, "Invoice not found");
     const adjustment = await client.query(`SELECT * FROM fee_adjustments WHERE id=$1 AND school_id=$2 FOR UPDATE`, [adjustmentId, schoolId]);
     if (!adjustment.rows[0]) throw new AuthError(404, "Adjustment not found");
+    if (adjustment.rows[0].invoice_id !== invoiceRow.id) throw new AuthError(409, "Adjustment invoice changed");
     if (adjustment.rows[0].status === "APPROVED") {
       await client.query("COMMIT");
       res.json(ApproveFeeAdjustmentResponse.parse({
@@ -1833,9 +1845,6 @@ router.post("/school/finance/adjustments/:adjustmentId/approve", async (req, res
       return;
     }
     if (adjustment.rows[0].status !== "PENDING") throw new AuthError(409, "Only pending adjustments can be approved");
-    const invoice = await client.query(`SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`, [adjustment.rows[0].invoice_id, schoolId]);
-    const invoiceRow = invoice.rows[0];
-    if (!invoiceRow) throw new AuthError(404, "Invoice not found");
     const approvedAmount = adjustment.rows[0].requested_percentage === null
       ? Number(adjustment.rows[0].amount_minor)
       : percentageOfOriginalSubtotal(invoiceRow.subtotal_minor, adjustment.rows[0].requested_percentage);
@@ -2320,7 +2329,8 @@ router.post("/school/finance/provider-checkouts/:paymentId/reconcile", async (re
     ({ paymentId } = parsed(ReconcileFeeProviderCheckoutParams, req.params));
     schoolId = schoolIdForMutation(req, ReconcileFeeProviderCheckoutQueryParams, schoolRoles);
     claimToken = randomUUID();
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
+    await lockFeePaymentRows(client, { paymentId, schoolId });
     const found = await client.query(
       `SELECT p.id,p.school_id,p.invoice_id,p.reference,p.amount_minor,p.currency,p.provider,
           p.provider_transaction_id,p.status,i.student_id AS invoice_student_id,i.currency AS invoice_currency,
@@ -2460,7 +2470,8 @@ async function recordCheckoutReconciliationDecision(
 ) {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
+    await lockFeePaymentRows(client, { paymentId, schoolId });
     await client.query(
       `UPDATE fee_provider_checkout_sessions
        SET claim_token=NULL,claim_expires_at=NULL,last_error=$4,updated_at=NOW()
@@ -2489,7 +2500,8 @@ async function releaseVerifiedFailedCheckout(
 ): Promise<boolean> {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
+    await lockFeePaymentRows(client, { paymentId, schoolId });
     const locked = await client.query(
       `SELECT p.reference,p.amount_minor,p.currency,p.provider,p.provider_transaction_id,p.status,
           i.currency AS invoice_currency,cs.state AS session_state,cs.claim_token
@@ -2622,7 +2634,7 @@ router.post("/school/finance/invoices/:invoiceId/cash-payments",async(req,res):P
     }
     const context=getUserContext(req);
     const storedKey=`CASH:${context.user.id}:${key}`;
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     const invoice=(await client.query("SELECT *,issue_date::text AS cash_issue_date FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE",[invoiceId,schoolId])).rows[0];
     if(!invoice) throw new AuthError(404,"Invoice not found");
     const previous=await client.query("SELECT p.*,r.receipt_number FROM fee_payments p JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id WHERE p.school_id=$1 AND p.idempotency_key=$2",[schoolId,storedKey]);
@@ -2650,21 +2662,15 @@ router.post("/school/finance/invoices/:invoiceId/cash-payments",async(req,res):P
     const actorName=[context.user.firstName,context.user.lastName].filter(Boolean).join(" ").trim()||context.user.email;
     const metadata={source:"CASH_RECEIVED",receivedFrom:body.receivedFrom.trim(),receivedOn,
       evidenceReference:body.evidenceReference.trim(),notes:body.notes.trim(),actorUserId:context.user.id,actorName};
-    // Capture line balances BEFORE inserting the verified payment. The parent
-    // invoice row lock serializes competing payment/verification operations.
+    // The database trigger is the sole allocation writer for every method.
+    // Capture pre-payment balances only for the immutable receipt snapshot.
     const selectedBalances=body.lineIds?.length ? await feeLineBalances(client,invoice) : null;
+    await requireFeeAllocationTrigger(client);
     const payment=(await client.query(`INSERT INTO fee_payments(school_id,invoice_id,student_id,employee_id,parent_id,reference,idempotency_key,
       amount_minor,currency,method,provider,status,submitted_by,verified_by,verified_at,verification_evidence_ref,reviewer_notes,verification_metadata,selected_line_ids)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'CASH','CASH','VERIFIED',$10,$10,NOW(),$11,$12,$13::jsonb,$14) RETURNING *`,
       [schoolId,invoiceId,invoice.student_id,invoice.employee_id,invoice.parent_id,`CASH-${randomUUID()}`,storedKey,amount,invoice.currency,
         context.user.id,body.evidenceReference.trim(),body.notes.trim(),JSON.stringify(metadata),body.lineIds ?? null])).rows[0];
-    if(selectedBalances) {
-      for(const line of selectedBalances.lines.filter((l:any)=>body.lineIds!.includes(l.id))) {
-        await client.query(`INSERT INTO fee_payment_line_allocations
-          (school_id,invoice_id,payment_id,line_id,amount_minor) VALUES($1,$2,$3,$4,$5)`,
-          [schoolId,invoiceId,payment.id,line.id,line.outstandingMinor]);
-      }
-    }
     const nextPaid=invoice.paid_minor+amount;
     await client.query("UPDATE fee_invoices SET paid_minor=$1,outstanding_minor=total_minor-$1,status=$2 WHERE id=$3 AND school_id=$4",
       [nextPaid,invoiceStatus(nextPaid,invoice.total_minor),invoiceId,schoolId]);
@@ -2737,7 +2743,7 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
     if (!adapter) throw new AuthError(503, "Online payment provider test credentials are not configured");
 
     const storedIdempotencyKey = `ONLINE:${provider}:${context.user.id}:${idempotencyHeader}`;
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     let invoiceResult = await client.query(
       `SELECT i.*,p.id AS parent_id FROM fee_invoices i
        JOIN parents p ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
@@ -2892,7 +2898,7 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
     let readyPersisted = false;
     const readyClient = await pool.connect();
     try {
-      await readyClient.query("BEGIN");
+      await beginFinancialTransaction(readyClient);
       const update = await readyClient.query(
         `UPDATE fee_provider_checkout_sessions SET state='READY',checkout_url=$1,
             provider_session_metadata=$2,updated_at=NOW(),last_error=NULL,

@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "./financial-transaction";
 import { pool } from "@workspace/db";
 import { AuthError } from "../middlewares/auth";
 import { logger } from "../lib/logger";
@@ -170,7 +171,7 @@ export async function reconcileSchoolSubscription(
   if(releasedLiveApplicationContext())throw new AuthError(503,"LIVE enforcement persistence requires its own reviewed namespace");
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await client.query("SELECT pg_advisory_xact_lock(7749,$1::integer)", [schoolId]);
     const snapshot = await readSchoolSubscription(client, schoolId);
     if (!snapshot) {

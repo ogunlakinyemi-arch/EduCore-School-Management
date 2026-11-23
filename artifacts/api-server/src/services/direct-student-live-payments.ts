@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "./financial-transaction";
 import { randomUUID } from "node:crypto";
 import { timingSafeEqual } from "node:crypto";
 import { FlutterwaveLiveTransport } from "../lib/flutterwave-live-transport";
@@ -56,7 +57,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
   const review=readiness.review!;
   let c=await pool.connect(),attempt:any;
   try{
-    await c.query("BEGIN");
+    await beginFinancialTransaction(c);
     await requireFinancialActor(c,input.actorId,input.assistanceId?undefined:input.schoolId);
     if(!(await readStudentRollout(c,input.schoolId,input.termId)).chargeable)block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
@@ -106,7 +107,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
     const url=await transport.directStudentCheckout({reference:attempt.reference,email:input.email});
     c=await pool.connect();
     try{
-      await c.query("BEGIN");
+      await beginFinancialTransaction(c);
       const saved=await transitionDirectAttempt(c,Number(attempt.id),{state:"READY",checkoutUrl:url});
       await event(c,attempt.id,"CHECKOUT_READY",input.actorId);
       await c.query("COMMIT");return view(saved);
@@ -114,7 +115,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
   }catch{
     c=await pool.connect();
     try{
-      await c.query("BEGIN");
+      await beginFinancialTransaction(c);
       const current=(await c.query("SELECT * FROM student_direct_live_attempts WHERE id=$1 FOR UPDATE",[attempt.id])).rows[0];
       // A concurrent callback may already have finalized this attempt.
       if(current?.state==="RESERVED"){
@@ -143,7 +144,7 @@ export async function verifyDirectStudentPayment(pool:StudentSubscriptionSqlPool
     .directStudentCollection(input.transactionId,input.reference);
   c=await pool.connect();
   try{
-    await c.query("BEGIN");
+    await beginFinancialTransaction(c);
     // Match policy/accrual lock order before taking the attempt lock, including
     // duplicate successful events. This avoids Owner accrual/verification deadlocks.
     if(facts.status==="successful")await c.query("SELECT pg_advisory_xact_lock(310031,1)");

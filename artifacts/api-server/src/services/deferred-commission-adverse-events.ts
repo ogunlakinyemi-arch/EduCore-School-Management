@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { beginFinancialTransaction } from "./financial-transaction";
 import { pool } from "@workspace/db";
 import { isSplitDevelopment } from "../lib/flutterwave-split-policy";
 
@@ -41,7 +42,7 @@ export async function holdSignedDeferredAdverseEvent(rawBody: Buffer): Promise<b
   const hash=createHash("sha256").update(rawBody).digest("hex");
   const client=await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
      const matches=(await client.query(`SELECT s.payment_id,s.reference,s.provider_flw_reference,p.provider_transaction_id
       FROM flutterwave_split_payments s JOIN student_subscription_payments p ON p.id=s.payment_id
       WHERE left(s.reference,5)='SCV3_' AND p.provider='FLUTTERWAVE' AND p.provider_mode='SANDBOX'

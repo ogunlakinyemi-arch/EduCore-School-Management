@@ -43,6 +43,8 @@ beforeEach(() => {
   fake.poolQuery.mockReset().mockImplementation(async () => ({ rows: [] }));
   fake.clientQuery.mockReset().mockImplementation(async (sql: string, values: unknown[] = []) => {
     fake.calls.push({ sql, values });
+    if (sql.includes("pg_advisory_xact_lock(1946482034, 1)")
+      || sql.includes("/* fee-payment-lock-order */")) return { rows: [] };
     if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return { rows: [] };
     if (sql.includes("INSERT INTO fee_provider_webhook_events") && sql.includes("'RECEIVED'")) {
       return { rows: [{ id: 1 }] };

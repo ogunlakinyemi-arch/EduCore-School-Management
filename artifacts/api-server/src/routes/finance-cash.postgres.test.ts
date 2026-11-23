@@ -30,6 +30,8 @@ vi.mock("./finance-notifications-service", () => ({
 }));
 import financeRouter from "./finance";
 import { cashCollectionDate } from "../lib/cash-collection-date";
+import { beginFinancialTransaction } from "../services/financial-transaction";
+import { lockFeePaymentRows } from "../services/fee-payment-locks";
 
 const root = process.env.EDUCORE_CASH_CHECK_ROOT;
 const suite = root ? describe : describe.skip;
@@ -68,20 +70,25 @@ suite("cash routes against independently verified disposable PostgreSQL", () => 
         CHECK(paid_minor>=0 AND paid_minor<=total_minor AND outstanding_minor=total_minor-paid_minor));
       CREATE TABLE fee_invoice_lines(id int PRIMARY KEY,school_id int,invoice_id int,category_name_snapshot text,
         description_snapshot text,amount_minor int);
-      CREATE TABLE fee_provider_checkout_sessions(id serial PRIMARY KEY,invoice_id int,school_id int,state text);
+      CREATE TABLE fee_provider_checkout_sessions(id serial PRIMARY KEY,invoice_id int,school_id int,payment_id int,state text);
       CREATE TABLE fee_payments(id serial PRIMARY KEY,school_id int,invoice_id int,student_id int,employee_id int,parent_id int,
         reference text UNIQUE,idempotency_key text,amount_minor int CHECK(amount_minor>0),currency text,method text,provider text,
         status text,submitted_by int,verified_by int,verified_at timestamptz,verification_evidence_ref text,
         reviewer_notes text,verification_metadata jsonb,selected_line_ids int[],created_at timestamptz DEFAULT now(),
+        transfer_bank text,transfer_reference text,
         UNIQUE(school_id,idempotency_key));
       CREATE UNIQUE INDEX cash_evidence_unique ON fee_payments(school_id,lower(btrim(verification_evidence_ref))) WHERE method='CASH';
       CREATE TABLE fee_payment_line_allocations(id serial PRIMARY KEY,school_id int,invoice_id int,payment_id int REFERENCES fee_payments,
         line_id int REFERENCES fee_invoice_lines,amount_minor int CHECK(amount_minor>0),UNIQUE(payment_id,line_id));
       CREATE TABLE fee_receipts(id serial PRIMARY KEY,school_id int,payment_id int REFERENCES fee_payments,invoice_id int,
         receipt_number text UNIQUE,snapshot jsonb,UNIQUE(payment_id));
+      CREATE TABLE fee_refunds(id serial PRIMARY KEY,school_id int,payment_id int REFERENCES fee_payments,
+        invoice_id int,reference text UNIQUE,idempotency_key text,transaction_type text,amount_minor int,
+        currency text,reason text,requested_by int,status text DEFAULT 'PENDING',approved_by int,
+        approved_at timestamptz,evidence_reference text,reviewer_notes text,UNIQUE(school_id,idempotency_key));
       CREATE TABLE audit_logs("user" text,role text,actor_user_id int,clerk_user_id text,school_id int,
         action text,module text,record_id int,severity text,event_type text,result text,metadata jsonb);
-      CREATE TABLE parents(id int PRIMARY KEY,school_id int,user_id int,status text);
+      CREATE TABLE parents(id int PRIMARY KEY,school_id int,user_id int,status text,name text DEFAULT 'Fictional Guardian');
       CREATE TABLE parent_student_relationships(parent_id int,student_id int,status text);
       CREATE TABLE students(id int PRIMARY KEY,school_id int,user_id int);
       INSERT INTO schools VALUES(1,'Fictional Cash School',null),(2,'Other Fictional School',null);
@@ -89,6 +96,12 @@ suite("cash routes against independently verified disposable PostgreSQL", () => 
       INSERT INTO parent_student_relationships VALUES(21,31,'ACTIVE'),(22,32,'ACTIVE');
       INSERT INTO students VALUES(31,1,39),(32,2,49);
     `);
+    // Exercise the actual sole allocation writer, not an application-only fixture.
+    const migration = readFileSync(new URL("../../../../lib/db/drizzle/0055_academic_calendar_fee_lines_cash.sql", import.meta.url), "utf8");
+    const start = migration.indexOf("CREATE OR REPLACE FUNCTION allocate_verified_fee_lines()");
+    const end = migration.indexOf("FOR EACH ROW EXECUTE FUNCTION allocate_verified_fee_lines();", start);
+    assert(start >= 0 && end > start);
+    await pool.query(migration.slice(start, end + "FOR EACH ROW EXECUTE FUNCTION allocate_verified_fee_lines();".length));
     await new Promise<void>(resolve => {
       server = app.listen(0, "127.0.0.1", () => {
         const address = server.address();
@@ -103,8 +116,9 @@ suite("cash routes against independently verified disposable PostgreSQL", () => 
   });
   beforeEach(async () => {
     await pool.query(`
+      ALTER TABLE fee_payments ENABLE TRIGGER fee_payment_allocate_lines;
       DROP TRIGGER IF EXISTS fixture_receipt_failure ON fee_receipts;
-      DELETE FROM fee_receipts; DELETE FROM fee_payment_line_allocations; DELETE FROM fee_payments;
+      DELETE FROM fee_refunds; DELETE FROM fee_receipts; DELETE FROM fee_payment_line_allocations; DELETE FROM fee_payments;
       DELETE FROM fee_provider_checkout_sessions; DELETE FROM fee_invoice_lines; DELETE FROM fee_invoices;
       DELETE FROM audit_logs; DELETE FROM fee_school_settings;
       INSERT INTO fee_school_settings VALUES(1,false),(2,false);
@@ -162,6 +176,76 @@ suite("cash routes against independently verified disposable PostgreSQL", () => 
     expect((await post({ receivedOn: "2026-01-03" })).status).toBe(409);
     expect((await post({ amountMinor: 49999 })).status).toBe(409);
     expect((await counts()).payments).toBe(1);
+  });
+  it("fails closed if the sole allocation trigger is disabled", async () => {
+    await pool.query("ALTER TABLE fee_payments DISABLE TRIGGER fee_payment_allocate_lines");
+    expect((await post({ lineIds: [1,2] })).status).toBe(500);
+    expect(await counts()).toEqual({ payments: 0, receipts: 0, audits: 0 });
+    expect((await pool.query("SELECT count(*)::int n FROM fee_payment_line_allocations")).rows[0].n).toBe(0);
+  });
+  const pendingTransfer = async () => (await pool.query(`INSERT INTO fee_payments
+    (school_id,invoice_id,student_id,parent_id,reference,idempotency_key,amount_minor,currency,method,provider,status,
+      transfer_bank,transfer_reference,selected_line_ids)
+    VALUES(1,41,31,21,'FICTIONAL-TRANSFER','fictional-transfer-key',50000,'NGN','BANK_TRANSFER','MANUAL_BANK_TRANSFER',
+      'PENDING','Fictional Bank','FICTIONAL-BANK-REF',ARRAY[1,2]) RETURNING id`)).rows[0].id;
+  const verifyTransfer = (id:number) => fetch(`${base}/school/finance/payments/${id}/verify?schoolId=1`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({evidenceReference:"FICTIONAL-VERIFIED-BANK",reviewerNotes:"Fictional bank verification only"}),
+  });
+  it("prelocks provider/reconciliation rows as invoice then payment then checkout in PostgreSQL",async()=>{
+    const paymentId=await pendingTransfer();
+    const client=await pool.connect(), statements:string[]=[];
+    try {
+      await beginFinancialTransaction(client);
+      await lockFeePaymentRows({query:async(sql,values)=>{
+        statements.push(sql);return client.query(sql,values);
+      }},{paymentId,schoolId:1});
+      expect(statements).toHaveLength(4);
+      expect(statements[1]).toContain("FROM fee_invoices");
+      expect(statements[2]).toContain("FROM fee_payments");
+      expect(statements[3]).toContain("FROM fee_provider_checkout_sessions");
+    } finally {await client.query("ROLLBACK");client.release();}
+  });
+  it("verifies simultaneous bank-transfer retries with exactly one trigger allocation and receipt",async()=>{
+    const id=await pendingTransfer();
+    const responses=await Promise.all([verifyTransfer(id),verifyTransfer(id)]);
+    expect(responses.map(r=>r.status)).toEqual([200,200]);
+    expect(await counts()).toEqual({payments:1,receipts:1,audits:2});
+    expect((await pool.query("SELECT count(*)::int n FROM audit_logs WHERE action='payment: verified manual bank transfer'")).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT count(*)::int n,sum(amount_minor)::int amount FROM fee_payment_line_allocations")).rows[0])
+      .toEqual({n:2,amount:50000});
+  });
+  it("serializes bank verification against cash without double credit or allocation",async()=>{
+    const id=await pendingTransfer();
+    const responses=await Promise.all([verifyTransfer(id),post()]);
+    expect(responses.filter(r=>r.status<300)).toHaveLength(1);
+    expect(responses.filter(r=>r.status>=400)).toHaveLength(1);
+    expect((await pool.query("SELECT paid_minor,outstanding_minor FROM fee_invoices WHERE id=41")).rows[0])
+      .toEqual({paid_minor:50000,outstanding_minor:0});
+    expect((await pool.query("SELECT count(*)::int n,sum(amount_minor)::int amount FROM fee_payment_line_allocations")).rows[0])
+      .toEqual({n:2,amount:50000});
+    expect((await counts()).receipts).toBe(1);
+  });
+  it("replays internal refund requests and approval without repeating the invoice debit",async()=>{
+    const cash=await post();expect(cash.status).toBe(201);
+    const id=(await cash.json() as {id:number}).id;
+    const request=()=>fetch(`${base}/school/finance/payments/${id}/refunds?schoolId=1`,{
+      method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":"fictional-refund-key"},
+      body:JSON.stringify({amountMinor:10000,reason:"Fictional internal refund only",transactionType:"REFUND"}),
+    });
+    const requested=await Promise.all([request(),request()]);
+    expect(requested.map(r=>r.status)).toEqual([201,201]);
+    const refund=(await requested[0].json() as {id:number}).id;
+    const approve=()=>fetch(`${base}/school/finance/refunds/${refund}/approve?schoolId=1`,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({evidenceReference:"FICTIONAL-REFUND-EVIDENCE",reviewerNotes:"Fictional independently reviewed refund"}),
+    });
+    expect((await Promise.all([approve(),approve()])).map(r=>r.status)).toEqual([200,200]);
+    expect((await pool.query("SELECT count(*)::int n FROM fee_refunds")).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT paid_minor,outstanding_minor FROM fee_invoices WHERE id=41")).rows[0])
+      .toEqual({paid_minor:40000,outstanding_minor:10000});
+    expect((await counts()).receipts).toBe(1);
+    expect((await pool.query("SELECT status FROM fee_payments WHERE id=$1",[id])).rows[0].status).toBe("VERIFIED");
   });
   it("supports legacy omission and safe replay without inventing a new collection date", async () => {
     expect((await post({ receivedOn: undefined })).status).toBe(201);

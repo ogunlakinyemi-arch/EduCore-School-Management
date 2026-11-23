@@ -3,6 +3,24 @@ name: Development database targeting
 description: Why development-only fixture writes must verify the database they will actually reach.
 ---
 
+## Support-confirmed workspace boundary
+
+The user reports explicit Replit Support confirmation: workspace, Shell and Agent
+use Development; the published app has its own Production DATABASE_URL.
+REPLIT_DEPLOYMENT is unset in the workspace and is 1 in the published app.
+Do not use REPLIT_ENVIRONMENT to identify the target or stop source/test work
+merely because NODE_ENV or REPLIT_DEPLOYMENT metadata is absent.
+
+**Why:** The user obtained this confirmation after environment-metadata absence
+incorrectly blocked focused Development implementation.
+
+**How to apply:** Accept this workspace boundary for authorised Development work.
+Never query Production to establish it. Continue independently verifying any
+explicit custom connection or disposable fixture; this confirmation does not
+authorise Production access, destructive shared-data tests or deployment.
+The observations below are historical targeting lessons, not a reason to repeat
+the resolved environment-identification investigation.
+
 For test-data provisioning, do not infer the database target solely from shell environment labels. Check the database reached by the actual connection against the platform's development and production views before any writes, and fail closed if the target is unfamiliar.
 
 **Why:** In this workspace, an interactive development shell reported a production environment label while its database connection reached the development database. Treating that label as authoritative blocked legitimate setup; ignoring it without checking the database could have been unsafe.

@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "./financial-transaction";
 import {readStudentRollout} from "./student-platform-rollout";
 import {createHash} from "node:crypto";
 import type {StudentSubscriptionSqlPool} from "../lib/student-subscription-billing";
@@ -199,7 +200,7 @@ export async function createDirectReleaseReview(pool:StudentSubscriptionSqlPool,
   const evidenceDigest=directFactsDigest({facts:preview.facts,reference:input.merchantEvidenceReference,
     hash:input.merchantEvidenceHash,expiresAt:new Date(expiry).toISOString(),reason:input.reason});
   const c=await pool.connect();try{
-    await c.query("BEGIN");
+    await beginFinancialTransaction(c);
     await requireFinancialActor(c,actorId);
     const row=(await appendFinancialHistory(c,"reviewRequest",
       [input.schoolId,input.termId,input.ruleId,JSON.stringify(preview.facts),preview.previewDigest,evidenceDigest,
@@ -221,7 +222,7 @@ export async function decideDirectReleaseReview(pool:StudentSubscriptionSqlPool,
   actorId:number,deps:ReleaseDependencies={}){
   const c=await pool.connect();
   try{
-    await c.query("BEGIN");
+    await beginFinancialTransaction(c);
     await requireFinancialActor(c,actorId);
     if(!(await inspectDirectReleaseSchema(c)).ready)fail("DIRECT_RELEASE_SCHEMA_REQUIRED");
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`direct-release:${id}`]);

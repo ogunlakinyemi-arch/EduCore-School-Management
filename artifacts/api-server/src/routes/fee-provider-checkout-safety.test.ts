@@ -108,6 +108,12 @@ beforeEach(() => {
 
   db.query.mockReset().mockImplementation(async (sql: string, values: unknown[] = []) => {
     db.poolCalls.push({ sql, values });
+    if (sql.includes("SELECT id,name FROM schools WHERE id=$1")) {
+      return { rows: Number(values[0]) === db.schoolId ? [{ id: db.schoolId, name: "Example School" }] : [] };
+    }
+    if (sql.includes("action='finance settings: verified school bank'")) {
+      return { rows: [{ id: 1 }] }; // Fictional matching bank-verification audit evidence.
+    }
     if (sql.includes("FROM fee_invoices i") && sql.includes("WHERE i.id=$1 AND EXISTS")) {
       return db.linked && db.invoiceSchoolId === db.schoolId
           && Number(values[0]) === db.invoiceId && Number(values[1]) === db.userId
@@ -187,6 +193,9 @@ beforeEach(() => {
     return {
       query: async (sql: string, values: unknown[] = []) => {
         db.clientCalls.push({ sql, values });
+        if (sql.includes("/* fee-payment-lock-order */")) return { rows: [] };
+        if (sql.includes("pg_advisory_xact_lock(1946482034, 1)")) return { rows: [] };
+        if (sql.includes("FROM pg_catalog.pg_trigger")) return { rows: [{ ready: true }] };
         if (sql === "BEGIN") {
           const previous = db.txLock;
           db.txLock = new Promise<void>((resolve) => { unlockTransaction = resolve; });

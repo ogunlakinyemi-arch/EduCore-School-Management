@@ -1,3 +1,4 @@
+import { beginFinancialTransaction } from "../services/financial-transaction";
 import { teacherScoped, teacherClassScope, teacherStudentScope } from "../lib/teacher-record-scope";
 import { classSubjectSetupBody, saveClassSubjectSetup } from "../services/class-subject-setup";
 import { Router, type IRouter, type NextFunction, type Request } from "express";
@@ -87,7 +88,7 @@ router.post("/academic-sessions", wrap(async (req, res) => {
   const client = await pool.connect();
   let r;
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await validateAcademicPeriod(client, q.schoolId, b);
     if (isCurrent) await client.query(`UPDATE academic_sessions SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND is_current=true`, [q.schoolId]);
     r = await client.query(`INSERT INTO academic_sessions (school_id,name,start_date,end_date,status,is_current,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${sessionSelect}`, [q.schoolId,b.name.trim(),b.startDate,b.endDate,b.status ?? "ACTIVE",isCurrent,getUserContext(req).user.id]);
@@ -104,7 +105,7 @@ router.patch("/academic-sessions/:sessionId", wrap(async (req, res) => {
   const client = await pool.connect();
   let r;
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`academic-calendar:${q.schoolId}`]);
     const target = await client.query("SELECT id,start_date::text,end_date::text,status,is_current FROM academic_sessions WHERE id=$1 AND school_id=$2 FOR UPDATE", [p.sessionId,q.schoolId]);
     if (!target.rows[0]) throw new AuthError(404,"Academic session not found");
@@ -127,7 +128,7 @@ router.post("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {
   const exists=await pool.query(`SELECT id FROM academic_sessions WHERE id=$1 AND school_id=$2`,[p.sessionId,q.schoolId]); if(!exists.rows[0]) throw new AuthError(404,"Academic session not found");
   const client = await pool.connect(); let r;
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await validateAcademicPeriod(client,q.schoolId,b,{},p.sessionId);
     if (isCurrent) await client.query(`UPDATE academic_terms SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND academic_session_id=$2 AND is_current=true`,[q.schoolId,p.sessionId]);
     r=await client.query(`INSERT INTO academic_terms (school_id,academic_session_id,name,start_date,end_date,status,is_current,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${termSelect}`,[q.schoolId,p.sessionId,b.name,b.startDate,b.endDate,b.status??"ACTIVE",isCurrent,getUserContext(req).user.id]);
@@ -148,7 +149,7 @@ router.patch("/academic-terms/:termId", wrap(async(req,res)=>{
   const wantsCurrent=req.body?.isCurrent !== undefined; const isCurrent=currentFlag(req);
   const client=await pool.connect(); let r;
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`academic-calendar:${q.schoolId}`]);
     const target=await client.query(`SELECT id,academic_session_id,start_date::text,end_date::text,status,is_current FROM academic_terms WHERE id=$1 AND school_id=$2 FOR UPDATE`,[p.termId,q.schoolId]);
     if(!target.rows[0]) throw new AuthError(404,"Academic term not found");

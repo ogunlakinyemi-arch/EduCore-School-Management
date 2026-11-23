@@ -148,6 +148,9 @@ beforeEach(() => {
     const client = {
       query: async (sql: string, values: unknown[] = []) => {
         fake.calls.push(sql);
+        if (sql.includes("/* fee-payment-lock-order */")) return { rows: [] };
+        if (sql.includes("pg_advisory_xact_lock(1946482034, 1)")) return { rows: [] };
+        if (sql.includes("FROM pg_catalog.pg_trigger")) return { rows: [{ ready: true }] };
         if (sql === "BEGIN") {
           const previous = fake.locks;
           fake.locks = new Promise<void>((resolve) => { releaseLock = resolve; });

@@ -1,3 +1,5 @@
+import { beginFinancialTransaction, requireFeeAllocationTrigger } from "../services/financial-transaction";
+import { lockFeePaymentRows } from "../services/fee-payment-locks";
 import { createHash } from "node:crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
@@ -97,7 +99,8 @@ export async function settleVerifiedPayment(
   const parsedEvent = extractWebhookFields(rawBody);
   const payloadSha256 = createHash("sha256").update(rawBody).digest("hex");
   try {
-    await client.query("BEGIN");
+    await beginFinancialTransaction(client);
+    await lockFeePaymentRows(client, { reference: providerPayment.reference, provider });
     const insertedEvent = await client.query(
       `INSERT INTO fee_provider_webhook_events
         (provider,event_id,provider_reference,webhook_transaction_id,verified_transaction_id,status,
@@ -322,6 +325,7 @@ export async function settleVerifiedPayment(
       return "reconciliation_required";
     }
     const receiptNumberForAudit = existingReceipt.receipt_number;
+    await requireFeeAllocationTrigger(client);
     await client.query(
       `UPDATE fee_payments SET status='VERIFIED',provider_transaction_id=$1,verified_at=NOW(),
          provider_metadata=COALESCE(provider_metadata,'{}'::jsonb) || $2::jsonb
