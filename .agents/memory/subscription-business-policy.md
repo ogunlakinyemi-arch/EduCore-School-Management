@@ -3,6 +3,25 @@ name: Subscription allocation and disclosure policy
 description: User-approved future student allocation, history protection and Owner-only full-split disclosure.
 ---
 
+## Proposed bulk subscriptions — review only
+
+The user proposes one consolidated subscription payment for multiple students,
+available to authorized School Admin, Accountant and Platform Owner roles.
+Require student-level allocation, receipts/ledger evidence, idempotency,
+duplicate prevention and explicitly defined partial-failure handling.
+School-to-Yetenia obligations remain ₦3,200 per subscribed student per term;
+eligible ₦150 BRO liabilities require Platform Owner approval before release.
+School pricing and school collections remain independent: no school subaccount
+splits or automatic school revenue sharing.
+
+**Why:** The user requested review of this proposal within the consolidated
+financial verification, not implementation or activation.
+
+**How to apply:** Treat bulk role permissions and lifecycle behaviour as proposed,
+not existing authority. Report unresolved scope, failure, retry and refund rules
+instead of inventing defaults. Preserve rollout/release gates and require
+separate approval before any build, financial change or activation.
+
 ## Approved launch and collection timing
 
 Business-policy approval/effective date for both the ₦3,200 Student platform
