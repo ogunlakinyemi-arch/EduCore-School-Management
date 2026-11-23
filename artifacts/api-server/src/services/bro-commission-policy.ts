@@ -105,6 +105,8 @@ export async function accrueBroCommissionInTransaction(c:BroSql,
         AND at.status='ACTIVE' AND at.starts_at<=a.verified_at AND (at.ends_at IS NULL OR at.ends_at>a.verified_at)
       JOIN partner_profiles bp ON bp.id=at.partner_profile_id AND upper(bp.status)='ACTIVE'
       WHERE o.school_id=$1 AND o.student_id=$2 AND o.academic_term_id=$3
+        AND NOT EXISTS(SELECT 1 FROM student_direct_live_events adverse
+          WHERE adverse.attempt_id=a.id AND adverse.kind='CURRENT_ADVERSE_HOLD')
         AND o.amount_minor=320000 AND o.school_share_minor=0 AND o.bro_share_minor=0 AND o.currency='NGN'
         AND a.verified_at<=now() FOR SHARE OF o,a,t,st,at,bp`,
       [scope.schoolId,scope.studentId,scope.termId])).rows;

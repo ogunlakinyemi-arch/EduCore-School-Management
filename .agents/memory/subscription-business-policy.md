@@ -3,24 +3,37 @@ name: Subscription allocation and disclosure policy
 description: User-approved future student allocation, history protection and Owner-only full-split disclosure.
 ---
 
-## Proposed bulk subscriptions — review only
+## Approved bulk subscription product boundaries
 
-The user proposes one consolidated subscription payment for multiple students,
-available to authorized School Admin, Accountant and Platform Owner roles.
-Require student-level allocation, receipts/ledger evidence, idempotency,
-duplicate prevention and explicitly defined partial-failure handling.
-School-to-Yetenia obligations remain ₦3,200 per subscribed student per term;
-eligible ₦150 BRO liabilities require Platform Owner approval before release.
-School pricing and school collections remain independent: no school subaccount
-splits or automatic school revenue sharing.
+Bulk subscriptions use one school and one academic term per batch, one actual
+aggregate provider payment and immutable student-level allocations. Initiators
+are School Admin and Accountant within their own school, or Platform Owner
+within an explicitly selected and authorized school scope. This is an explicit
+financial exception, not general Owner authority over ordinary school operations.
 
-**Why:** The user requested review of this proposal within the consolidated
-financial verification, not implementation or activation.
+Include eligible unpaid ₦3,200 student obligations only. Exclude free, fully
+paid, inactive/ineligible, unresolved pending/partially paid and legacy-priced
+obligations from ordinary bulk checkout. Freeze selection, source obligations,
+amounts and reviewed rule versions before charging. Never substitute repeated
+individual checkouts or invented provider transaction identifiers.
 
-**How to apply:** Treat bulk role permissions and lifecycle behaviour as proposed,
-not existing authority. Report unresolved scope, failure, retry and refund rules
-instead of inventing defaults. Preserve rollout/release gates and require
-separate approval before any build, financial change or activation.
+Allocation failure keeps the batch in recovery until every student allocation
+is reconciled. Retry only unresolved allocations; never automatically charge
+again after an uncertain provider outcome. Require individual receipts/ledger
+evidence and a consolidated receipt. Student-specific batch refunds must leave
+unaffected students unchanged.
+
+Eligible ₦150 BRO liabilities remain independently funded and require individual
+Platform Owner approval before release. School pricing and school collections
+remain independent: no school subaccount splits or automatic revenue sharing.
+
+**Why:** The user explicitly approved the consolidated Development source build,
+superseding the earlier review-only proposal, and supplied these batch decisions.
+
+**How to apply:** Preserve launch/calendar/release gates and historical
+₦5,000/₦100 records. Source approval is not migration, runtime or LIVE activation
+approval. Never fabricate unresolved recovery amounts or provider capabilities;
+retain an auditable hold/recovery review when the applicable policy is missing.
 
 ## Approved launch and collection timing
 

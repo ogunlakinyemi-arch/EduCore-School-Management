@@ -3,6 +3,7 @@ import { beginFinancialTransaction } from "./financial-transaction";
 import { pool, type DatabasePoolClient } from "@workspace/db";
 import { AuthError, assertResourceId } from "../middlewares/auth";
 import { payoutBankSnapshot, BRO_MANUAL_POLICY } from "./bro-payout-records";
+import { currentPayoutReferenceInUse } from "./current-financial-store";
 
 type Audit = (
   req: Request, action: string, module: string, id: number,
@@ -29,6 +30,9 @@ export async function updateManualPartnerPayout(req: Request, audit: Audit) {
       `SELECT id,status,payment_reference,method,amount,currency,partner_profile_id FROM partner_payouts WHERE id=$1 FOR UPDATE`, [id]);
     const row = current.rows[0];
     if (!row) throw new AuthError(404, "Payout not found");
+    if(reference && await currentPayoutReferenceInUse(client,reference)) {
+      throw new AuthError(409,"This payment reference is reserved by a current BRO payout.");
+    }
     if (row.method === "DEFERRED_BATCH_EXPORT") {
       throw new AuthError(409, "Deferred batch is approval/export only. Verified transfer reconciliation is required before any Paid status; manual status changes are disabled.");
     }
