@@ -51,3 +51,4 @@ export * from "./partner-account-reapplications";
 export * from "./hosted-manual-payments";
 export * from "./payment-receipts";
 export * from "./teacher-telegram";
+export * from "./owner-free-academic-terms";

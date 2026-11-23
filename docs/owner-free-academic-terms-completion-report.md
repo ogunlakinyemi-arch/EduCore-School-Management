@@ -1,5 +1,115 @@
 # Owner free academic-term grants — Development source completion
 
+## Controlled shared Development activation — 23 November 2026
+
+**Current status:** 0183 is installed in the verified shared Development
+database; the Development API is running with all startup background workers
+paused. No grants/events were created. **Production was not changed or
+published.** The sections below describe historical pre-activation evidence
+and decisions and should not be read as the current database/service status.
+
+The Owner confirmed the database-inclusive Development recovery checkpoint
+**“Implement owner-free academic terms functionality and update documentation”,
+23 November 2026 at 14:55:45 UTC**. Recovery was identified, not executed;
+restoring it would affect both Development code and data and needs a separate
+decision if required. The approved scope was 0183 and safe Development API
+startup only.
+
+### Execution record and target
+
+- Exact candidate: `lib/db/drizzle/0183_owner_free_academic_terms.sql`,
+  SHA-256 `620727863cc3b8d40d42be7929686f3e90eb0a3f05f7d4b6136bc23787608d0b`.
+  Content and hash were rechecked immediately before execution.
+- Independent read-only checks through Replit's **Development** database tool
+  and the actual application `DATABASE_URL` matched: database `heliumdb`,
+  PostgreSQL system identifier `7688255936716206099`, role `postgres`,
+  postmaster start `2026-11-23 14:38:16.78641+00`, not in recovery.
+  The same target gate was enforced **inside the installation transaction**.
+  No Production connection was queried for this decision. The workspace's
+  previously Support-confirmed Development/Production separation was retained;
+  database name alone was not used as proof.
+- Preflight verified absent free-term tables/functions, all five parent tables,
+  validated session/term tenant uniqueness, schema CREATE and REFERENCES
+  permissions; `school_subscription_manual_locks` and payment-summary read
+  dependencies were checked. The source model was explicitly exported from
+  `lib/db/src/schema/index.ts` only after the candidate's earlier ORM/SQL
+  parity review. The existing `push`/`push-force` disablement is unchanged.
+- Rehearsed the same unchanged SQL and full catalog/function/trigger assertion
+  in a separate disposable PostgreSQL database using a rollback. The rehearsal
+  log is `generated-artifacts/free-academic-terms/activation-rehearsal.log`.
+  The original disposable fixture and its catalog parity tests remain prior
+  evidence, not proof of authenticated runtime behavior.
+- Executed the approved transaction with `psql --no-psqlrc`,
+  `ON_ERROR_STOP=1`, `BEGIN`, `SET LOCAL lock_timeout='5s'`,
+  `SET LOCAL statement_timeout='30s'`, in-transaction target/prerequisite
+  preflight, `\i lib/db/drizzle/0183_owner_free_academic_terms.sql`,
+  exhaustive assertions on object counts/names, exact procedural bodies,
+  trigger bindings/events/enablement and runtime role table/sequence rights,
+  **COMMIT**. The server timestamp reported at parity was
+  **2026-11-23 15:17:50.248195+00**.
+  The exact reviewed execution script and output are in the ignored
+  `generated-artifacts/free-academic-terms/activation-0183-development.sql`
+  and `activation-shared-dev.log`; neither contains a connection string.
+- After commit, independent Development database reads found **both tables,
+  15 validated constraints, two exact fixture-matching PL/pgSQL functions,
+  three exact fixture-matching enabled guards, zero grants and zero events**.
+  The intended API connection role had public-schema USAGE, SELECT/INSERT
+  on both tables, serial-sequence USAGE and the previously checked parent
+  locking privileges. No shared data row or existing financial record was
+  modified by the migration.
+- **Migration record distinction:** the existing Drizzle migration ledger
+  stayed at **27 rows, last ID 27**, before and after. No active numbered-SQL
+  migration runner owns 0183, so no journal/ledger row was fabricated or
+  misrepresented as Drizzle-run evidence. This dated execution record, exact
+  SHA, target identity, committed transaction log and post-commit catalog
+  parity are the truthful record of this explicitly authorized Development
+  installation. Future reconciliation must not blindly replay or stamp 0183.
+
+### Safe Development API and Preview
+
+The API workflow was unexpectedly already running at the start of this
+activation; its logs showed Telegram polling and conflicts. It was stopped
+before work continued. Those earlier logs **do not establish whether a
+notification was delivered**; no external send was initiated for this task.
+
+Normal startup previously called the Telegram and Owner notification workers
+before the Development worker pause. The smallest Development-only code change
+now checks the **existing** `EDUCORE_DEVELOPMENT_WORKERS_PAUSED=true` first,
+returns before either worker, any other scheduler/dispatch, and unrelated
+startup verification. Production behavior is unchanged. Ordinary authenticated
+HTTP routes remain active; no provider setting, secret or environment value
+was changed. Focused pause tests **6 passed** (five policy cases plus startup
+ordering); focused Owner router tests **17 passed**; library/API types passed.
+The managed API's normal `pnpm --filter @workspace/api-server run dev` command
+rebuilt and started successfully. Its startup log confirms **“All Development
+background workers paused; no startup polling or notification dispatch”**.
+No subsequent Telegram/Owner worker startup message appeared in the inspected
+running-workflow output. This protects **startup/background workers**, not
+arbitrary later manual notification endpoints; none were exercised.
+
+The exact Development Preview path is
+**https://f8ad4f13-ad39-4544-9de2-99a39f6d556c-00-1pkz80o0gbypm.riker.replit.dev/subscriptions#free-academic-terms**.
+Proxied web and API health each returned HTTP 200; Vite served the current
+Owner shortcut. Anonymous Owner GET returned 401. A Preview screenshot
+displayed Development sign-in as expected; it was **not** an authenticated
+Owner acceptance. A prior web workflow restart showed a port-in-use failure
+while an older Vite process continued to serve the current source on 19494.
+Do not treat that failed workflow state as proof of a broken Preview, and do
+not kill the listener merely to change the status without ownership/quiescence
+checks.
+
+**Remaining acceptance limit:** no pre-existing, clearly isolated
+school/term and legitimate authenticated disposable Owner session were
+established. Therefore no real grant/suspend or operational entitlement was
+created. The grant/suspend transaction, school/session/term data loading and
+signed-in Owner UI remain unverified against the shared Development API; prior
+mocked HTTP/DOM and disposable database tests remain the evidence for those
+flows. An Owner can sign in normally to inspect the now-enabled read-only
+overview; a future isolated transaction test needs an expressly safe fixture.
+Do not assume this Development installation publishes the procedural guards:
+Replit Publish omits functions/triggers, so Production remains separately
+blocked pending supported delivery review.
+
 ## Latest follow-up — discoverability and Development delivery review, 23 November 2026
 
 **Status: shortcut delivered; Development web Preview running and serving current

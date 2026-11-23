@@ -35,6 +35,13 @@ app.listen(port, (err) => {
       process.env.EDUCORE_TERMINAL_TEST_MODE !== undefined ? "EXPLICIT_TERMINAL_TEST_TARGET" : "DATABASE_URL_PG_RESOLUTION",
       communicationWorkerUsesApiPool:true}, "Development database configuration provenance");
   }
+  // The Development pause must cover *all* startup workers, including the
+  // separately opted-in Telegram poller and Owner notification dispatcher.
+  // Ordinary authenticated HTTP routes remain available for controlled review.
+  if (developmentWorkersPaused()) {
+    logger.warn("All Development background workers paused; no startup polling or notification dispatch");
+    return;
+  }
   startTelegramWorker();
   startOwnerNotificationWorker(pool);
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
@@ -43,10 +50,6 @@ app.listen(port, (err) => {
         verified ? "Development settlement removal target verified; every action rechecks isolation"
           : "Development settlement removal disabled: runtime target isolation is not confirmed");
     });
-  }
-  if (developmentWorkersPaused()) {
-    logger.warn("Development subscription and notification workers paused for controlled verification");
-    return;
   }
   let lastSubscriptionEvaluation = 0;
   const dispatch = createIndependentBackgroundTasks([{
