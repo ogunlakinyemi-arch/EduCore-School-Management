@@ -1,4 +1,5 @@
 import { bootstrapApi } from "./lib/api-bootstrap";
+import { safeRestartRequested } from "./lib/safe-restart-policy";
 
 // A distinct build output prevents an old normal-server bundle from ignoring a
 // new CLI flag and accidentally launching the preview's workers.
@@ -16,7 +17,15 @@ try {
     },
   });
 } catch {
+  let safeOption = false;
+  try { safeOption = safeRestartRequested(process.env, process.argv.slice(2)); }
+  catch { safeOption = true; }
+  if (safeOption) {
+    process.stderr.write("Safe Restart cannot use the terminal test entry; no application was started.\n");
+    process.exitCode = 1;
+  } else {
   const { logger } = await import("./lib/logger");
   logger.error("Terminal test startup refused; explicit disposable target and private socket verification are required");
   process.exitCode = 1;
+  }
 }

@@ -1,30 +1,33 @@
 import { createRequire } from "node:module";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { rm } from "node:fs/promises";
+import { deferredEntryImports } from "./deferred-entry-imports.mjs";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
-async function buildAll() {
-  const distDir = path.resolve(artifactDir, "dist");
+export async function buildAll(distDir = path.resolve(artifactDir, "dist")) {
+  const deferred = deferredEntryImports(artifactDir);
   await rm(distDir, { recursive: true, force: true });
 
-  await esbuild({
-    entryPoints: [
-      path.resolve(artifactDir, "src/index.ts"),
-      path.resolve(artifactDir, "src/terminal-test-entry.ts"),
-    ],
+  return await esbuild({
+    entryPoints: {
+      index: path.resolve(artifactDir, "src/index.ts"),
+      "terminal-test-entry": path.resolve(artifactDir, "src/terminal-test-entry.ts"),
+      ...deferred.entries,
+    },
     platform: "node",
     bundle: true,
     format: "esm",
     outdir: distDir,
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
+    metafile: true,
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
     // Some of the packages below may not be imported or installed, but we're adding them in case they are in the future.
     // Examples of unbundleable packages:
@@ -106,6 +109,7 @@ async function buildAll() {
     ],
     sourcemap: "linked",
     plugins: [
+      deferred.plugin,
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
       esbuildPluginPino({ transports: ["pino-pretty"] })
     ],
@@ -123,7 +127,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
-buildAll().catch((err) => {
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) buildAll().catch((err) => {
   console.error(err);
   process.exit(1);
 });
