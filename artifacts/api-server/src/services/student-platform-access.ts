@@ -1,6 +1,7 @@
 import type { CommunicationQueryClient } from "./communication-service";
 import { assertManualSchoolUnlocked } from "./school-subscription-lock";
 import { initialStudentFreePeriod,lagosDate,readStudentRollout } from "./student-platform-rollout";
+import {verifiedBulkStudentIds} from "./current-bulk-payment-evidence";
 
 export type StudentPlatformAccess={
   schoolId:number;studentId:number;termId:number|null;
@@ -48,7 +49,7 @@ export async function readStudentTermPlatformAccess(db:CommunicationQueryClient,
       AND EXISTS(SELECT 1 FROM student_direct_live_events ev WHERE ev.attempt_id=a.id
         AND ev.kind='PROVIDER_PAYMENT_VERIFIED' AND ev.details->>'transactionId'=a.provider_transaction_id)
     ) AS paid`,[schoolId,studentId,term.id]);
-  const paid=result.rows[0]?.paid===true;
+  const paid=result.rows[0]?.paid===true||(await verifiedBulkStudentIds(db,schoolId,term.id)).has(studentId);
   const enforcementDate=new Date(Date.parse(`${rollout.termStartDate}T00:00:00Z`)+7*86_400_000).toISOString().slice(0,10);
   return{schoolId,studentId,termId:term.id,status:paid?"VERIFIED":"PAYMENT_REQUIRED",
     restricted:!paid&&lagosDate()>=enforcementDate};

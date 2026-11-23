@@ -1,5 +1,6 @@
 import { StudentSubscriptionStatusPage } from '@/components/student-subscription-guard';
 import { useEffect, useRef, useState } from 'react';
+import { ConnectedFinancePanel } from '@/components/current-finance-panel';
 import { CurrentSubscriptionPolicy } from '@/components/current-subscription-policy';
 import { SchoolBillingDashboard } from '@/components/school-billing-dashboard';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -314,7 +315,18 @@ function SubscriptionRow({
 // Subscription status is always taken from the server list/payment endpoints. Flutterwave's
 // return query is only a verification signal and is never accepted as proof of payment.
 export function SubscriptionsPage() {
-  return <SchoolBillingDashboard legacy={<LegacySubscriptionsPage/>}/>;
+  return <><SchoolBillingDashboard legacy={<LegacySubscriptionsPage/>}/><ConnectedCollections /></>;
+}
+
+/** School Admin/Accountant of the tenant school, or Owner with an explicitly selected school. */
+function ConnectedCollections() {
+  const { schoolId } = useTenant();
+  const { isPlatformOwner } = useSchoolAdminAccess();
+  const context = useGetAuthorizedContext().data;
+  const finance = !!schoolId && !!context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && (r.role === 'SCHOOL_ADMIN' || r.role === 'ACCOUNTANT'));
+  if (isPlatformOwner) return <ConnectedFinancePanel key={`owner-${schoolId ?? 'none'}`} mode="school" schoolId={schoolId ?? null} ownerSelectedSchool={!!schoolId} />;
+  if (!finance) return null;
+  return <ConnectedFinancePanel key={`school-${schoolId}`} mode="school" schoolId={schoolId} />;
 }
 
 function LegacySubscriptionsPage() {

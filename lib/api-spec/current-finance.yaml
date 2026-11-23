@@ -1,0 +1,132 @@
+openapi: 3.1.0
+info: { title: Current finance and field SMS, version: 1.0.0 }
+paths:
+  /current-finance/overview:
+    get:
+      operationId: getCurrentFinanceOverview
+      tags: [current-finance]
+      parameters:
+        - { in: query, name: schoolId, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: termId, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: Scoped current subledger; all money is integer minor units
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
+  /current-finance/actions:
+    post:
+      operationId: actOnCurrentFinance
+      tags: [current-finance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, payload]
+              properties:
+                action:
+                  type: string
+                  enum: [REFUND_REQUEST, REFUND_APPROVE, REFUND_DISPATCH, REFUND_RECONCILE, COLLECTION_REVERSAL, WITHDRAW_REQUEST, WITHDRAW_DECIDE, PAYOUT_INITIATE, PAYOUT_RECONCILE, BRO_RECOVERY, BULK_CREATE, BULK_VERIFY, BULK_RECOVER]
+                payload: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: Persisted result; acceptance and approval never imply settlement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
+  /current-finance/receipts/{id}:
+    get:
+      operationId: getCurrentFinanceReceipt
+      tags: [current-finance]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: allocationId, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: Authorized consolidated receipt or one child receipt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
+  /bro-field/sms:
+    get:
+      operationId: getFieldSmsCampaigns
+      tags: [bro-field]
+      responses:
+        '200':
+          description: Owner-only eligible contacts and campaign history
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
+  /bro-field/sms/preview:
+    post:
+      operationId: previewFieldSmsCampaign
+      tags: [bro-field]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message, key, all]
+              properties:
+                message: { type: string, minLength: 1, maxLength: 1000 }
+                key: { type: string, minLength: 16, maxLength: 100 }
+                all: { type: boolean }
+                leadIds: { type: array, items: { type: integer, minimum: 1 }, maxItems: 500 }
+      responses:
+        '200':
+          description: Frozen preview; no message sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
+  /bro-field/sms/permission:
+    post:
+      operationId: recordFieldSmsPermission
+      tags: [bro-field]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leadId, allowed, reason]
+              properties:
+                leadId: { type: integer, minimum: 1 }
+                allowed: { type: boolean }
+                reason: { type: string, minLength: 5, maxLength: 500 }
+      responses:
+        '200':
+          description: Audited contact permission; no dispatch
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
+  /bro-field/sms/{id}/dispatch:
+    post:
+      operationId: dispatchFieldSmsCampaign
+      tags: [bro-field]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [digest, confirm]
+              properties:
+                digest: { type: string, pattern: '^[a-f0-9]{64}$' }
+                confirm: { type: boolean }
+      responses:
+        '200':
+          description: Durable per-recipient results; unknown acceptance cannot be resent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
+components:
+  schemas:
+    CurrentFinanceDocument:
+      type: object
+      description: Domain document validated further by the service; never accepts client money evidence.
+      additionalProperties: true

@@ -73,6 +73,11 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
       ORDER BY st.id`,
     [schoolId, term.termId],
   );
+  if(students.rows.some(s=>!s.paid)){
+    const {verifiedBulkStudentIds}=await import("./current-bulk-payment-evidence");
+    const paidBulk=await verifiedBulkStudentIds(db,schoolId,term.termId);
+    for(const student of students.rows)if(paidBulk.has(student.studentId)){student.paid=true;student.pending=false;}
+  }
   const policy = subscriptionPolicy(term, students.rows, term.today);
   if (!policy.inGracePeriod && students.rows.some(s => s.unknown)) {
     // Shared enforcement history has no LIVE discriminator. Never inherit TEST

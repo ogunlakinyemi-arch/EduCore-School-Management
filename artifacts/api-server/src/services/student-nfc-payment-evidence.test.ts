@@ -14,7 +14,8 @@ describe("student NFC activation evidence boundary",()=>{
     "rejects %s without independent direct checkout evidence",async channel=>{
       const query=vi.fn(async()=>({rows:[{nfc_payment_verified:false,channel}]}));
       await expect(assertVerifiedStudentNfcPayment({query},7,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
-      expect(query).toHaveBeenCalledOnce();
+      expect(query).toHaveBeenCalledTimes(2);
+      expect(query).toHaveBeenLastCalledWith("SELECT to_regclass('public.current_bulk_confirmations') IS NOT NULL AS present");
     });
   it("permits the existing NFC activation path only after matching verified checkout proof",async()=>{
     const query=vi.fn(async()=>({rows:[{nfc_payment_verified:true}]}));

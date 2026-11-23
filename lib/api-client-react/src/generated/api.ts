@@ -61,6 +61,7 @@ import type {
   AccountApplicationResult,
   AccrueOwnerBroCommission200,
   AccrueOwnerBroCommissionBody,
+  ActOnCurrentFinanceBody,
   ActivationAssignment,
   ActivationAssignmentInput,
   ActivationDevice,
@@ -231,6 +232,7 @@ import type {
   CreateTransportAssignmentParams,
   CreateTransportBusParams,
   CreateTransportRouteParams,
+  CurrentFinanceDocument,
   CurrentUser,
   CurriculumImportConfirmInput,
   CurriculumImportPreview,
@@ -263,6 +265,7 @@ import type {
   DirectStudentAttempt,
   DirectStudentScope,
   DiscrepancyResolutionInput,
+  DispatchFieldSmsCampaignBody,
   DownloadPrintableNfcCardParams,
   DriverTransportView,
   EligibleSecurityDevice,
@@ -370,6 +373,8 @@ import type {
   GetCommunicationPreferencesParams,
   GetCommunicationPushConfiguration200,
   GetCompanyPayrollReportParams,
+  GetCurrentFinanceOverviewParams,
+  GetCurrentFinanceReceiptParams,
   GetDevelopmentPaymentDiagnostic200,
   GetDevelopmentPaymentDiagnosticParams,
   GetDirectLiveReleaseReadinessParams,
@@ -744,6 +749,7 @@ import type {
   PreparePromotionBatchParams,
   PresenceReviewInput,
   PreviewCurriculumImportBody,
+  PreviewFieldSmsCampaignBody,
   PreviewPeopleImportParams,
   PreviewPlatformSchoolMessage200,
   PreviewStudentNfcReconciliationParams,
@@ -761,6 +767,7 @@ import type {
   ReceiveStudentSubscriptionFlutterwaveWebhookBody,
   ReconcileFeeProviderCheckoutParams,
   ReconcileStaffNfcPaymentParams,
+  RecordFieldSmsPermissionBody,
   RecordRevision,
   RecordSchoolCashPaymentBody,
   RecordSchoolCashPaymentParams,
@@ -1022,6 +1029,567 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetCurrentFinanceOverviewUrl = (params?: GetCurrentFinanceOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/current-finance/overview?${stringifiedParams}` : `/api/current-finance/overview`
+}
+
+export const getCurrentFinanceOverview = async (params?: GetCurrentFinanceOverviewParams, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+
+  return customFetch<CurrentFinanceDocument>(getGetCurrentFinanceOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentFinanceOverviewQueryKey = (params?: GetCurrentFinanceOverviewParams,) => {
+    return [
+    `/api/current-finance/overview`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCurrentFinanceOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentFinanceOverview>>, TError = ErrorType<unknown>>(params?: GetCurrentFinanceOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentFinanceOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentFinanceOverviewQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentFinanceOverview>>> = ({ signal }) => getCurrentFinanceOverview(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentFinanceOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentFinanceOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentFinanceOverview>>>
+export type GetCurrentFinanceOverviewQueryError = ErrorType<unknown>
+
+
+
+export function useGetCurrentFinanceOverview<TData = Awaited<ReturnType<typeof getCurrentFinanceOverview>>, TError = ErrorType<unknown>>(
+ params?: GetCurrentFinanceOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentFinanceOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentFinanceOverviewQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getActOnCurrentFinanceUrl = () => {
+
+
+
+
+  return `/api/current-finance/actions`
+}
+
+export const actOnCurrentFinance = async (actOnCurrentFinanceBody: ActOnCurrentFinanceBody, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CurrentFinanceDocument>(getActOnCurrentFinanceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(actOnCurrentFinanceBody)
+  }
+);}
+
+
+
+
+
+export const getActOnCurrentFinanceMutationKey = () => ['actOnCurrentFinance'] as const;
+
+export const getActOnCurrentFinanceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof actOnCurrentFinance>>, TError,ActOnCurrentFinanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof actOnCurrentFinance>>, TError,ActOnCurrentFinanceMutationVariables, TContext> => {
+
+const mutationKey = getActOnCurrentFinanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof actOnCurrentFinance>>, ActOnCurrentFinanceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  actOnCurrentFinance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ActOnCurrentFinanceMutationResult = NonNullable<Awaited<ReturnType<typeof actOnCurrentFinance>>>
+    export type ActOnCurrentFinanceMutationBody = BodyType<ActOnCurrentFinanceBody>
+    export type ActOnCurrentFinanceMutationError = ErrorType<unknown>
+    export type ActOnCurrentFinanceMutationVariables = {data: BodyType<ActOnCurrentFinanceBody>}
+
+    export const useActOnCurrentFinance = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof actOnCurrentFinance>>, TError,ActOnCurrentFinanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof actOnCurrentFinance>>,
+        TError,
+        ActOnCurrentFinanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getActOnCurrentFinanceMutationOptions(options));
+    }
+
+export const getGetCurrentFinanceReceiptUrl = (id: number,
+    params?: GetCurrentFinanceReceiptParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/current-finance/receipts/${id}?${stringifiedParams}` : `/api/current-finance/receipts/${id}`
+}
+
+export const getCurrentFinanceReceipt = async (id: number,
+    params?: GetCurrentFinanceReceiptParams, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+
+  return customFetch<CurrentFinanceDocument>(getGetCurrentFinanceReceiptUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentFinanceReceiptQueryKey = (id: number,
+    params?: GetCurrentFinanceReceiptParams,) => {
+    return [
+    `/api/current-finance/receipts/${id}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCurrentFinanceReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentFinanceReceipt>>, TError = ErrorType<unknown>>(id: number,
+    params?: GetCurrentFinanceReceiptParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentFinanceReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentFinanceReceiptQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentFinanceReceipt>>> = ({ signal }) => getCurrentFinanceReceipt(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentFinanceReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentFinanceReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentFinanceReceipt>>>
+export type GetCurrentFinanceReceiptQueryError = ErrorType<unknown>
+
+
+
+export function useGetCurrentFinanceReceipt<TData = Awaited<ReturnType<typeof getCurrentFinanceReceipt>>, TError = ErrorType<unknown>>(
+ id: number,
+    params?: GetCurrentFinanceReceiptParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentFinanceReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentFinanceReceiptQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFieldSmsCampaignsUrl = () => {
+
+
+
+
+  return `/api/bro-field/sms`
+}
+
+export const getFieldSmsCampaigns = async ( options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+
+  return customFetch<CurrentFinanceDocument>(getGetFieldSmsCampaignsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFieldSmsCampaignsQueryKey = () => {
+    return [
+    `/api/bro-field/sms`
+    ] as const;
+    }
+
+
+export const getGetFieldSmsCampaignsQueryOptions = <TData = Awaited<ReturnType<typeof getFieldSmsCampaigns>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFieldSmsCampaigns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFieldSmsCampaignsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFieldSmsCampaigns>>> = ({ signal }) => getFieldSmsCampaigns({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFieldSmsCampaigns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFieldSmsCampaignsQueryResult = NonNullable<Awaited<ReturnType<typeof getFieldSmsCampaigns>>>
+export type GetFieldSmsCampaignsQueryError = ErrorType<unknown>
+
+
+
+export function useGetFieldSmsCampaigns<TData = Awaited<ReturnType<typeof getFieldSmsCampaigns>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFieldSmsCampaigns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFieldSmsCampaignsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPreviewFieldSmsCampaignUrl = () => {
+
+
+
+
+  return `/api/bro-field/sms/preview`
+}
+
+export const previewFieldSmsCampaign = async (previewFieldSmsCampaignBody: PreviewFieldSmsCampaignBody, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CurrentFinanceDocument>(getPreviewFieldSmsCampaignUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(previewFieldSmsCampaignBody)
+  }
+);}
+
+
+
+
+
+export const getPreviewFieldSmsCampaignMutationKey = () => ['previewFieldSmsCampaign'] as const;
+
+export const getPreviewFieldSmsCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewFieldSmsCampaign>>, TError,PreviewFieldSmsCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewFieldSmsCampaign>>, TError,PreviewFieldSmsCampaignMutationVariables, TContext> => {
+
+const mutationKey = getPreviewFieldSmsCampaignMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewFieldSmsCampaign>>, PreviewFieldSmsCampaignMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewFieldSmsCampaign(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewFieldSmsCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof previewFieldSmsCampaign>>>
+    export type PreviewFieldSmsCampaignMutationBody = BodyType<PreviewFieldSmsCampaignBody>
+    export type PreviewFieldSmsCampaignMutationError = ErrorType<unknown>
+    export type PreviewFieldSmsCampaignMutationVariables = {data: BodyType<PreviewFieldSmsCampaignBody>}
+
+    export const usePreviewFieldSmsCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewFieldSmsCampaign>>, TError,PreviewFieldSmsCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewFieldSmsCampaign>>,
+        TError,
+        PreviewFieldSmsCampaignMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewFieldSmsCampaignMutationOptions(options));
+    }
+
+export const getRecordFieldSmsPermissionUrl = () => {
+
+
+
+
+  return `/api/bro-field/sms/permission`
+}
+
+export const recordFieldSmsPermission = async (recordFieldSmsPermissionBody: RecordFieldSmsPermissionBody, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CurrentFinanceDocument>(getRecordFieldSmsPermissionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(recordFieldSmsPermissionBody)
+  }
+);}
+
+
+
+
+
+export const getRecordFieldSmsPermissionMutationKey = () => ['recordFieldSmsPermission'] as const;
+
+export const getRecordFieldSmsPermissionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordFieldSmsPermission>>, TError,RecordFieldSmsPermissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordFieldSmsPermission>>, TError,RecordFieldSmsPermissionMutationVariables, TContext> => {
+
+const mutationKey = getRecordFieldSmsPermissionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordFieldSmsPermission>>, RecordFieldSmsPermissionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordFieldSmsPermission(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordFieldSmsPermissionMutationResult = NonNullable<Awaited<ReturnType<typeof recordFieldSmsPermission>>>
+    export type RecordFieldSmsPermissionMutationBody = BodyType<RecordFieldSmsPermissionBody>
+    export type RecordFieldSmsPermissionMutationError = ErrorType<unknown>
+    export type RecordFieldSmsPermissionMutationVariables = {data: BodyType<RecordFieldSmsPermissionBody>}
+
+    export const useRecordFieldSmsPermission = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordFieldSmsPermission>>, TError,RecordFieldSmsPermissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordFieldSmsPermission>>,
+        TError,
+        RecordFieldSmsPermissionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordFieldSmsPermissionMutationOptions(options));
+    }
+
+export const getDispatchFieldSmsCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/bro-field/sms/${id}/dispatch`
+}
+
+export const dispatchFieldSmsCampaign = async (id: number,
+    dispatchFieldSmsCampaignBody: DispatchFieldSmsCampaignBody, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CurrentFinanceDocument>(getDispatchFieldSmsCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(dispatchFieldSmsCampaignBody)
+  }
+);}
+
+
+
+
+
+export const getDispatchFieldSmsCampaignMutationKey = () => ['dispatchFieldSmsCampaign'] as const;
+
+export const getDispatchFieldSmsCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dispatchFieldSmsCampaign>>, TError,DispatchFieldSmsCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dispatchFieldSmsCampaign>>, TError,DispatchFieldSmsCampaignMutationVariables, TContext> => {
+
+const mutationKey = getDispatchFieldSmsCampaignMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dispatchFieldSmsCampaign>>, DispatchFieldSmsCampaignMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  dispatchFieldSmsCampaign(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DispatchFieldSmsCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof dispatchFieldSmsCampaign>>>
+    export type DispatchFieldSmsCampaignMutationBody = BodyType<DispatchFieldSmsCampaignBody>
+    export type DispatchFieldSmsCampaignMutationError = ErrorType<unknown>
+    export type DispatchFieldSmsCampaignMutationVariables = {id: number;data: BodyType<DispatchFieldSmsCampaignBody>}
+
+    export const useDispatchFieldSmsCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dispatchFieldSmsCampaign>>, TError,DispatchFieldSmsCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dispatchFieldSmsCampaign>>,
+        TError,
+        DispatchFieldSmsCampaignMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDispatchFieldSmsCampaignMutationOptions(options));
+    }
 
 export const getListBroFieldLeadsUrl = (params?: ListBroFieldLeadsParams,) => {
   const normalizedParams = new URLSearchParams();

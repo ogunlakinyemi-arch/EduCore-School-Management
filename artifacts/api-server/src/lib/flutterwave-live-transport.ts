@@ -5,6 +5,7 @@ import { liveAmountMinor } from "./flutterwave-live-finalization-event";
 import { LiveFinalizationBlocked, type LiveCollectionVerifier } from "./flutterwave-live-verification";
 import type { StudentSubscriptionSqlPool } from "./student-subscription-billing";
 import { directLiveConfiguration } from "./flutterwave-direct-live-config";
+import {parseFlutterwaveRefund} from "./fee-providers";
 
 function fail(code:string):never {throw new LiveFinalizationBlocked(code);}
 function object(value:unknown):Record<string,any> {
@@ -92,6 +93,50 @@ export class FlutterwaveLiveTransport {
     })});
     if(!liveCheckoutUrl(data.link))fail("LIVE_CHECKOUT_LINK_INVALID");
     return data.link as string;
+  }
+  async currentRefundRequest(input:{collectionTransactionId:string;amountMinor:number;reference:string}){
+    if(this.purpose!=="DIRECT_STUDENT"||!/^[1-9][0-9]{0,15}$/.test(input.collectionTransactionId)
+      ||!Number.isSafeInteger(input.amountMinor)||input.amountMinor<10000)fail("REFUND_MINIMUM_NGN_100");
+    const result=parseFlutterwaveRefund(await this.request(`transactions/${input.collectionTransactionId}/refund`,
+      {method:"POST",body:JSON.stringify({amount:input.amountMinor/100,comments:input.reference})}));
+    if(result.providerTransactionId!==input.collectionTransactionId||result.amountMinor!==input.amountMinor)
+      fail("REFUND_ACCEPTANCE_MISMATCH");
+    return {providerReference:result.providerRefundId};
+  }
+  async currentRefundVerification(providerRefundId:string){
+    if(this.purpose!=="DIRECT_STUDENT"||!/^[1-9][0-9]{0,15}$/.test(providerRefundId))fail("REFUND_ID_INVALID");
+    const r=parseFlutterwaveRefund(await this.request(`refunds/${providerRefundId}`,{method:"GET"}));
+    if(r.providerRefundId!==providerRefundId)fail("REFUND_EVIDENCE_MISMATCH");
+    return r;
+  }
+  async bulkStudentCheckout(input:{reference:string;email:string;amountMinor:number}){
+    if(this.purpose!=="DIRECT_STUDENT"||!/^SCV4_live_bulk_[A-Za-z0-9_-]{8,70}$/.test(input.reference)
+      ||!Number.isSafeInteger(input.amountMinor)||input.amountMinor<=0||input.amountMinor%320000
+      ||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))fail("LIVE_BULK_CHECKOUT_INPUT_INVALID");
+    const data=await this.request("payments",{method:"POST",body:JSON.stringify({
+      tx_ref:input.reference,amount:input.amountMinor/100,currency:"NGN",
+      redirect_url:directLiveConfiguration(this.env).callbackUrl,customer:{email:input.email},
+    })});
+    if(!liveCheckoutUrl(data.link))fail("LIVE_CHECKOUT_LINK_INVALID");
+    return data.link as string;
+  }
+  async bulkStudentCollection(transactionId:string,reference:string,amountMinor:number){
+    if(this.purpose!=="DIRECT_STUDENT"||!/^SCV4_live_bulk_[A-Za-z0-9_-]{8,70}$/.test(reference)
+      ||!/^[1-9][0-9]{0,15}$/.test(transactionId)||BigInt(transactionId)>BigInt(Number.MAX_SAFE_INTEGER)
+      ||!Number.isSafeInteger(amountMinor)||amountMinor<=0||amountMinor%320000)fail("LIVE_BULK_VERIFICATION_INPUT_INVALID");
+    const d=await this.request(`transactions/${transactionId}/verify`,{method:"GET"});
+    if(String(d.id)!==transactionId||d.tx_ref!==reference||d.currency!=="NGN"||liveAmountMinor(d.amount)!==amountMinor
+      ||(d.subaccounts!=null&&(!Array.isArray(d.subaccounts)||d.subaccounts.length))
+      ||["subaccount_id","subaccount","split","split_ratio","split_type","split_value","transaction_charge","transaction_charge_type"]
+        .some(k=>d[k]!=null)||!["successful","failed","cancelled","pending"].includes(d.status))fail("LIVE_VERIFICATION_MISMATCH");
+    if(d.status==="successful"&&(liveAmountMinor(d.charged_amount)!==amountMinor
+      ||typeof d.flw_ref!=="string"||!d.flw_ref.length||d.flw_ref.length>200))fail("LIVE_VERIFICATION_MISMATCH");
+    if(["failed","cancelled"].includes(d.status)&&liveAmountMinor(d.charged_amount)!==0)fail("LIVE_VERIFICATION_MISMATCH");
+    const providerFeeMinor=d.status==="successful"?liveAmountMinor(d.app_fee):null;
+    const additionalFeeMinor=d.status==="successful"?liveAmountMinor(d.merchant_fee):null;
+    if(providerFeeMinor!==null&&additionalFeeMinor!==null&&providerFeeMinor+additionalFeeMinor>=amountMinor)fail("LIVE_VERIFICATION_MISMATCH");
+    return {transactionId,reference,amountMinor,currency:"NGN",providerReference:d.flw_ref as string,
+      status:d.status as "successful"|"failed"|"cancelled"|"pending",providerFeeMinor,additionalFeeMinor};
   }
   async directStudentCollection(transactionId:string,reference:string){
     if(this.purpose!=="DIRECT_STUDENT" || !/^[1-9][0-9]{0,15}$/.test(transactionId)

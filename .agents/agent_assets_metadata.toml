@@ -896,3 +896,17 @@ mtime_ms = 1793307864694
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/09301010-bd8e-4bd2-9810-1736da18f619/e85c3754-c6b6-48ed-bf5a-28dc4332e4f3"
 storage_version_token = "1793307924782371"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "M-K26IP-y9K28IRyusls8"
+uri = "file://docs/current-payment-completion-report.md"
+type = "text"
+title = "Payments and SMS final source evidence"
+description = "Updated with verified failed-payout replacement, 16 passing changed frontend checks, 86 backend checks plus the bounded continuation test, and explicit inactive operational gates."
+logical_id = "f96b4f6a-a30c-49e0-82aa-9bc224e77021"
+content_hash = "sha256:5eb83fdafccb57e22d44f51ab508be5d2a6f4b7139517c38ebc5d3c52f8f13da"
+size = 14042
+mtime_ms = 1795432329578
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f96b4f6a-a30c-49e0-82aa-9bc224e77021/ecfb95f6-9d36-47f4-b4b8-5433bcef9118"
+storage_version_token = "1795432409298765"
+content_type = "text/markdown"

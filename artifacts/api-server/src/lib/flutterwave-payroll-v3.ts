@@ -135,6 +135,8 @@ export interface BankResolution {
 }
 
 export interface FlutterwaveVerifiedTransfer {
+  /** Preserve explicit reversal evidence without changing retained payroll status consumers. */
+  reversed?:boolean;
   transferId: string;
   reference: string;
   amountNaira: number;
@@ -669,6 +671,7 @@ function verifiedTransferProjection(
   }
   return {
     transferId: String(id),
+    ...(providerStatus==="REVERSED"?{reversed:true}:{}),
     reference: input.expectedReference,
     amountNaira: amount,
     providerFeeNaira: rawFee,

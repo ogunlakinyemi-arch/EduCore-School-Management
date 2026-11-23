@@ -1,36 +1,39 @@
 import {appendFinancialHistory} from "./financial-history-writes";
 import {lagosDate} from "./student-platform-rollout";
-import {demand,positiveMinor,requestKey,type CurrentCapabilities,type CurrentPool,type CurrentSql} from "./current-financial-contract";
+import {demand,positiveMinor,requestKey,sourceOf,sourceColumns,type CurrentEntitlement,type CurrentSource,type CurrentCapabilities,type CurrentPool,type CurrentSql} from "./current-financial-contract";
 import {appendState,claimReference,createOperation,currentTransaction,digest,operation,paidDirect,
   referenceFor,refundAmounts,state} from "./current-financial-store";
 
-export async function currentBroRoot(c: CurrentSql, entitlementId: number, actorId: number) {
-  const e=(await c.query(`SELECT e.*,p.status AS partner_status,t.end_date::text AS term_end
-    FROM bro_term_commission_entitlements e
+export async function currentBroRoot(c: CurrentSql, entitlementId: CurrentEntitlement, actorId: number) {
+  const bulk=typeof entitlementId!=="number",id=bulk?entitlementId.bulkEntitlementId:entitlementId;
+  const e=(await c.query(`SELECT e.*,${bulk?"'NGN' AS currency,":""}p.status AS partner_status,t.end_date::text AS term_end
+    FROM ${bulk?"current_bulk_bro_entitlements":"bro_term_commission_entitlements"} e
     JOIN partner_profiles p ON p.id=e.partner_profile_id
     JOIN academic_terms t ON t.id=e.academic_term_id AND t.school_id=e.school_id
-    WHERE e.id=$1`,[entitlementId])).rows[0];
+    WHERE e.id=$1`,[id])).rows[0];
   demand(e && Number(e.amount_minor)===15000 && e.currency==="NGN","CURRENT_ENTITLEMENT_REQUIRED");
-  const a=await paidDirect(c,Number(e.direct_attempt_id));
+  const a=await paidDirect(c,sourceOf(e));
   demand(Number(a.school_id)===Number(e.school_id) && Number(a.student_id)===Number(e.student_id)
     && Number(a.academic_term_id)===Number(e.academic_term_id),"ENTITLEMENT_SOURCE_MISMATCH");
   const snapshot={entitlementId,partnerId:Number(e.partner_profile_id),studentId:Number(e.student_id),
     policyId:Number(e.policy_id),funding:"SEPARATE_PLATFORM_EXPENSE",collectionBroShareMinor:0};
   const existing=(await c.query(`SELECT * FROM current_subscription_operations
-    WHERE kind='BRO' AND entitlement_id=$1`,[entitlementId])).rows[0];
+    WHERE kind='BRO' AND ${bulk?"bulk_entitlement_id":"entitlement_id"}=$1`,[id])).rows[0];
   if(existing) {
-    demand(Number(existing.attempt_id)===Number(e.direct_attempt_id)
+    demand(JSON.stringify(sourceOf(existing))===JSON.stringify(sourceOf(e))
       && Number(existing.school_id)===Number(e.school_id)
       && Number(existing.academic_term_id)===Number(e.academic_term_id)
       && digest(existing.snapshot)===digest(snapshot),"ENTITLEMENT_JOURNAL_SOURCE_MISMATCH");
     return {root:existing,e,a};
   }
-  const root=await createOperation(c,{kind:"BRO",key:`bro_entitlement_${entitlementId}_current`,
-    schoolId:Number(e.school_id),termId:Number(e.academic_term_id),attemptId:Number(e.direct_attempt_id),
-    entitlementId,amountMinor:15000,actorId,reason:"Current independent BRO entitlement lifecycle",snapshot});
+  const root=await createOperation(c,{kind:"BRO",key:`bro_${bulk?"bulk":"entitlement"}_${id}_current`,
+    schoolId:Number(e.school_id),termId:Number(e.academic_term_id),...sourceColumns(sourceOf(e)),
+    ...(bulk?{bulkEntitlementId:id}:{entitlementId:id}),amountMinor:15000,actorId,reason:"Current independent BRO entitlement lifecycle",snapshot});
   return {root,e,a};
 }
-export async function hasCurrentAdverseHold(c: CurrentSql, attemptId: number) {
+export async function hasCurrentAdverseHold(c: CurrentSql, attemptId: CurrentSource) {
+  if(typeof attemptId!=="number")return !!(await c.query(`SELECT id FROM current_bulk_events
+    WHERE allocation_id=$1 AND state='ADVERSE_HOLD' LIMIT 1`,[attemptId.allocationId])).rows[0];
   return !!(await c.query(`SELECT id FROM student_direct_live_events WHERE attempt_id=$1
     AND kind='CURRENT_ADVERSE_HOLD' LIMIT 1`,[attemptId])).rows[0];
 }
@@ -40,8 +43,8 @@ export async function reviewCurrentBroEntitlement(pool:CurrentPool,actorId:numbe
   return currentTransaction(pool,actorId,async c=>{
     const {root,e}=await currentBroRoot(c,entitlementId,actorId);
     const phase=await state(c,Number(root.id));
-    const hold=await hasCurrentAdverseHold(c,Number(root.attempt_id));
-    const money=await refundAmounts(c,Number(root.attempt_id));
+    const hold=await hasCurrentAdverseHold(c,sourceOf(root));
+    const money=await refundAmounts(c,sourceOf(root));
     const rows=(await c.query(`SELECT o.kind,o.amount_minor,e.state FROM current_subscription_operations o
       JOIN LATERAL(SELECT state FROM current_subscription_operation_events
         WHERE operation_id=o.id ORDER BY id DESC LIMIT 1)e ON true
@@ -61,14 +64,20 @@ export async function reviewCurrentBroEntitlement(pool:CurrentPool,actorId:numbe
   });
 }
 /** Protective evidence can use the original verified payment without another successful GET. */
-export async function holdCurrentBro(c: CurrentSql, attemptId: number, actorId: number,
+export async function holdCurrentBro(c: CurrentSql, attemptId: CurrentSource, actorId: number,
   key: string, confirmed: boolean, reason: string) {
-  await appendFinancialHistory(c,"event",[attemptId,"CURRENT_ADVERSE_HOLD",actorId,
+  const bulk=typeof attemptId!=="number";
+  if(bulk)await c.query(`INSERT INTO current_bulk_events(batch_id,allocation_id,event_key,state,actor_user_id,details)
+    SELECT batch_id,id,$2,'ADVERSE_HOLD',$3,$4::jsonb FROM current_bulk_allocations WHERE id=$1
+    ON CONFLICT(event_key) DO NOTHING`,[attemptId.allocationId,`adverse:${attemptId.allocationId}:${key}`,actorId,
+      JSON.stringify({key,confirmed,reason,restoration:"SEPARATE_OWNER_REVIEW_REQUIRED"})]);
+  else await appendFinancialHistory(c,"event",[attemptId,"CURRENT_ADVERSE_HOLD",actorId,
     JSON.stringify({key,confirmed,reason,restoration:"SEPARATE_OWNER_REVIEW_REQUIRED"})]);
-  const ent=(await c.query(`SELECT id FROM bro_term_commission_entitlements WHERE direct_attempt_id=$1`,
-    [attemptId])).rows[0];
+  const ent=(await c.query(`SELECT id FROM ${bulk?"current_bulk_bro_entitlements":"bro_term_commission_entitlements"}
+    WHERE ${bulk?"allocation_id":"direct_attempt_id"}=$1`,
+    [bulk?attemptId.allocationId:attemptId])).rows[0];
   if (!ent) return;
-  const {root}=await currentBroRoot(c,Number(ent.id),actorId);
+  const {root}=await currentBroRoot(c,bulk?{bulkEntitlementId:Number(ent.id)}:Number(ent.id),actorId);
   const paid=(await c.query(`SELECT p.id FROM current_subscription_operations p
     JOIN LATERAL(SELECT state FROM current_subscription_operation_events
       WHERE operation_id=p.id ORDER BY id DESC LIMIT 1)e ON true
@@ -76,10 +85,15 @@ export async function holdCurrentBro(c: CurrentSql, attemptId: number, actorId: 
   await appendState(c,Number(root.id),confirmed&&paid?"RECOVERY_REQUIRED":"HELD",
     `hold:${key}`,actorId,{confirmed,reason,recoveryAmountPolicy:"OWNER_REVIEW_NO_AUTOMATIC_PRORATION_OR_DEBIT"});
 }
-export async function approveCurrentBro(pool: CurrentPool, actorId: number, entitlementId: number, key: string,
+export async function approveCurrentBro(pool: CurrentPool, actorId: number, entitlementId: CurrentEntitlement, key: string,
   deps: CurrentCapabilities={}) {
   requestKey(key);
-  return currentTransaction(pool,actorId,async c=>{
+  return currentTransaction(pool,actorId,c=>approveCurrentBroInTransaction(c,actorId,entitlementId,key,deps));
+}
+/** Caller owns the financial gate and fresh Owner authorization. */
+export async function approveCurrentBroInTransaction(c:CurrentSql,actorId:number,entitlementId:CurrentEntitlement,key:string,
+  deps:CurrentCapabilities={}){
+    requestKey(key);
     const {root,e}=await currentBroRoot(c,entitlementId,actorId);
     const current=await state(c,Number(root.id));
     // A replay must not resurrect an approval after a later hold/payout.
@@ -88,15 +102,14 @@ export async function approveCurrentBro(pool: CurrentPool, actorId: number, enti
     if (prior) return {id:Number(root.id),state:current};
     demand(e.partner_status==="ACTIVE","BRO_NOT_ACTIVE");
     demand(e.term_end<lagosDate(deps.now?.()??new Date()),"TERM_END_OWNER_REVIEW_REQUIRED");
-    demand((await refundAmounts(c,Number(root.attempt_id))).netPaidMinor===320000
-      && !await hasCurrentAdverseHold(c,Number(root.attempt_id)),"ADVERSE_PAYMENT_REQUIRES_REVIEW");
+    demand((await refundAmounts(c,sourceOf(root))).netPaidMinor===320000
+      && !await hasCurrentAdverseHold(c,sourceOf(root)),"ADVERSE_PAYMENT_REQUIRES_REVIEW");
     demand(["REQUESTED","FAILED"].includes(current),"ENTITLEMENT_NOT_APPROVABLE");
     await appendState(c,Number(root.id),"APPROVED",`approve:${key}`,actorId,
       {entitlementId,amountMinor:15000,funding:"SEPARATE_PLATFORM_EXPENSE"});
     return {id:Number(root.id),state:"APPROVED"};
-  });
 }
-export async function initiateCurrentBroPayout(pool: CurrentPool, actorId: number, entitlementId: number,
+export async function initiateCurrentBroPayout(pool: CurrentPool, actorId: number, entitlementId: CurrentEntitlement,
   key: string, reason: string, deps: CurrentCapabilities={}) {
   requestKey(key);
   return currentTransaction(pool,actorId,async c=>{
@@ -108,15 +121,22 @@ export async function initiateCurrentBroPayout(pool: CurrentPool, actorId: numbe
         && prior.reason===reason.trim(),"IDEMPOTENCY_CONTENT_CONFLICT");
       return {id:Number(prior.id),reference:referenceFor(Number(prior.id)),state:await state(c,Number(prior.id))};
     }
-    demand(await state(c,Number(root.id))==="APPROVED","INDIVIDUAL_OWNER_APPROVAL_REQUIRED");
-    demand(e.partner_status==="ACTIVE" && !await hasCurrentAdverseHold(c,Number(root.attempt_id))
-      && (await refundAmounts(c,Number(root.attempt_id))).netPaidMinor===320000,"ENTITLEMENT_NOT_PAYABLE");
+    const phase=await state(c,Number(root.id));
+    const withdrawalReady=phase==="FAILED"&&(await c.query(
+      "SELECT to_regclass('public.current_bro_withdrawal_lines') IS NOT NULL AS present")).rows[0]?.present;
+    const retryApproved=withdrawalReady&&(await c.query(`SELECT 1 FROM current_bro_withdrawal_lines l
+      JOIN current_bro_withdrawal_decisions d ON d.line_id=l.id AND d.decision='APPROVED' WHERE l.journal_id=$1`,[root.id])).rows[0];
+    demand(phase==="APPROVED"||retryApproved,"INDIVIDUAL_OWNER_APPROVAL_REQUIRED");
+    demand(e.partner_status==="ACTIVE" && e.term_end<lagosDate(deps.now?.()??new Date())
+      && !await hasCurrentAdverseHold(c,sourceOf(root))
+      && (await refundAmounts(c,sourceOf(root))).netPaidMinor===320000,"ENTITLEMENT_NOT_PAYABLE");
     demand(deps.bank,"VERIFIED_BANK_CAPABILITY_REQUIRED");
     const bank=await deps.bank(c,Number(e.partner_profile_id));
     demand(bank?.verified===true && bank.fingerprint && bank.sealed?.ciphertext && bank.sealed.keyVersion,
       "VERIFIED_REGISTERED_PERSON_BANK_REQUIRED");
     const payout=await createOperation(c,{kind:"BRO_PAYOUT",key,schoolId:Number(e.school_id),
-      termId:Number(e.academic_term_id),attemptId:Number(e.direct_attempt_id),entitlementId,
+      termId:Number(e.academic_term_id),...sourceColumns(sourceOf(e)),
+      ...(typeof entitlementId==="number"?{entitlementId}:{bulkEntitlementId:entitlementId.bulkEntitlementId}),
       parentId:Number(root.id),amountMinor:15000,actorId,reason,snapshot:{bank}});
     await appendState(c,Number(payout.id),"PENDING","initiated",actorId,{moneyMoved:false});
     await appendState(c,Number(root.id),"PENDING",`payout:${payout.id}`,actorId,{payoutId:Number(payout.id)});
@@ -152,7 +172,7 @@ export async function reconcileCurrentBroPayout(pool: CurrentPool, actorId: numb
     if (previous==="FAILED" && facts.status==="SUCCEEDED") next="RECOVERY_REQUIRED";
     else if (facts.status==="REVERSED") next="HELD";
     else if (["HELD","RECOVERY_REQUIRED","RECOVERY_RECORDED"].includes(prior)) {
-      const outflow=await refundAmounts(c,Number(p.attempt_id));
+      const outflow=await refundAmounts(c,sourceOf(p));
       next=facts.status==="SUCCEEDED" && (outflow.refundedMinor+outflow.collectionReversedMinor)>0
         ?"RECOVERY_REQUIRED":prior;
     }
@@ -184,7 +204,8 @@ export async function recordCurrentBroRecovery(pool: CurrentPool, actorId: numbe
       FROM current_subscription_operations WHERE kind='BRO_RECOVERY' AND parent_id=$1`,[payoutId])).rows[0].total);
     demand(existing || recovered+amountMinor<=15000,"CUMULATIVE_RECOVERY_EXCEEDS_PAYOUT");
     const r=await createOperation(c,{kind:"BRO_RECOVERY",key,schoolId:Number(p.school_id),
-      termId:Number(p.academic_term_id),attemptId:Number(p.attempt_id),entitlementId:Number(p.entitlement_id),
+      termId:Number(p.academic_term_id),...sourceColumns(sourceOf(p)),
+      ...(p.bulk_entitlement_id?{bulkEntitlementId:Number(p.bulk_entitlement_id)}:{entitlementId:Number(p.entitlement_id)}),
       parentId:payoutId,amountMinor,actorId,reason:"Independently reviewed BRO recovery",
       snapshot:{evidenceReference,bankFingerprint:p.snapshot.bank.fingerprint}});
     await claimReference(c,"BRO_RECOVERY",facts.providerReference,Number(r.id));

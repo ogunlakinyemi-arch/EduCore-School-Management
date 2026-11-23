@@ -20,6 +20,7 @@ export default defineConfig({
       parserOptions: {
         externalRefs: {
           allow: [
+            "./current-finance.yaml",
             "./telegram.yaml",
             "./owner-attendance.yaml",
             "./employee-nfc-feedback.yaml",
@@ -94,6 +95,7 @@ export default defineConfig({
       parserOptions: {
         externalRefs: {
           allow: [
+            "./current-finance.yaml",
             "./telegram.yaml",
             "./owner-attendance.yaml",
             "./platform-workspace.yaml",

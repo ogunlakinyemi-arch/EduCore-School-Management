@@ -746,7 +746,7 @@ function flutterwaveFeeMinor(data: JsonObject, currency: string): number | undef
   return Number.isSafeInteger(total) ? total : undefined;
 }
 
-function parseFlutterwaveRefund(data: JsonObject | null): FlutterwaveRefundResult {
+export function parseFlutterwaveRefund(data: JsonObject | null): FlutterwaveRefundResult {
   if (!data) throw new PaymentProviderError("Flutterwave refund details are invalid");
   const id = normalizeProviderTransactionId(data.id, "Flutterwave refund");
   const transactionId = normalizeProviderTransactionId(data.transaction_id ?? data.tx_id, "Flutterwave");

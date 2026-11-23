@@ -123,6 +123,6 @@
 - [Hardware identity correction](hardware-identity-correction-policy.md) — retain primary ID/key and both histories; Production execution requires the supported serving workflow and fresh checks.
 - [Owner card grace](owner-student-card-grace-policy.md) — audited administrative controls and exact-card temporary payment permission; never settlement, activation or a safety override.
 - [Invoice logo fallback](invoice-logo-fallback-policy.md) — private school branding must not block parent invoice printing; other document requirements remain separate.
-- [Restricted SMS scope](sms-emergency-absence-policy.md) — emergency and student absence only; explicit opt-in, preserved pauses and separate configuration/send evidence.
+- [Restricted SMS scope](sms-emergency-absence-policy.md) — emergency/absence plus separately consented Owner field follow-up; preserve pauses and distinguish configuration from sending.
 - [Notification time display](notification-time-policy.md) — explicit Africa/Lagos WAT for event/created times; preserve UTC storage, distinguish instants and handle rollover.
 - [Teacher period notices](teacher-period-notification-policy.md) — Production preparation approved; independent consent, separate paused Production controls and no implied migration/send permission.

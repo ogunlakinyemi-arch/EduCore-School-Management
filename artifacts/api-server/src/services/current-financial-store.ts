@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {financialTransaction} from "./financial-transaction";
 import {requireFinancialActor} from "./financial-history-writes";
 import {inspectFinancialGuards} from "./financial-guard-schema";
-import {demand, type CurrentPool, type CurrentSql} from "./current-financial-contract";
+import {demand, type CurrentPool, type CurrentSql,type CurrentSource} from "./current-financial-contract";
 
 function canonical(value: any): any {
   if (Array.isArray(value)) return value.map(canonical);
@@ -63,7 +63,7 @@ export async function appendState(c: CurrentSql, id: number, next: string, key: 
 }
 export async function createOperation(c: CurrentSql, v: {
   kind: string; key: string; schoolId: number; termId: number; attemptId?: number;
-  entitlementId?: number; parentId?: number; amountMinor: number;
+  entitlementId?: number; allocationId?:number; bulkEntitlementId?:number; parentId?: number; amountMinor: number;
   actorId: number; reason: string; snapshot: object;
 }) {
   demand(v.reason.trim().length >= 3 && v.reason.trim().length <= 500, "REASON_REQUIRED");
@@ -76,15 +76,32 @@ export async function createOperation(c: CurrentSql, v: {
       && Number(old.attempt_id??0)===(v.attemptId??0) && Number(old.entitlement_id??0)===(v.entitlementId??0)
       && Number(old.parent_id??0)===(v.parentId??0) && Number(old.amount_minor)===v.amountMinor
       && Number(old.created_by)===v.actorId && old.reason===v.reason.trim()
+      && Number(old.allocation_id??0)===(v.allocationId??0)
+      && Number(old.bulk_entitlement_id??0)===(v.bulkEntitlementId??0)
       && digest(old.snapshot)===digest(JSON.parse(JSON.stringify(v.snapshot))), "IDEMPOTENCY_CONTENT_CONFLICT");
     return old;
   }
+  if(v.allocationId) return (await c.query(`INSERT INTO current_subscription_operations
+    (kind,request_key,school_id,academic_term_id,attempt_id,entitlement_id,parent_id,amount_minor,reason,created_by,snapshot,
+     allocation_id,bulk_entitlement_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13) RETURNING *`,
+    [...values,v.allocationId,v.bulkEntitlementId??null])).rows[0];
   return (await c.query(`INSERT INTO current_subscription_operations
     (kind,request_key,school_id,academic_term_id,attempt_id,entitlement_id,parent_id,
      amount_minor,reason,created_by,snapshot)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb) RETURNING *`,values)).rows[0];
 }
-export async function paidDirect(c: CurrentSql, attemptId: number) {
+/** Normalized read projection. Bulk never creates a synthetic direct attempt. */
+export async function paidDirect(c: CurrentSql, attemptId: CurrentSource) {
+  if(typeof attemptId!=="number"){
+    const a=(await c.query(`SELECT a.*,b.reference,c.provider_transaction_id,c.provider_reference,c.verified_at,
+      'PAID' AS state,'NGN' AS currency,0 AS school_share_minor,0 AS bro_share_minor
+      FROM current_bulk_allocations a JOIN current_payment_batches b ON b.id=a.batch_id
+      JOIN current_bulk_confirmations c ON c.batch_id=b.id AND c.amount_minor=b.amount_minor
+      WHERE a.id=$1 AND EXISTS(SELECT 1 FROM current_bulk_events e WHERE e.allocation_id=a.id AND e.state='POSTED')`,
+      [attemptId.allocationId])).rows[0];
+    demand(a&&a.provider_transaction_id&&Number(a.amount_minor)===320000,"CURRENT_VERIFIED_ALLOCATION_REQUIRED");
+    return a;
+  }
   const a = (await c.query(`SELECT a.*,o.school_id,o.student_id,o.academic_term_id,
     o.amount_minor,o.school_share_minor,o.bro_share_minor,o.currency
     FROM student_direct_live_attempts a JOIN student_direct_live_obligations o ON o.id=a.obligation_id
@@ -119,12 +136,13 @@ export async function currentPayoutReferenceInUse(c: CurrentSql,reference:string
   return !!(await c.query(`SELECT operation_id FROM current_subscription_reference_claims
     WHERE namespace='BRO_PAYOUT' AND reference=$1`,[reference.trim().toLowerCase()])).rows[0];
 }
-export async function refundAmounts(c: CurrentSql, attemptId: number) {
+export async function refundAmounts(c: CurrentSql, attemptId: CurrentSource) {
   const rows = (await c.query(`SELECT o.amount_minor,o.snapshot,
     COALESCE(e.state,'REQUESTED') AS state FROM current_subscription_operations o
     LEFT JOIN LATERAL(SELECT state FROM current_subscription_operation_events
       WHERE operation_id=o.id ORDER BY id DESC LIMIT 1)e ON true
-    WHERE o.kind='REFUND' AND o.attempt_id=$1`,[attemptId])).rows;
+     WHERE o.kind='REFUND' AND o.${typeof attemptId==="number"?"attempt_id":"allocation_id"}=$1`,
+     [typeof attemptId==="number"?attemptId:attemptId.allocationId])).rows;
   let reserved=0,refunded=0,reversed=0;
   for (const r of rows) {
     if (r.snapshot.movement==="COLLECTION_REVERSAL") {

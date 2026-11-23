@@ -43,6 +43,20 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /current-finance/overview:
+    $ref: './current-finance.yaml#/paths/~1current-finance~1overview'
+  /current-finance/actions:
+    $ref: './current-finance.yaml#/paths/~1current-finance~1actions'
+  /current-finance/receipts/{id}:
+    $ref: './current-finance.yaml#/paths/~1current-finance~1receipts~1{id}'
+  /bro-field/sms:
+    $ref: './current-finance.yaml#/paths/~1bro-field~1sms'
+  /bro-field/sms/preview:
+    $ref: './current-finance.yaml#/paths/~1bro-field~1sms~1preview'
+  /bro-field/sms/permission:
+    $ref: './current-finance.yaml#/paths/~1bro-field~1sms~1permission'
+  /bro-field/sms/{id}/dispatch:
+    $ref: './current-finance.yaml#/paths/~1bro-field~1sms~1{id}~1dispatch'
   /bro-field/leads:
     $ref: "./bro-field.yaml#/paths/~1bro-field~1leads"
   /bro-field/leads/{id}:

@@ -1,9 +1,9 @@
-import {demand,positiveMinor,requestKey,type CurrentCapabilities,type CurrentPool} from "./current-financial-contract";
+import {demand,positiveMinor,requestKey,sourceOf,sourceColumns,type CurrentSource,type CurrentCapabilities,type CurrentPool} from "./current-financial-contract";
 import {appendState,claimReference,createOperation,currentTransaction,digest,operation,paidDirect,
   referenceFor,refundAmounts,state} from "./current-financial-store";
 import {holdCurrentBro} from "./current-bro-lifecycle";
 
-export async function requestCurrentStudentRefund(pool: CurrentPool, actorId: number, attemptId: number,
+export async function requestCurrentStudentRefund(pool: CurrentPool, actorId: number, attemptId: CurrentSource,
   amountMinor: number, key: string, reason: string) {
   positiveMinor(amountMinor);requestKey(key);
   return currentTransaction(pool,actorId,async c=>{
@@ -13,7 +13,7 @@ export async function requestCurrentStudentRefund(pool: CurrentPool, actorId: nu
     if (!existing) demand((await refundAmounts(c,attemptId)).reservedMinor+amountMinor<=320000,
       "CUMULATIVE_REFUNDS_EXCEED_PAYMENT");
     const root=await createOperation(c,{kind:"REFUND",key,schoolId:Number(a.school_id),
-      termId:Number(a.academic_term_id),attemptId,amountMinor,actorId,reason,
+       termId:Number(a.academic_term_id),...sourceColumns(attemptId),amountMinor,actorId,reason,
       snapshot:{movement:"REFUND",collectionTransactionId:a.provider_transaction_id,studentId:Number(a.student_id)}});
     if (!existing) {
       await appendState(c,Number(root.id),"REQUESTED","requested",actorId,{moneyMoved:false});
@@ -46,15 +46,20 @@ export async function dispatchCurrentStudentRefund(pool: CurrentPool, actorId: n
     // No second POST, even after a crash or lost response.
     if (["PROCESSING","UNKNOWN","PENDING","SUCCEEDED","FAILED","REVERSED"].includes(previous)) return null;
     demand(previous==="APPROVED","REFUND_APPROVAL_REQUIRED");
-    demand((await refundAmounts(c,Number(root.attempt_id))).reservedMinor<=320000,
+    deps.refunds!.validate?.({amountMinor:Number(root.amount_minor)});
+    demand((await refundAmounts(c,sourceOf(root))).reservedMinor<=320000,
       "ADVERSE_OVERLAP_RECONCILIATION_REQUIRED");
     await appendState(c,id,"PROCESSING","permanent-dispatch-claim",actorId,{moneyMoved:false});
     return root;
   });
   if (!claim) return {id,reconciliationRequired:true};
   try {
-    await deps.refunds.request({reference:referenceFor(id),
+    const accepted=await deps.refunds.request({reference:referenceFor(id),
       collectionTransactionId:claim.snapshot.collectionTransactionId,amountMinor:Number(claim.amount_minor)});
+    if(accepted) await currentTransaction(pool,actorId,async c=>{
+      await claimReference(c,"REFUND",accepted.providerReference,id);
+      await appendState(c,id,"PROCESSING","provider-accepted",actorId,{providerRefundId:accepted.providerReference,moneyMoved:false});
+    });
   } catch {
     await currentTransaction(pool,actorId,async c=>{
       if (await state(c,id)==="PROCESSING") await appendState(c,id,"UNKNOWN","request-response-uncertain",actorId,
@@ -82,15 +87,15 @@ export async function reconcileCurrentStudentRefund(pool: CurrentPool, actorId: 
     demand(["PENDING","SUCCEEDED","FAILED","REVERSED"].includes(facts.status),"REFUND_STATUS_UNSUPPORTED");
     await claimReference(c,"REFUND",facts.providerReference,id);
     if (previous==="REVERSED" || (previous==="SUCCEEDED" && facts.status!=="REVERSED"))
-      return {id,state:previous,...await refundAmounts(c,Number(r.attempt_id))};
+      return {id,state:previous,...await refundAmounts(c,sourceOf(r))};
     if (previous==="FAILED" && facts.status==="PENDING")
-      return {id,state:previous,...await refundAmounts(c,Number(r.attempt_id))};
+      return {id,state:previous,...await refundAmounts(c,sourceOf(r))};
     // Reversal before observed success is valid independent evidence of the
     // refund's final cancellation; it never subtracts an unposted amount.
     await appendState(c,id,facts.status,`provider:${digest(facts)}`,actorId,facts);
     if (facts.status==="SUCCEEDED")
-      await holdCurrentBro(c,Number(r.attempt_id),actorId,`refund-confirmed:${id}`,true,"REFUND_SUCCEEDED");
-    return {id,state:facts.status,...await refundAmounts(c,Number(r.attempt_id))};
+      await holdCurrentBro(c,sourceOf(r),actorId,`refund-confirmed:${id}`,true,"REFUND_SUCCEEDED");
+    return {id,state:facts.status,...await refundAmounts(c,sourceOf(r))};
   });
 }
 export async function recordCurrentCollectionReversal(pool: CurrentPool, actorId: number, attemptId: number,

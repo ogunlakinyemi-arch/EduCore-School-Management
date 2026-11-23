@@ -13740,6 +13740,11 @@ export interface LostCardInput {
   reason: string;
 }
 
+/**
+ * Domain document validated further by the service; never accepts client money evidence.
+ */
+export interface CurrentFinanceDocument { [key: string]: unknown }
+
 export type BroFieldLeadInputInterestLevel = typeof BroFieldLeadInputInterestLevel[keyof typeof BroFieldLeadInputInterestLevel];
 
 
@@ -24594,6 +24599,86 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetCurrentFinanceOverviewParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+};
+
+export type ActOnCurrentFinanceBodyAction = typeof ActOnCurrentFinanceBodyAction[keyof typeof ActOnCurrentFinanceBodyAction];
+
+
+export const ActOnCurrentFinanceBodyAction = {
+  REFUND_REQUEST: 'REFUND_REQUEST',
+  REFUND_APPROVE: 'REFUND_APPROVE',
+  REFUND_DISPATCH: 'REFUND_DISPATCH',
+  REFUND_RECONCILE: 'REFUND_RECONCILE',
+  COLLECTION_REVERSAL: 'COLLECTION_REVERSAL',
+  WITHDRAW_REQUEST: 'WITHDRAW_REQUEST',
+  WITHDRAW_DECIDE: 'WITHDRAW_DECIDE',
+  PAYOUT_INITIATE: 'PAYOUT_INITIATE',
+  PAYOUT_RECONCILE: 'PAYOUT_RECONCILE',
+  BRO_RECOVERY: 'BRO_RECOVERY',
+  BULK_CREATE: 'BULK_CREATE',
+  BULK_VERIFY: 'BULK_VERIFY',
+  BULK_RECOVER: 'BULK_RECOVER',
+} as const;
+
+export type ActOnCurrentFinanceBodyPayload = { [key: string]: unknown };
+
+export type ActOnCurrentFinanceBody = {
+  action: ActOnCurrentFinanceBodyAction;
+  payload: ActOnCurrentFinanceBodyPayload;
+};
+
+export type GetCurrentFinanceReceiptParams = {
+/**
+ * @minimum 1
+ */
+allocationId?: number;
+};
+
+export type PreviewFieldSmsCampaignBody = {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  message: string;
+  /**
+     * @minLength 16
+     * @maxLength 100
+     */
+  key: string;
+  all: boolean;
+  /**
+     * @maxItems 500
+     * @items.minimum 1
+     */
+  leadIds?: number[];
+};
+
+export type RecordFieldSmsPermissionBody = {
+  /** @minimum 1 */
+  leadId: number;
+  allowed: boolean;
+  /**
+     * @minLength 5
+     * @maxLength 500
+     */
+  reason: string;
+};
+
+export type DispatchFieldSmsCampaignBody = {
+  /** @pattern ^[a-f0-9]{64}$ */
+  digest: string;
+  confirm: boolean;
+};
 
 export type ListBroFieldLeadsParams = {
 q?: string;

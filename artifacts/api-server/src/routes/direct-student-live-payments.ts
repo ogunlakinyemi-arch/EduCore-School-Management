@@ -5,6 +5,7 @@ import { requireAuthentication,getUserContext } from "../middlewares/auth";
 import { directLiveConfiguration } from "../lib/flutterwave-direct-live-config";
 import {readStudentRollout} from "../services/student-platform-rollout";
 import {ownerBankTransferInstructions} from "../services/owner-bank-transfer-instructions";
+import {verifyPublicCurrentBulk} from "../services/current-bulk-subscriptions";
 import { authenticateDirectStudentWebhook,directStudentReadiness,startDirectStudentPayment,
   verifyDirectStudentPayment,DirectPaymentBlocked } from "../services/direct-student-live-payments";
 const router=Router();
@@ -112,7 +113,9 @@ directStudentPublicRouter.get("/flutterwave/direct-student/callback",async(req,r
   if(!directLiveConfiguration().ready){res.status(409).json({error:"DIRECT_LIVE_RELEASE_DISABLED"});return;}
   const body=z.object(publicIdentifiers).safeParse(req.query);
   if(!body.success){res.status(400).json({error:"Invalid callback identifiers."});return;}
-  try{res.json(await verifyDirectStudentPayment(pool,{reference:body.data.tx_ref,transactionId:body.data.transaction_id,actorId:null}));}
+  try{res.json(body.data.tx_ref.startsWith("SCV4_live_bulk_")
+    ?await verifyPublicCurrentBulk(pool,body.data.tx_ref,body.data.transaction_id)
+    :await verifyDirectStudentPayment(pool,{reference:body.data.tx_ref,transactionId:body.data.transaction_id,actorId:null}));}
   catch(e){safeError(res,e);}
 });
 export const directStudentWebhookRouter=Router();
@@ -128,7 +131,9 @@ directStudentWebhookRouter.post("/",async(req,res)=>{
       data:z.object({id:z.union([publicIdentifiers.transaction_id,z.number().int().positive().safe()]),
         tx_ref:publicIdentifiers.tx_ref})}).safeParse(payload);
     if(!parsed.success)throw new DirectPaymentBlocked("INVALID_WEBHOOK",400);
-    res.json(await verifyDirectStudentPayment(pool,{reference:parsed.data.data.tx_ref,
-      transactionId:String(parsed.data.data.id),actorId:null}));
+    res.json(parsed.data.data.tx_ref.startsWith("SCV4_live_bulk_")
+      ?await verifyPublicCurrentBulk(pool,parsed.data.data.tx_ref,String(parsed.data.data.id))
+      :await verifyDirectStudentPayment(pool,{reference:parsed.data.data.tx_ref,
+        transactionId:String(parsed.data.data.id),actorId:null}));
   }catch(e){safeError(res,e);}
 });

@@ -69,6 +69,7 @@ vi.mock('@/components/school-document', () => ({
   SchoolDocumentPrintButton: ({ children, label, testId }: any) => <div><button data-testid={testId}>{label}</button>{children}</div>,
 }));
 
+vi.mock('@/components/current-finance-panel', () => ({ ConnectedFinancePanel: () => null }));
 import { SubscriptionsPage } from './subscriptions';
 
 const payment = (overrides: Record<string, unknown> = {}) => ({

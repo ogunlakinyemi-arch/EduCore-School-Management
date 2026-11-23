@@ -52,6 +52,7 @@ import NotFound from '@/pages/not-found';
 import { PartnerNfcOwnerControl } from '@/pages/partner/nfc-owner-control';
 import FieldOperationsPage from '@/pages/partner/field-operations';
 import TermCommissionsPage from '@/pages/partner/term-commissions';
+import { ConnectedFinancePanel } from '@/components/current-finance-panel';
 import { clearPayoutDraft, readPayoutDraft, savePayoutDraft, type PayoutDraft } from '@/lib/partner-payout-retry';
 
 const inviteSchema = z.object({
@@ -1088,6 +1089,11 @@ export default function PartnerManagement() {
             Attribution Conflicts
           </button>
         </Link>
+        <Link href="/partners/finance">
+          <button data-testid="link-owner-connected-finance" className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/finance' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
+            Connected finance
+          </button>
+        </Link>
           <Link href="/partners/field-operations">
             <button data-testid="link-owner-field-operations" className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/field-operations' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
               Field Operations
@@ -1109,6 +1115,7 @@ export default function PartnerManagement() {
         <Route path="/partners/conflicts" component={AttributionConflicts} />
         <Route path="/partners/live-readiness" component={LiveReadinessPage} />
         <Route path="/partners/field-operations" component={FieldOperationsPage} />
+        <Route path="/partners/finance">{isOwner ? <ConnectedFinancePanel mode="owner" /> : <NotFound />}</Route>
         <Route path="/partners/:id">
           {params => <PartnerDetail id={Number(params.id)} />}
         </Route>

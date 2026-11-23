@@ -17,6 +17,7 @@ import {
   type ListBroFieldLeadsParams,
 } from '@workspace/api-client-react';
 import { MapPin, RefreshCw, Plus } from 'lucide-react';
+import { FieldSmsCampaigns } from '@/components/field-sms-campaigns';
 import { Button, Field, StatusPill, SkeletonPage, ErrorState, EmptyState, date } from '@/components/shared';
 
 export const FIELD_STATUSES = ['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up'] as const;
@@ -101,6 +102,8 @@ export default function FieldOperationsPage() {
           {!isOwner && <Button onClick={() => { setCreating(true); setSelected(null); }} testId="field-new"><Plus size={15} />Log visit</Button>}
         </div>
       </div>
+
+      {isOwner && <FieldSmsCampaigns />}
 
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <Field label="Search"><input value={filters.q} onChange={e => setFilters(f => ({ ...f, q: e.target.value }))} placeholder="School, address, contact" /></Field>

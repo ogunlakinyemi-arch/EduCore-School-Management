@@ -60,6 +60,12 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
     await beginFinancialTransaction(c);
     await requireFinancialActor(c,input.actorId,input.assistanceId?undefined:input.schoolId);
     if(!(await readStudentRollout(c,input.schoolId,input.termId)).chargeable)block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
+    if((await c.query("SELECT to_regclass('public.current_bulk_allocations') IS NOT NULL AS present")).rows[0]?.present){
+      const batchClaim=(await c.query(`SELECT id FROM current_bulk_allocations
+        WHERE school_id=$1 AND student_id=$2 AND academic_term_id=$3 LIMIT 1`,
+        [input.schoolId,input.studentId,input.termId])).rows[0];
+      if(batchClaim)block("STUDENT_RESERVED_BY_AGGREGATE_PAYMENT");
+    }
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
       [`direct-student:${input.schoolId}:${input.studentId}:${input.termId}`]);
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`direct-release:${review.request_id}`]);

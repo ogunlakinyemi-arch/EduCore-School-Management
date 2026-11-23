@@ -13,6 +13,7 @@ vi.mock('@workspace/api-client-react', async original => ({
           status: 'PENDING_OWNER_APPROVAL', earnedAt: '2027-01-18T10:00:00Z', schoolPayment: 320000 }] } };
   },
 }));
+vi.mock('@/components/current-finance-panel', () => ({ ConnectedFinancePanel: () => null }));
 import OwnBroCommissions from './own-commissions';
 describe('BRO own commission display', () => {
   it('shows own student/term entitlement with polling and identity-isolated cache, not school collections', () => {

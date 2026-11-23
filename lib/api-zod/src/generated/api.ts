@@ -8,6 +8,99 @@
 import * as zod from 'zod';
 
 
+
+
+
+
+export const GetCurrentFinanceOverviewQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetCurrentFinanceOverviewResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+
+
+export const ActOnCurrentFinanceBody = zod.object({
+  "action": zod.enum(['REFUND_REQUEST', 'REFUND_APPROVE', 'REFUND_DISPATCH', 'REFUND_RECONCILE', 'COLLECTION_REVERSAL', 'WITHDRAW_REQUEST', 'WITHDRAW_DECIDE', 'PAYOUT_INITIATE', 'PAYOUT_RECONCILE', 'BRO_RECOVERY', 'BULK_CREATE', 'BULK_VERIFY', 'BULK_RECOVER']),
+  "payload": zod.record(zod.string(), zod.unknown())
+})
+
+export const ActOnCurrentFinanceResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+
+
+
+
+
+export const GetCurrentFinanceReceiptParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetCurrentFinanceReceiptQueryParams = zod.object({
+  "allocationId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetCurrentFinanceReceiptResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+
+
+export const GetFieldSmsCampaignsResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+
+
+export const previewFieldSmsCampaignBodyMessageMax = 1000;
+
+export const previewFieldSmsCampaignBodyKeyMin = 16;
+export const previewFieldSmsCampaignBodyKeyMax = 100;
+
+
+export const previewFieldSmsCampaignBodyLeadIdsMax = 500;
+
+
+
+export const PreviewFieldSmsCampaignBody = zod.object({
+  "message": zod.string().min(1).max(previewFieldSmsCampaignBodyMessageMax),
+  "key": zod.string().min(previewFieldSmsCampaignBodyKeyMin).max(previewFieldSmsCampaignBodyKeyMax),
+  "all": zod.boolean(),
+  "leadIds": zod.array(zod.number().int().min(1)).max(previewFieldSmsCampaignBodyLeadIdsMax).optional()
+})
+
+export const PreviewFieldSmsCampaignResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+
+
+
+export const recordFieldSmsPermissionBodyReasonMin = 5;
+export const recordFieldSmsPermissionBodyReasonMax = 500;
+
+
+
+export const RecordFieldSmsPermissionBody = zod.object({
+  "leadId": zod.number().int().min(1),
+  "allowed": zod.boolean(),
+  "reason": zod.string().min(recordFieldSmsPermissionBodyReasonMin).max(recordFieldSmsPermissionBodyReasonMax)
+})
+
+export const RecordFieldSmsPermissionResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+
+
+
+
+
+export const DispatchFieldSmsCampaignParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const dispatchFieldSmsCampaignBodyDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const DispatchFieldSmsCampaignBody = zod.object({
+  "digest": zod.string().regex(dispatchFieldSmsCampaignBodyDigestRegExp),
+  "confirm": zod.boolean()
+})
+
+export const DispatchFieldSmsCampaignResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+
+
 export const ListBroFieldLeadsQueryParams = zod.object({
   "q": zod.coerce.string().optional(),
   "status": zod.coerce.string().optional(),

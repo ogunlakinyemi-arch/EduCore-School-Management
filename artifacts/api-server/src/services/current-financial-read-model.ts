@@ -1,9 +1,9 @@
-import type {CurrentPool} from "./current-financial-contract";
+import type {CurrentPool,CurrentSource} from "./current-financial-contract";
 import {currentTransaction,paidDirect,refundAmounts} from "./current-financial-store";
 import {hasCurrentAdverseHold} from "./current-bro-lifecycle";
 
 /** Platform accounting, not ordinary school fee invoices or academic access. */
-export async function readCurrentPaymentAccounting(pool:CurrentPool,actorId:number,attemptId:number) {
+export async function readCurrentPaymentAccounting(pool:CurrentPool,actorId:number,attemptId:CurrentSource) {
   return currentTransaction(pool,actorId,async c=>{
     const a=await paidDirect(c,attemptId),money=await refundAmounts(c,attemptId);
     const status=money.overRecoveryMinor>0?"RECOVERY_REQUIRED"

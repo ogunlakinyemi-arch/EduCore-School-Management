@@ -59,7 +59,11 @@ router.use((req, res, next) => {
     // expose BRO earnings. PARTNER role alone never bypasses general redaction.
     const ownEntitlements = req.method === "GET" && req.path === "/partner/commission-entitlements"
       && res.locals.ownBroEntitlements === true;
-    return json(owner || ownEntitlements ? body : withoutBroFinancialData(body));
+    // This exact handler independently rereads database authority and projects
+    // only the actual BRO owner's earnings; school users receive no BRO rows.
+    const scopedCurrent=req.method==="GET"&&req.path==="/current-finance/overview"
+      &&res.locals.scopedCurrentFinanceProjection===true;
+    return json(owner || ownEntitlements || scopedCurrent ? body : withoutBroFinancialData(body));
   }) as typeof res.json;
   next();
 });

@@ -1,199 +1,234 @@
-# Consolidated Development financial work — partial, inactive implementation
+# Connected payments and Field Operations SMS — Development source evidence
 
-## Result and boundaries
+## Result and execution boundary
 
-This is **not full operational completion** of the requested payment feature.
-It supplies transaction-tested service candidates for direct refunds and current
-BRO lifecycle management, a review-only bulk planner and two targeted protections
-in existing writers. There are no new routed payment endpoints or screens.
-Provider evidence ports have no default HTTP implementation. No existing LIVE,
-merchant, financial-rule, free-launch or January/calendar gate was opened.
+The former disconnected service candidates now have source-level provider
+adapters, authenticated API contracts/routes, current projections and mounted
+role-appropriate screens. Aggregate subscriptions, recoverable child posting,
+BRO withdrawal requests and Owner-confirmed Field Operations SMS are implemented.
+**This is not operational activation, shared-database acceptance, or certification
+that real refunds, transfers or messages work.**
 
-Baseline evidence reused: documented 418 financial tests and 12 native checks,
-71 additional focused tests, and 124 Safe Restart tests. These remain historical
-baseline evidence, not a claim that every baseline suite was rerun on this source.
-Only the affected three accrual regressions were rerun; new focused checks cover
-the actual retained manual-payout writer without an HTTP listener.
+Both `0181_current_subscription_lifecycle.sql` and
+`0182_current_bulk_withdrawals_field_sms.sql` remain unapplied to shared
+Development/Production. Necessary catalog/procedural readiness gates remain
+closed when objects are absent. No shared runtime was restarted or preview
+activated; no provider, bank, identity, storage, message, configuration, secret,
+worker, deployment or publication operation was performed.
 
-## Implementation by stage
+Preserved commercial rules: ₦3,200 current student subscription, ₦2,000 staff,
+₦150 per eligible student/term BRO earning (ten students = ₦1,500), a separately
+funded commission expense, historical ₦5,000/₦100 evidence, the free launch
+period, actual school calendars, January 2027 gates and existing release/rule
+controls. School-owned fees and ordinary school revenue settlement are unchanged.
 
-1. **Direct refunds/adverse events — service candidate implemented.** Immutable
-   requests, separate Owner approval, a permanent pre-POST claim, explicit unknown
-   outcomes, no automatic resend, independent evidence binding, partial/full
-   cumulative limits, pending/failure/success/refund-reversal handling and
-   replay/out-of-order protection. Original PAID records are never edited.
-   Verified collection reversals are distinct from reversals of a refund.
-   Overlapping refund/collection-reversal outflows are recorded and exposed for
-   recovery review, not hidden by a negative balance or an invented refund.
-2. **Individual current BRO lifecycle — service candidate implemented.** Individual
-   Owner approval after the retained term-end review boundary; exact ₦150 separate
-   expense; frozen verified registered-person bank evidence; pending, verified
-   paid, failed and reversed payout outcomes; idempotent recovery evidence and
-   recovery caps. Approval/initiation does not book bank credit. The bank adapter
-   reuses existing verification and requires the existing partner-cipher decrypt
-   helper; it does not perform a bank lookup.
-3. **Bulk — review-only planning implemented, collection NOT implemented.**
-   Database-authoritative role/school checks, one school/term, rollout eligibility,
-   exclusion of occupied/legacy obligations, canonical multi-student snapshots,
-   amounts/rule evidence and idempotency are tested. Plans do not reserve payments,
-   create obligations, issue receipts or contact a payment provider.
-4. **Bulk allocation recovery, receipts, refunds and reconciliation — NOT
-   implemented.** No collection is accepted without these protections.
-5. **Verification — passed for the implemented portion**, detailed below.
+## Connected paths
 
-Pending refunds/adverse signals hold current BRO approval/release even before an
-entitlement exists. An already paid BRO remains recorded as paid; confirmed
-adverse money movement creates recovery-review exposure. Failed/reversed refund
-evidence does not silently restore an older approval. Partial-refund commission
-proration, automatic recovery debt assessment and hold-release/access policies
-were not specified sufficiently to invent: the implementation retains review,
-does not debit anyone and accepts recovery only from independent evidence.
+### Direct refunds and BRO lifecycle
 
-Ordinary school fee invoices, academic access/lock policies and the existing
-legacy BRO dashboard/receipt readers were not rewritten. The new Owner accounting
-review functions expose current states separately; connecting those projections
-to existing UI/readers is still required before activation.
+- `current-provider-adapters.ts` provides lazy real transport implementations.
+  Construction performs no provider request or bank read.
+- Refund dispatch uses the existing LIVE direct release/configuration gate,
+  independently verified source transaction and permanent pre-POST claim.
+  The supported provider minimum is ₦100. The returned provider refund ID is
+  retained for independent GET reconciliation; an app reference is not assumed
+  to be a provider lookup capability.
+- A lost response with no retained provider ID remains permanently held for
+  manual reconciliation. It is never automatically POSTed again. Plain provider
+  `completed` is not treated as bank completion.
+- BRO payouts freeze the existing verified registered-person bank evidence.
+  The adapter performs **no transfer POST**: it verifies an already existing
+  LIVE transfer against the exact frozen reference, amount, currency and bank.
+  Only independently verified success produces paid status. Reversals retain
+  history rather than granting automatic retry permission.
+- Authenticated current-finance routes expose explicit action commands,
+  current accounting and scoped receipts. Server-owned amounts, fresh financial
+  authority, request identity, cumulative limits, adverse holds and immutable
+  history remain enforced. Extra client settlement fields are rejected.
 
-## Verification and acceptance traceability
+### Withdrawals and financial visibility
 
-| Check | Result |
+- A BRO selects only their own eligible accrued entitlements. The server freezes
+  individual membership and the ₦150 amount, and prevents duplicate/concurrent
+  claims. Requests are not approvals or bank credit.
+- Owner approves/rejects individual request lines. An approval writes the
+  existing entitlement approval event: there is no redundant second approval.
+  Existing term-end review/source eligibility remains in force. Approval also
+  rechecks the requesting BRO's active identity/membership and ownership.
+- Failure/reversal/uncertainty and recovery-review records remain visible.
+  Proven failed payouts retain the withdrawal decision but still require current
+  payout eligibility; legacy standalone decisions retain their original rules.
+- Owner initiation remains available after definitively failed historical
+  attempts only when the server restores availability. A replacement uses a
+  new request-key generation, including when the earlier response was lost.
+  Pending, unknown, paid, reversed and held attempts still block replacement;
+  historical attempts remain visible. Rejected withdrawal lines are explicitly
+  described as held for review, not released back for another request.
+- Owner and own-BRO projections share earned/pending/approved/available/paid
+  calculations. BRO responses exclude other BROs, school collection amounts and
+  school-wide catalogs. The privacy exception is limited to the exact trusted
+  own-finance projection, not a general BRO financial-access expansion.
+- The original accrual view is labelled as immutable original evidence, not
+  current withdrawal or payout status.
+
+### Genuine aggregate subscriptions
+
+- Authorized school Admin/Accountant users select eligible unpaid students from
+  one school/academic term. Owner explicitly selects a school; school membership,
+  active/admitted students, actual rollout/rules and reviewed eligibility are
+  validated server-side and revalidated before dispatch.
+- One batch produces one aggregate checkout and one independently verified
+  aggregate provider transaction. Direct attempts are not fabricated, terminal
+  direct evidence is not rewritten, and children never receive synthetic or
+  duplicated provider transaction IDs.
+- Shared individual/bulk serialization and durable reservations reject
+  overlapping obligations and concurrent initiation. Unknown checkout outcomes
+  retain their claim and never trigger another checkout.
+- Aggregate success is retained before child posting. Each allocation posts once;
+  a child failure leaves the aggregate confirmed and recovery open. Recovery
+  retries only unresolved children, never charging again. A delayed failed
+  provider read cannot rewind retained success.
+- Posted children feed student subscription access/enforcement and NFC payment
+  evidence, each with separate eligible BRO accrual. Existing paid-source and
+  January/free-term policies remain authoritative.
+- Individual and consolidated receipts show current refunded/net amounts.
+  An unresolved batch cannot be presented as a completed receipt.
+- Full/partial child refunds bind to the aggregate provider transaction and
+  cumulative aggregate limit, while changing only the selected child's
+  accounting and BRO hold. Other children remain unchanged.
+- Anonymous callbacks may retain independently verified aggregate facts, but
+  disclose no students and cannot anonymously post allocations. Authorized
+  users complete recovery.
+
+### Owner Field Operations SMS
+
+- Mounted in Owner Field Operations: permission recording, selected/all eligible
+  contacts, frozen message/recipient preview, explicit confirmation and history.
+- Eligible contacts must be visited, not onboarded, valid and explicitly allowed.
+  Existing schools are checked independently of lead status using linked school,
+  school identity, phone/address evidence. Onboarding, changed phones, opt-outs
+  and "Not Interested" suppression are rechecked when claiming each send.
+- The narrow asynchronous campaign purpose does not enable new parent SMS
+  categories or unpause existing transport/worker controls.
+- Campaign/contact claims and normalized-phone deduplication prevent repeated
+  accepted sends. Only proven retryable rejection may retry; PROCESSING/UNKNOWN
+  outcomes are held. Accepted is not delivered; no physical delivery is claimed.
+- Dispatch is bounded to 20 claimed contacts or a 20-second loop budget per
+  confirmation, plus any in-flight provider request. Unclaimed contacts survive;
+  the Owner reviews and confirms continuation from campaign history. Unknown and
+  accepted contacts are not repeated.
+- History records initiator, frozen message/contact, timestamp, provider reference
+  and honest per-recipient state. UI campaign timestamps explicitly use WAT.
+
+## Contracts, screens and schema source
+
+Contracts are included through `lib/api-spec/current-finance.yaml` and
+`openapi.yaml`; Orval configuration includes referenced schemas. React clients
+and Zod contracts are generated.
+
+Mounted frontend entry points:
+
+- BRO commissions: own current ledger and withdrawal requests.
+- Owner `/partners/finance`: individual withdrawal decisions and lifecycle review.
+- Subscriptions: explicit school/term selection, genuine aggregate checkout,
+  independent verification, unresolved allocation recovery and both receipt levels.
+- Owner Field Operations: consent/eligibility, preview, confirmation and history.
+
+Core source additions are grouped under:
+
+- `artifacts/api-server/src/services/current-{provider-adapters,finance-access,finance-overview,bro-withdrawals,bulk-subscriptions,bulk-payment-evidence}.ts`
+- `artifacts/api-server/src/services/bro-field-sms.ts`
+- `artifacts/api-server/src/routes/{current-finance,bro-field-sms}.ts`
+- `artifacts/edupulse/src/components/{current-finance-panel,current-finance-receipt,field-sms-campaigns}.tsx`
+- `artifacts/edupulse/src/lib/current-finance.ts`
+- `lib/db/drizzle/0182_current_bulk_withdrawals_field_sms.sql`
+- `lib/db/src/candidates/current-finance.ts`
+
+The ORM file is an **unregistered review candidate**, not a Publish-ready
+replacement for legacy raw-SQL schemas. Legacy FK metadata is reference-only.
+The SQL candidates remain authoritative for CHECKs/procedural guards. No
+automatic schema export, migration runner, startup registration, grant or
+procedural-delivery claim is introduced.
+
+## Verification
+
+All following checks used clean child environments, fictional fixtures and fake
+HTTP/provider functions. No server/application bundle was executed.
+
+| Evidence | Result |
 |---|---|
-| New disposable PostgreSQL service suite | 55 distinct tests passed across the full run and targeted final run |
-| New retained manual-writer guard tests, in memory | 3 passed |
-| Affected existing verified-accrual regressions | 3 passed |
-| Distinct tests total | **61 passed; no unresolved failures** |
-| Focused API TypeScript check | Passed |
-| Complete API build into disposable output | Passed; no bundle executed |
-| Five candidate service entry builds | Passed; no bundle executed |
-| Tracked and newly created file whitespace checks | Passed |
+| Earlier affected financial baseline | 61 distinct passing tests, across full and targeted runs; not added again below |
+| Final affected backend pass | **86 passed across 7 files** |
+| Additional bounded SMS continuation check | **1 passed** in a targeted final run |
+| New disposable PostgreSQL integration suite | **23 distinct passed** across the full and targeted runs |
+| Of those: real transport adapters with fake HTTP functions | **14 passed** |
+| Of those: in-process command/authorization checks | **6 passed** |
+| Of those: affected existing direct/access/NFC readers | **44 passed** |
+| Earlier frontend helper's full focused component pass | 103 passed; historical run, not an extra distinct total |
+| Final changed frontend component/page pass | **16 passed** across 2 files |
+| Shared library TypeScript build, API and frontend typechecks | Passed |
+| Complete API build to `/tmp/current-finance-api-build` | Passed; not executed |
+| Frontend production build to `/tmp/current-finance-ui-build` | Passed; bundle-size advisory only |
+| Whitespace/diff check | Passed |
+| Authenticated browser, screenshots, shared-runtime acceptance | **Not performed / not authorized** |
+| Real provider, bank credit, SMS receipt or LIVE acceptance | **Not performed / not claimed** |
 
-The initial coherent run passed 54 PostgreSQL tests plus 6 other tests. A final
-targeted run passed 5 PostgreSQL tests after the reviewing-Owner audit correction,
-including one added test. Four were repeats; 50 were excluded by that selector,
-not failed or newly omitted acceptance tests. Initial fixture amount/literal-type
-errors were corrected. Do not add repeated executions to the distinct total.
+The 23 new integration cases execute candidates over real existing migrations
+in a disposable Unix-socket PostgreSQL cluster, including actual transactional
+constraints, concurrency, duplicate claims and recovery. The fixture's clock is
+explicitly aligned with fictional 2027 financial periods; no shared clock changed.
+Initial fixture, literal-type and mock query-count issues were corrected.
+The SMS fixture was missing the audit table's school column; retry fixtures also
+needed the matching future JS clock. These were not real provider-send failures.
+The final targeted continuation run excluded 22 previously passing cases by
+selector; they were not failures. Do not add repeated executions to the totals.
 
-The fixture applied candidate 0181 over the real existing 0175–0178 migrations
-inside a new Unix-socket-only disposable cluster and exercised actual service
-transactions, existing catalog guards, competing refund/payout requests, journal
-immutability and historical-value retention. No HTTP listener was started.
-Provider ports were fake functions. The pre-accrual denial test used a fixed
-future SQL clock only inside its disposable client to match the fictional 2027
-payment/calendar evidence.
+Final backend command:
 
-Commands, run in clean child environments:
+```sh
+pnpm --filter @workspace/api-server exec vitest run \
+  src/services/current-finance-integration.postgres.test.ts \
+  src/services/current-provider-adapters.test.ts \
+  src/routes/current-finance.inprocess.test.ts \
+  src/services/direct-student-live-payments.test.ts \
+  src/services/student-platform-rollout-access.test.ts \
+  src/services/student-platform-access.test.ts \
+  src/services/student-nfc-payment-evidence.test.ts
+```
 
-    pnpm --filter @workspace/api-server exec vitest run \
-      src/services/current-financial-lifecycle.postgres.test.ts \
-      src/services/current-reference-legacy-guard.test.ts \
-      src/services/verified-subscription-bro-accrual.test.ts
-    pnpm --filter @workspace/api-server exec vitest run \
-      src/services/current-financial-lifecycle.postgres.test.ts \
-      -t 'C32|C48|C30|C38|actual reviewing Owner'
-    pnpm --filter @workspace/api-server run typecheck
+Final frontend command:
 
-Build checks called existing `buildAll()` with a fresh temporary output directory
-and esbuild for the five candidate entries. Temporary build output and fictional
-database clusters were removed. Shared `dist` output was not replaced.
+```sh
+pnpm --filter @workspace/edupulse exec vitest run \
+  src/components/current-finance-panel.test.tsx \
+  src/pages/partner/own-commissions.test.tsx
+```
 
-### Numbered contract limitation
+## Remaining blockers and unverified boundaries
 
-The referenced preceding **65-point specification was not supplied in the visible
-context or located in the workspace**. Accordingly, an honest original-case
-pass/fail count is unavailable. The following C numbers are a local mapping from
-the explicit latest instruction, also used by test names—not invented quotations
-or a claim to have certified the missing original contract:
+1. **Collection reversal and incoming BRO recovery:** no independently bound
+   provider/bank evidence contract is available. These capabilities remain absent
+   from real adapters, with explicit errors. Typed evidence from an HTTP request
+   is not substituted. No automatic debit or invented recovery assessment.
+2. **Shared schema/procedural delivery:** candidates are not applied, and no
+   supported shared delivery mechanism for required custom functions/triggers
+   has been established. Readiness gates remain. ORM metadata alone does not
+   certify schema parity, migration safety, Publish transport or all-writer ACLs.
+3. **Provider-bound acceptance:** refund ID retention, completed-bank status and
+   exact-reference transfer lookup have fake-contract evidence only. A refund
+   accepted without a retained ID needs manual provider reconciliation; the app
+   cannot safely search or resend it. Manual payouts made outside the supported
+   provider reference contract cannot be called paid through invented proof.
+4. **UI/runtime acceptance:** mounted components, generated contracts and builds
+   pass source checks, but authenticated cross-role journeys, print layout and
+   mobile behavior have not been exercised against an authorized running fixture.
+5. **Policy deliberately not invented:** partially refunded subscription access
+   restoration, release of failed/abandoned aggregate reservations, and incoming
+   recovery assessment require reviewed policy; holds are conservative.
+6. **Original numbered contract:** the earlier 65-point document is unavailable.
+   This report maps the explicit consolidated task only and does not certify
+   an invented numbered acceptance percentage.
 
-| Local IDs | Explicit requirement and status |
-|---|---|
-| C01–C03 | Current verified source, legacy exclusion, fresh Owner authority: tested |
-| C04–C07, C26 | Request identity, conflict and concurrent cumulative limits: tested |
-| C08–C13 | Approval, permanent dispatch claim, uncertain/pending outcomes: tested |
-| C14–C21 | Independent binding, replay, reversal and delayed signals: tested |
-| C22–C25 | Original-evidence hold, unresolved review, immutable history: tested |
-| C27–C31 | Before-accrual/pending/approved/paid adverse handling and failure: tested |
-| C32–C36 | Individual ₦150 approval, term-end/source/active-BRO checks: tested |
-| C37–C42 | Verified/frozen bank, pending initiation, uniqueness and binding: tested |
-| C43–C49 | Failure/pending/reversal, duplicate reference, recovery: tested |
-| C50 | Historical ₦5,000/₦100 and separate ₦2,000 staff preservation: tested |
-| C51–C59 | Role/school/term/eligibility/immutable-selection controls: tested for REVIEW-ONLY planning, not operational batch checkout |
-| C60 | Single aggregate provider collection: omitted; source-contract blocker below |
-| C61 | Exactly-once child allocation and individual payment receipts: omitted |
-| C62 | Durable retry of unresolved allocations, no second charge: omitted |
-| C63 | Bulk-source individual pending BRO accrual: omitted |
-| C64 | Student-specific batch refunds preserving unaffected students: omitted |
-| C65 | Consolidated receipt and operational batch reconciliation: omitted |
-
-No original 65-case completion percentage is claimed. No browser, shared-runtime,
-real provider or real bank acceptance was performed.
-
-## Exact blockers and minimal remaining build
-
-1. The retained BRO root requires a paid direct attempt. Direct attempts require
-   unique provider transaction IDs, and their terminal evidence is immutable.
-   Copying an aggregate transaction across children, synthesizing child provider
-   IDs or bypassing the strict old guards would violate existing protections.
-   A separately compatible aggregate-allocation source contract, its pinned
-   readiness/eligibility guards and every affected accrual/accounting reader must
-   be implemented and tested before batch collection.
-2. Add durable batch/obligation claims shared by individual and aggregate
-   initiation, a frozen aggregate reference, one approved provider checkout and
-   independent aggregate verification. Persist aggregate success before recoverable
-   exactly-once child posting, then child receipts, individual BRO source evidence,
-   consolidated receipts and student-specific refund reconciliation.
-3. No approved, independently verifiable current refund/reversal or payout/
-   recovery transport contract was established under the no-external-request
-   restriction. The injected ports are deliberate capability gates, not simulated
-   LIVE implementations. Connect reviewed provider/bank evidence adapters and
-   actual authenticated handlers; do not convert request-body claims into proof.
-4. Complete the current subledger/receipt UI, existing-reader integration and
-   permission-bound receipt access. Current candidates are not exposed as new
-   routes; no frontend build or authenticated browser acceptance is claimed.
-5. Complete ORM/schema-delivery integration for the candidate tables before any
-   future shared application. 0181 is not registered as an automatic startup,
-   migration-runner or Publish action. The previously documented procedural
-   delivery/retention blocker is unchanged; application serialization is not an
-   all-writer SQL/ACL guarantee.
-6. Obtain the original numbered acceptance contract for exact traceability;
-   unresolved hold-restoration/access and recovery-amount policy must not be
-   silently invented. No follow-up question or default policy was imposed here.
-
-## Exact file manifest
-
-Modified:
-
-- `artifacts/api-server/src/services/bro-commission-policy.ts`
-- `artifacts/api-server/src/services/partner-payout-update.ts`
-- `.agents/memory/subscription-business-policy.md` — approved product boundaries only.
-
-Added under `artifacts/api-server/src/services/`:
-
-- `current-financial-contract.ts`
-- `current-financial-store.ts`
-- `current-student-refunds.ts`
-- `current-bro-lifecycle.ts`
-- `current-bro-bank.ts`
-- `current-financial-read-model.ts`
-- `current-bulk-subscription-plan.ts`
-- `current-financial-fixture.test-support.ts`
-- `current-financial-lifecycle.postgres.test.ts`
-- `current-reference-legacy-guard.test.ts`
-
-Other additions:
-
-- `lib/db/drizzle/0181_current_subscription_lifecycle.sql`
-- `docs/current-payment-completion-checklist.md`
-- `docs/current-payment-completion-report.md`
-
-## Activation hold
-
-0181 was applied **only to disposable fictional fixtures**, never shared
-Development or Production. No shared data/schema, secrets, settings, environment,
-provider configuration, storage, identity or deployment change was made. No real
-HTTP/network operation, payment, refund, transfer, bank verification, message or
-notification was performed. No shared process was restarted, no Safe Restart Mode
-was activated, no preview was activated and nothing was published/deployed.
-
-The implementation is inactive and incomplete as an end-to-end feature. This
-report does not request or imply activation. Separate approval remains required
-for any shared migration, restart, preview, Safe Restart, publication or deployment.
+Source integration is ready for review within the approved inactive boundary.
+This report does not request or imply shared migrations, runtime activation,
+message sending, financial operation, preview activation, publication or deployment.
