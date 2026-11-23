@@ -762,8 +762,9 @@ export const studentClassAssignments = pgTable(
         table.section,
       )
       .where(sql`${table.status} = 'ACTIVE'`),
-    // Support-directed Round 1 staging: reuse the legacy Development index as a
-    // newly named constraint; do not remove the legacy index from Production.
+    // Production foreign keys depend on this exact standalone index. Equivalent
+    // UNIQUE constraints do not retarget those dependencies during Publish.
+    uniqueIndex("student_class_assignments_id_school_unique").on(table.id, table.schoolId),
     unique("student_class_assignments_id_school_publish_key").on(table.id, table.schoolId),
     unique("student_class_assignments_id_school_tenant_key").on(table.id, table.schoolId),
     foreignKey({

@@ -924,3 +924,17 @@ mtime_ms = 1795447200483
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/49e676e6-7f99-4e6a-a9e0-1ae449b12f86/49ea9c29-4cab-4cd2-ac70-6a69f8d3ccf9"
 storage_version_token = "1795447214222540"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "1XOhzzW_iEcgFJHHls-pO"
+uri = "file://docs/publish-class-assignment-index-fix.md"
+type = "text"
+title = "Publish validation index fix"
+description = "Verified dependency mismatch, additive Development correction, fresh Publish diff results and remaining release limits."
+logical_id = "8fc7da27-20e4-4883-92b9-213a7b28470a"
+content_hash = "sha256:1501697146dbb1c9b3960b294e5e6bf1d9cddb64c4f2496b2ceecdf4a6e669a9"
+size = 2981
+mtime_ms = 1795448299643
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/8fc7da27-20e4-4883-92b9-213a7b28470a/b02166fa-a5cf-4831-9294-db26c8536232"
+storage_version_token = "1795448322394390"
+content_type = "text/markdown"
