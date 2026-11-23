@@ -210,6 +210,56 @@ it("campaign preview requires contact permission and Owner confirmation; it send
  await expect(dispatchFieldSms(f.pool,1,p.id,p.digest,false,{transportAllowed:async()=>true})).rejects.toThrow("CONFIRMATION_REQUIRED");
  await expect(recordFieldPermission(f.pool,6,1,true,"Unauthorized change")).rejects.toThrow("FINANCIAL_ACTOR_NOT_AUTHORIZED");
 });
+it("freezes exact single/multiple selections without granting permission or sending",async()=>{
+ await leads();
+ const single=await previewFieldSms(f.pool,1,{message:"One fictional school reminder",key:key("single"),all:false,leadIds:[1]});
+ expect(single.recipients.map(r=>r.leadId)).toEqual([1]);
+ const multiple=await previewFieldSms(f.pool,1,{message:"Two fictional school reminders",key:key("multiple"),all:false,leadIds:[1,2]});
+ expect(multiple.recipients.map(r=>r.leadId)).toEqual([1,2]);
+ expect(multiple.message).toBe("Two fictional school reminders");
+ expect(multiple.createdBy).toBe(1);
+ expect((await f.pool.query("SELECT count(*) FROM bro_field_sms_permissions")).rows[0].count).toBe("2");
+ expect((await f.pool.query("SELECT count(*) FROM bro_field_sms_events")).rows[0].count).toBe("0");
+});
+it("identifies missing consent, invalid phones, unvisited, declined and independently onboarded schools",async()=>{
+ await leads();
+ await f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status) VALUES
+  ('No permission','Distinct address three','08033333333','2026-11-01','Visited'),
+  ('No phone','Distinct address four',NULL,'2026-11-01','Visited'),
+  ('Not yet visited','Distinct address five','08035555555',NULL,'Interested'),
+  ('Declined','Distinct address six','08036666666','2026-11-01','Not Interested'),
+  ('Fictional enrolled school','Distinct address seven','08037777777','2026-11-01','Visited')`);
+ const state=await readFieldSms(f.pool,1,{transportAllowed:async()=>true,provider:{
+  provider:"fixture",channel:"sms",send:vi.fn(()=>{throw Error("Preview must not send");}),
+ }});
+ const reasons=new Map(state.leads.map(l=>[l.schoolName,l.reason]));
+ expect(reasons.get("No permission")).toBe("CONTACT_PERMISSION_REQUIRED");
+ expect(reasons.get("No phone")).toBe("VALID_PHONE_REQUIRED");
+ expect(reasons.get("Not yet visited")).toBe("VISIT_REQUIRED");
+ expect(reasons.get("Declined")).toBe("CONTACT_DECLINED");
+ expect(reasons.get("Fictional enrolled school")).toBe("SCHOOL_ALREADY_REGISTERED");
+ await expect(previewFieldSms(f.pool,1,{message:"Fictional reminder",key:key("unpermitted"),
+  all:false,leadIds:[1,3]})).rejects.toThrow("SELECTED_CONTACT_NO_LONGER_ELIGIBLE");
+ const all=await previewFieldSms(f.pool,1,{message:"Fictional reminder",key:key("eligible_only"),all:true});
+ expect(all.recipients.map(r=>r.leadId)).toEqual([1,2]);
+});
+it("retains exact sender, school, phone, message and provider acceptance without inventing delivery",async()=>{
+ await leads();
+ const preview=await previewFieldSms(f.pool,1,{message:"Exact fictional reminder",key:key("audit"),all:false,leadIds:[1]});
+ const provider={provider:"fixture",channel:"sms" as const,send:vi.fn(async()=>({
+  provider:"fixture",channel:"sms" as const,status:"ACCEPTED" as const,accepted:true,delivered:false,providerMessageId:"fixture-message-1",
+ }))};
+ const result=await dispatchFieldSms(f.pool,1,preview.id,preview.digest,true,{transportAllowed:async()=>true,provider});
+ expect(provider.send).toHaveBeenCalledWith(expect.objectContaining({to:preview.recipients[0].phone,body:preview.message,event:"BRO_FIELD_FOLLOWUP"}));
+ expect(result.createdBy).toBe(1);
+ expect(result.recipients[0]).toMatchObject({leadId:1,schoolName:preview.recipients[0].schoolName,
+  phone:preview.recipients[0].phone,state:"ACCEPTED",providerReference:"fixture-message-1"});
+ const events=(await f.pool.query(`SELECT actor_user_id,state,details,created_at FROM bro_field_sms_events
+  WHERE recipient_id=$1 ORDER BY id`,[result.recipients[0].id])).rows;
+ expect(events.map(e=>e.state)).toEqual(["PROCESSING","ACCEPTED"]);
+ expect(events.every(e=>Number(e.actor_user_id)===1&&!!e.created_at)).toBe(true);
+ expect(events[1].details).toMatchObject({delivered:false,providerReference:"fixture-message-1",retryable:false});
+});
 it("send-time onboarding and opt-out changes exclude recipients before any transport call",async()=>{
  await leads();const p=await previewFieldSms(f.pool,1,{message:"Fictional follow-up",key:key("sms"),all:true});
  await f.pool.query("UPDATE bro_field_leads SET school_id=1 WHERE id=1");

@@ -9,8 +9,12 @@ import type {CurrentPool} from "../services/current-financial-contract";
 import {currentFinanceError} from "./current-finance";
 export function createFieldSmsRouter(pool:CurrentPool=appPool,deps:FieldSmsDependencies={}){
  const router=Router();
- router.use("/bro-field/sms",requireAuthentication(),(req,res,next)=>{
-  res.setHeader("Cache-Control","no-store");
+ router.use("/bro-field/sms",(_req,res,next)=>{
+  // Include authentication failures: an expired session response must not be
+  // cached and reused after Clerk has established a replacement session.
+  res.setHeader("Cache-Control","private, no-store");
+  next();
+ },requireAuthentication(),(req,res,next)=>{
   try{res.locals.fieldSmsActorId=assertRoles(req,["PLATFORM_OWNER"]).user.id;next();}
   catch(e){currentFinanceError(res,e);}
  });

@@ -1,5 +1,13 @@
 # Connected payments and Field Operations SMS — Development source evidence
 
+## Latest focused Field Operations correction — 23 November 2026
+
+See [the school-reminder completion report](field-operations-sms-fix-completion-report.md)
+for direct visited-school selection, cookie-session request corrections,
+no-network verification and the still-unapplied SMS storage/history dependencies.
+That follow-up did not enable delivery, send messages, change payment behavior
+or certify Production activation.
+
 ## Result and execution boundary
 
 The former disconnected service candidates now have source-level provider

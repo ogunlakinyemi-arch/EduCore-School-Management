@@ -104,6 +104,10 @@ router.use("/communication/telegram",telegramRouter);
 router.use(employeeNfcRouter);
 router.use(nfcPrintableRouter);
 router.use(accountApplicationsRouter);
+// Field outreach owns its cookie-session/Owner boundary. Handle its exact
+// namespace before generic routers whose unscoped authentication middleware
+// otherwise runs even for unrelated school-operation paths.
+router.use(fieldSmsRouter);
 router.use(authRouter);
 router.use(ownerCommissionPrivacy);
 router.use(broOwnEntitlementsRouter);
@@ -125,7 +129,6 @@ router.use(ownerSubscriptionRulesRouter);
 router.use(studentPlatformAccessRouter);
 router.use(nfcFeeCollectionOversightRouter);
 router.use(currentFinanceRouter);
-router.use(fieldSmsRouter);
 router.use(directStudentPaymentsRouter);
 router.use(partnersRouter);
 router.use(broFieldRouter);

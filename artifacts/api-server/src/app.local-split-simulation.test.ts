@@ -1,7 +1,6 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { PassThrough } from "node:stream";
 import { Socket } from "node:net";
-import { createHmac } from "node:crypto";
 import type { Express } from "express";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -46,26 +45,23 @@ vi.mock("./middlewares/auth", async original => {
 });
 vi.mock("./lib/fee-providers/factory", () => ({
   configuredTestAdapter: (...args: unknown[]) => { f.factory(...args); return { handleWebhook: f.webhook }; },
-  configuredStudentNfcTestAdapter: (...args: unknown[]) => { f.factory(...args); return { provider: "flutterwave", handleWebhook: f.webhook }; },
+  configuredStudentNfcTestAdapter: (...args: unknown[]) => { f.factory(...args); return { provider: "flutterwave", authenticateWebhook: f.webhook }; },
   configuredFlutterwaveTestAdapter: f.provider,
 }));
 vi.mock("./services/flutterwave-split-provider", async original => ({
   ...await original<typeof import("./services/flutterwave-split-provider")>(), splitProvider: f.provider,
 }));
-// Staff raw-webhook routing and signature gate remain REAL; only adapter/config
-// dependencies are isolated. No valid signature reaches accounting/dispatch.
+// Staff raw-webhook routing and V3 adapter authentication remain REAL; only
+// configuration is synthetic. No valid control reaches accounting/dispatch.
 vi.mock("./routes/staff-nfc-billing-service", async original => {
   const actual = await original<typeof import("./routes/staff-nfc-billing-service")>();
   return { ...actual,
     makeStaffNfcProviderAdapter: f.factory,
-    staffNfcWebhookSigningSecret: () => "offline-synthetic-signing-secret",
-    verifyFlutterwaveStaffWebhookSignature: (...args: Parameters<typeof actual.verifyFlutterwaveStaffWebhookSignature>) => {
-      f.signature(...args); return actual.verifyFlutterwaveStaffWebhookSignature(...args);
-    },
   };
 });
 
-import { PaymentProviderError } from "./lib/fee-providers";
+import { FlutterwaveTestAdapter, PaymentProviderError } from "./lib/fee-providers";
+const staffHash = "offline-synthetic-v3-verification-hash";
 let app: Express;
 let socketConnect: ReturnType<typeof vi.spyOn>;
 beforeAll(async () => {
@@ -75,13 +71,18 @@ beforeAll(async () => {
   }) as any);
   app = (await import("./app")).default;
   for (const spy of [f.database, f.provider, f.identity, f.network]) expect(spy).not.toHaveBeenCalled();
-});
+}, 30_000);
 beforeEach(() => {
   vi.stubEnv("NODE_ENV", "development"); vi.stubEnv("REPLIT_DEPLOYMENT", "");
   vi.stubGlobal("fetch", vi.fn(() => { f.network(); throw new Error("All fetch access forbidden"); }));
   for (const spy of Object.values(f)) spy.mockClear();
-  f.factory.mockReturnValue({});
-  f.webhook.mockImplementation(async () => { throw new PaymentProviderError("Offline invalid signature control"); });
+  const staffAdapter = new FlutterwaveTestAdapter({
+    secretKey: "FLWSECK_TEST-offline-staff-key", webhookSecret: staffHash,
+  }, { fetch: f.provider as typeof fetch });
+  f.factory.mockReturnValue({ authenticateWebhook: (headers: Parameters<typeof staffAdapter.authenticateWebhook>[0]) => {
+    f.signature(headers); staffAdapter.authenticateWebhook(headers);
+  } });
+  f.webhook.mockImplementation(() => { throw new PaymentProviderError("Offline invalid signature control"); });
 });
 afterEach(() => {
   // These assertions apply to EVERY request, including ordinary controls.
@@ -193,28 +194,45 @@ describe("Actual raw payment-webhook mounts: no webhook is sent or dispatched", 
     const r = await inject(path, { body, role: "" });
     expect(r.status).toBe(401);
     expect(f.clerk).not.toHaveBeenCalled();
-    const raw = path.includes("staff-nfc") ? f.signature.mock.calls[0]?.[0] : f.webhook.mock.calls[0]?.[0]?.rawBody;
-    expect(Buffer.isBuffer(raw)).toBe(true); expect(raw.equals(Buffer.from(body))).toBe(true);
+    if (path.includes("staff-nfc")) {
+      expect(f.signature.mock.calls[0]?.[0]).toMatchObject({ "content-type": "application/json" });
+    } else if (path.includes("student-subscription")) {
+      expect(f.webhook.mock.calls[0]?.[0]).toMatchObject({ "content-type": "application/json" });
+    } else {
+      const raw = f.webhook.mock.calls[0]?.[0]?.rawBody;
+      expect(Buffer.isBuffer(raw)).toBe(true); expect(raw.equals(Buffer.from(body))).toBe(true);
+    }
   });
   it.each(webhookPaths)("preserves the raw 64KiB limit at %s", async path => {
     expect((await inject(path, { body: JSON.stringify({ padding: "x".repeat(65536) }) })).status).toBe(413);
     expect(f.factory).not.toHaveBeenCalled(); expect(f.webhook).not.toHaveBeenCalled();
   });
-  it("keeps a genuine synthetic-HMAC ordinary control valid without dispatch/accounting", async () => {
+  it("accepts the configured synthetic V3 hash without dispatch/accounting", async () => {
     const body = '{"event":"ordinary.control","data":{}}';
-    const signature = createHmac("sha256", "offline-synthetic-signing-secret").update(body).digest("base64");
-    expect((await inject(webhookPaths[1], { body, role: "", headers: { "flutterwave-signature": signature } })).status).toBe(202);
+    expect((await inject(webhookPaths[1], { body, role: "", headers: { "verif-hash": staffHash } })).status).toBe(202);
     expect(f.signature).toHaveBeenCalledOnce();
   });
-  it("rejects tampered bytes using the real HMAC verifier", async () => {
-    const body = '{"event":"ordinary.control","data":{}}';
-    const signature = createHmac("sha256", "offline-synthetic-signing-secret").update(body).digest("base64");
-    expect((await inject(webhookPaths[1], { body: `${body} `, role: "", headers: { "flutterwave-signature": signature } })).status).toBe(401);
+  it.each([
+    {},
+    { "verif-hash": `${staffHash}-wrong` },
+    { "flutterwave-signature": staffHash },
+    { "verif-hash": "" },
+  ])("rejects missing, wrong or unsupported V3 authentication before JSON parsing: %s", async headers => {
+    expect((await inject(webhookPaths[1], { body: "{", role: "", headers: headers as Record<string, string> })).status).toBe(401);
   });
-  it("rejects a simulation marker even with a matching synthetic signature", async () => {
+  it("fails closed when the V3 authenticator or configured webhook hash is unavailable", async () => {
+    f.factory.mockReturnValue({});
+    expect((await inject(webhookPaths[1], { body: "{", role: "" })).status).toBe(503);
+    const unconfigured = new FlutterwaveTestAdapter({ secretKey: "FLWSECK_TEST-offline-staff-key" });
+    f.factory.mockReturnValue(unconfigured);
+    expect((await inject(webhookPaths[1], { body: "{", role: "", headers: { "verif-hash": staffHash } })).status).toBe(401);
+  });
+  it("rejects malformed V3-authenticated JSON before dispatch/accounting", async () => {
+    expect((await inject(webhookPaths[1], { body: "{", role: "", headers: { "verif-hash": staffHash } })).status).toBe(400);
+  });
+  it("rejects a simulation marker even with a matching synthetic V3 hash", async () => {
     const body = '{"event":"ordinary.control","mode":"LOCAL_SPLIT_SIMULATION"}';
-    const signature = createHmac("sha256", "offline-synthetic-signing-secret").update(body).digest("base64");
-    expect((await inject(webhookPaths[1], { body, role: "", headers: { "flutterwave-signature": signature } })).status).toBe(400);
+    expect((await inject(webhookPaths[1], { body, role: "", headers: { "verif-hash": staffHash } })).status).toBe(400);
     expect(f.signature).not.toHaveBeenCalled(); expect(f.factory).not.toHaveBeenCalled();
   });
 });

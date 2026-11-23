@@ -1,9 +1,7 @@
 import {readStaffCollection} from "../services/staff-free-rollout";
 import {
   createHash,
-  createHmac,
   randomUUID,
-  timingSafeEqual,
 } from "node:crypto";
 import {
   type PaymentProviderAdapter,
@@ -135,19 +133,6 @@ export function staffNfcPaymentActivatesSubscription(
     && /^[0-9]+$/.test(verified.providerTransactionId)
     && BigInt(verified.providerTransactionId) > 0n
     && BigInt(verified.providerTransactionId) <= BigInt(Number.MAX_SAFE_INTEGER);
-}
-
-/** Flutterwave's documented v3 signature is HMAC-SHA256/base64 of raw bytes. */
-export function verifyFlutterwaveStaffWebhookSignature(
-  rawBody: Uint8Array,
-  signature: string | undefined,
-  secret: string | undefined,
-): boolean {
-  if (!signature || !secret || secret.length < 16 || signature.length > 1024) return false;
-  const expected = createHmac("sha256", secret).update(rawBody).digest("base64");
-  const actualBytes = Buffer.from(signature);
-  const expectedBytes = Buffer.from(expected);
-  return actualBytes.length === expectedBytes.length && timingSafeEqual(actualBytes, expectedBytes);
 }
 
 export function staffNfcWebhookDigest(rawBody: Uint8Array) {
@@ -455,10 +440,6 @@ export function makeStaffNfcProviderAdapter() {
   } catch {
     return null;
   }
-}
-
-export function staffNfcWebhookSigningSecret() {
-  return process.env.FLUTTERWAVE_WEBHOOK_SECRET ?? null;
 }
 
 export function createStaffNfcPaymentReference() {

@@ -4,7 +4,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import { describe, it, expect, vi } from 'vitest';
 const f = vi.hoisted(() => ({ result: {} as Record<string, unknown>, mutateAsync:vi.fn(),queries:[] as any[] }));
-vi.mock('@clerk/react', () => ({ useUser: () => ({ user: { id: 'user-a' } }) }));
+vi.mock('@clerk/react', () => ({ useUser: () => ({ user: { id: 'user-a' } }), useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: 'user-a', sessionId: 'sess-a' }) }));
 vi.mock('@tanstack/react-query', async o => ({ ...await o<typeof import('@tanstack/react-query')>(), useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock('@workspace/api-client-react', async o => ({
   ...await o<typeof import('@workspace/api-client-react')>(),

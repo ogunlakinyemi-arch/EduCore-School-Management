@@ -20,6 +20,17 @@ follow-up as emergency/absence or remove global SMS safeguards. Preserve existin
 permissions, opt-outs, sender configuration and worker suppressions. Building the
 feature does not authorize test messages, real dispatch or worker activation.
 
+Reminder selection belongs directly in the visited-schools list: a single-school
+action selects exactly that school, and multi-selection/select-all uses eligible
+visible rows. Selection never grants contact permission; missing permission must
+remain explicit and use the reason-bearing verified-permission process.
+
+**Why:** The Owner explicitly requested single/multiple school reminders from
+Field Operations rather than a separate, hard-to-find campaign selector.
+
+**How to apply:** Keep the exact-message preview and explicit send confirmation,
+exclude onboarded/opted-out/invalid contacts, and never enable automatic outreach.
+
 ## Existing parent/school notification restriction
 
 Outside that explicit Field Operations exception, SMS is approved only for

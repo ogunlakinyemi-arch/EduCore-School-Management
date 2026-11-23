@@ -37,12 +37,10 @@ import {
   STAFF_NFC_PRODUCT,
   staffNfcPaymentActivatesSubscription,
   staffNfcWebhookDigest,
-  staffNfcWebhookSigningSecret,
   StaffNfcDomainError,
   type StaffNfcAllocationSnapshot,
   type StaffNfcEligibility,
   type StaffNfcSqlExecutor,
-  verifyFlutterwaveStaffWebhookSignature,
 } from "./staff-nfc-billing-service";
 
 const router: IRouter = Router();
@@ -2323,15 +2321,16 @@ staffFlutterwaveWebhookRouter.post("/", async (req: Request, res: Response): Pro
     return;
   }
   const adapter = makeStaffNfcProviderAdapter();
-  const signingSecret = staffNfcWebhookSigningSecret();
-  if (!adapter || !signingSecret) {
+  if (!adapter?.authenticateWebhook) {
     res.status(503).json({ error: "Flutterwave webhook verification credentials are unavailable" });
     return;
   }
-  const signature = typeof req.headers["flutterwave-signature"] === "string"
-    ? req.headers["flutterwave-signature"]
-    : undefined;
-  if (!verifyFlutterwaveStaffWebhookSignature(rawBody, signature, signingSecret)) {
+  try {
+    // This route uses the existing V3 adapter and its mode-bound verif-hash.
+    // Authenticate before parsing or persistence; payloads still cannot grant
+    // value without the independent transaction read-back below.
+    adapter.authenticateWebhook(req.headers);
+  } catch {
     res.status(401).json({ error: "Flutterwave webhook signature is invalid" });
     return;
   }

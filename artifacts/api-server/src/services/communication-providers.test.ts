@@ -5,6 +5,7 @@ import {
   createEmailProvider,
   createSmsProvider,
 } from "./communication-providers";
+import {disabledDeliveryControls,withOwnerNotificationScope} from "./owner-notification-controls";
 
 function fakeFetch(
   response: Response | (() => Promise<Response>),
@@ -70,12 +71,21 @@ describe("communication provider adapters", () => {
     })).toThrow(CommunicationProviderConfigurationError);
   });
 
-  it("fails closed in production when Termii has no approved sender ID", () => {
-    expect(() => createSmsProvider({
-      NODE_ENV: "production",
-      COMMUNICATION_SMS_PROVIDER: "termii",
-      TERMII_API_KEY: "test-termii-secret",
-    })).toThrow(CommunicationProviderConfigurationError);
+  it("fails closed in production when permitted Termii transport has no approved sender ID", async () => {
+    // Without a synthetic Owner scope, Production correctly returns the
+    // suppressed adapter before inspecting credentials. Exercise configuration,
+    // not that earlier consent gate; never change shared controls.
+    vi.stubEnv("NODE_ENV","production");
+    try {
+      await withOwnerNotificationScope({...disabledDeliveryControls(),paused:false,smsEnabled:true,
+        activatedAt:"2026-11-23T12:00:00Z"},async()=>{
+        expect(() => createSmsProvider({
+          NODE_ENV: "production",
+          COMMUNICATION_SMS_PROVIDER: "termii",
+          TERMII_API_KEY: "test-termii-secret",
+        })).toThrow(CommunicationProviderConfigurationError);
+      });
+    } finally { vi.unstubAllEnvs(); }
   });
 
   it("fails closed when the selected email gateway is missing credentials", () => {

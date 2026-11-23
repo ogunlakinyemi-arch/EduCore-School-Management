@@ -18,6 +18,8 @@ import {
 } from '@workspace/api-client-react';
 import { MapPin, RefreshCw, Plus } from 'lucide-react';
 import { FieldSmsCampaigns } from '@/components/field-sms-campaigns';
+import { FieldLeadReminderRow, FieldReminderToolbar } from '@/components/field-lead-reminders';
+import { useFieldSmsController, type FieldSmsController } from '@/hooks/use-field-sms-controller';
 import { Button, Field, StatusPill, SkeletonPage, ErrorState, EmptyState, date } from '@/components/shared';
 
 export const FIELD_STATUSES = ['Visited', 'Interested', 'Demo Scheduled', 'Negotiation', 'Adopted', 'Not Interested', 'Follow-up'] as const;
@@ -65,6 +67,16 @@ function Unavailable() {
 }
 
 export default function FieldOperationsPage() {
+  const options = useGetBroFieldOptions();
+  if (options.data?.isOwner) return <OwnerFieldOperations />;
+  return <FieldOperationsContent sms={null} />;
+}
+
+function OwnerFieldOperations() {
+  return <FieldOperationsContent sms={useFieldSmsController()} />;
+}
+
+function FieldOperationsContent({ sms }: { sms: FieldSmsController | null }) {
   const qc = useQueryClient();
   const [filters, setFilters] = useState<{ q: string; status: string; ownerId: string; followUp: string }>({ q: '', status: '', ownerId: '', followUp: '' });
   const [selected, setSelected] = useState<number | null>(null);
@@ -103,7 +115,7 @@ export default function FieldOperationsPage() {
         </div>
       </div>
 
-      {isOwner && <FieldSmsCampaigns />}
+      {isOwner && sms && <FieldSmsCampaigns controller={sms} />}
 
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <Field label="Search"><input value={filters.q} onChange={e => setFilters(f => ({ ...f, q: e.target.value }))} placeholder="School, address, contact" /></Field>
@@ -128,11 +140,14 @@ export default function FieldOperationsPage() {
           {leads.isLoading ? <div className="space-y-3 p-5">{[0, 1, 2].map(i => <div key={i} className="skeleton h-14 rounded-xl" />)}</div>
             : leads.isError ? <ErrorState message={errorText(leads.error, 'Leads could not be loaded.')} retry={() => { void leads.refetch(); }} />
               : list.length === 0 ? <EmptyState icon={MapPin} title="No leads" description={isOwner ? 'No field leads match these filters.' : 'Log your first school visit.'} />
-                : <ul className="divide-y divide-[hsl(var(--border))]">{list.map(l => (
-                  <li key={l.id}><button type="button" onClick={() => { setSelected(l.id); setCreating(false); }} className={`w-full p-4 text-left hover:bg-[hsl(var(--muted)/.3)] ${selected === l.id ? 'bg-[hsl(var(--muted)/.4)]' : ''}`} data-testid={`field-lead-${l.id}`}>
+                : <>{isOwner && sms && <FieldReminderToolbar sms={sms} visibleIds={list.map(l => l.id)} />}
+                <ul className="divide-y divide-[hsl(var(--border))]">{list.map(l => {
+                  const detailButton = <button type="button" onClick={() => { setSelected(l.id); setCreating(false); }} className={`w-full p-4 text-left hover:bg-[hsl(var(--muted)/.3)] ${selected === l.id ? 'bg-[hsl(var(--muted)/.4)]' : ''}`} data-testid={`field-lead-${l.id}`}>
                     <div className="flex items-center justify-between gap-3"><span className="font-bold">{l.schoolName}</span><StatusPill value={l.status} /></div>
                     <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Visited {l.visitDate} · Next follow-up {l.nextFollowUpDate || '—'} · Owner {l.currentOwnerId == null ? 'Released' : `#${l.currentOwnerId}`}</div>
-                  </button></li>))}</ul>}
+                  </button>;
+                  return <li key={l.id}>{isOwner && sms ? <FieldLeadReminderRow sms={sms} leadId={l.id} schoolName={l.schoolName}>{detailButton}</FieldLeadReminderRow> : detailButton}</li>;
+                })}</ul></>}
         </div>
         <div>
           {creating && !isOwner ? <LeadForm key="new" opts={opts} onDone={(id) => { setCreating(false); setSelected(id); void refreshAll(); }} onCancel={() => setCreating(false)} />

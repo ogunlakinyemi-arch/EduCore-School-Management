@@ -16,6 +16,17 @@ changing real delivery authorization.
 no-network tests and restore them afterward. Retain synthetic positive-configuration
 cases behind the launch hold; never inspect real key values to repair a fixture.
 
+Production provider-configuration fixtures must align their ambient process
+environment with their supplied configuration and synthetic Owner delivery scope.
+
+**Why:** A fixture labelled Production still ran in the default test environment;
+its permitted scope was invisible and the adapter was safely suppressed before
+credential validation. Adding the scope alone did not reach the intended branch.
+
+**How to apply:** Temporarily stub only the child test's environment, restore it,
+and inject fake transports. Never relax a real consent or pause gate to make a
+configuration-error assertion pass.
+
 Notification-channel integration is Development-only except the explicitly approved opt-in Production Telegram path; see [Telegram Production policy](telegram-production-policy.md). Configured provider credentials do not by themselves authorize real sends, real emergency broadcasts, or contact with real parents. Use isolated fixtures and no-network adapters until the user explicitly approves a controlled provider test.
 
 **Why:** The notification specification expressly forbids publishing, Production changes and unauthorized messages. A pre-existing SMS credential is not permission to send. Simulated acceptance, native receipt fixtures and browser mocks cannot establish physical delivery.

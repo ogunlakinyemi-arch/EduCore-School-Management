@@ -35,6 +35,18 @@ the shared header comparison, despite calling the section signature verification
 use constant-time comparison, and retain mandatory independent verification of
 transaction status, amount, currency and reference.
 
+The older versioned webhook-guide URLs returned 404 on 2026-11-23; the
+canonical `/docs/webhooks` page still explicitly documented the V3 `verif-hash`
+contract. Do not treat stale search snippets or a moved URL as a protocol change.
+
+**Why:** An independently maintained staff webhook had diverged from its existing
+V3 provider adapter by assuming HMAC and a different secret selector.
+
+**How to apply:** Reuse the selected versioned adapter's authentication contract,
+not a second verifier. A synchronous authentication gate must have synchronous
+throwing fixture behavior; an async rejecting mock is not equivalent and can
+allow processing to continue before its rejection.
+
 V3 refund notifications can use a standalone body without the usual event/data
 envelope. A documented refund `completed` status means initiated/pending
 disbursement, not completed customer payment.

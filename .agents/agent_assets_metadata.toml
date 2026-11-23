@@ -938,3 +938,31 @@ mtime_ms = 1795448299643
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/8fc7da27-20e4-4883-92b9-213a7b28470a/b02166fa-a5cf-4831-9294-db26c8536232"
 storage_version_token = "1795448322394390"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "hRve2JHqffBDi6Ib8oIPM"
+uri = "file://docs/field-operations-sms-fix-completion-report.md"
+type = "text"
+title = "Field Operations SMS fix — completion report"
+description = "Session failure evidence, school-list reminder controls, 144 focused checks, partial desktop browser observations and remaining SMS storage/runtime blockers."
+logical_id = "d357b3bb-0c7b-44a7-9399-41a2351d8357"
+content_hash = "sha256:6bf37e7f0499b2b2a98aa280499a37d250c21cc11a571223ab2bf7b957b8afe7"
+size = 9386
+mtime_ms = 1795451741151
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/d357b3bb-0c7b-44a7-9399-41a2351d8357/c0a3be41-f778-4030-84d5-5c89736346d9"
+storage_version_token = "1795451810628108"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "58x5LIdQdkPRSuWf3dPv5"
+uri = "file://docs/production-activation-report.md"
+type = "text"
+title = "Yetenia EduCore — consolidated Production activation report"
+description = "Capability-by-capability evidence, the staff V3 authentication repair, current Production schema/configuration findings, notification recovery blockers and an ordered approval-gated go-live checklist."
+logical_id = "325f084d-b18d-4626-b88c-91d021122da9"
+content_hash = "sha256:af326d01539a10b101ad6a10ecf2ee260159dc86e75ae61316286fa18e000823"
+size = 25414
+mtime_ms = 1795453093343
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/325f084d-b18d-4626-b88c-91d021122da9/1f87ed5d-f14c-46b0-82af-6df189f2badc"
+storage_version_token = "1795453165417411"
+content_type = "text/markdown"

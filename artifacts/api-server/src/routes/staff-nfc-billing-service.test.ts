@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 import { describe, expect, it,vi } from "vitest";
 // Immutable-billing regressions concern an explicitly chargeable future term.
 // The free-period and actual January calendar are tested independently.
@@ -12,7 +11,6 @@ import {
   normalizeVerifiedProviderPayment,
   staffNfcPaymentActivatesSubscription,
   type StaffNfcSqlExecutor,
-  verifyFlutterwaveStaffWebhookSignature,
 } from "./staff-nfc-billing-service";
 import { STAFF_DIRECT_RULE } from "../services/staff-subscription-access";
 
@@ -172,16 +170,6 @@ describe("staff NFC immutable allocation and provider policies", () => {
       providerFeeMinor: null,
       providerSettlementAmountMinor: null,
     });
-  });
-
-  it("uses raw-body Flutterwave HMAC-SHA256/base64 signatures", () => {
-    const raw = Buffer.from('{"event":"charge.completed","data":{"id":123}}');
-    const secret = "at-least-sixteen-characters-long";
-    const signature = createHmac("sha256", secret).update(raw).digest("base64");
-    expect(verifyFlutterwaveStaffWebhookSignature(raw, signature, secret)).toBe(true);
-    expect(verifyFlutterwaveStaffWebhookSignature(Buffer.from(`${raw.toString()} `), signature, secret)).toBe(false);
-    expect(verifyFlutterwaveStaffWebhookSignature(raw, signature, "wrong-secret-which-is-long-enough")).toBe(false);
-    expect(verifyFlutterwaveStaffWebhookSignature(raw, undefined, secret)).toBe(false);
   });
 
   it.each([
