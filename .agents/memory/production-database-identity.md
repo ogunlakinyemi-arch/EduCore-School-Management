@@ -13,9 +13,20 @@ Accept this as Owner-confirmed resource matching and do not ask them to repeat i
 operator identifiers with a lack of Owner confirmation.
 
 **How to apply:** Distinguish that accepted confirmation from independently
-retrieved resource and completed restore-point identifiers/timestamps. Do not
-fabricate those identifiers or select an entry labelled Scheduled as a completed
-backup. Unavailable exact recovery metadata is a separate execution gate.
+retrieved resource/recovery metadata. Do not fabricate identifiers or select an
+entry labelled Scheduled as a completed backup. PITR may use a verified
+pre-change timestamp instead of a completed daily-backup identifier.
+
+Do not make a daily-backup ID an unconditional recovery requirement when PITR
+is the accepted recovery mechanism.
+
+**Why:** Official recovery guidance supports timestamp-based PITR independently
+of daily snapshots; repeated requests for a snapshot ID obscured that distinction.
+
+**How to apply:** Accept the Owner's PITR/resource confirmations as such, then
+separate supported configuration from live timestamp availability and verified
+primary execution access. Never invent a restorable range or assume an Agent
+replica interface provides the Production operator console.
 
 The owner stated on 2026-10-26 that Production database binding/recovery and Flutterwave merchant prerequisites were completed earlier and supported by confirmation emails. Do not describe those confirmations as absent or ask the owner to obtain them again.
 

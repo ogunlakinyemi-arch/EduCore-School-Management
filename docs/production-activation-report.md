@@ -404,7 +404,37 @@ operators to the Production backup list, not an Agent/public API inventory.
 - SQL execution identifiers and post-commit verification: **not applicable**.
 - Recovery state: no SQL attempted, no partial installation, no rollback needed.
 
-The remaining execution blocker is the unavailable exact, same-resource
-completed restore-point metadata, not another approval, resource-match
-confirmation or backup-enabled check. No Production changes, operational
+At that preflight the exact completed-backup metadata was unavailable. The PITR
+reassessment below supersedes treating a completed daily-backup identifier as
+the only possible recovery mechanism. No Production changes, operational
 activation, provider calls, messages, worker restart or publication occurred.
+
+### PITR reassessment — 25 November 2026
+
+The Owner subsequently supplied confirmation of PITR **On, last seven days**,
+scheduled backups **On, seven-day retention**, and instructed proceeding
+without a visible completed daily-backup ID. The resource-match confirmation
+and Stage 1 approval remain accepted; neither is being requested again.
+
+Official recovery documentation confirms that PITR restores to a timestamp
+independently of selecting a daily snapshot. **A completed daily-backup ID is
+not inherently necessary for PITR-based recovery.** Entries marked Scheduled
+remain ineligible as completed backup evidence.
+
+The setting is supporting recovery evidence, but available session tools
+cannot retrieve the resource's live PITR earliest/latest restorable range or
+validate a particular pre-change timestamp. No timestamp was invented or
+certified merely because it falls within seven calendar days.
+
+Separately, the supported Agent Production SQL interface is SELECT-only
+against a replica. This session has no established writable-primary operator
+session whose resource, role and execution results can be independently
+verified. The runbook's write route is the authenticated Production SQL console;
+approval does not turn the replica interface into that operator console.
+
+**Decision: stopped before SQL.** Independent recovery-timestamp verification
+and verified primary execution access remain unavailable. Transactions started,
+packets committed and execution identifiers remain **0, 0 and none**;
+post-commit checks are not applicable and no rollback is needed. Only this
+report and internal guidance were updated; no Production or application change
+was made.
