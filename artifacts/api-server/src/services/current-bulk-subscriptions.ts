@@ -27,6 +27,15 @@ export async function bulkEvent(c:CurrentSql,batchId:number,actorId:number,state
 export async function batchState(c:CurrentSql,id:number){
  return (await c.query(`SELECT state FROM current_bulk_events WHERE batch_id=$1 AND allocation_id IS NULL ORDER BY id DESC LIMIT 1`,[id])).rows[0]?.state??"RESERVED";
 }
+async function recordCheckoutOutcome(pool:CurrentPool,id:number,actorId:number,state:"READY"|"UNKNOWN",details:object){
+ await financialTransaction(pool,async c=>{
+   // The provider may notify us before its checkout POST returns. The shared
+   // transaction gate serializes this check with verification/recovery writes;
+   // checkout transport evidence must never rewind independently verified facts.
+   if(await batchState(c,id)!=="PROCESSING")return;
+   await bulkEvent(c,id,actorId,state,state==="READY"?"checkout-ready":"checkout-unknown",details);
+ });
+}
 export async function batchRoot(c:CurrentSql,id:number){
  const r=(await c.query("SELECT * FROM current_payment_batches WHERE id=$1",[id])).rows[0];
  demand(r,"BATCH_NOT_FOUND");return r;
@@ -109,9 +118,9 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
      const checkout=deps.checkout??(v=>new FlutterwaveLiveTransport(undefined,undefined,"DIRECT_STUDENT").bulkStudentCheckout(v));
      const checkoutUrl=await checkout({reference:batch.row.reference,email:batch.row.snapshot.email,amountMinor:Number(batch.row.amount_minor)});
      demand(/^https:\/\/(?:[a-z0-9-]+\.)*flutterwave\.com\//i.test(checkoutUrl),"INVALID_PROVIDER_CHECKOUT_URL");
-     await financialTransaction(pool,c=>bulkEvent(c,Number(batch.row.id),actorId,"READY","checkout-ready",{checkoutUrl,moneyMoved:false}));
+     await recordCheckoutOutcome(pool,Number(batch.row.id),actorId,"READY",{checkoutUrl,moneyMoved:false});
    }catch{
-     await financialTransaction(pool,c=>bulkEvent(c,Number(batch.row.id),actorId,"UNKNOWN","checkout-unknown",{automaticResend:false}));
+     await recordCheckoutOutcome(pool,Number(batch.row.id),actorId,"UNKNOWN",{automaticResend:false});
    }
  }
  return bulkView(pool,actorId,Number(batch.row.id));

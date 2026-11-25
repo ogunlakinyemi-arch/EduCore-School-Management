@@ -103,8 +103,13 @@ describe("application-only financial write boundary",()=>{
       for(const item of readdirSync(dir,{withFileTypes:true})){
         const path=join(dir,item.name);
         if(item.isDirectory())visit(path);
-        else if(item.name.endsWith(".ts")&&!item.name.includes(".test.")&&item.name!=="financial-history-writes.ts"
-          &&pattern.test(readFileSync(path,"utf8")))violations.push(path);
+        else if(item.name.endsWith(".ts")&&!item.name.includes(".test.")&&!item.name.endsWith(".test-support.ts")){
+          const source=readFileSync(path,"utf8");
+          // Disposable fixture helpers are not application writers. Runtime
+          // imports of them are nevertheless forbidden, including dynamic ones.
+          const importsFixture=/\b(?:from\s*|import\s*\(\s*)["'][^"']*\.test-support(?:\.ts)?["']/.test(source);
+          if(importsFixture||(item.name!=="financial-history-writes.ts"&&pattern.test(source)))violations.push(path);
+        }
       }
     }
     visit(root);

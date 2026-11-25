@@ -33,6 +33,7 @@ import {readNfcFeeCollectionOversight} from "../services/nfc-fee-collection-over
 import {directStudentReadiness,startDirectStudentPayment,verifyDirectStudentPayment,DirectPaymentBlocked} from "../services/direct-student-live-payments";
 import directStudentPaymentsRouter,{directStudentWebhookRouter,directStudentPublicRouter} from "./direct-student-live-payments";
 import {appendFinancialHistory,requireFinancialActor,transitionDirectAttempt} from "../services/financial-history-writes";
+import {FINANCIAL_TRANSACTION_GATE_SQL} from "../services/financial-transaction";
 import {createDirectReleaseRouter} from "./direct-student-live-release";
 import {previewDirectRelease,createDirectReleaseReview,decideDirectReleaseReview,inspectDirectReleaseSchema} from "../services/direct-student-live-release";
 const releaseEnv:NodeJS.ProcessEnv={
@@ -921,8 +922,9 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect((await db.query("SELECT count(*)::int AS n FROM bro_term_commission_entitlements")).rows[0].n).toBe(0);
     await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     states.set("901","successful");
-    // Observe BOTH independent verifiers waiting on the real attempt row, then
-    // release it. Concurrent delivery must commit one terminal result/event.
+    // Observe BOTH verifiers waiting on the attempt row or an earlier financial
+    // gate, then release the row. The global gate deliberately serializes them.
+    // Concurrent delivery must commit one terminal result/event.
     const held=await db.connect();
     let concurrent:Promise<any[]>|undefined;
     try{
@@ -937,7 +939,8 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
         blocked=Number((await db.query(`SELECT count(*) AS n FROM pg_stat_activity
           WHERE datname=current_database() AND state='active' AND wait_event_type='Lock'
             AND (query LIKE '%SELECT * FROM student_direct_live_attempts WHERE reference=%FOR UPDATE%'
-              OR query LIKE '%SELECT pg_advisory_xact_lock(310031,1)%')`)).rows[0].n);
+              OR query LIKE '%SELECT pg_advisory_xact_lock(310031,1)%'
+              OR query=$1)`,[FINANCIAL_TRANSACTION_GATE_SQL])).rows[0].n);
       }
       expect(blocked).toBe(2);
       expect((await db.query("SELECT state FROM student_direct_live_attempts WHERE reference=$1",[first.reference])).rows[0].state)
@@ -957,7 +960,18 @@ suite("Owner-only subscription rule management on isolated PostgreSQL",()=>{
     expect((await db.query(`SELECT count(*)::int AS n FROM audit_logs
       WHERE event_type='BRO_COMMISSION_EARNED' AND role='SYSTEM'`)).rows[0].n).toBe(1);
     await expect(assertVerifiedStudentNfcPayment(db as any,1,31)).resolves.toBeUndefined();
-    await expect(assertVerifiedStudentNfcPayment(db as any,2,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
+    // A school without a January calendar is deliberately non-chargeable, not
+    // proof of a cross-school payment. Give the foreign school its own eligible
+    // calendar before asserting that school 1's verified payment cannot satisfy it.
+    await db.query(`INSERT INTO schools(id) VALUES(2);
+      INSERT INTO academic_sessions(id,school_id) VALUES(12,2);
+      INSERT INTO academic_terms(id,school_id,academic_session_id,name,start_date,end_date)
+        VALUES(5,2,12,'Second Term','2027-01-18','2027-04-09')`);
+    try{
+      await expect(assertVerifiedStudentNfcPayment(db as any,2,31)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
+    }finally{
+      await db.query("DELETE FROM academic_terms WHERE id=5; DELETE FROM academic_sessions WHERE id=12; DELETE FROM schools WHERE id=2");
+    }
     await expect(assertVerifiedStudentNfcPayment(db as any,1,33)).rejects.toMatchObject({eventType:"NFC_FLUTTERWAVE_PAYMENT_REQUIRED"});
     expect((await verifyDirectStudentPayment(db as any,{reference:first.reference,transactionId:"901",actorId:null},deps)).state).toBe("PAID");
     expect((await db.query("SELECT count(*)::int AS n FROM bro_term_commission_entitlements")).rows[0].n).toBe(1);

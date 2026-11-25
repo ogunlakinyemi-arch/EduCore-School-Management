@@ -113,6 +113,28 @@ it("lost checkout response is held UNKNOWN with a permanent claim and no resend"
  expect((await createCurrentBulk(f.pool,2,input(),bulk)).state).toBe("UNKNOWN");
  await createCurrentBulk(f.pool,2,input(),bulk);expect(bulk.checkout).toHaveBeenCalledTimes(1);
 });
+it.each([
+ {anonymous:true,lost:false},{anonymous:true,lost:true},
+ {anonymous:false,lost:false},{anonymous:false,lost:true},
+])("late checkout response preserves verified aggregate state $anonymous / $lost",async({anonymous,lost})=>{
+ bulk.checkout=vi.fn(async({reference})=>{
+  const batch=(await f.pool.query("SELECT id FROM current_payment_batches WHERE reference=$1",[reference])).rows[0];
+  if(anonymous)await verifyPublicCurrentBulk(f.pool,reference,"998877",bulk);
+  else await verifyCurrentBulk(f.pool,2,Number(batch.id),"998877",bulk);
+  if(lost)throw new Error("Fictional response lost after independent verification");
+  return "https://checkout.flutterwave.com/fixture";
+ });
+ const b=await createCurrentBulk(f.pool,2,input(),bulk);
+ expect(b.state).toBe(anonymous?"VERIFIED":"COMPLETED");
+ expect(b.checkoutUrl).toBeNull();
+ expect((await createCurrentBulk(f.pool,2,input(),bulk)).state).toBe(b.state);
+ expect(bulk.checkout).toHaveBeenCalledTimes(1);
+ expect((await f.pool.query("SELECT count(*) FROM current_bulk_confirmations")).rows[0].count).toBe("1");
+ expect((await f.pool.query("SELECT count(*) FROM current_bulk_events WHERE state IN ('READY','UNKNOWN')")).rows[0].count).toBe("0");
+ if(anonymous)await recoverCurrentBulk(f.pool,2,b.id);
+ expect((await f.pool.query("SELECT count(*) FROM current_bulk_events WHERE state='POSTED'")).rows[0].count).toBe("2");
+ expect((await f.pool.query("SELECT count(*) FROM current_bulk_bro_entitlements")).rows[0].count).toBe("2");
+});
 it("rejects cross-school selection, inactive students, stale reviews and original paid direct sources",async()=>{
  await expect(createCurrentBulk(f.pool,5,input(),bulk)).rejects.toThrow("SCOPE_NOT_AUTHORIZED");
  await expect(createCurrentBulk(f.pool,2,{...input(),studentIds:[1]},bulk)).rejects.toThrow("INELIGIBLE");

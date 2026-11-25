@@ -27,3 +27,14 @@ the lock until the statement completed.
 sessions to finish their explicit rollback and normal exit, verify their
 disappearance, then inspect definitions. Do not relax migration timeouts or
 misclassify an instrumentation wait as a draft DDL failure.
+
+Concurrency probes must recognize earlier application serialization gates,
+not require every competing request to reach the final row lock.
+
+**Why:** A correctly serialized pair of payment verifiers can wait at different
+layers. Counting only the final row/commission lock falsely reports that one
+verifier never arrived, even though it is waiting at the shared financial gate.
+
+**How to apply:** Observe only the relevant, explicitly identified query/gate
+shapes and retain the terminal-state, event-count and exactly-once assertions.
+Fix stale fixture instrumentation rather than removing production serialization.
