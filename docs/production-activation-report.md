@@ -377,3 +377,34 @@ The report/checklist is ready for review. All-capability source completion,
 Production procedural enforcement, authenticated connected acceptance,
 financial/worker activation and real-provider confirmation are **not complete
 and are not authorized by this report**.
+
+## Stage 1 execution preflight — 25 November 2026
+
+The Owner approved the reviewed student/native-BRO and Free Academic Terms
+procedural package and explicitly confirmed that the serving Production
+database and the resource shown in the backup screen are the same. Accept that
+as Owner-confirmed resource matching; no repeat confirmation is required.
+This approval does not open payment release gates or approve later packages.
+
+The supplied backup details report daily backups, seven-day retention and a
+recent completed backup. The Nov 25 12:00 AM entry is explicitly **Scheduled**
+and was not selected as a completed recovery point.
+
+**Execution stopped before SQL:** available Agent database tools expose no
+backup inventory/restore-point metadata. The current public Admin API schema
+was inspected successfully; it exposes deployment routes but no
+database/backup/restore routes. Official recovery documentation directs
+operators to the Production backup list, not an Agent/public API inventory.
+
+- Exact database resource identifier: not retrieved; resource match accepted
+  as the Owner's confirmation, not independently fabricated metadata.
+- Selected completed restore-point identifier: none retrieved or selected.
+- Exact completed restore timestamp/timezone: not retrieved.
+- SQL transactions started / packets committed: **0 / 0**.
+- SQL execution identifiers and post-commit verification: **not applicable**.
+- Recovery state: no SQL attempted, no partial installation, no rollback needed.
+
+The remaining execution blocker is the unavailable exact, same-resource
+completed restore-point metadata, not another approval, resource-match
+confirmation or backup-enabled check. No Production changes, operational
+activation, provider calls, messages, worker restart or publication occurred.

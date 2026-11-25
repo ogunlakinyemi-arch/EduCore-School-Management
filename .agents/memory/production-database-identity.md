@@ -5,6 +5,18 @@ description: Avoid mistaking a PostgreSQL database name or a read replica for th
 
 ## Reuse existing confirmations
 
+On 2026-11-25 the Owner explicitly confirmed that they matched the database
+serving educore.yetenia.com to the resource in the Production backup screen.
+Accept this as Owner-confirmed resource matching and do not ask them to repeat it.
+
+**Why:** Repeated requests for the same confirmation confused unavailable
+operator identifiers with a lack of Owner confirmation.
+
+**How to apply:** Distinguish that accepted confirmation from independently
+retrieved resource and completed restore-point identifiers/timestamps. Do not
+fabricate those identifiers or select an entry labelled Scheduled as a completed
+backup. Unavailable exact recovery metadata is a separate execution gate.
+
 The owner stated on 2026-10-26 that Production database binding/recovery and Flutterwave merchant prerequisites were completed earlier and supported by confirmation emails. Do not describe those confirmations as absent or ask the owner to obtain them again.
 
 **Why:** The owner corrected repeated activation reports that treated inaccessible confirmation evidence as missing approvals.
