@@ -75,7 +75,6 @@ export function compilePackage(read=path=>readFileSync(resolve(root,path),"utf8"
  const manifest={format:1,authority:"REVIEW_ONLY_NO_EXECUTION_AUTHORIZED",
   sources:Object.entries(sources).map(([key,path])=>({key,path,sha256:hash(text[key])})),groups:[]};
  for(const g of groups){
-  const fs=g.functions.map(f=>({name:f.name,body_md5:createHash("md5").update(f.body.replace(/\r\n/g,"\n").trim()).digest("hex")}));
   const prefix=`db/production-activation/${g.id}`;
   files[`${prefix}.functions.sql`]=banner+transaction(g.functions.map(f=>f.sql).join("\n"));
   const requiredFunctions=[...new Set(g.triggers.map(t=>t.fn))].map(name=>{
@@ -96,7 +95,7 @@ export function compilePackage(read=path=>readFileSync(resolve(root,path),"utf8"
 SELECT 'table_presence' AS kind,name,to_regclass('public.'||name) IS NOT NULL AS matches
  FROM jsonb_array_elements_text(${jsonSQL(g.tables)}) n(name)
 UNION ALL SELECT 'function',e.name,COALESCE((${fnMatch}),false)
- FROM ${fnRows(fs)} ${fnJoin}
+  FROM ${fnRows(requiredFunctions)} ${fnJoin}
 UNION ALL SELECT 'trigger',e.name,COALESCE(t.tgenabled='O' AND t.tgtype=e.type
  AND t.tgfoid=to_regprocedure('public.'||e.fn||'()') AND NOT t.tgisinternal
  AND t.tgnargs=0 AND t.tgconstraint=0 AND t.tgqual IS NULL AND t.tgattr::text='' AND t.tgparentid=0,false)

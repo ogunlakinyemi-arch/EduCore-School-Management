@@ -79,9 +79,13 @@ test("isolated PostgreSQL: phased packet is idempotent, verifies exact objects a
     const rows=await verify(g);assert.ok(rows.length>0);assert.deepEqual(rows.filter(r=>!r.matches),[],`${g} parity`);
    }
   }
+  const captured=(await c.query(files["db/production-activation/capture-definitions.sql"])).rows;
+  assert.equal(captured.length,36);
+  assert.ok(captured.every(r=>r.owner==="neondb_owner"&&r.definition));
   assert.deepEqual((await c.query("SELECT pg_get_functiondef('guard_student_direct_history()'::regprocedure) AS definition")).rows[0],before);
   await c.query("CREATE OR REPLACE FUNCTION guard_student_direct_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$;");
   assert.ok((await verify("student")).some(r=>r.name==="guard_student_direct_history"&&!r.matches));
+  assert.ok((await verify("current")).some(r=>r.name==="guard_student_direct_history"&&!r.matches));
   await assert.rejects(c.query(sql("current","triggers")),/Approved function body/);
   await c.query("ROLLBACK");
   await c.query(sql("student","functions"));await c.query(sql("student","triggers"));

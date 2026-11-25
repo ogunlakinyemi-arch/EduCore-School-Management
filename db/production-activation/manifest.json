@@ -375,7 +375,7 @@
     },
     {
       "path": "db/production-activation/student.verify.sql",
-      "sha256": "38ab424c252364994727b147fae9da5236d02f87ef365e1972054de7bf2552a7"
+      "sha256": "942f361e34a0d02f3ea33127122c182b5290cf3dcc44c2630d48a2883258b00b"
     },
     {
       "path": "db/production-activation/current.functions.sql",
@@ -387,7 +387,7 @@
     },
     {
       "path": "db/production-activation/current.verify.sql",
-      "sha256": "77c520338875aed1303b13a0a772a084d7ecc36df1bbcc13305d1fd71ea403e7"
+      "sha256": "d53203f8a9371ecee8069d414cc8ce8ba495f13639ae0310c9e6df49160499a0"
     },
     {
       "path": "db/production-activation/free-terms.functions.sql",
@@ -399,7 +399,7 @@
     },
     {
       "path": "db/production-activation/free-terms.verify.sql",
-      "sha256": "cb88c9f9099646e1068dd0f2eea60083430c110c33093e1eedbf2be06af2d190"
+      "sha256": "8cf643eaa1e7d2e241be619baaf38f4749b8fe11d9c4a06b4e98cb6ec4713f95"
     },
     {
       "path": "db/production-activation/capture-definitions.sql",

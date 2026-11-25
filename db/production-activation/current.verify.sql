@@ -5,7 +5,7 @@ UNION ALL SELECT 'function',e.name,COALESCE((p.oid IS NOT NULL AND p.prokind='f'
  AND NOT p.proretset AND NOT p.prosecdef AND p.provolatile='v' AND NOT p.proisstrict
  AND NOT p.proleakproof AND p.proparallel='u' AND p.proconfig IS NULL AND l.lanname='plpgsql'
  AND md5(regexp_replace(replace(p.prosrc,E'\r\n',E'\n'),'^[[:space:]]+|[[:space:]]+$','','g'))=e.body_md5),false)
- FROM jsonb_to_recordset($inventory$[{"name":"guard_current_bulk_scope","body_md5":"f1af32ded245bbd6ca05388de4aacee6"}]$inventory$::jsonb) AS e(name text,body_md5 text) LEFT JOIN pg_proc p ON p.oid=to_regprocedure('public.'||e.name||'()')
+  FROM jsonb_to_recordset($inventory$[{"name":"guard_student_direct_history","body_md5":"06020fe5a25c579f9157746f4ba847b0"},{"name":"guard_current_bulk_scope","body_md5":"f1af32ded245bbd6ca05388de4aacee6"}]$inventory$::jsonb) AS e(name text,body_md5 text) LEFT JOIN pg_proc p ON p.oid=to_regprocedure('public.'||e.name||'()')
  LEFT JOIN pg_language l ON l.oid=p.prolang
 UNION ALL SELECT 'trigger',e.name,COALESCE(t.tgenabled='O' AND t.tgtype=e.type
  AND t.tgfoid=to_regprocedure('public.'||e.fn||'()') AND NOT t.tgisinternal

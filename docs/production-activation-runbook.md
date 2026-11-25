@@ -1,6 +1,6 @@
 # EduCore staged activation runbook
 
-**23 November 2026 — prepared, not approved or activated.**
+**Preparation continued 25 November 2026 — not approved or activated.**
 Use this runbook for ordered preparation; the
 [activation report](production-activation-report.md) remains the prior
 observation/evidence record. No shared migration, Production write, publication,
@@ -203,8 +203,9 @@ do not enable all capabilities to make the checklist appear complete.
 ## 7. Verification queries and recovery
 
 The three `*.verify.sql` and `capture-definitions.sql` files are the exact
-parameter-free, SELECT-only schema queries. They were executed **only in the
-fresh disposable fixture** here, not against either shared database.
+parameter-free, SELECT-only schema queries. All four files were
+executed **only in the fresh disposable fixture**, not against either shared
+database. No operational target definition capture was performed.
 
 Prepared bounded diagnostics for notification timeouts (not run here):
 
@@ -239,6 +240,10 @@ all seven exact bodies/29 bindings, altered/disabled guard detection, missing
 parent/body and wrong-operator refusal, and unchanged empty financial/grant/SMS
 tables. It imports no application or provider configuration and accepts no
 target connection arguments.
+
+All three focused checks passed, including detection of an altered shared
+function from the current-extension verifier itself. The final 11-file
+package/source check also passed.
 
 Prior business/provider/browser evidence is reused from the activation report,
 SMS and free-term completion reports. No new payment suite, browser journey,

@@ -2,7 +2,13 @@
 
 **Review: 23 November 2026. Decision: NO-GO for declaring all capabilities live.**
 
-This is the single activation checklist for this effort. Earlier reports are
+For the latest ordered preparation and delivery procedure, use the
+[staged activation runbook](production-activation-runbook.md). This report
+retains the prior observations and evidence; its procedural-delivery discussion
+must be read with the runbook's documented operator route and unresolved
+target-specific approval boundary.
+
+Earlier reports are
 reused as evidence, not rerun or rewritten. The safe source repair below is
 finished; schema delivery, the incomplete staff LIVE path, scoped release
 authority and operational/provider acceptance remain separate blockers.

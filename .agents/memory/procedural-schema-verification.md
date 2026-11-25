@@ -14,6 +14,10 @@ their absence. Repository migration filenames were not an execution ledger.
 **How to apply:** Compare actual public catalog function bodies, execution
 properties, trigger events, table/function binding and enablement with approved
 source. Validate repair semantics on an isolated PostgreSQL fixture. Keep
-procedural release delivery blocked until supported platform tooling demonstrably
-includes the exact reviewed objects; never add startup/build DDL or a custom
-managed-Production migration runner as a workaround.
+procedural release delivery blocked until the exact reviewed objects have been
+delivered through a cleared procedure and independently verified. Current
+documentation supports operator SQL-console delivery of missing functions
+before Publish and triggers after parent tables exist; Publish alone still
+does not deliver them. Preserve any unresolved project-specific Support
+restriction and require separate target/recovery/execution approval. Never add
+startup/build DDL or a custom managed-Production migration runner as a workaround.

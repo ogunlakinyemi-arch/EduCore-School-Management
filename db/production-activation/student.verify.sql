@@ -5,7 +5,7 @@ UNION ALL SELECT 'function',e.name,COALESCE((p.oid IS NOT NULL AND p.prokind='f'
  AND NOT p.proretset AND NOT p.prosecdef AND p.provolatile='v' AND NOT p.proisstrict
  AND NOT p.proleakproof AND p.proparallel='u' AND p.proconfig IS NULL AND l.lanname='plpgsql'
  AND md5(regexp_replace(replace(p.prosrc,E'\r\n',E'\n'),'^[[:space:]]+|[[:space:]]+$','','g'))=e.body_md5),false)
- FROM jsonb_to_recordset($inventory$[{"name":"guard_student_direct_history","body_md5":"06020fe5a25c579f9157746f4ba847b0"},{"name":"guard_student_direct_attempt","body_md5":"9ba4c246e69a19d4a20d05acd57cdfef"},{"name":"guard_bro_term_commission_history","body_md5":"e18a68b527bc1434fbc86b0abe969f23"},{"name":"guard_bro_term_commission_scope","body_md5":"6803a3b7173c3d9e677d35616a789046"}]$inventory$::jsonb) AS e(name text,body_md5 text) LEFT JOIN pg_proc p ON p.oid=to_regprocedure('public.'||e.name||'()')
+  FROM jsonb_to_recordset($inventory$[{"name":"guard_student_direct_history","body_md5":"06020fe5a25c579f9157746f4ba847b0"},{"name":"guard_student_direct_attempt","body_md5":"9ba4c246e69a19d4a20d05acd57cdfef"},{"name":"guard_bro_term_commission_history","body_md5":"e18a68b527bc1434fbc86b0abe969f23"},{"name":"guard_bro_term_commission_scope","body_md5":"6803a3b7173c3d9e677d35616a789046"}]$inventory$::jsonb) AS e(name text,body_md5 text) LEFT JOIN pg_proc p ON p.oid=to_regprocedure('public.'||e.name||'()')
  LEFT JOIN pg_language l ON l.oid=p.prolang
 UNION ALL SELECT 'trigger',e.name,COALESCE(t.tgenabled='O' AND t.tgtype=e.type
  AND t.tgfoid=to_regprocedure('public.'||e.fn||'()') AND NOT t.tgisinternal

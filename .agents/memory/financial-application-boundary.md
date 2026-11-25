@@ -9,14 +9,20 @@ Do not treat that choice as permission to remove procedural readiness checks,
 open LIVE readiness, or install custom functions/triggers through unsupported
 managed-Production paths.
 
-**Why:** Replit Support confirmed Publish does not transfer/track custom
-PostgreSQL functions/triggers and manual installation is unsupported. The Owner
-still requires all existing fail-closed gates and retained financial history.
+**Why:** Earlier project-specific Support guidance said Publish does not
+transfer/track custom PostgreSQL functions/triggers and manual installation was
+unsupported. Current official documentation describes an operator SQL-console
+delivery route, but that general guidance does not independently rescind the
+earlier target-specific restriction. The Owner still requires all existing
+fail-closed gates and retained financial history.
 
-**How to apply:** Strengthen application paths independently of database
-enforcement. Explicitly disclose that direct/privileged SQL can bypass those
-application checks. Application-path test success is not all-writer equivalence,
-Publish compatibility or authority to activate LIVE payments.
+**How to apply:** Do not assert that no documented mechanism exists. Distinguish
+the documented operator route from this target's unresolved clearance and
+execution approval; prepare review files without executing them when authorized.
+Strengthen application paths independently of database enforcement. Explicitly
+disclose that direct/privileged SQL can bypass those application checks.
+Application-path test success is not all-writer equivalence, Publish
+compatibility or authority to activate LIVE payments.
 
 Continuing LIVE-readiness work must prioritize concrete app defects and existing
 test evidence, without reopening the settled Support investigation or repeatedly

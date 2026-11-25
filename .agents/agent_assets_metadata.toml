@@ -966,3 +966,17 @@ mtime_ms = 1795453093343
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/325f084d-b18d-4626-b88c-91d021122da9/1f87ed5d-f14c-46b0-82af-6df189f2badc"
 storage_version_token = "1795453165417411"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "aAe81TLyhWsIXvBBJcN7S"
+uri = "file://docs/production-activation-runbook.md"
+type = "text"
+title = "Staged Production activation runbook"
+description = "Review-only procedure with exact schema inventory, phased delivery, verification, recovery and separate acceptance gates. Nothing has been activated."
+logical_id = "f491d5bc-a648-4f83-9338-9d8a5b0b5453"
+content_hash = "sha256:cbdfc5d4c6e128817e7d594b7738a3aefaa5cd16bc9e83aeef140b3852bed2d1"
+size = 19371
+mtime_ms = 1795588890357
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f491d5bc-a648-4f83-9338-9d8a5b0b5453/4b19a0a6-bdde-40ab-8b08-50b0ac87d4e6"
+storage_version_token = "1795588918607702"
+content_type = "text/markdown"
