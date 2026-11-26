@@ -1,0 +1,373 @@
+name: Isolated current-finance PostgreSQL rehearsal
+
+# Deliberately no push, pull_request, schedule, release or deployment events.
+'on':
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: current-finance-rehearsal-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rehearsal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: neondb_owner
+          POSTGRES_DB: postgres
+          # Disposable service only. No password, repository secret or app DSN.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: --auth-host=reject
+        # No ports are published. Tests use only this runner-local Unix socket.
+        volumes:
+          - /tmp/current-finance-pg-socket:/var/run/postgresql
+        options: >-
+          --health-cmd "pg_isready -h /var/run/postgresql -U neondb_owner -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+          run_install: false
+      - name: Install only offline-check dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter workspace --filter @workspace/scripts...
+      - name: Disconnect disposable PostgreSQL from every Docker network
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_ACTIONS" = true
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(docker inspect --format '{{.Config.Image}}' "$POSTGRES_CONTAINER_ID")" = postgres:16
+          test "$(docker inspect --format '{{json .HostConfig.PortBindings}}' "$POSTGRES_CONTAINER_ID")" = '{}'
+          test "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/run/postgresql"}}{{.Source}}{{end}}{{end}}' "$POSTGRES_CONTAINER_ID")" = /tmp/current-finance-pg-socket
+          for network in $(docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$POSTGRES_CONTAINER_ID"); do
+            docker network disconnect "$network" "$POSTGRES_CONTAINER_ID"
+          done
+          test "$(docker inspect --format '{{json .NetworkSettings.Networks}}' "$POSTGRES_CONTAINER_ID")" = '{}'
+          test -S /tmp/current-finance-pg-socket/.s.PGSQL.5432
+          # Read only non-credential identity/network metadata.
+          docker inspect --format '{"container":"{{.Id}}","image":"{{.Config.Image}}","networks":{{json .NetworkSettings.Networks}},"bindings":{{json .HostConfig.PortBindings}},"runner":"github-hosted"}' \
+            "$POSTGRES_CONTAINER_ID" > /tmp/current-finance-service-proof.json
+          # Bind the later Unix-socket SQL identity to this exact disconnected
+          # container, not merely a matching role/version/directory string.
+          docker exec "$POSTGRES_CONTAINER_ID" psql -XAt -h /var/run/postgresql \
+            -U neondb_owner -d postgres -c 'SELECT system_identifier FROM pg_control_system()' \
+            > /tmp/current-finance-service-identifier
+      - name: Offline checks and fresh-database scenarios inside a network namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Runtime adapter only: no source/harness/migration file is rewritten.
+          cat > .current-finance-ci.mjs <<'JAVASCRIPT'
+          import assert from 'node:assert/strict';
+          import { readFileSync, readlinkSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { createRequire, syncBuiltinESMExports } from 'node:module';
+          import { execFileSync } from 'node:child_process';
+          import net from 'node:net';
+          import tls from 'node:tls';
+          import { loadContract, read, requireCleanEnvironment, requireIdentity, sha256 } from './scripts/src/current-finance-rehearsal/contract.mjs';
+          import { inspectIdentity, assertFresh, assertAfter0181 } from './scripts/src/current-finance-rehearsal/preflight.mjs';
+          import { captureCatalog, verifyStructure, verifyPackets, quote } from './scripts/src/current-finance-rehearsal/catalog.mjs';
+
+          requireCleanEnvironment(process.env);
+          assert.equal(process.argv.length, 3);
+          assert.match(process.argv[2], /^net:\[\d+\]$/);
+          assert.notEqual(readlinkSync('/proc/self/ns/net'), process.argv[2]);
+          assert.notEqual(readlinkSync('/proc/self/ns/net'), readlinkSync('/proc/1/ns/net'));
+          assert.equal(readFileSync(`/proc/${process.ppid}/comm`, 'utf8').trim(), 'unshare');
+          assert.equal(readFileSync('/proc/net/route', 'utf8').trim().split('\n').length, 1);
+          const proof = JSON.parse(readFileSync('/tmp/current-finance-service-proof.json', 'utf8'));
+          assert.equal(proof.runner, 'github-hosted');
+          assert.equal(proof.image, 'postgres:16');
+          assert.match(proof.container, /^[a-f0-9]{64}$/);
+          assert.deepEqual(proof.networks, {});
+          assert.deepEqual(proof.bindings, {});
+          const socket = '/tmp/current-finance-pg-socket/.s.PGSQL.5432';
+          const originalConnect = net.Socket.prototype.connect;
+          net.Socket.prototype.connect = function (...args) {
+            const first = args[0];
+            assert.equal(typeof first === 'string' ? first : first?.path, socket, 'Only the disposable service Unix socket is allowed');
+            return originalConnect.apply(this, args);
+          };
+          const deny = () => { throw Error('External network/provider access forbidden'); };
+          tls.connect = deny;
+          globalThis.fetch = deny;
+          syncBuiltinESMExports();
+          const exec = args => execFileSync(process.execPath, args, {
+            env: process.env, stdio: 'inherit', timeout: 120000,
+          });
+          exec(['--test', 'scripts/src/current-finance-rehearsal/offline.test.mjs',
+            'scripts/src/schema-tooling-policy.test.mjs']);
+          exec(['--import', './scripts/node_modules/tsx/dist/loader.mjs',
+            'scripts/src/current-finance-schema.test.mjs']);
+          exec(['scripts/src/current-finance-rehearsal/cli.mjs', '--static']);
+          exec(['node_modules/typescript/bin/tsc', '-p', 'lib/db/tsconfig.json',
+            '--noEmit', '--tsBuildInfoFile', '/tmp/current-finance-ci.tsbuildinfo']);
+
+          const contract = loadContract();
+          // Complete original migrations, NOT the handwritten native-check baseline.
+          const beforeStaff = [
+            'lib/db/drizzle/0000_brainy_moon_knight.sql',
+            'lib/db/drizzle/0001_phase3_meta.sql',
+            'lib/db/drizzle/0002_overjoyed_sue_storm.sql',
+          ];
+          const staffPath = 'lib/db/drizzle/0031_staff_nfc_billing.sql';
+          const staff = read(staffPath);
+          // Preserve exact source table/index DDL; exclude its ACTIVE-rule seed
+          // and unrelated NFC financial tables. No invented prerequisite DDL.
+          const staffStart = staff.indexOf('CREATE TABLE staff_nfc_billing_rules (');
+          const staffEnd = staff.indexOf('INSERT INTO staff_nfc_billing_rules');
+          assert.ok(staffStart >= 0 && staffEnd > staffStart, 'Missing authoritative staff-rule DDL boundary');
+          const staffDDL = staff.slice(staffStart, staffEnd);
+          assert.equal((staffDDL.match(/CREATE TABLE /g) ?? []).length, 1);
+          assert.doesNotMatch(staffDDL, /^\s*(?:INSERT|UPDATE|DELETE|COPY|DO|CREATE (?:OR REPLACE )?(?:FUNCTION|TRIGGER))\b/im);
+          const afterStaff = [
+            'lib/db/drizzle/0175_owner_subscription_rule_management.sql',
+            'lib/db/drizzle/0176_direct_student_live_preparation.sql',
+            'lib/db/drizzle/0177_direct_student_live_release_reviews.sql',
+            'lib/db/drizzle/0178_independent_bro_term_commissions.sql',
+            'lib/db/drizzle/0179_restore_direct_and_bro_guards.sql',
+            'lib/db/dev-reconciliation/bro-field-operations.sql',
+            'lib/db/drizzle/0183_owner_free_academic_terms.sql',
+          ];
+          const baseline = [
+            ...beforeStaff.map(path => ({ path, sql: read(path) })),
+            { path: staffPath + '#unchanged-table-and-index-before-first-INSERT', sql: staffDDL },
+            ...afterStaff.map(path => ({ path, sql: read(path) })),
+          ];
+          for (const input of baseline) {
+            assert.doesNotMatch(input.sql, /\b(?:COPY|PROGRAM|dblink|http_get|http_post|CREATE EXTENSION)\b/i);
+            console.log(JSON.stringify({ provenance: input.path, sha256: sha256(input.sql) }));
+          }
+          const historyBody = read('lib/db/drizzle/0176_direct_student_live_preparation.sql')
+            .match(/CREATE FUNCTION guard_student_direct_history\(\) RETURNS trigger LANGUAGE plpgsql AS \$\$([\s\S]*?)\$\$;/)?.[1];
+          assert.ok(historyBody, 'Missing exact source history guard');
+          const historyMD5 = createHash('md5').update(historyBody.replace(/\r\n/g, '\n').trim()).digest('hex');
+          assert.equal(historyMD5, '06020fe5a25c579f9157746f4ba847b0');
+          assert.ok(contract.files['db/production-activation/student.verify.sql'].includes(historyMD5));
+
+          // Fictional retained rows only: no ACTIVE/SCHEDULED rule, release binding,
+          // paid attempt, provider transaction or BRO financial entitlement.
+          const retainedData = `
+            INSERT INTO app_users(id,clerk_user_id,email) VALUES(1,'fictional-ci-only','fixture@example.invalid');
+            INSERT INTO schools(id,code,name,city,state) VALUES(1,'CI-ONLY','Fictional isolated school','Fixture','Fixture');
+            INSERT INTO students(id,school_id,admission_no,first_name,last_name,gender,class_name,section)
+              VALUES(1,1,'CI-ONLY','Fictional','Student','Other','Fixture','Fixture');
+            INSERT INTO academic_sessions(id,school_id,name,start_date,end_date)
+              VALUES(1,1,'Fictional saved session','2026-09-01','2027-07-31');
+            INSERT INTO academic_terms(id,school_id,academic_session_id,name,start_date,end_date)
+              VALUES(1,1,1,'Fictional saved term','2027-01-18','2027-04-09');
+            INSERT INTO partner_profiles(id,partner_code,full_name,email)
+              VALUES(1,'CI-ONLY','Fictional BRO','bro@example.invalid');
+            INSERT INTO subscription_rule_proposals
+              (id,product,amount_minor,effective_at,reason,created_by,updated_by)
+              VALUES(1,'STUDENT_PLATFORM',320000,'2027-01-01Z','Fictional DRAFT preservation fixture',1,1);
+            INSERT INTO student_direct_live_reviews
+              (id,school_id,academic_term_id,rule_id,report_digest,merchant_scope,no_split_confirmed,approved_by,expires_at,reason)
+              VALUES(1,1,1,1,repeat('a',64),'fictional-no-provider',true,1,now()+interval '1 hour','Fictional fixture only');
+            INSERT INTO student_direct_live_obligations
+              (id,school_id,student_id,academic_term_id,rule_id,review_id,merchant_scope,created_by)
+              VALUES(1,1,1,1,1,1,'fictional-no-provider',1);
+            INSERT INTO student_direct_live_attempts
+              (id,obligation_id,reference,idempotency_key,state,created_by)
+              VALUES(1,1,'SCV4_live_fictional_ci_only','fictional-ci-only','RESERVED',1);
+            INSERT INTO student_direct_live_events(id,attempt_id,kind,actor_user_id,details)
+              VALUES(1,1,'FICTIONAL_RETAINED_EVIDENCE',1,'{}');
+            INSERT INTO owner_free_academic_terms
+              (id,school_id,academic_session_id,academic_term_id,start_date,end_date,actor_user_id,reason)
+              VALUES(1,1,1,1,'2027-01-18','2027-04-09',1,'Fictional retained free-term fixture');
+            INSERT INTO owner_free_academic_term_events(grant_id,actor_user_id,status,reason)
+              VALUES(1,1,'TRIAL_GRANTED','Fictional retained free-term event');
+            INSERT INTO bro_field_leads
+              (id,original_owner_id,current_owner_id,school_name,address,visit_date,person_met,notes,interest_level,status)
+              VALUES(1,1,1,'Fictional lead','Fictional address','2026-11-26','Fictional person','Fictional retained notes','Unknown','Visited');
+            INSERT INTO bro_field_claims(claim_key,lead_id) VALUES('fictional-retained-claim',1);
+            INSERT INTO bro_field_transfers(lead_id,from_owner_id,target_owner_id,lead_version,requested_by,reason)
+              VALUES(1,1,NULL,0,1,'Fictional retained pending transfer');
+            INSERT INTO audit_logs("user",role,actor_user_id,action,module)
+              VALUES('Fictional CI actor','FIXTURE',1,'FIXTURE','BROFieldOperations');
+          `;
+          const { Pool } = createRequire(new URL('./lib/db/package.json', import.meta.url))('pg');
+          const options = { host: '/tmp/current-finance-pg-socket', port: 5432,
+            user: 'neondb_owner', max: 1, connectionTimeoutMillis: 5000 };
+          const expected = { data: '/var/lib/postgresql/data', port: '5432' };
+          const admin = new Pool({ ...options, database: 'postgres' });
+          const identities = new Set();
+          const results = [];
+          const configure = c => c.query("SET search_path=public,pg_catalog; SET lock_timeout='3s'; SET statement_timeout='30s'");
+          const rejected = async (c, sql, pattern) => {
+            await c.query('SAVEPOINT rejection');
+            await assert.rejects(c.query(sql), pattern);
+            await c.query('ROLLBACK TO SAVEPOINT rejection; RELEASE SAVEPOINT rejection');
+          };
+          const failure = sql => {
+            assert.match(sql, /\nCOMMIT;\s*$/);
+            return sql.replace(/\nCOMMIT;\s*$/, '\nSELECT 1/0;\nCOMMIT;\n');
+          };
+          try {
+            const identity = await inspectIdentity(admin);
+            assert.equal(identity.db, 'postgres');
+            assert.equal(identity.role, 'neondb_owner');
+            assert.equal(identity.session_role, 'neondb_owner');
+            assert.equal(identity.ip, null);
+            assert.equal(identity.data, expected.data);
+            assert.equal(identity.port, expected.port);
+            assert.equal(Math.floor(Number(identity.version) / 10000), 16);
+            assert.equal((await admin.query('SELECT system_identifier::text AS id FROM pg_control_system()')).rows[0].id,
+              readFileSync('/tmp/current-finance-service-identifier', 'utf8').trim());
+            assert.deepEqual((await admin.query('SELECT datname FROM pg_database ORDER BY datname')).rows.map(r => r.datname),
+              ['postgres', 'template0', 'template1'], 'Only a fresh disposable cluster is accepted');
+            const version = (await admin.query('SELECT version() AS version')).rows[0].version;
+            console.log(JSON.stringify({ realPostgreSQL: version, service: proof, transport: 'private-unix-socket-in-network-namespace' }));
+            async function scenario(name, run) {
+              // Each case gets a newly created DB, even though the guarded name is reused.
+              await admin.query('CREATE DATABASE finance_rehearsal TEMPLATE template0');
+              const pool = new Pool({ ...options, database: 'finance_rehearsal' });
+              const c = await pool.connect();
+              try {
+                await configure(c);
+                requireIdentity(await inspectIdentity(c), expected);
+                const oid = (await c.query("SELECT oid FROM pg_database WHERE datname=current_database()")).rows[0].oid;
+                assert.ok(!identities.has(oid)); identities.add(oid);
+                for (const input of baseline) await c.query(input.sql);
+                await c.query(retainedData);
+                await assertFresh(c, contract, expected);
+                const names = (await c.query("SELECT tablename AS name FROM pg_tables WHERE schemaname='public' ORDER BY tablename")).rows.map(r => r.name);
+                const sequences = (await c.query("SELECT sequencename AS name FROM pg_sequences WHERE schemaname='public' ORDER BY sequencename")).rows.map(r => r.name);
+                const functions = (await c.query("SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' ORDER BY p.oid")).rows.map(r => r.oid);
+                async function snapshot() {
+                  const data = {}, sequenceState = {};
+                  for (const table of names)
+                    data[table] = (await c.query(`SELECT to_jsonb(t) AS row FROM public.${quote(table)} t ORDER BY to_jsonb(t)::text`)).rows;
+                  for (const sequence of sequences)
+                    sequenceState[sequence] = (await c.query(`SELECT last_value::text,is_called FROM public.${quote(sequence)}`)).rows;
+                  return { data, sequenceState, catalog: await captureCatalog(c, names),
+                    sequences: (await c.query(`SELECT c.oid,c.relname,s.seqtypid,s.seqstart,s.seqincrement,s.seqmax,s.seqmin,s.seqcache,s.seqcycle
+                      FROM pg_sequence s JOIN pg_class c ON c.oid=s.seqrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+                      WHERE n.nspname='public' AND c.relname=ANY($1::text[]) ORDER BY c.relname`, [sequences])).rows,
+                    functions: (await c.query('SELECT oid,pg_get_functiondef(oid) AS definition FROM pg_proc WHERE oid=ANY($1::oid[]) ORDER BY oid', [functions])).rows,
+                    triggers: (await c.query(`SELECT c.relname,t.tgname,t.tgenabled,pg_get_triggerdef(t.oid) AS definition
+                      FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+                      WHERE n.nspname='public' AND c.relname=ANY($1::text[]) AND NOT t.tgisinternal ORDER BY c.relname,t.tgname`, [names])).rows };
+                }
+                const before = await snapshot();
+                const preserve = async () => {
+                  assert.deepEqual(await snapshot(), before, 'All pre-existing rows, catalog and guard identities/definitions must remain unchanged');
+                  await verifyPackets(c, contract, ['student', 'free-terms']);
+                  assert.equal((await c.query("SELECT count(*)::int AS n FROM subscription_rule_proposals WHERE status IN ('ACTIVE','SCHEDULED')")).rows[0].n, 0);
+                  assert.equal((await c.query('SELECT count(*)::int AS n FROM student_direct_live_review_bindings')).rows[0].n, 0);
+                  assert.equal((await c.query("SELECT count(*)::int AS n FROM student_direct_live_attempts WHERE state='PAID' OR provider_transaction_id IS NOT NULL")).rows[0].n, 0);
+                };
+                const phaseOne = async () => {
+                  await c.query(contract.sources[0]);
+                  await c.query('BEGIN READ ONLY');
+                  try { await assertAfter0181(c, contract); await preserve(); }
+                  finally { await c.query('ROLLBACK'); }
+                };
+                const post = async () => {
+                  await c.query('BEGIN READ ONLY');
+                  try {
+                    await verifyStructure(c, contract); await verifyPackets(c, contract); await preserve();
+                    for (const table of contract.tables.keys())
+                      assert.equal((await c.query(`SELECT count(*)::int AS n FROM public.${quote(table)}`)).rows[0].n, 0);
+                  } finally { await c.query('ROLLBACK'); }
+                };
+                const install = async () => { await phaseOne(); await c.query(contract.sources[1]); await post(); };
+                await run({ c, preserve, phaseOne, install, post });
+                await preserve();
+                results.push({ scenario: name, status: 'PASS', database: 'finance_rehearsal', databaseOid: oid });
+                console.log(JSON.stringify(results.at(-1)));
+              } finally {
+                await c.query('ROLLBACK').catch(() => {}); c.release(); await pool.end();
+                await admin.query('DROP DATABASE finance_rehearsal');
+              }
+            }
+            await scenario('full-0181-intermediate-0182-readonly-postverification', async x => x.install());
+            await scenario('0181-injected-failure-full-transaction-rollback', async ({ c, preserve }) => {
+              await assert.rejects(c.query(failure(contract.sources[0])), e => e.code === '22012');
+              await c.query('ROLLBACK'); await assertFresh(c, contract, expected); await preserve();
+            });
+            await scenario('0182-injected-failure-retains-committed-0181', async ({ c, phaseOne, preserve }) => {
+              await phaseOne();
+              const state = await captureCatalog(c, [...contract.tables.keys()]);
+              await assert.rejects(c.query(failure(contract.sources[1])), e => e.code === '22012');
+              await c.query('ROLLBACK'); await assertAfter0181(c, contract);
+              assert.deepEqual(await captureCatalog(c, [...contract.tables.keys()]), state);
+              await preserve();
+            });
+            await scenario('complete-rerun-preflight-refusal-and-source-rollback', async ({ c, install, post }) => {
+              await install(); await assert.rejects(assertFresh(c, contract, expected), /Fresh install only/);
+              const state = await captureCatalog(c, [...contract.tables.keys()]);
+              for (const sql of contract.sources) {
+                await assert.rejects(c.query(sql), e => e.code === '42P07');
+                await c.query('ROLLBACK');
+                assert.deepEqual(await captureCatalog(c, [...contract.tables.keys()]), state);
+              }
+              await post();
+            });
+            await scenario('partial-install-detection', async ({ c, phaseOne }) => {
+              await phaseOne(); await assert.rejects(assertFresh(c, contract, expected), /Fresh install only/);
+              await assertAfter0181(c, contract);
+            });
+            await scenario('conflicting-object-detection', async ({ c }) => {
+              await c.query('BEGIN; CREATE TABLE current_payment_batches (LIKE schools INCLUDING ALL)');
+              await assert.rejects(assertFresh(c, contract, expected), /Fresh install only/);
+              await c.query('ROLLBACK'); await assertFresh(c, contract, expected);
+            });
+            await scenario('protection-and-data-preservation-with-behavior-probes', async ({ c, install, preserve }) => {
+              await install(); await c.query('BEGIN');
+              await rejected(c, 'DELETE FROM student_direct_live_reviews WHERE id=1', /Direct LIVE history is append-only/);
+              await rejected(c, 'DELETE FROM student_direct_live_obligations WHERE id=1', /Direct LIVE history is append-only/);
+              await rejected(c, 'DELETE FROM student_direct_live_events WHERE id=1', /Direct LIVE history is append-only/);
+              await rejected(c, 'DELETE FROM student_direct_live_attempts WHERE id=1', /Direct LIVE attempts cannot be deleted/);
+              await rejected(c, 'DELETE FROM bro_field_claims', /BRO field history and claims are immutable/);
+              await rejected(c, 'DELETE FROM bro_field_leads', /BRO leads cannot be deleted/);
+              await rejected(c, 'DELETE FROM bro_field_transfers', /Transfer history is immutable/);
+              await rejected(c, 'DELETE FROM audit_logs', /BRO field audit history is immutable/);
+              await rejected(c, 'UPDATE owner_free_academic_terms SET reason=reason', /Free academic-term evidence is immutable/);
+              await rejected(c, 'TRUNCATE owner_free_academic_term_events', /Free academic-term evidence is immutable/);
+              // Exact financial BRO history guard, without creating a paid financial row.
+              await rejected(c, 'INSERT INTO bro_term_commission_entitlements(id) VALUES(999)', /Independent BRO earning scope or approval is invalid/);
+              await c.query('ROLLBACK'); await preserve();
+            });
+            await scenario('reversed-structural-order-refused', async ({ c }) => {
+              await assert.rejects(c.query(contract.sources[1]), e => e.code === '42P01');
+              await c.query('ROLLBACK'); await assertFresh(c, contract, expected);
+            });
+            await scenario('missing-prerequisite-and-disabled-existing-guard-refused', async ({ c }) => {
+              await c.query('BEGIN; ALTER TABLE schools RENAME TO hidden_schools');
+              await assert.rejects(assertFresh(c, contract, expected)); await c.query('ROLLBACK');
+              await c.query('BEGIN; ALTER TABLE student_direct_live_events DISABLE TRIGGER student_direct_event_history');
+              await assert.rejects(assertFresh(c, contract, expected)); await c.query('ROLLBACK');
+              await assertFresh(c, contract, expected);
+            });
+            assert.equal(results.length, 9);
+            console.log(JSON.stringify({ result: 'PASS', postgresVersion: version, scenarios: results,
+              historyGuardMD5: historyMD5, applicationDatabaseConnections: 0, externalProviderCalls: 0,
+              structuralOrder: ['0181', '0182'], serviceContainer: proof.container }));
+          } finally { await admin.end(); }
+          JAVASCRIPT
+          # Keep all rehearsal/test processes physically off the network. The
+          # PostgreSQL container is already disconnected and shares only a socket.
+          sudo install -d -m 700 /tmp/current-finance-empty-home
+          parent_namespace="$(readlink /proc/self/ns/net)"
+          node_binary="$(command -v node)"
+          sudo unshare --net --fork env -i PATH="$PATH" HOME=/tmp/current-finance-empty-home \
+            LANG=C.UTF-8 NODE_ENV=test "$node_binary" .current-finance-ci.mjs "$parent_namespace"
