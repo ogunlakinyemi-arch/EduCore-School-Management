@@ -38,3 +38,12 @@ verifier never arrived, even though it is waiting at the shared financial gate.
 **How to apply:** Observe only the relevant, explicitly identified query/gate
 shapes and retain the terminal-state, event-count and exactly-once assertions.
 Fix stale fixture instrumentation rather than removing production serialization.
+
+PostgreSQL binary availability does not establish OS network-isolation capability.
+
+**Why:** On 2026-11-26 PostgreSQL tools were installed, but the workspace denied
+`unshare --net` with `Operation not permitted`.
+
+**How to apply:** When a rehearsal requires network-namespace isolation, check
+that capability before creating a cluster. Report the rehearsal blocked if it
+is unavailable; do not substitute a socket-only or mocked run for that evidence.

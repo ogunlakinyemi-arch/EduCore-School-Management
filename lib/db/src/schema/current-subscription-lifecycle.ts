@@ -52,7 +52,7 @@ export const currentSubscriptionOperationEvents = pgTable("current_subscription_
 }, t => [
   fk("current_subscription_operation_events", t.operationId, currentSubscriptionOperations.id, true),
   fk("current_subscription_operation_events", t.actorUserId, appUsers.id, true),
-  index("current_subscription_operation_event_order").on(t.operationId, t.id.desc()),
+  index("current_subscription_operation_event_order").on(t.operationId, t.id.desc().nullsFirst()),
   check("current_subscription_operation_events_state_check", sql`state IN ('REQUESTED','APPROVED','PROCESSING','UNKNOWN','PENDING','SUCCEEDED','FAILED','REVERSED','HELD','RECOVERY_REQUIRED','RECOVERY_RECORDED','REVIEW_ONLY')`),
   check("current_subscription_operation_events_details_check", sql`jsonb_typeof(details)='object'`),
 ]);

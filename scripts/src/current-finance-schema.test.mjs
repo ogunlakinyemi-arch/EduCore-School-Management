@@ -50,7 +50,7 @@ for (const table of wanted) {
         parentColumns: r.foreignColumns.map(c => c.name), onDelete: x.onDelete, onUpdate: x.onUpdate };
     })), sorted(expected.foreignKeys));
     assert.deepEqual(sorted(c.indexes.map(({ config: x }) => ({ name: x.name, unique: x.unique,
-      columns: x.columns.map(c => ({ name: c.name, order: c.indexConfig.order })), where: x.where ? expression(x.where) : null }))),
+      columns: x.columns.map(c => ({ name: c.name, order: c.indexConfig.order, nulls: c.indexConfig.nulls })), where: x.where ? expression(x.where) : null }))),
     sorted(expected.indexes.map(x => ({ ...x, where: x.where ? normalize(x.where) : null }))));
   });
 }

@@ -111,7 +111,8 @@ export function readSourceContract(sources) {
   for (const match of sql.matchAll(/CREATE\s+(UNIQUE\s+)?INDEX\s+(\w+)\s+ON\s+(\w+)\s*\(([^)]+)\)(?:\s+WHERE\s+([^;]+))?;/gi)) {
     const table = tables.get(match[3]); assert.ok(table);
     table.indexes.push({ name: match[2], unique: !!match[1], columns: list(match[4]).map(c => {
-      const [name, order = "asc"] = c.split(/\s+/); return { name, order: order.toLowerCase() };
+      const [name, order = "asc"] = c.split(/\s+/);
+      return { name, order: order.toLowerCase(), nulls: order.toLowerCase() === "desc" ? "first" : "last" };
     }), where: match[5] ?? null });
   }
   return tables;
