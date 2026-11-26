@@ -1,4 +1,4 @@
-// Unregistered REVIEW CANDIDATE. Procedural SQL/trigger delivery requires separate
+// Structural metadata only. Procedural SQL/trigger delivery requires separate
 // approval; exporting a model alone must not imply the feature is schema-ready.
 import {sql} from "drizzle-orm";
 import {check,date,foreignKey,integer,pgTable,serial,text,timestamp,unique} from "drizzle-orm/pg-core";

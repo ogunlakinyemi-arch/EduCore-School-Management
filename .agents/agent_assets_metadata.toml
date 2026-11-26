@@ -980,3 +980,17 @@ mtime_ms = 1795588890357
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f491d5bc-a648-4f83-9338-9d8a5b0b5453/4b19a0a6-bdde-40ab-8b08-50b0ac87d4e6"
 storage_version_token = "1795588918607702"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "UPynddd1UIiwCrs5wefym"
+uri = "file://docs/flutterwave-live-readiness-review.md"
+type = "text"
+title = "Flutterwave LIVE readiness assessment"
+description = "Verified source corrections, 136 passing scoped checks, remaining LIVE blockers and the disclosed test-scope incident. Not authorization to activate or publish."
+logical_id = "5cd3aa71-8ec9-453c-8984-0432b940696a"
+content_hash = "sha256:9768ec647dc4411873195d400c60d456e49c2cdf5467f201e1fc73f031286e74"
+size = 6981
+mtime_ms = 1795684841113
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/5cd3aa71-8ec9-453c-8984-0432b940696a/dabeda80-189f-42e7-a876-d9edbc29d674"
+storage_version_token = "1795684892008180"
+content_type = "text/markdown"

@@ -47,3 +47,15 @@ PostgreSQL binary availability does not establish OS network-isolation capabilit
 **How to apply:** When a rehearsal requires network-namespace isolation, check
 that capability before creating a cluster. Report the rehearsal blocked if it
 is unavailable; do not substitute a socket-only or mocked run for that evidence.
+
+Offline test safety must cover test discovery and process creation, not only
+database connections.
+
+**Why:** Native PostgreSQL tests can initialize a cluster in setup before opening
+a client socket. An accidentally unfiltered Vitest invocation did this even
+though its database connections were blocked.
+
+**How to apply:** Pass validated, explicit file arrays instead of relying on a
+multiline CLI argument. Exclude native cases from mixed offline/native files.
+For offline-only runs, reject native PostgreSQL child processes as well as
+database/outbound sockets. Connection rejection is not namespace isolation.

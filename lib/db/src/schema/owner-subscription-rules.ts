@@ -2,6 +2,7 @@ import { pgTable, bigserial, integer, text, date, timestamp, index, uniqueIndex,
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { sourceKeyName } from "./current-finance-keys";
 
 /** Drafts and their lifecycle are metadata; native billing tables remain authoritative. */
 export const subscriptionRuleProposals=pgTable("subscription_rule_proposals",{
@@ -25,9 +26,17 @@ export const subscriptionRuleProposals=pgTable("subscription_rule_proposals",{
   retiredAt:timestamp("retired_at",{withTimezone:true}),
 },t=>[
   index("subscription_rule_proposals_product_window_idx").on(t.product,t.effectiveAt,t.endsAt,t.status),
-  check("subscription_rule_proposals_product_ck",sql`${t.product} IN ('STUDENT_PLATFORM','TEACHER_STAFF_PLATFORM','BRO_COMMISSION')`),
-  check("subscription_rule_proposals_status_ck",sql`${t.status} IN ('DRAFT','SCHEDULED','ACTIVE','RETIRED')`),
-  check("subscription_rule_proposals_valid_ck",sql`${t.amountMinor}>0 AND ${t.version}>0 AND ${t.schoolShareMinor}=0 AND ${t.currency}='NGN' AND ${t.billingPeriod}='ACADEMIC_TERM' AND length(trim(${t.reason})) BETWEEN 3 AND 500 AND (${t.endsAt} IS NULL OR ${t.endsAt}>${t.effectiveAt}) AND (${t.product}<>'TEACHER_STAFF_PLATFORM' OR ${t.amountMinor}=200000)`),
+  // Keep 0175's individual source constraints, including nullable CHECK semantics.
+  check("subscription_rule_proposals_product_check",sql`product IN ('STUDENT_PLATFORM','TEACHER_STAFF_PLATFORM','BRO_COMMISSION')`),
+  check("subscription_rule_proposals_status_check",sql`status IN ('DRAFT','SCHEDULED','ACTIVE','RETIRED')`),
+  check("subscription_rule_proposals_amount_minor_check",sql`amount_minor > 0`),
+  check("subscription_rule_proposals_currency_check",sql`currency = 'NGN'`),
+  check("subscription_rule_proposals_billing_period_check",sql`billing_period = 'ACADEMIC_TERM'`),
+  check("subscription_rule_proposals_school_share_minor_check",sql`school_share_minor = 0`),
+  check("subscription_rule_proposals_reason_check",sql`length(trim(reason)) BETWEEN 3 AND 500`),
+  check("subscription_rule_proposals_version_check",sql`version > 0`),
+  check("subscription_rule_proposals_check",sql`ends_at IS NULL OR ends_at > effective_at`),
+  check("subscription_rule_proposals_check1",sql`product <> 'TEACHER_STAFF_PLATFORM' OR amount_minor = 200000`),
 ]);
 export const insertSubscriptionRuleProposal=createInsertSchema(subscriptionRuleProposals).omit({
   id:true,createdAt:true,updatedAt:true,activatedAt:true,retiredAt:true,
@@ -56,9 +65,13 @@ export const subscriptionPaymentAssistanceRequests=pgTable("subscription_payment
   uniqueIndex("subscription_payment_assistance_open_uq").on(t.schoolId,t.studentId,t.academicTermId).where(sql`${t.status}<>'CANCELLED'`),
   uniqueIndex("subscription_payment_assistance_bank_credit_uq").on(t.bankStatementReference).where(sql`${t.status}='BANK_VERIFIED'`),
   uniqueIndex("subscription_payment_assistance_bank_credit_normalized_uq").on(sql`lower(btrim(${t.bankStatementReference}))`).where(sql`${t.status}='BANK_VERIFIED'`),
-  check("subscription_payment_assistance_amount_ck",sql`${t.amountMinor}>0 AND (${t.verifiedAmountMinor} IS NULL OR ${t.verifiedAmountMinor}>0)`),
-  check("subscription_payment_assistance_status_ck",sql`${t.status} IN ('REQUESTED','BANK_VERIFIED','CANCELLED')`),
-  check("subscription_payment_assistance_bank_ck",sql`${t.status}<>'BANK_VERIFIED' OR (${t.bankName} IS NOT NULL AND ${t.bankStatementReference} IS NOT NULL AND ${t.bankCreditDate} IS NOT NULL AND ${t.verifiedAmountMinor}=${t.amountMinor} AND ${t.verifiedBy} IS NOT NULL AND ${t.verifiedAt} IS NOT NULL)`),
+  check("subscription_payment_assistance_requests_amount_minor_check",sql`amount_minor > 0`),
+  check("subscription_payment_assistance_requests_status_check",sql`status IN ('REQUESTED','BANK_VERIFIED','CANCELLED')`),
+  check(sourceKeyName("subscription_payment_assistance_requests",["verified_amount_minor"],"check"),sql`verified_amount_minor > 0`),
+  check("subscription_payment_assistance_requests_check",sql`status <> 'BANK_VERIFIED' OR (
+    bank_name IS NOT NULL AND bank_statement_reference IS NOT NULL
+    AND bank_credit_date IS NOT NULL AND verified_amount_minor = amount_minor
+    AND verified_by IS NOT NULL AND verified_at IS NOT NULL)`),
 ]);
 export const insertSubscriptionPaymentAssistanceRequest=createInsertSchema(subscriptionPaymentAssistanceRequests).omit({
   id:true,createdAt:true,verifiedAt:true,

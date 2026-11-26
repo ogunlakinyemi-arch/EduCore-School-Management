@@ -69,6 +69,14 @@ function addPart(table, part) {
     table.keys.push({ name: name ?? keyName(table.name, /^UNIQUE/i.test(part) ? columns : [], /^UNIQUE/i.test(part) ? "key" : "pkey"),
       columns, primary: /^PRIMARY/i.test(part) }); return;
   }
+  const compositeRef = part.match(/^FOREIGN KEY\s*\(([^)]+)\)\s+REFERENCES\s+(?:public\.)?(\w+)\s*\(([^)]+)\)(?:\s+ON DELETE\s+(RESTRICT))?$/i);
+  if (compositeRef) {
+    const columns = list(compositeRef[1]);
+    table.foreignKeys.push({ name: name ?? keyName(table.name, columns, "fkey"), columns,
+      parent: compositeRef[2], parentColumns: list(compositeRef[3]),
+      onDelete: compositeRef[4] ? "restrict" : "no action", onUpdate: "no action" });
+    return;
+  }
   const column = part.match(/^(\w+)\s+(bigserial|bigint|serial|integer|text|jsonb|timestamptz|boolean|date)\b/i);
   assert.ok(column, `Unsupported source column: ${part}`);
   const [, columnName, type] = column;
@@ -90,7 +98,7 @@ function addPart(table, part) {
 }
 export function readSourceContract(sources) {
   const tables = new Map(), sql = sources.join("\n").replace(/--[^\n]*/g, "");
-  for (const match of sql.matchAll(/CREATE TABLE\s+(\w+)\s*\(/gi)) {
+  for (const match of sql.matchAll(/CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:public\.)?(\w+)\s*\(/gi)) {
     const table = { name: match[1], columns: [], keys: [], foreignKeys: [], checks: [], indexes: [] };
     assert.ok(!tables.has(table.name), `Duplicate source table: ${table.name}`);
     for (const part of splitTop(enclosed(sql, match.index + match[0].length - 1).body)) addPart(table, part);
@@ -108,12 +116,23 @@ export function readSourceContract(sources) {
     const table = tables.get(match[1]); assert.ok(table);
     table.checks.push({ name: match[2], expression: enclosed(sql, match.index + match[0].length - 1).body });
   }
-  for (const match of sql.matchAll(/CREATE\s+(UNIQUE\s+)?INDEX\s+(\w+)\s+ON\s+(\w+)\s*\(([^)]+)\)(?:\s+WHERE\s+([^;]+))?;/gi)) {
+  for (const match of sql.matchAll(/CREATE\s+(UNIQUE\s+)?INDEX\s+(?:IF NOT EXISTS\s+)?(\w+)\s+ON\s+(?:public\.)?(\w+)\s*\(/gi)) {
     const table = tables.get(match[3]); assert.ok(table);
-    table.indexes.push({ name: match[2], unique: !!match[1], columns: list(match[4]).map(c => {
-      const [name, order = "asc"] = c.split(/\s+/);
-      return { name, order: order.toLowerCase(), nulls: order.toLowerCase() === "desc" ? "first" : "last" };
-    }), where: match[5] ?? null });
+    const entries = enclosed(sql, match.index + match[0].length - 1);
+    const tail = sql.slice(entries.end).match(/^\s*(?:WHERE\s+([^;]+))?;/i);
+    assert.ok(tail, `Unsupported index suffix: ${match[2]}`);
+    table.indexes.push({ name: match[2], unique: !!match[1], columns: splitTop(entries.body).map(c => {
+      const explicitNulls = c.match(/\s+NULLS\s+(FIRST|LAST)$/i);
+      if (explicitNulls) c = c.slice(0, explicitNulls.index);
+      const explicitOrder = c.match(/\s+(ASC|DESC)$/i);
+      if (explicitOrder) c = c.slice(0, explicitOrder.index);
+      const order = explicitOrder?.[1].toLowerCase() ?? "asc";
+      const nulls = explicitNulls?.[1].toLowerCase() ?? (order === "desc" ? "first" : "last");
+      if (/^\w+$/.test(c)) return { name: c, order, nulls };
+      // Only the existing reviewed bank-credit expression is supported.
+      assert.match(c, /^lower\(btrim\([a-z_][a-z_0-9]*\)\)$/i, `Unsupported index expression: ${c}`);
+      return { expression: c, order, nulls };
+    }), where: tail[1] ?? null });
   }
   return tables;
 }
