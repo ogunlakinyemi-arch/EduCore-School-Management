@@ -5,6 +5,7 @@ import { Button, Field, StatusPill } from '@/components/shared';
 import { CurrentFinanceReceiptButton } from '@/components/current-finance-receipt';
 import { BankRemittanceBatch, act, STUDENT_FEE_MINOR, type BankBatch } from '@/components/bank-remittance-batch';
 import { ExternalBroPayoutRecording } from './external-bro-payout-recording';
+import { SchoolSubscriptionTermPicker } from './school-subscription-term-picker';
 import {
   isOverview, isUnavailable, naira, safeHttpsUrl, toMinor, useCurrentFinance, useFinanceAction, apiErrorText,
   type FinanceOverview, type Payment, type Source,
@@ -65,12 +66,12 @@ function FinancePanel({ mode, schoolId: fixedSchoolId, ownerSelectedSchool, comm
       {effectiveSchool&&!catalog.schools.some(s=>s.id===effectiveSchool)&&<option value={effectiveSchool}>Selected school #{effectiveSchool}</option>}
       {catalog.schools.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
     </select></Field>}
-    <Field label="Academic term"><select value={termId??''} disabled={!effectiveSchool} onChange={e=>{
+    {mode==='school'?<SchoolSubscriptionTermPicker key={effectiveSchool??'none'} schoolId={effectiveSchool} termId={termId} onChange={setTermId}/>:<Field label="Academic term"><select value={termId??''} disabled={!effectiveSchool} onChange={e=>{
       const id=Number(e.target.value);setTermId(scopedTerms.some(t=>t.id===id)?id:undefined);
     }} data-testid="select-finance-term">
       <option value="">{effectiveSchool?'All terms':'Choose a school first'}</option>
       {scopedTerms.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-    </select></Field>
+    </select></Field>}
     <p className={`text-xs ${muted}`}>{effectiveSchool?'Selected school and term only.':'Choose one school, then its academic term.'}</p>
     <Button variant="outline" onClick={()=>{if(!fixedSchoolId)setSchoolId(undefined);setTermScope(null);}}
       testId="button-reset-finance-scope">Reset school / term scope</Button>

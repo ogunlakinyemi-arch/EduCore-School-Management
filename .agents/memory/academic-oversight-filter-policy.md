@@ -17,3 +17,15 @@ Default only to an unambiguous current active period within the selected scope;
 ambiguity requires an explicit choice, never selecting the first matching name.
 Filter improvements do not authorize changes to academic records, fee status,
 payment safeguards, Production configuration or LIVE provider activity.
+
+Student subscription calendar options must remain readable independently of
+connected-finance lifecycle readiness. Include saved non-current and historical
+periods with school/session context; do not fabricate or activate terms to repair
+a dropdown.
+
+**Why:** The user required existing school calendar selection to work without
+enabling the financial ledger or changing saved current/free-term status.
+
+**How to apply:** Use authorized academic-calendar reads for filter metadata.
+Preserve financial-writer prerequisites independently, and distinguish calendar
+retrieval failures from genuinely absent saved terms.

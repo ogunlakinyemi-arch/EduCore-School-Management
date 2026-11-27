@@ -114,6 +114,19 @@ async function request(path: string, role: string, method = "GET", body?: unknow
 }
 
 describe("school operational academic authorization", () => {
+  it.each(["SCHOOL_ADMIN", "ACCOUNTANT"])("scopes %s calendar reads to its school before querying", async role => {
+    expect((await request("/academic-sessions?schoolId=2&status=all", role)).status).toBe(404);
+    expect((await request("/academic-sessions/11/terms?schoolId=2", role)).status).toBe(404);
+    expect(state.calls).toHaveLength(0);
+  });
+  it("reads saved terms by both session and school without financial lifecycle dependencies", async () => {
+    const response = await request("/academic-sessions/11/terms?schoolId=1", "PLATFORM_OWNER");
+    expect(response.status).toBe(200);
+    expect(state.calls).toHaveLength(1);
+    expect(state.calls[0].values).toEqual([11, 1]);
+    expect(state.calls[0].sql).toContain("academic_session_id=$1 AND school_id=$2");
+    expect(state.calls[0].sql).not.toMatch(/current_|is_current\s*=\s*true|INSERT|UPDATE|DELETE/);
+  });
   it("saves class links through the authenticated API and commits its audit atomically",async()=>{
     const response=await request("/class-subject-assignments/class-setup","SCHOOL_ADMIN","PUT",{
       schoolId:1,classId:4,sessionId:11,subjects:[{subjectId:81,teacherId:6}],expectedAssignmentIds:[],

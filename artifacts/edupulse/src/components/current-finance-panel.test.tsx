@@ -3,6 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import { describe, it, expect, vi,beforeEach } from 'vitest';
+vi.mock('./school-subscription-term-picker', () => ({
+  SchoolSubscriptionTermPicker: () => <select data-testid="select-finance-term"><option>Calendar picker tested separately</option></select>,
+}));
 const f = vi.hoisted(() => ({ result: {} as Record<string, unknown>, mutateAsync:vi.fn(),queries:[] as any[],uid:'user-a' }));
 vi.mock('@clerk/react', () => ({ useUser: () => ({ user: { id: f.uid } }), useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: f.uid, sessionId: 'sess-a' }) }));
 vi.mock('@tanstack/react-query', async o => ({ ...await o<typeof import('@tanstack/react-query')>(), useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
@@ -103,6 +106,13 @@ describe('connected finance', () => {
     f.result = { isLoading: false, isError: true, error: { status: 404 }, refetch: vi.fn() };
     const html = renderToStaticMarkup(<ConnectedFinancePanel mode="bro" />);
     expect(html).toContain('not zero'); expect(html).not.toContain('₦0.00');
+  });
+  it('keeps the independent saved-calendar picker mounted when school finance readiness fails', () => {
+    f.result = { isLoading: false, isError: true, error: { status: 503, data: { error: 'CURRENT_LIFECYCLE_MIGRATION_NOT_APPLIED' } }, refetch: vi.fn() };
+    const html = renderToStaticMarkup(<ConnectedFinancePanel mode="school" schoolId={2} />);
+    expect(html).toContain('Calendar picker tested separately');
+    expect(html).toContain('select-finance-term');
+    expect(html).not.toContain('button-create-bulk');
   });
   it('keeps school rendering private even if an overbroad response contains Owner balances or explanations',()=>{
     f.result={data:{...overview,owner:true,bro:false,blockers:['Secret BRO commission fee'],
