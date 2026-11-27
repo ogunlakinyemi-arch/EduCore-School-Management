@@ -38,3 +38,15 @@ it("rejects the provider's unsupported sub-minimum refund before creating a prot
   key:"fictional_request_00001",reason:"Fictional reason"}});
  expect(r.body.error).toBe("REFUND_MINIMUM_NGN_100");expect(calls.pool.connect).not.toHaveBeenCalled();
 });
+it.each(["PARTNER","SCHOOL_ADMIN","ACCOUNTANT","TEACHER","PARENT"])("blocks bank reveal and external payout recording for %s before any database or provider access",async role=>{
+ for(const command of [
+   {action:"PAYOUT_BANK_REVEAL",payload:{id:1,key:"fictional_reveal_key",reason:"Check beneficiary"}},
+   {action:"PAYOUT_RECORD_EXTERNAL",payload:{ids:[1],amountMinor:15000,key:"fictional_external_key",
+     reason:"Reviewed bank statement",transferReference:"FICTIONAL-TRANSFER",statementReference:"FICTIONAL-STATEMENT",
+     transferDate:"2026-11-01",confirmExternalTransfer:true,independentlyChecked:true}}
+ ]){
+   calls.pool.connect.mockClear();
+   expect((await invoke(role,command)).statusCode).toBe(403);
+   expect(calls.pool.connect).not.toHaveBeenCalled();
+ }
+});

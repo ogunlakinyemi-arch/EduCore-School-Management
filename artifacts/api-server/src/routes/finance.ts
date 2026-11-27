@@ -7,7 +7,7 @@ import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-pr
 import { FlutterwavePayrollV3Client } from "../lib/flutterwave-payroll-v3";
 import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions } from "../lib/student-nfc-obligations";
 import {isReservedPlatformNfcCategory as isSystemNfcCategory} from "../lib/student-nfc-policy";
-import {publishedSchoolInvoiceSql,familyPayableInvoiceSql} from "../services/school-fee-carry-forward";
+import {publishedSchoolInvoiceSql,familyPayableInvoiceSql,linkedGuardianInvoiceSql} from "../services/school-fee-carry-forward";
 import { assignPublishedClassFees } from "../services/fee-publication";
 import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
 import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
@@ -964,8 +964,7 @@ router.get("/parent/fees/invoices", async (req, res): Promise<void> => {
     const context = getUserContext(req);
     const result = await pool.query(
       `SELECT ${invoiceShape} FROM fee_invoices i
-       WHERE ${publishedSchoolInvoiceSql("i")} AND EXISTS (SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
-        WHERE p.user_id=$1 AND p.status='ACTIVE' AND p.school_id=i.school_id AND r.student_id=i.student_id AND r.status='ACTIVE')
+       WHERE ${publishedSchoolInvoiceSql("i")} AND ${linkedGuardianInvoiceSql("i")}
        ORDER BY i.due_date,i.id`,
       [context.user.id],
     );
@@ -1034,11 +1033,7 @@ router.get("/parent/fees/payments", async (req, res): Promise<void> => {
        FROM fee_payments p JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
        JOIN schools s ON s.id=p.school_id
        LEFT JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id AND r.invoice_id=p.invoice_id
-       WHERE ${familyPayableInvoiceSql("i")} AND EXISTS (
-         SELECT 1 FROM parents pa JOIN parent_student_relationships rel ON rel.parent_id=pa.id
-         WHERE pa.user_id=$1 AND pa.status='ACTIVE' AND pa.school_id=p.school_id
-           AND rel.student_id=p.student_id AND rel.status='ACTIVE'
-       )
+       WHERE ${familyPayableInvoiceSql("i")} AND ${linkedGuardianInvoiceSql("i")}
        ORDER BY p.created_at DESC,p.id DESC`,
       [context.user.id],
     );

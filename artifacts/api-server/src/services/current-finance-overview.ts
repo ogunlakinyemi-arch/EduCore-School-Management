@@ -7,11 +7,15 @@ import {lagosDate,readStudentRollout} from "./student-platform-rollout";
 import {batchState,batchRoot} from "./current-bulk-subscriptions";
 import {bulkCreditSource,bulkProof,activeAllocationPredicate} from "./current-payment-evidence";
 import {directLiveConfiguration} from "../lib/flutterwave-direct-live-config";
+import {currentBroSavedBank} from "./current-bro-bank";
 const name=(r:any)=>[r.first_name,r.last_name].filter(Boolean).join(" ")||`Student #${r.student_id??r.id}`;
 const studentName=`COALESCE(NULLIF(concat_ws(' ',to_jsonb(st)->>'first_name',to_jsonb(st)->>'last_name'),''),'Student #'||st.id::text)`;
-export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number,schoolId?:number,termId?:number,now=new Date()){
+export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number,schoolId?:number,termId?:number,now=new Date(),view?:"SCHOOL"|"BRO"|"OWNER"){
  return financialTransaction(pool,async(c:CurrentSql)=>{
   const actor=await currentFinanceActor(c,actorId);
+  demand(view!=="OWNER"||actor.owner,"CURRENT_FINANCE_ACCESS_DENIED");
+  demand(view!=="BRO"||actor.partnerId,"ACTUAL_BRO_PROFILE_OWNER_REQUIRED");
+  const commissionAccess=(actor.owner||!!actor.partnerId)&&view!=="SCHOOL";
   const schools=(await c.query(`SELECT s.id,COALESCE(to_jsonb(s)->>'name','School #'||s.id::text) AS name FROM schools s
     WHERE lower(s.status)='active' AND ($2::boolean OR EXISTS(SELECT 1 FROM school_memberships m
       WHERE m.user_id=$1 AND m.school_id=s.id AND m.status='ACTIVE' AND m.role IN ('SCHOOL_ADMIN','ACCOUNTANT'))) ORDER BY s.id`,
@@ -23,7 +27,7 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
     WHERE t.school_id=ANY($1::int[]) AND ($2::int IS NULL OR t.school_id=$2) ORDER BY t.id`,
     [schools.map(s=>s.id),schoolId??null])).rows.map(r=>({id:Number(r.id),schoolId:Number(r.schoolId),name:r.name}));
   if(termId)demand(schoolId&&terms.some(t=>t.id===termId&&t.schoolId===schoolId),"EXPLICIT_SCHOOL_TERM_SCOPE_REQUIRED");
-  const allEntitlements=(actor.owner||actor.partnerId)?(await c.query(`SELECT 'D:'||e.id AS key,e.id,e.school_id,e.student_id,e.academic_term_id,
+  const allEntitlements=commissionAccess?(await c.query(`SELECT 'D:'||e.id AS key,e.id,e.school_id,e.student_id,e.academic_term_id,
     e.partner_profile_id,COALESCE(to_jsonb(p)->>'full_name','BRO #'||p.id::text) AS bro_name,
     e.amount_minor,e.direct_attempt_id AS attempt_id,NULL::bigint AS allocation_id,
     ${studentName} AS student_name,COALESCE(to_jsonb(s)->>'name','School #'||s.id::text) AS school_name,t.name AS term_name,
@@ -57,6 +61,7 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
    const activeBro=(await c.query(`SELECT 1 FROM partner_profiles p JOIN app_users u ON u.id=p.user_id
      WHERE p.id=$1 AND p.status='ACTIVE' AND u.status='ACTIVE' AND EXISTS(SELECT 1 FROM school_memberships m
        WHERE m.user_id=u.id AND m.role='PARTNER' AND m.status='ACTIVE')`,[e.partner_profile_id])).rows[0];
+   const requestable=phase==="REQUESTED"&&!e.request_id&&!held&&money.netPaidMinor===320000&&!!activeBro;
    const available=["APPROVED","FAILED"].includes(phase)&&e.decision==="APPROVED"&&!held&&money.netPaidMinor===320000
      &&!!activeBro&&e.term_end<lagosDate(now);
    if(phase==="REQUESTED"&&!held)summary.pendingMinor+=15000;
@@ -65,6 +70,7 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
    if(phase==="APPROVED")summary.approvedMinor+=15000;
    if(available)summary.availableMinor+=15000;
    entitlements.push({key:e.key,studentId:Number(e.student_id),studentName:e.student_name,
+     partnerId:Number(e.partner_profile_id),broName:e.bro_name,requestable,
      schoolId:Number(e.school_id),schoolName:e.school_name,termId:Number(e.academic_term_id),termName:e.term_name,
      amountMinor:15000,state:held&&phase==="REQUESTED"?"HELD":phase,requestId:e.request_id?Number(e.request_id):null,available});
    let latestPayout:{state:string;amount:number}|null=null;
@@ -72,22 +78,38 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
      WHERE parent_id=$1 AND kind='BRO_PAYOUT' ORDER BY id`,[e.journal_id])).rows){
      const phase=await state(c,Number(p.id));if(phase==="SUCCEEDED")summary.paidMinor+=Number(p.amount_minor);
      latestPayout={state:phase,amount:Number(p.amount_minor)};
+     const events=(await c.query(`SELECT state,actor_user_id,created_at,details FROM current_subscription_operation_events
+       WHERE operation_id=$1 ORDER BY id`,[p.id])).rows;
+      const paid=[...events].reverse().find(ev=>ev.state==="SUCCEEDED"&&ev.details?.action!=="FROZEN_BANK_REVEALED");
      payouts.push({id:Number(p.id),entitlementKey:e.key,amountMinor:Number(p.amount_minor),state:phase,
-       reference:referenceFor(Number(p.id)),maskedAccountNumber:p.snapshot.bank?.maskedAccountNumber??null});
+       partnerId:Number(e.partner_profile_id),broName:e.bro_name,requestId:e.request_id?Number(e.request_id):null,
+       reference:referenceFor(Number(p.id)),maskedAccountNumber:p.snapshot.bank?.maskedAccountNumber??null,
+       bankName:p.snapshot.bank?.bankName??null,accountName:p.snapshot.bank?.accountName??null,
+       bankFingerprint:p.snapshot.bank?.fingerprint??null,
+       paymentReference:paid?.details?.transferReference??paid?.details?.providerReference??null,
+       transferDate:paid?.details?.transferDate??null,recordedAt:paid?new Date(paid.created_at).toISOString():null,
+       recordedBy:paid?.actor_user_id?Number(paid.actor_user_id):null,
+       verificationMethod:paid?.details?.verificationMethod??(paid?"PROVIDER_RECONCILED":null),
+       audit:events.map(ev=>({state:ev.state,actorId:ev.actor_user_id?Number(ev.actor_user_id):null,
+         at:new Date(ev.created_at).toISOString(),action:ev.details?.action??null}))});
    }
    // Count only the latest attempt per entitlement, not every historical failed retry.
    if(latestPayout?.state==="FAILED")summary.failedMinor+=latestPayout.amount;
    if(latestPayout?.state==="REVERSED")summary.reversedMinor+=latestPayout.amount;
   }
   const requests=[];
-  for(const r of (actor.owner||actor.partnerId)?(await c.query(`SELECT r.*,COALESCE(to_jsonb(p)->>'full_name','BRO #'||p.id::text) AS bro_name
+  for(const r of commissionAccess?(await c.query(`SELECT r.*,COALESCE(to_jsonb(p)->>'full_name','BRO #'||p.id::text) AS bro_name
     FROM current_bro_withdrawals r JOIN partner_profiles p ON p.id=r.partner_profile_id
     WHERE $1::boolean OR r.partner_profile_id=$2 ORDER BY r.id DESC`,[actor.owner,actor.partnerId])).rows:[]){
     const allLines=(await c.query(`SELECT l.*,d.decision,d.reason FROM current_bro_withdrawal_lines l
       LEFT JOIN current_bro_withdrawal_decisions d ON d.line_id=l.id WHERE request_id=$1 ORDER BY l.id`,[r.id])).rows;
     const lines=schoolId||termId?allLines.filter(l=>entitlements.some(e=>e.key===(l.bulk_entitlement_id?`B:${l.bulk_entitlement_id}`:`D:${l.entitlement_id}`))):allLines;
     if(!lines.length)continue;
-    requests.push({id:Number(r.id),partnerId:Number(r.partner_profile_id),broName:r.bro_name,totalMinor:lines.length*15000,
+    const bankDetails=actor.owner?await currentBroSavedBank(c,Number(r.partner_profile_id)):undefined;
+    requests.push({id:Number(r.id),partnerId:Number(r.partner_profile_id),broName:r.bro_name,totalMinor:Number(r.amount_minor),
+      availableMinor:entitlements.filter(e=>e.partnerId===Number(r.partner_profile_id)&&e.available).reduce((n,e)=>n+e.amountMinor,0),
+      requestableMinor:entitlements.filter(e=>e.partnerId===Number(r.partner_profile_id)&&e.requestable).reduce((n,e)=>n+e.amountMinor,0),
+      ...(actor.owner?{bankDetails}:{}),
       createdAt:new Date(r.created_at).toISOString(),lines:lines.map(l=>{
         const key=l.bulk_entitlement_id?`B:${l.bulk_entitlement_id}`:`D:${l.entitlement_id}`;
         return {entitlementKey:key,studentName:entitlements.find(e=>e.key===key)?.studentName??"Retained entitlement",
@@ -131,7 +153,7 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
           id:Number(a.id),studentId:Number(a.student_id),
           studentName:b.snapshot.students.find((s:any)=>s.studentId===Number(a.student_id))?.studentName??`Student #${a.student_id}`,
            state:a.posted?"POSTED":"UNRESOLVED",error:phase==="COMPLETED"?null:a.error??null,
-           ...(actor.owner?{broAccrualPending:a.bro_pending===true}:{})}));
+            ...(actor.owner&&commissionAccess?{broAccrualPending:a.bro_pending===true}:{})}));
        const method=b.snapshot.method==="COMPANY_BANK"?"COMPANY_BANK":"FLUTTERWAVE";
        const credit=method==="COMPANY_BANK"?(await c.query(`SELECT bank_name,statement_reference,credit_date::text AS credit_date,
          amount_minor,verified_at,verified_by FROM current_bank_credits WHERE batch_id=$1`,[b.id])).rows[0]:null;
@@ -158,10 +180,13 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
       }
     }
   }
-  return {owner:actor.owner,bro:!!actor.partnerId,schools,terms,summary,entitlements,requests,payments,refunds,payouts,batches,eligibleStudents,
-    blockers:[...(!directLiveConfiguration().ready?["LIVE direct-payment configuration and reviewed release remain required."]:[]),
+  return {owner:actor.owner,bro:!!actor.partnerId,schools,terms,
+    ...(commissionAccess?{summary}:{}),entitlements,requests,payments,refunds,payouts,batches,eligibleStudents,
+    blockers:!commissionAccess
+      ?(!directLiveConfiguration().ready?["Online payment is unavailable. Existing payments are unchanged."]:[])
+      :[...(!directLiveConfiguration().ready?["LIVE direct-payment configuration and reviewed release remain required."]:[]),
       "Collection reversals and incoming BRO recoveries require an independently bound bank/provider evidence feed; request-body claims cannot confirm them.",
-      "Payout verification reads existing matching LIVE transfers only; this workflow never sends a transfer."]};
+      "External payouts are Owner-recorded after bank-statement review, or independently reconciled against existing matching transfers. This app never sends a transfer."]};
  });
 }
 export async function readCurrentBulkReceipt(pool:CurrentPool,actorId:number,id:number,allocationId?:number){

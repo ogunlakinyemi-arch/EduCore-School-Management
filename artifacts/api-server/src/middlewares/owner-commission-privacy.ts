@@ -11,11 +11,11 @@ export function withoutBroFinancialData(input: unknown): unknown {
     .filter(value => {
       if (!value || typeof value !== "object") return true;
       const row = value as Record<string, unknown>;
-      return !["PARTNER", "BRO"].includes(String(row.recipientType ?? row.recipient_type ?? "").toUpperCase());
+      return !["PARTNER", "BRO", "PLATFORM", "PLATFORM_PROVIDER_FEE"].includes(String(row.recipientType ?? row.recipient_type ?? "").toUpperCase());
     }).map(withoutBroFinancialData);
   if (!input || typeof input !== "object" || input instanceof Date) return input;
   return Object.fromEntries(Object.entries(input).filter(([key]) =>
-    !/(commission|entitlement|partner(?:share|allocat|amount|revenue|expense|fee)|bro(?:share|amount))/i.test(key.replace(/[_-]/g, "")))
+    !/(commission|entitlement|partner(?:share|allocat|amount|revenue|expense|fee|accrual)|bro(?:share|amount|accrual|earning|payout)|platform(?:share|allocat|revenue|expense|net|amount)|providerFee)/i.test(key.replace(/[_-]/g, "")))
     .map(([key, value]) => [key, withoutBroFinancialData(value)]));
 }
 

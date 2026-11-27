@@ -78,8 +78,10 @@ export async function rolloverSchoolCalendar(pool:CalendarPool,schoolId:number){
   }
   const afterDay=(await c.query("SELECT to_char(clock_timestamp() AT TIME ZONE 'Africa/Lagos','YYYY-MM-DD') AS today")).rows[0].today;
   if(afterDay!==today)throw Error("CALENDAR_DAY_CHANGED_RETRY_NEXT_TICK");
+  // Closing stale markers can change the source on the first blocked tick.
+  // The same invalid material is still one observation, not a second event.
   const key=calendarDigest({schoolId,today,material:plan.calendarDigest,
-   source:plan.changes.length?plan.sourceDigest:null,status:plan.status,errors:plan.errors,
+   source:plan.status==="READY"&&plan.changes.length?plan.sourceDigest:null,status:plan.status,errors:plan.errors,
    target:[plan.sessionId,plan.termId]});
   const audit=(await c.query(`INSERT INTO academic_calendar_rollovers(school_id,effective_date,event_key,
    calendar_digest,source_digest,result,academic_session_id,academic_term_id,changes,issues,calendar_snapshot)

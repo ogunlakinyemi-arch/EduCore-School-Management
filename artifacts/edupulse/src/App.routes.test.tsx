@@ -62,19 +62,20 @@ describe('family and partner portal navigation', () => {
     expect(parentPortalSource).toContain('<Link href="/academic-calendar" data-testid="link-parent-academic-calendar"');
   });
 
-  it('links partners to staff NFC commissions without replacing existing role-gated navigation', () => {
-    expect(portalSource).toContain('<Link href="/partner/staff-nfc"');
+  it('links the BRO owner to their own earnings and withdrawals without restoring teacher commissions', () => {
+    expect(portalSource).not.toContain('<Link href="/partner/staff-nfc"');
     expect(portalSource).toContain('{isOwner && <Link href="/partner/staff"');
     expect(portalSource).toContain('{canViewFinance && <Link href="/partner/commissions"');
-    expect(appSource).toContain('<Route path="/partner/staff-nfc">');
+    expect(appSource).toContain('<Route path="/partner/staff-nfc"><Shell><ArchivedPaymentWorkflowPage /></Shell></Route>');
   });
 });
 
 describe('Platform Owner partner routes', () => {
   it('reaches the existing payout overview instead of the 404 fallback', () => {
     expect(managementSource).toContain('function PayoutsOverview()');
-    expect(managementSource).toContain('<Link href="/partners/payouts">');
-    expect(resolvedOwnerPage('/partners/payouts')).toBe('PayoutsOverview');
+    expect(managementSource).toMatch(/<Route path="\/partners\/payouts">\{isOwner \? <><ConnectedFinancePanel mode="owner" commissionsOnly \/>/);
+    expect(managementSource).toContain('<summary>Historical payout records</summary><PayoutsOverview />');
+    expect(ownerRoutes.some(route=>matchRoute(parser,route,'/partners/payouts')[0])).toBe(true);
   });
 
   it('preserves the Partners overview and other Owner partner pages', () => {
@@ -86,7 +87,15 @@ describe('Platform Owner partner routes', () => {
 
   it('keeps Partner self-service payouts outside the Owner route', () => {
     expect(resolvedOwnerPage('/partner/payouts')).toBeNull();
-    expect(appSource).toContain('<Route path="/partner/*"><RoleGuard allowedRoles={[\'PARTNER\']}><PartnerPortal /></RoleGuard></Route>');
-    expect(portalSource).toContain('<Route path="/partner/payouts" component={MyPayouts} />');
+    expect(appSource).toContain('if (isOnlyPartner)');
+    expect(appSource).toContain('<Route><PartnerPortal /></Route>');
+    expect(portalSource).toContain('<Route path="/partner/commissions" component={OwnBroCommissions} />');
+  });
+  it('restores Owner subscription selection without a free-term redirect or a school-operation approval',()=>{
+    expect(appSource).toContain("<RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT', 'TEACHER', 'STUDENT']} ownerCanView><SubscriptionsRoute /></RoleGuard>");
+    const dashboard=readFileSync(new URL('./pages/dashboard.tsx',import.meta.url),'utf8');
+    expect(dashboard).toContain('data-testid="link-owner-student-subscriptions"');
+    expect(dashboard).toContain('data-testid="link-school-student-subscriptions"');
+    expect(dashboard).toContain('data-testid="link-owner-bro-finance"');
   });
 });

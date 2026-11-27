@@ -1019,6 +1019,7 @@ export * from './getCommunicationPreferencesParams';
 export * from './getCommunicationPushConfiguration200';
 export * from './getCompanyPayrollReportParams';
 export * from './getCurrentFinanceOverviewParams';
+export * from './getCurrentFinanceOverviewView';
 export * from './getCurrentFinanceReceiptParams';
 export * from './getDevelopmentPaymentDiagnostic200';
 export * from './getDevelopmentPaymentDiagnostic200Outcome';

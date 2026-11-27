@@ -200,7 +200,9 @@ describe("finance direct-API authorization boundaries", () => {
 
     const parentQuery = state.calls.find(({ sql }) => sql.includes("parent_student_relationships"));
     expect(parentQuery?.values).toEqual([20]);
-    expect(parentQuery?.sql).toContain("r.student_id=i.student_id");
+    expect(parentQuery?.sql).toContain("fee_link.student_id=i.student_id");
+    expect(parentQuery?.sql).toContain("fee_guardian_role.school_id=i.school_id");
+    expect(parentQuery?.sql).toContain("fee_guardian_role.role='PARENT'");
     expect(mutations()).toEqual([]);
   });
 

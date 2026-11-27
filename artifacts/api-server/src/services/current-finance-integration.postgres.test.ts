@@ -7,6 +7,9 @@ import {createCurrentBulk,verifyCurrentBulk,recoverCurrentBulk,verifyPublicCurre
 import {readCurrentFinanceOverview,readCurrentBulkReceipt} from "./current-finance-overview";
 import {requestCurrentStudentRefund,approveCurrentStudentRefund,dispatchCurrentStudentRefund,reconcileCurrentStudentRefund} from "./current-student-refunds";
 import {initiateCurrentBroPayout} from "./current-bro-lifecycle";
+import {recordCurrentExternalBroTransfer,revealCurrentBroPayoutBank} from "./current-bro-payout-recording";
+import {state} from "./current-financial-store";
+import {currentPlatformInsights} from "../routes/reporting/current-platform-insights";
 import {recordFieldPermission,previewFieldSms,dispatchFieldSms,readFieldSms} from "./bro-field-sms";
 import {smsEventAllowed,withFieldSmsCampaignScope} from "./sms-event-policy";
 import {verifiedBulkStudentIds} from "./current-bulk-payment-evidence";
@@ -20,6 +23,8 @@ const caps:CurrentCapabilities={now,bank:async()=>({verified:true,fingerprint:"f
  sealed:{ciphertext:"fixture-sealed",keyVersion:"fixture"},maskedAccountNumber:"****0001"})};
 beforeAll(async()=>{
  f=await currentFinancialFixture();
+ await f.pool.query(`ALTER TABLE academic_terms ADD COLUMN IF NOT EXISTS academic_session_id integer DEFAULT 1;
+   UPDATE academic_terms SET academic_session_id=1 WHERE id=1`);
  await f.pool.query(`ALTER TABLE app_users ADD COLUMN email text;
  ALTER TABLE schools ADD COLUMN name text,ADD COLUMN address text,ADD COLUMN phone text;
  ALTER TABLE students ADD COLUMN first_name text,ADD COLUMN last_name text;
@@ -27,8 +32,6 @@ beforeAll(async()=>{
  CREATE TABLE audit_logs(id bigserial PRIMARY KEY,actor_user_id integer,school_id integer,result text,"user" text,
    "timestamp" timestamptz DEFAULT now(),role text,action text,module text,event_type text,record_id bigint,
    metadata jsonb NOT NULL DEFAULT '{}');
- CREATE TABLE bro_field_leads(id bigserial PRIMARY KEY,school_id integer,school_name text,address text,
-   contact_phone text,visit_date date,status text);
  INSERT INTO app_users(id,status,email) VALUES(6,'ACTIVE','bro@example.invalid'),(7,'ACTIVE','other@example.invalid');
  INSERT INTO school_memberships VALUES(6,NULL,'PARTNER','ACTIVE'),(7,NULL,'PARTNER','ACTIVE');
  INSERT INTO students(id,school_id,status,admission_status,first_name,last_name) VALUES(4,1,'ACTIVE','ADMITTED','Four','Student');
@@ -177,15 +180,16 @@ it("a delayed failed read cannot rewind an independently confirmed aggregate",as
 it("partial allocation failure retains aggregate success and retries only unresolved work without charging again",async()=>{
  const b=await createCurrentBulk(f.pool,2,input(),bulk);
  await f.pool.query(`CREATE FUNCTION fixture_child_failure() RETURNS trigger LANGUAGE plpgsql AS $$
-   BEGIN IF NEW.student_id=4 THEN RAISE EXCEPTION 'fictional child failure'; END IF; RETURN NEW; END $$;
-   CREATE TRIGGER fixture_child_failure BEFORE INSERT ON current_bulk_bro_entitlements
+   BEGIN IF NEW.state='POSTED' AND EXISTS(SELECT 1 FROM current_bulk_allocations a WHERE a.id=NEW.allocation_id AND a.student_id=4)
+   THEN RAISE EXCEPTION 'fictional child failure'; END IF; RETURN NEW; END $$;
+   CREATE TRIGGER fixture_child_failure BEFORE INSERT ON current_bulk_events
    FOR EACH ROW EXECUTE FUNCTION fixture_child_failure();`);
  try{
   expect(await verifyCurrentBulk(f.pool,2,b.id,"998877",bulk)).toMatchObject({state:"RECOVERY_REQUIRED",unresolved:1});
   expect((await f.pool.query("SELECT count(*) FROM current_bulk_confirmations")).rows[0].count).toBe("1");
   expect((await f.pool.query("SELECT count(*) FROM current_bulk_events WHERE state='POSTED'")).rows[0].count).toBe("1");
   await expect(readCurrentBulkReceipt(f.pool,2,b.id)).rejects.toThrow("MUST_BE_POSTED");
- }finally{await f.pool.query("DROP TRIGGER fixture_child_failure ON current_bulk_bro_entitlements; DROP FUNCTION fixture_child_failure()");}
+ }finally{await f.pool.query("DROP TRIGGER fixture_child_failure ON current_bulk_events; DROP FUNCTION fixture_child_failure()");}
  expect(await recoverCurrentBulk(f.pool,2,b.id)).toMatchObject({state:"COMPLETED",chargedAgain:false});
  expect((await f.pool.query("SELECT count(*) FROM current_bulk_events WHERE state='POSTED'")).rows[0].count).toBe("2");
  expect(bulk.checkout).toHaveBeenCalledTimes(1);
@@ -215,14 +219,134 @@ it("BRO projections exclude other BROs and school collection records; Owner and 
  const mine=await readCurrentFinanceOverview(f.pool,6,undefined,undefined,now());
  const owner=await readCurrentFinanceOverview(f.pool,1,undefined,undefined,now());
  const other=await readCurrentFinanceOverview(f.pool,7,undefined,undefined,now());
- expect(mine.summary).toEqual(owner.summary);expect(mine.summary.earnedMinor).toBe(45000);
+ expect(mine.summary).toEqual(owner.summary);expect(mine.summary?.earnedMinor).toBe(45000);
  expect(mine.payments).toEqual([]);expect(mine.schools).toEqual([]);expect(other.entitlements).toEqual([]);
  await expect(readCurrentFinanceOverview(f.pool,4)).rejects.toThrow("ACCESS_DENIED");
 });
+it.each([2,3])("school actor %s gets operational payments but no BRO balances, payout rows or explanations",async actorId=>{
+ await collected();
+ const school=await readCurrentFinanceOverview(f.pool,actorId,1,1,now(),"SCHOOL");
+ expect(school.summary).toBeUndefined();
+ expect(school.entitlements).toEqual([]);expect(school.requests).toEqual([]);expect(school.payouts).toEqual([]);
+ expect(school.payments).toHaveLength(3);
+ expect(JSON.stringify(school)).not.toMatch(/"amountMinor":15000|commission|provider fee/i);
+ expect(school.blockers.join(" ")).not.toMatch(/BRO|payout|accrual|provider/i);
+ await expect(readCurrentFinanceOverview(f.pool,actorId,1,1,now(),"OWNER")).rejects.toThrow("ACCESS_DENIED");
+});
+it("Owner school view suppresses internal earnings too; reads cannot accrue commissions",async()=>{
+ const before=(await f.pool.query("SELECT count(*) FROM bro_term_commission_entitlements")).rows[0].count;
+ const view=await readCurrentFinanceOverview(f.pool,1,1,1,now(),"SCHOOL");
+ expect(view.summary).toBeUndefined();expect(view.requests).toEqual([]);expect(view.entitlements).toEqual([]);
+ await readCurrentFinanceOverview(f.pool,1,undefined,undefined,now(),"OWNER");
+ expect((await f.pool.query("SELECT count(*) FROM bro_term_commission_entitlements")).rows[0].count).toBe(before);
+});
+async function preparedExternal(keys=["D:1"]){
+ const r=await requestCurrentBroWithdrawal(f.pool,6,keys,key("external_request"),"Request own verified commission");
+ const payouts=[];
+ for(const [i,k] of keys.entries()){
+   await decideCurrentBroWithdrawal(f.pool,1,{requestId:r.id,entitlementKey:k,decision:"APPROVED",
+     key:key(`external_approve_${i}`),reason:"Owner reviewed this request"},caps);
+   payouts.push(await initiateCurrentBroPayout(f.pool,1,k.startsWith("B:")?{bulkEntitlementId:Number(k.slice(2))}:Number(k.slice(2)),
+     key(`external_prepare_${i}`),"Freeze approved bank instructions",caps));
+ }
+ return payouts;
+}
+const externalDeps={...caps,openBank:()=>({verified:true,fingerprint:"fixture",bankName:"Fictional Bank",
+  accountName:"Fictional BRO",accountNumber:"0000000001"})};
+const externalInput=(ids:number[])=>({ids,key:key("external_record"),amountMinor:ids.length*15000,
+  transferReference:"FICTIONAL-TRANSFER-001",statementReference:"FICTIONAL-STATEMENT-001",transferDate:"2027-04-30",
+  reason:"Reviewed completed debit and frozen beneficiary",confirmExternalTransfer:true as const,independentlyChecked:true as const});
+it("records a grouped completed transfer once in the existing reserved ledger with reference, dates, actor and history",async()=>{
+ await collected();
+ const rows=(await f.pool.query("SELECT id FROM current_bulk_bro_entitlements ORDER BY id")).rows;
+ const payouts=await preparedExternal(["D:1",...rows.map(r=>`B:${r.id}`)]);
+ const ids=payouts.map(p=>p.id);
+ const bank=await revealCurrentBroPayoutBank(f.pool,1,ids[0],key("reveal"),"Check frozen beneficiary",externalDeps);
+ expect(bank.accountNumber).toBe("0000000001");
+ const input=externalInput(ids);
+ expect(await recordCurrentExternalBroTransfer(f.pool,1,input,externalDeps)).toMatchObject({state:"SUCCEEDED",moneySentByApp:false});
+ expect(await recordCurrentExternalBroTransfer(f.pool,1,input,externalDeps)).toMatchObject({replayed:true,moneySentByApp:false});
+ await revealCurrentBroPayoutBank(f.pool,1,ids[0],key("reveal_after_paid"),"Check retained frozen instructions",externalDeps);
+ const history=(await f.pool.query(`SELECT actor_user_id,details FROM current_subscription_operation_events
+   WHERE details->>'action'='EXTERNAL_BANK_TRANSFER_RECORDED'`)).rows;
+ expect(history).toHaveLength(3);
+ expect(history[0]).toMatchObject({actor_user_id:1,details:{transferDate:"2027-04-30",
+   transferReference:input.transferReference,statementReference:input.statementReference,
+   verificationMethod:"OWNER_REVIEWED_BANK_STATEMENT",automaticVerification:false,amountMinor:45000}});
+ const owner=await readCurrentFinanceOverview(f.pool,1,undefined,undefined,now(),"OWNER");
+ const bro=await readCurrentFinanceOverview(f.pool,6,undefined,undefined,now(),"BRO");
+ expect(owner.summary?.paidMinor).toBe(45000);expect(owner.summary).toEqual(bro.summary);
+ expect(owner.payouts[0]).toMatchObject({paymentReference:input.transferReference,transferDate:"2027-04-30",recordedBy:1});
+ expect(owner.payouts[0].audit.some(a=>a.action==="FROZEN_BANK_REVEALED")).toBe(true);
+ await expect(recordCurrentExternalBroTransfer(f.pool,1,{...input,reason:"Changed evidence"},externalDeps)).rejects.toThrow("CONTENT_CONFLICT");
+});
+it("simultaneous transfer recording cannot pay twice or reuse a reference for another payout",async()=>{
+ await collected();const b=(await f.pool.query("SELECT id FROM current_bulk_bro_entitlements ORDER BY id")).rows[0];
+ const payouts=await preparedExternal(["D:1",`B:${b.id}`]);
+ const input=externalInput([payouts[0].id]);
+ const attempts=await Promise.allSettled([input,{...input,key:key("other_record")}].map(i=>recordCurrentExternalBroTransfer(f.pool,1,i,externalDeps)));
+ expect(attempts.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+ await expect(recordCurrentExternalBroTransfer(f.pool,1,{...externalInput([payouts[1].id]),key:key("duplicate_ref")},externalDeps))
+   .rejects.toThrow("EXTERNAL_REFERENCE_ALREADY_USED");
+ expect(await state(f.pool,payouts[1].id)).toBe("PENDING");
+ expect((await f.pool.query("SELECT count(*) FROM current_subscription_reference_claims WHERE namespace='BRO_PAYOUT'")).rows[0].count).toBe("1");
+});
+it("rejects excess amounts, future dates, unconfirmed evidence, unauthorized actors and mismatched frozen banks",async()=>{
+ const [p]=await preparedExternal();const input=externalInput([p.id]);
+ await expect(recordCurrentExternalBroTransfer(f.pool,1,{...input,amountMinor:16000},externalDeps)).rejects.toThrow("AMOUNT");
+ await expect(recordCurrentExternalBroTransfer(f.pool,1,{...input,transferDate:"2027-05-02"},externalDeps)).rejects.toThrow("DATE");
+ await expect(recordCurrentExternalBroTransfer(f.pool,1,{...input,independentlyChecked:false} as any,externalDeps)).rejects.toThrow("CONFIRMATION");
+ await expect(recordCurrentExternalBroTransfer(f.pool,2,input,externalDeps)).rejects.toThrow("NOT_AUTHORIZED");
+ await expect(revealCurrentBroPayoutBank(f.pool,6,p.id,key("deny_reveal"),"Not Owner",externalDeps)).rejects.toThrow("NOT_AUTHORIZED");
+ await expect(recordCurrentExternalBroTransfer(f.pool,1,input,{...externalDeps,openBank:()=>({...externalDeps.openBank(),fingerprint:"wrong"})})).rejects.toThrow("FROZEN_BANK_INVALID");
+ expect(await state(f.pool,p.id)).toBe("PENDING");
+});
+it("a fresh adverse-payment hold prevents recording a previously reserved payout",async()=>{
+ const [p]=await preparedExternal();
+ await requestCurrentStudentRefund(f.pool,1,1,10000,key("new_hold"),"Review adverse source payment");
+ await expect(recordCurrentExternalBroTransfer(f.pool,1,externalInput([p.id]),externalDeps)).rejects.toThrow("PAYOUT_RESERVATION_NOT_CURRENT");
+ expect(await state(f.pool,p.id)).toBe("PENDING");
+});
+it("Owner current Financial Insights totals use only verified direct/posted bulk records, including retained inactive schools",async()=>{
+ const report=currentPlatformInsights(f.pool);
+ const context={role:"OWNER",userId:1,schoolId:null,req:{}} as any;
+ await createCurrentBulk(f.pool,2,input(),bulk); // A request alone is not received money.
+ const pending=await report.run(context,{limit:20,offset:0});
+ expect(pending.summary).toMatchObject({verifiedPayments:1,verifiedGrossMinor:320000,netReceivedMinor:320000});
+ await verifyCurrentBulk(f.pool,2,1,"998877",bulk);
+ const all=await report.run(context,{limit:1,offset:0});
+ expect(all.summary).toMatchObject({verifiedPayments:3,verifiedGrossMinor:960000,netReceivedMinor:960000});
+ expect(all.rows[0]).toMatchObject({schoolId:1,verifiedPayments:3,netReceivedMinor:960000});
+ const unselected=await report.run(context,{limit:20,offset:20});
+ expect(unselected.rows).toEqual([]);expect(unselected.summary).toEqual(all.summary);
+ expect((await report.run(context,{limit:20,offset:0,sessionId:999})).summary?.netReceivedMinor).toBe(0);
+ expect((await report.run({...context,schoolId:2},{limit:20,offset:0})).rows).toEqual([]);
+ await f.pool.query("UPDATE schools SET status='inactive' WHERE id=1");
+ expect((await report.run(context,{limit:20,offset:0})).summary).toEqual(all.summary);
+});
+it("Owner current Financial Insights retains actual verified refunds, source periods and WAT payment dates",async()=>{
+ const report=currentPlatformInsights(f.pool),context={role:"OWNER",userId:1,schoolId:null,req:{}} as any;
+ const r=await requestCurrentStudentRefund(f.pool,1,1,10000,key("insights_refund"),"Verified source refund");
+ const deps:CurrentCapabilities={refunds:{request:async()=>({providerReference:"insights-refund-1"}),
+   verify:async ref=>({requestReference:ref,collectionTransactionId:"12345678",providerReference:"insights-refund-1",
+     amountMinor:10000,currency:"NGN",status:"SUCCEEDED"})}};
+ const tx=(await f.pool.query("SELECT provider_transaction_id FROM student_direct_live_attempts WHERE id=1")).rows[0];
+ deps.refunds!.verify=async ref=>({requestReference:ref,collectionTransactionId:String(tx.provider_transaction_id),
+   providerReference:"insights-refund-1",amountMinor:10000,currency:"NGN",status:"SUCCEEDED"});
+ await approveCurrentStudentRefund(f.pool,1,r.id,key("insights_refund_approve"));
+ await dispatchCurrentStudentRefund(f.pool,1,r.id,deps);await reconcileCurrentStudentRefund(f.pool,1,r.id,deps);
+ const date=(await f.pool.query(`SELECT to_char(verified_at AT TIME ZONE 'Africa/Lagos','YYYY-MM-DD') AS date
+   FROM student_direct_live_attempts WHERE id=1`)).rows[0].date;
+ const result=await report.run(context,{limit:20,offset:0,from:date,to:date,termId:1,sessionId:1});
+ expect(result.summary).toMatchObject({verifiedGrossMinor:320000,refundedMinor:10000,netReceivedMinor:310000});
+ expect((await report.run(context,{limit:20,offset:0,from:"2099-01-01"})).summary?.netReceivedMinor).toBe(0);
+ await expect(report.run({...context,role:"ACCOUNTANT"},{limit:20,offset:0})).rejects.toThrow("Platform Owner");
+});
 async function leads(){
- await f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status)
-   VALUES('Prospect One','Prospect street one','08031111111','2026-11-01','Visited'),
-   ('Prospect Two','Prospect street two','08032222222','2026-11-01','Interested')`);
+ await f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status,
+   original_owner_id,current_owner_id,person_met,notes,interest_level)
+   VALUES('Prospect One','Prospect street one','08031111111','2026-11-01','Visited',6,6,'Fictional Contact','Fixture review','Unknown'),
+   ('Prospect Two','Prospect street two','08032222222','2026-11-01','Interested',6,6,'Fictional Contact','Fixture review','High')`);
  for(const id of [1,2])await recordFieldPermission(f.pool,1,id,true,"Recorded explicit contact permission");
 }
 it("campaign preview requires contact permission and Owner confirmation; it sends nothing",async()=>{
@@ -243,21 +367,24 @@ it("freezes exact single/multiple selections without granting permission or send
  expect((await f.pool.query("SELECT count(*) FROM bro_field_sms_permissions")).rows[0].count).toBe("2");
  expect((await f.pool.query("SELECT count(*) FROM bro_field_sms_events")).rows[0].count).toBe("0");
 });
-it("identifies missing consent, invalid phones, unvisited, declined and independently onboarded schools",async()=>{
+it("identifies missing consent, invalid phones, declined and onboarded schools; real DDL rejects unvisited leads",async()=>{
  await leads();
- await f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status) VALUES
-  ('No permission','Distinct address three','08033333333','2026-11-01','Visited'),
-  ('No phone','Distinct address four',NULL,'2026-11-01','Visited'),
-  ('Not yet visited','Distinct address five','08035555555',NULL,'Interested'),
-  ('Declined','Distinct address six','08036666666','2026-11-01','Not Interested'),
-  ('Fictional enrolled school','Distinct address seven','08037777777','2026-11-01','Visited')`);
+ await f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status,
+   original_owner_id,current_owner_id,person_met,notes,interest_level) VALUES
+  ('No permission','Distinct address three','08033333333','2026-11-01','Visited',6,6,'Fixture contact','Fixture','Unknown'),
+  ('No phone','Distinct address four',NULL,'2026-11-01','Visited',6,6,'Fixture contact','Fixture','Unknown'),
+  ('Declined','Distinct address six','08036666666','2026-11-01','Not Interested',6,6,'Fixture contact','Fixture','Unknown'),
+  ('Fictional enrolled school','Distinct address seven','08037777777','2026-11-01','Visited',6,6,'Fixture contact','Fixture','Unknown')`);
+ await expect(f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status,
+   original_owner_id,current_owner_id,person_met,notes,interest_level)
+   VALUES('Not yet visited','Distinct address five','08035555555',NULL,'Interested',6,6,'Fixture contact','Fixture','Unknown')`))
+   .rejects.toThrow('visit_date');
  const state=await readFieldSms(f.pool,1,{transportAllowed:async()=>true,provider:{
   provider:"fixture",channel:"sms",send:vi.fn(()=>{throw Error("Preview must not send");}),
  }});
  const reasons=new Map(state.leads.map(l=>[l.schoolName,l.reason]));
  expect(reasons.get("No permission")).toBe("CONTACT_PERMISSION_REQUIRED");
  expect(reasons.get("No phone")).toBe("VALID_PHONE_REQUIRED");
- expect(reasons.get("Not yet visited")).toBe("VISIT_REQUIRED");
  expect(reasons.get("Declined")).toBe("CONTACT_DECLINED");
  expect(reasons.get("Fictional enrolled school")).toBe("SCHOOL_ALREADY_REGISTERED");
  await expect(previewFieldSms(f.pool,1,{message:"Fictional reminder",key:key("unpermitted"),
@@ -284,7 +411,7 @@ it("retains exact sender, school, phone, message and provider acceptance without
 });
 it("send-time onboarding and opt-out changes exclude recipients before any transport call",async()=>{
  await leads();const p=await previewFieldSms(f.pool,1,{message:"Fictional follow-up",key:key("sms"),all:true});
- await f.pool.query("UPDATE bro_field_leads SET school_id=1 WHERE id=1");
+ await f.pool.query("UPDATE bro_field_leads SET school_id=1,version=version+1 WHERE id=1");
  await recordFieldPermission(f.pool,1,2,false,"Contact withdrew permission");
  const provider={provider:"fixture",channel:"sms" as const,send:vi.fn()};
  const sent=await dispatchFieldSms(f.pool,1,p.id,p.digest,true,{transportAllowed:async()=>true,provider});
@@ -311,7 +438,7 @@ it("SMS extension is scoped, leaves parent notification categories alone and pre
  expect(provider.send).not.toHaveBeenCalled();
 });
 it("deduplicates normalized contacts and honors a phone-level opt-out on another lead",async()=>{
- await leads();await f.pool.query("UPDATE bro_field_leads SET contact_phone='+2348031111111' WHERE id=2");
+ await leads();await f.pool.query("UPDATE bro_field_leads SET contact_phone='+2348031111111',version=version+1 WHERE id=2");
  await recordFieldPermission(f.pool,1,2,true,"Explicit permission on corrected contact");
  const p=await previewFieldSms(f.pool,1,{message:"Fictional follow-up",key:key("dedup"),all:true});
  expect(p.recipients).toHaveLength(1);
@@ -339,8 +466,10 @@ it("retries only proven retryable failures, never accepted recipients, including
  }finally{clock.mockRestore();}
 });
 it("bounded dispatch leaves unsent contacts recoverable and continuation never repeats accepted contacts",async()=>{
- await f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status)
-   SELECT 'Fictional prospect '||i,'Fictional address '||i,'0803'||(4000000+i)::text,'2026-11-01','Visited'
+ await f.pool.query(`INSERT INTO bro_field_leads(school_name,address,contact_phone,visit_date,status,
+   original_owner_id,current_owner_id,person_met,notes,interest_level)
+   SELECT 'Fictional prospect '||i,'Fictional address '||i,'0803'||(4000000+i)::text,'2026-11-01','Visited',
+     6,6,'Fictional Contact','Fixture review','Unknown'
    FROM generate_series(1,21) AS n(i)`);
  for(let id=1;id<=21;id++)await recordFieldPermission(f.pool,1,id,true,"Recorded explicit contact permission");
  const p=await previewFieldSms(f.pool,1,{message:"Fictional bounded follow-up",key:key("bounded"),all:true});

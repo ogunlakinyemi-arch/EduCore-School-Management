@@ -12,9 +12,18 @@ actual accrued commission, withdrawal review, backend capabilities or retained
 financial history. Keep school/term-specific multi-student subscription operations
 reachable for the Owner, School Admin and School Accountant.
 
+The Owner must also retain clearly labelled all-schools Financial Insights:
+consolidated verified totals and school breakdowns, with existing date and
+academic-period filters. Keep platform revenue and internal insight reports
+Owner-only, separate school collections from platform income, and never count
+requests, unverified receipts, unpaid obligations or free entitlements as money
+received. Preserve original source definitions rather than combining overlapping
+historical and current payment reports into an invented grand total.
+
 **Why:** The user requested focused simplification on 2026-11-27, then explicitly
 required restoration of missing Owner commission accrual, BRO withdrawal review
-and multi-student subscription selection. Simplification must not remove these
+and multi-student subscription selection, then explicitly restored all-schools
+Financial Insights. Simplification must not remove these
 operational workflows or redesign payment execution and financial policy.
 
 **How to apply:** Add no manual Owner approval to ordinary school payments.

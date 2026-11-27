@@ -1,8 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { useUser } from '@clerk/react';
 import { RefreshCw, Landmark, ShieldAlert, Receipt, CircleAlert } from 'lucide-react';
 import { Button, Field, StatusPill } from '@/components/shared';
 import { CurrentFinanceReceiptButton } from '@/components/current-finance-receipt';
 import { BankRemittanceBatch, act, STUDENT_FEE_MINOR, type BankBatch } from '@/components/bank-remittance-batch';
+import { ExternalBroPayoutRecording } from './external-bro-payout-recording';
 import {
   isOverview, isUnavailable, naira, safeHttpsUrl, toMinor, useCurrentFinance, useFinanceAction, apiErrorText,
   type FinanceOverview, type Payment, type Source,
@@ -36,18 +38,23 @@ export function NoticeBar({ notice, onClose }: { notice: Notice; onClose: () => 
   </div>;
 }
 
-export function ConnectedFinancePanel({ mode, schoolId: fixedSchoolId, ownerSelectedSchool }: { mode: Mode; schoolId?: number | null; ownerSelectedSchool?: boolean }) {
+type PanelProps = { mode: Mode; schoolId?: number | null; ownerSelectedSchool?: boolean; commissionsOnly?:boolean };
+export function ConnectedFinancePanel(props:PanelProps) {
+  const {user}=useUser();
+  return <FinancePanel key={`${user?.id??'anonymous'}:${props.mode}:${props.schoolId??'all'}`} {...props}/>;
+}
+function FinancePanel({ mode, schoolId: fixedSchoolId, ownerSelectedSchool, commissionsOnly }: PanelProps) {
   const [schoolId, setSchoolId] = useState<number | undefined>(fixedSchoolId ?? undefined);
   const [termScope, setTermScope] = useState<{schoolId:number;termId:number}|null>(null);
   const effectiveSchool = fixedSchoolId ?? schoolId;
   const termId=termScope?.schoolId===effectiveSchool?termScope?.termId:undefined;
   const setTermId=(id:number|undefined)=>setTermScope(effectiveSchool&&id?{schoolId:effectiveSchool,termId:id}:null);
   const schoolScopeMissing = mode === 'school' && !fixedSchoolId;
-  const query = useCurrentFinance({ schoolId: mode === 'bro' ? undefined : effectiveSchool, termId }, !schoolScopeMissing);
+  const query = useCurrentFinance({ schoolId: mode === 'bro' ? undefined : effectiveSchool, termId,view:mode==='school'?'SCHOOL':mode==='bro'?'BRO':'OWNER' }, !schoolScopeMissing);
   const fin = useFinanceAction();
   const [notice, setNotice] = useState<Notice>(null);
 
-  const title = mode === 'bro' ? 'Your connected earnings & withdrawals' : mode === 'owner' ? 'Connected payments & BRO oversight' : 'Student platform collections';
+  const title = mode === 'bro' ? 'Your earnings & withdrawals' : mode === 'owner' ? 'BRO commissions & withdrawals' : 'Student subscriptions';
   const catalog:Pick<FinanceOverview,'schools'|'terms'>=isOverview(query.data)?query.data:{schools:[],terms:[]};
   const scopedTerms = catalog.terms.filter(t => t.schoolId === effectiveSchool);
   const scopeControls=mode!=='bro'&&<div className="grid gap-3 border-t border-[hsl(var(--border))] px-5 py-4 md:grid-cols-2 md:px-6">
@@ -64,16 +71,16 @@ export function ConnectedFinancePanel({ mode, schoolId: fixedSchoolId, ownerSele
       <option value="">{effectiveSchool?'All terms':'Choose a school first'}</option>
       {scopedTerms.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
     </select></Field>
-    <p className={`text-xs ${muted}`}>{effectiveSchool?'Figures and actions are limited to the selected school.':'All schools is an overview. Select one school before choosing its term or collecting payments.'}</p>
+    <p className={`text-xs ${muted}`}>{effectiveSchool?'Selected school and term only.':'Choose one school, then its academic term.'}</p>
     <Button variant="outline" onClick={()=>{if(!fixedSchoolId)setSchoolId(undefined);setTermScope(null);}}
       testId="button-reset-finance-scope">Reset school / term scope</Button>
   </div>;
 
   const shell = (body: ReactNode) => <div className="panel my-6 overflow-hidden" data-testid={`current-finance-${mode}`}>
     <header className="flex flex-wrap items-end justify-between gap-4 bg-[linear-gradient(120deg,hsl(var(--primary)/.06),transparent_60%)] p-5 md:p-6">
-      <div><div className="eyebrow">Current finance · ledger view</div>
+      <div><div className="eyebrow">{mode==='school'?'School subscriptions':'Commission ledger'}</div>
         <h2 className="display-font mt-1 text-2xl font-bold">{title}</h2>
-        <p className={`mt-1 max-w-2xl text-xs leading-5 ${muted}`}>Accrued entitlements and approvals are internal records. Only bank-verified payments and reconciled payouts represent money that has moved.</p></div>
+        <p className={`mt-1 max-w-2xl text-xs leading-5 ${muted}`}>{mode==='school'?'Select students for one academic term. Selection is not payment.':'Accrual and approval are not payment. Transfers are completed outside EduCore.'}</p></div>
       <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching} testId={`button-refresh-finance-${mode}`}><RefreshCw size={14} className={query.isFetching ? 'animate-spin' : ''} />Refresh</Button>
     </header>
     <NoticeBar notice={notice} onClose={() => setNotice(null)} />
@@ -92,6 +99,8 @@ export function ConnectedFinancePanel({ mode, schoolId: fixedSchoolId, ownerSele
     <Button className="mt-3" variant="outline" onClick={() => void query.refetch()} testId="button-retry-finance">Retry</Button></div>);
 
   const data = query.data;
+  if ((mode==='owner'&&!data.owner)||(mode==='bro'&&!data.bro))
+    return shell(<p className="p-5" role="alert">Financial access could not be confirmed.</p>);
   const report = (r: Awaited<ReturnType<typeof fin.run>>, ok: string) => {
     if (r.ok) setNotice({ tone: 'ok', text: ok, checkoutUrl: typeof r.result.checkoutUrl === 'string' ? r.result.checkoutUrl : null });
     else setNotice({ tone: r.uncertain ? 'warn' : 'error', text: r.uncertain ? `${r.message} The outcome is uncertain. The same request identity is kept; check the refreshed records before submitting this exact request again.` : r.message });
@@ -100,14 +109,16 @@ export function ConnectedFinancePanel({ mode, schoolId: fixedSchoolId, ownerSele
 
   return shell(<>
     {data.blockers.length > 0 && <div className="mx-5 mt-4 rounded-xl border border-[hsl(var(--accent)/.5)] bg-[hsl(var(--accent)/.08)] p-3 text-sm md:mx-6" role="status" data-testid="finance-blockers">
-      <div className="flex items-center gap-2 font-bold"><CircleAlert size={15} />Release gates in effect</div>
-      <ul className="mt-1 list-disc pl-5 text-xs">{data.blockers.map((b, i) => <li key={i}>{b}</li>)}</ul></div>}
-    <SummaryLedger data={data} mode={mode} />
+      <div className="flex items-center gap-2 font-bold"><CircleAlert size={15} />{mode==='school'?'Payment availability':'Financial safeguards'}</div>
+      {mode==='school'?<p className="mt-1 text-xs">Payment availability is restricted. Existing records are unchanged.</p>:
+        <ul className="mt-1 list-disc pl-5 text-xs">{data.blockers.map((b, i) => <li key={i}>{b}</li>)}</ul>}</div>}
+    {mode!=='school'&&<SummaryLedger data={data} mode={mode} />}
     {mode === 'bro' && <BroWithdraw {...ctx} />}
+    {mode === 'owner' && <OwnerAccruals data={data}/>}
     {mode === 'owner' && <OwnerDecisions {...ctx} />}
     {mode === 'owner' && <OwnerPayouts {...ctx} />}
-    {mode !== 'bro' && <BulkCollections {...ctx} schoolId={effectiveSchool} termId={termId} terms={scopedTerms} setTermId={setTermId} readOnly={!effectiveSchool} />}
-    {mode !== 'bro' && <PaymentsAndRefunds {...ctx} owner={data.owner} />}
+    {mode !== 'bro' && !commissionsOnly && <BulkCollections key={`${effectiveSchool}:${termId}`} {...ctx} schoolId={effectiveSchool} termId={termId} terms={scopedTerms} setTermId={setTermId} readOnly={!effectiveSchool} />}
+    {mode !== 'bro' && !commissionsOnly && <PaymentsAndRefunds {...ctx} owner={mode==='owner'&&data.owner} />}
   </>);
 }
 
@@ -115,6 +126,7 @@ type Ctx = { data: FinanceOverview; fin: ReturnType<typeof useFinanceAction>; re
 
 function SummaryLedger({ data, mode }: { data: FinanceOverview; mode: Mode }) {
   const s = data.summary;
+  if(!s)return <p role="status" className="p-5">Commission balances unavailable. No balance can be inferred.</p>;
   const x = s as typeof s & { requestedMinor?: number | null; pendingApprovalMinor?: number | null; failedMinor?: number | null; reversedMinor?: number | null };
   const opt = (v: number | null | undefined) => typeof v === 'number' && Number.isFinite(v) ? v : null;
   const failedReversed = opt(x.failedMinor) === null && opt(x.reversedMinor) === null ? null : (opt(x.failedMinor) ?? 0) + (opt(x.reversedMinor) ?? 0);
@@ -135,17 +147,31 @@ function SummaryLedger({ data, mode }: { data: FinanceOverview; mode: Mode }) {
         <div className={`mt-1 text-[11px] leading-4 ${muted}`}>{hint}</div></div>)}
     </div>
     <div className="flex flex-col justify-center gap-1 bg-[hsl(var(--sidebar))] p-5 text-[hsl(var(--sidebar-foreground))] md:min-w-[220px]">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[hsl(var(--sidebar-accent-foreground))]"><Landmark size={13} />Bank-verified paid</div>
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[hsl(var(--sidebar-accent-foreground))]"><Landmark size={13} />Confirmed / recorded paid</div>
       <div className="font-mono text-2xl font-bold tabular-nums" data-testid="summary-paid">{naira(s.paidMinor)}</div>
-      <div className="text-[11px] opacity-75">{mode === 'school' ? 'Reconciled payouts only.' : 'Only reconciled payouts count here.'}</div>
+      <div className="text-[11px] opacity-75">Owner-recorded bank evidence or provider reconciliation. Not sent by EduCore.</div>
     </div>
   </div>;
+}
+
+function OwnerAccruals({data}:{data:FinanceOverview}){
+  return <Section eyebrow="Accruals" title="BRO commission accrual" testId="owner-accruals">
+    {!data.entitlements.length?<Empty>No eligible verified commissions in this scope.</Empty>:
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+        <thead><tr>{['BRO','Student','School / term','Accrued','Status'].map(h=><th key={h} className="p-2">{h}</th>)}</tr></thead>
+        <tbody>{data.entitlements.map(e=><tr key={e.key} className="border-t">
+          <td className="p-2">{e.broName??`BRO #${e.partnerId??'—'}`}</td><td className="p-2">{e.studentName}</td>
+          <td className="p-2">{e.schoolName} · {e.termName}</td><td className="p-2 font-mono">{naira(e.amountMinor)}</td>
+          <td className="p-2"><StatusPill value={e.state}/></td>
+        </tr>)}</tbody>
+      </table></div>}
+  </Section>;
 }
 
 function BroWithdraw({ data, fin, report }: Ctx) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [reason, setReason] = useState('');
-  const available = data.entitlements.filter(e => e.state === 'REQUESTED' && e.requestId === null);
+  const available = data.entitlements.filter(e => e.requestable!==false && e.state === 'REQUESTED' && e.requestId === null);
   const toggle = (k: string) => setPicked(p => { const n = new Set(p); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const keys = [...picked].filter(k => available.some(e => e.key === k)).sort();
   const slot = 'withdraw-request';
@@ -161,15 +187,15 @@ function BroWithdraw({ data, fin, report }: Ctx) {
       {data.entitlements.length === 0 ? <Empty>No entitlements have accrued yet. Each eligible, verified student-term subscription accrues ₦150.</Empty> :
         <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead className={`text-xs ${muted}`}><tr><th className="p-2"></th><th className="p-2">Student</th><th className="p-2">School / term</th><th className="p-2">Amount</th><th className="p-2">State</th></tr></thead>
           <tbody>{data.entitlements.map(e => <tr key={e.key} className="border-t border-[hsl(var(--border))]">
-            <td className="p-2"><input type="checkbox" className="h-4 w-4" disabled={!(e.state === 'REQUESTED' && e.requestId === null)} checked={picked.has(e.key)} onChange={() => toggle(e.key)} aria-label={`Select ${e.studentName}`} data-testid={`check-entitlement-${e.key}`} /></td>
+            <td className="p-2"><input type="checkbox" className="h-4 w-4" disabled={!available.some(a=>a.key===e.key)} checked={keys.includes(e.key)} onChange={() => toggle(e.key)} aria-label={`Select ${e.studentName}`} data-testid={`check-entitlement-${e.key}`} /></td>
             <td className="p-2 font-semibold">{e.studentName}</td><td className="p-2">{e.schoolName} · {e.termName}</td>
             <td className="p-2 font-mono">{naira(e.amountMinor)}</td><td className="p-2"><StatusPill value={e.state} /></td></tr>)}</tbody></table></div>}
       <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
         <Field label="Reason for withdrawal (required)"><input value={reason} maxLength={500} onChange={e => setReason(e.target.value)} placeholder="e.g. End of term withdrawal" data-testid="input-withdraw-reason" /></Field>
-        <Button onClick={() => void submit()} disabled={!keys.length || reason.trim().length < 3 || fin.busy === slot} testId="button-request-withdrawal">
+        <Button onClick={() => void submit()} disabled={!keys.length || keys.length>500 || reason.trim().length < 3 || fin.busy === slot} testId="button-request-withdrawal">
           {fin.busy === slot ? 'Requesting...' : retained ? 'Resubmit same request' : `Request ${naira(total)}`}</Button>
       </div>
-      <p className={`mt-2 text-xs ${muted}`}>You can request withdrawal of your own earned entitlements that are not already in a request. Term-end approval is still enforced by the server. Payout is decided and initiated by the Platform Owner.</p>
+      <p className={`mt-2 text-xs ${muted}`}>Select unrequested earnings. Owner review and term-end eligibility apply; approved is not paid.</p>
     </Section>
     <Section eyebrow="Requests" title="Withdrawal requests" testId="bro-requests">
       {data.requests.length === 0 ? <Empty>No withdrawal requests yet.</Empty> : <RequestList data={data} />}
@@ -184,6 +210,10 @@ function RequestList({ data, decide }: { data: FinanceOverview; decide?: (reques
   return <div className="space-y-3">{data.requests.map(r => <div key={r.id} className={`${box} p-4`} data-testid={`request-${r.id}`}>
     <div className="flex flex-wrap justify-between gap-2"><div className="font-bold">Request #{r.id} · {r.broName}</div><div className="font-mono font-bold">{naira(r.totalMinor)}</div></div>
     <div className={`text-xs ${muted}`}>{new Date(r.createdAt).toLocaleString('en-NG')}</div>
+    {typeof r.availableMinor==='number'&&<p className="mt-2 text-xs">BRO available to pay in this scope: <b>{naira(r.availableMinor)}</b></p>}
+    {data.owner&&<p className="mt-2 text-xs">{r.bankDetails
+      ? `Saved verified bank: ${r.bankDetails.bankName} · ${r.bankDetails.accountName} · ${r.bankDetails.maskedAccountNumber}`
+      :'No verified bank profile available. Payout preparation requires verified bank details.'}</p>}
     <ul className="mt-3 divide-y divide-[hsl(var(--border))] text-sm">{r.lines.map(l => <li key={l.entitlementKey} className="flex flex-wrap items-center justify-between gap-2 py-2">
       <div><span className="font-semibold">{l.studentName}</span>{l.reason && <span className={`ml-2 text-xs ${muted}`}>{l.reason}</span>}</div>
       <div className="flex flex-wrap items-center gap-2"><StatusPill value={l.state} />{decide?.(r.id, l.entitlementKey)}</div></li>)}</ul>
@@ -195,7 +225,15 @@ function PayoutTable({ data, actions }: { data: FinanceOverview; actions?: (id: 
     <tbody>{data.payouts.map(p => <tr key={p.id} className="border-t border-[hsl(var(--border))]">
       <td className="p-2 font-mono text-xs">#{p.id} {p.reference ?? ''}</td><td className="p-2 font-mono text-xs">{p.entitlementKey}</td>
       <td className="p-2 font-mono">{naira(p.amountMinor)}</td><td className="p-2 font-mono text-xs">{p.maskedAccountNumber ?? 'Not on file'}</td>
-      <td className="p-2"><StatusPill value={p.state} /></td>{actions && <td className="p-2">{actions(p.id, p.state)}</td>}</tr>)}</tbody></table></div>;
+      <td className="p-2"><StatusPill value={p.state} />
+        {p.paymentReference&&<div className="mt-2 text-xs">{p.paymentReference} · {p.transferDate??'Provider-reconciled'}
+          <div>{p.verificationMethod==='OWNER_REVIEWED_BANK_STATEMENT'?'Owner-recorded external transfer':'Provider reconciliation'}</div>
+          {p.recordedAt&&<div>Recorded {new Date(p.recordedAt).toLocaleString('en-NG',{timeZone:'Africa/Lagos'})} WAT · actor #{p.recordedBy}</div>}
+        </div>}
+        {!!p.audit?.length&&<details className="mt-2 text-xs"><summary>Audit history</summary>{p.audit.map((a,i)=><p key={i}>
+          {a.state} · {a.action??'Status recorded'} · actor #{a.actorId??'system'} · {new Date(a.at).toLocaleString('en-NG',{timeZone:'Africa/Lagos'})} WAT
+        </p>)}</details>}
+      </td>{actions && <td className="p-2">{actions(p.id, p.state)}</td>}</tr>)}</tbody></table></div>;
 }
 
 function OwnerDecisions({ data, fin, report }: Ctx) {
@@ -236,9 +274,10 @@ function OwnerPayouts({ data, fin, report }: Ctx) {
         <Button className="h-8 px-3 text-xs" disabled={reason.trim().length < 3 || fin.busy === slot} onClick={async () => report(await fin.run(slot, 'PAYOUT_INITIATE', { entitlementKey: e.key, reason: reason.trim() }, true), 'Payout prepared. This app has not sent a transfer. Complete the separately authorized bank transfer externally using the saved reference, then reconcile to independently verify its outcome.')} testId={`button-initiate-payout-${e.key}`}>
           {fin.pendingKey(slot) ? 'Resubmit same payout' : 'Prepare payout'}</Button></li>; })}</ul></>}
     <div className="mt-5">{data.payouts.length === 0 ? <Empty>No payouts recorded.</Empty> : <PayoutTable data={data} actions={(id, state) => <span className="flex gap-2">
-      {state !== 'PAID' && state !== 'RECOVERED' && <Button variant="outline" className="h-8 px-3 text-xs" disabled={fin.busy === `pr:${id}`} onClick={async () => report(await fin.run(`pr:${id}`, 'PAYOUT_RECONCILE', { id }, false), 'Reconciliation checked the provider record. The state shown below is the verified outcome.')} testId={`button-reconcile-payout-${id}`}>Reconcile</Button>}
-      {state === 'PAID' && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => setRecovery({ id, amount: '', evidence: '' })} testId={`button-recover-payout-${id}`}>Record recovery</Button>}
+      {!['PAID','SUCCEEDED','RECOVERED','REVERSED'].includes(state) && <Button variant="outline" className="h-8 px-3 text-xs" disabled={fin.busy === `pr:${id}`} onClick={async () => report(await fin.run(`pr:${id}`, 'PAYOUT_RECONCILE', { id }, false), 'Reconciliation checked the provider record. The state shown below is the verified outcome.')} testId={`button-reconcile-payout-${id}`}>Reconcile provider transfer</Button>}
+      {['PAID','SUCCEEDED'].includes(state) && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => setRecovery({ id, amount: '', evidence: '' })} testId={`button-recover-payout-${id}`}>Record recovery</Button>}
     </span>} />}</div>
+    <ExternalBroPayoutRecording data={data} fin={fin} report={report}/>
     {recovery && <div className={`${box} mt-4 grid gap-3 p-4 md:grid-cols-[1fr_1fr_auto] md:items-end`} data-testid="form-bro-recovery">
       <Field label={`Recovered amount (NGN) for payout #${recovery.id}`}><input inputMode="decimal" value={recovery.amount} onChange={e => setRecovery({ ...recovery, amount: e.target.value })} data-testid="input-recovery-amount" /></Field>
       <Field label="Bank evidence reference"><input value={recovery.evidence} onChange={e => setRecovery({ ...recovery, evidence: e.target.value })} data-testid="input-recovery-evidence" /></Field>
@@ -266,23 +305,27 @@ function BulkCollections({ data, fin, report, schoolId, termId, terms, setTermId
     if (r.ok) { setPicked(new Set()); setReason(''); }
   };
   const create = async () => {
+    if (!schoolId||!termId||!ids.length||ids.length>500) return;
+    if (!window.confirm(`Open the existing payment process for ${ids.length} students (${naira(ids.length*STUDENT_FEE_MINOR)})? Selection alone does not pay anyone.`)) return;
     const r = await fin.run(slot, 'BULK_CREATE', { schoolId, termId, studentIds: ids, reason: reason.trim() }, true);
     report(r, 'One bulk charge was created for the selected students. Pay through its single checkout, then verify.');
     if (r.ok) { setPicked(new Set()); setReason(''); }
   };
-  return <Section eyebrow="Bulk collection" title={readOnly ? 'Bulk collections (select a school to collect)' : 'Collect for several students in one charge'} testId="bulk-collections">
+  return <Section eyebrow="Student selection" title={readOnly ? 'Select a school for student subscriptions' : 'Select students for subscription'} testId="bulk-collections">
     {!readOnly && <>
       {!schoolId || !termId ? <div className="max-w-sm"><Field label="Choose the term to collect for"><select value={termId ?? ''} onChange={e => setTermId(e.target.value ? Number(e.target.value) : undefined)} data-testid="select-bulk-term">
         <option value="">Select a term</option>{terms.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field></div>
         : data.eligibleStudents.length === 0 ? <Empty>No students are listed for this term.</Empty> : <>
-          <div className="mb-2 flex justify-end"><button type="button" className="text-xs font-bold underline" onClick={() => setPicked(new Set(eligible.map(s => s.id)))} data-testid="button-select-all-eligible">Select all eligible ({eligible.length})</button></div>
+          <div className="mb-2 flex flex-wrap justify-between gap-2"><span className="text-xs" data-testid="selected-student-count">{ids.length} selected</span><div className="flex gap-3">
+            <button type="button" className="text-xs font-bold underline" onClick={() => setPicked(new Set(eligible.slice(0,500).map(s => s.id)))} data-testid="button-select-all-eligible">Select eligible (up to 500)</button>
+            <button type="button" className="text-xs font-bold underline" onClick={()=>setPicked(new Set())} data-testid="button-clear-student-selection">Clear selection</button></div></div>
           <ul className="grid gap-2 md:grid-cols-2">{data.eligibleStudents.map(s => <li key={s.id}><label className={`${box} flex items-start gap-3 p-3 ${s.eligible ? '' : 'opacity-60'}`}>
-            <input type="checkbox" className="mt-0.5 h-4 w-4 !w-4" disabled={!s.eligible} checked={picked.has(s.id)} onChange={() => setPicked(p => { const n = new Set(p); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })} data-testid={`check-student-${s.id}`} />
-            <span><span className="block text-sm font-semibold">{s.name}</span>{s.reason && <span className={`text-xs ${muted}`}>{s.reason}</span>}</span></label></li>)}</ul>
+            <input type="checkbox" className="mt-0.5 h-4 w-4 !w-4" disabled={!s.eligible} checked={s.eligible&&picked.has(s.id)} onChange={() => setPicked(p => { const n = new Set(p); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })} data-testid={`check-student-${s.id}`} />
+            <span><span className="block text-sm font-semibold">{s.name}</span>{s.reason && <span className={`text-xs ${muted}`}>{({'FREE_OR_INELIGIBLE_TERM':'Free or ineligible term','PAYMENT_OR_RESERVATION_EXISTS':'Already paid or reserved','STUDENT_NOT_ACTIVE_ADMITTED':'Not an active admitted student'} as Record<string,string>)[s.reason]??'Not eligible'}</span>}</span></label></li>)}</ul>
           <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
             <Field label="Reason"><input value={reason} onChange={e => setReason(e.target.value)} data-testid="input-bulk-reason" /></Field>
             <div className="flex flex-wrap gap-2">
-              <Button disabled={!ids.length || ids.length > 500 || reason.trim().length < 3 || fin.busy === slot} onClick={() => void create()} testId="button-create-bulk">{fin.pendingKey(slot) ? 'Resubmit same bulk charge' : `Create one charge for ${ids.length}`}</Button>
+              <Button disabled={!ids.length || ids.length > 500 || reason.trim().length < 3 || fin.busy === slot} onClick={() => void create()} testId="button-create-bulk">{fin.pendingKey(slot) ? 'Resubmit same payment request' : `Continue payment for ${ids.length}`}</Button>
               <Button variant="outline" disabled={!ids.length || ids.length > 500 || reason.trim().length < 3 || fin.busy === bankSlot} onClick={() => void requestBank()} testId="button-request-bank-remittance">{fin.pendingKey(bankSlot) ? 'Resubmit same bank request' : `Request bank remittance`}</Button>
             </div>
           </div>

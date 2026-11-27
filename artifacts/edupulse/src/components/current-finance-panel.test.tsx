@@ -2,9 +2,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
-import { describe, it, expect, vi } from 'vitest';
-const f = vi.hoisted(() => ({ result: {} as Record<string, unknown>, mutateAsync:vi.fn(),queries:[] as any[] }));
-vi.mock('@clerk/react', () => ({ useUser: () => ({ user: { id: 'user-a' } }), useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: 'user-a', sessionId: 'sess-a' }) }));
+import { describe, it, expect, vi,beforeEach } from 'vitest';
+const f = vi.hoisted(() => ({ result: {} as Record<string, unknown>, mutateAsync:vi.fn(),queries:[] as any[],uid:'user-a' }));
+vi.mock('@clerk/react', () => ({ useUser: () => ({ user: { id: f.uid } }), useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: f.uid, sessionId: 'sess-a' }) }));
 vi.mock('@tanstack/react-query', async o => ({ ...await o<typeof import('@tanstack/react-query')>(), useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock('@workspace/api-client-react', async o => ({
   ...await o<typeof import('@workspace/api-client-react')>(),
@@ -23,17 +23,23 @@ const overview = { owner: false, bro: true, schools: [], terms: [], blockers: ['
   summary: { studentCount: 10, earnedMinor: 150000, pendingMinor: 0, approvedMinor: 15000, availableMinor: 135000, paidMinor: 0 },
   entitlements: [{ key: 'D:1', studentId: 1, studentName: 'Amaka Obi', schoolId: 2, schoolName: 'Lekki Hills', termId: 3, termName: 'First Term', amountMinor: 15000, state: 'ACCRUED', requestId: null, available: true }],
   requests: [], payments: [], refunds: [], payouts: [], batches: [], eligibleStudents: [] };
-async function ownerDom(){
+async function ownerDom(initial:any={mode:'owner'}){
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;
   const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
-  const render=async()=>{await act(async()=>root.render(<ConnectedFinancePanel mode="owner"/>));};
-  const click=async(id:string)=>{const el=host.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`)!;expect(el).not.toBeNull();await act(async()=>el.click());};
+  let props=initial;
+  const render=async(next?:any)=>{if(next)props=next;await act(async()=>root.render(<ConnectedFinancePanel {...props}/>));};
+  const click=async(id:string)=>{const el=document.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`)!;expect(el).not.toBeNull();await act(async()=>el.click());};
   const select=async(id:string,value:string)=>{const el=host.querySelector<HTMLSelectElement>(`[data-testid="${id}"]`)!;
     await act(async()=>{el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));});};
-  return {host,render,click,select,close:async()=>{await act(async()=>root.unmount());host.remove();delete(globalThis as any).IS_REACT_ACT_ENVIRONMENT;}};
+  const input=async(id:string,value:string)=>{
+    const el=document.querySelector<HTMLInputElement>(`[data-testid="${id}"]`)!;expect(el).not.toBeNull();
+    await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));});
+  };
+  return {host,render,click,select,input,close:async()=>{await act(async()=>root.unmount());host.remove();delete(globalThis as any).IS_REACT_ACT_ENVIRONMENT;}};
 }
 
 describe('connected finance', () => {
+  beforeEach(()=>{f.uid='user-a';sessionStorage.clear();f.mutateAsync.mockReset();});
   it.each([
     [404,undefined,'FIELD_SMS_ROUTE_UNAVAILABLE'],
     [503,'CURRENT_FINANCIAL_SCHEMA_NOT_APPLIED','storage is not applied'],
@@ -77,13 +83,13 @@ describe('connected finance', () => {
       await dom.render();
       expect(dom.host.querySelector<HTMLSelectElement>('[data-testid="select-finance-term"]')!.disabled).toBe(true);
       await dom.select('select-finance-school','2');await dom.select('select-finance-term','21');
-      expect(f.queries.at(-1)).toEqual({schoolId:2,termId:21});
+      expect(f.queries.at(-1)).toEqual({schoolId:2,termId:21,view:'OWNER'});
       await dom.select('select-finance-school','3');
-      expect(f.queries.at(-1)).toEqual({schoolId:3});
+      expect(f.queries.at(-1)).toEqual({schoolId:3,view:'OWNER'});
       f.result={isError:true,error:{status:400},isLoading:false,refetch:vi.fn()};await dom.render();
       expect(dom.host.querySelector('[data-testid="select-finance-school"]')).not.toBeNull();
       await dom.click('button-reset-finance-scope');
-      expect(f.queries.at(-1)).toEqual({});
+      expect(f.queries.at(-1)).toEqual({view:'OWNER'});
       expect(f.queries.every(q=>!q.termId||!!q.schoolId)).toBe(true);
       f.result={isError:true,error:{status:503},isLoading:false,refetch:vi.fn()};await dom.render();
       expect(dom.host.querySelector('[data-testid="button-reset-finance-scope"]')).not.toBeNull();
@@ -98,11 +104,91 @@ describe('connected finance', () => {
     const html = renderToStaticMarkup(<ConnectedFinancePanel mode="bro" />);
     expect(html).toContain('not zero'); expect(html).not.toContain('₦0.00');
   });
+  it('keeps school rendering private even if an overbroad response contains Owner balances or explanations',()=>{
+    f.result={data:{...overview,owner:true,bro:false,blockers:['Secret BRO commission fee'],
+      requests:[{id:99,broName:'Secret beneficiary',lines:[],createdAt:'2026-01-01',totalMinor:9876543}],
+      summary:{...overview.summary,earnedMinor:9876543}}};
+    const html=renderToStaticMarkup(<ConnectedFinancePanel mode="school" schoolId={2}/>);
+    expect(html).toContain('Student subscriptions');
+    expect(html).not.toMatch(/finance-summary|\bBRO\b|commission|9876543|Secret beneficiary/i);
+    expect(f.queries.at(-1)).toEqual({schoolId:2,view:'SCHOOL'});
+  });
+  it('bulk selection respects exclusions, totals, clear and exact school, term and signed-in identity',async()=>{
+    f.result={data:{...overview,owner:true,bro:false,blockers:[],schools:[{id:2,name:'A school'},{id:3,name:'B school'}],
+      terms:[{id:21,schoolId:2,name:'January term'},{id:22,schoolId:2,name:'Next term'},{id:31,schoolId:3,name:'B term'}],
+      eligibleStudents:[{id:11,name:'First child',eligible:true,reason:null},{id:12,name:'Second child',eligible:true,reason:null},
+        {id:13,name:'Already paid',eligible:false,reason:'PAYMENT_OR_RESERVATION_EXISTS'}]}};
+    const dom=await ownerDom();
+    try{
+      await dom.render();
+      await dom.select('select-finance-school','2');await dom.select('select-finance-term','21');
+      expect(dom.host.querySelector<HTMLInputElement>('[data-testid="check-student-13"]')?.disabled).toBe(true);
+      await dom.click('button-select-all-eligible');
+      expect(dom.host.querySelector('[data-testid="selected-student-count"]')?.textContent).toBe('2 selected');
+      expect(dom.host.querySelector('[data-testid="text-bank-expected"]')?.textContent).toContain('6,400');
+      expect(f.mutateAsync).not.toHaveBeenCalled();
+      await dom.click('button-clear-student-selection');
+      expect(dom.host.querySelector('[data-testid="selected-student-count"]')?.textContent).toBe('0 selected');
+      await dom.click('button-select-all-eligible');await dom.select('select-finance-term','22');
+      expect(dom.host.querySelector('[data-testid="selected-student-count"]')?.textContent).toBe('0 selected');
+      await dom.click('button-select-all-eligible');await dom.select('select-finance-school','3');
+      await dom.select('select-finance-term','31');
+      expect(dom.host.querySelector('[data-testid="selected-student-count"]')?.textContent).toBe('0 selected');
+      await dom.click('button-select-all-eligible');f.uid='different-identity';await dom.render();
+      expect(dom.host.querySelector('[data-testid="selected-student-count"]')).toBeNull();
+      expect(f.mutateAsync).not.toHaveBeenCalled();
+    }finally{await dom.close();}
+  });
+  it('BRO request selects only own requestable earnings and submits no payout or paid command',async()=>{
+    f.result={data:{...overview,blockers:[],entitlements:[
+      {...overview.entitlements[0],state:'REQUESTED',requestable:true},
+      {...overview.entitlements[0],key:'D:2',studentName:'Held child',state:'HELD',requestable:false},
+      {...overview.entitlements[0],key:'D:3',studentName:'Already requested',state:'REQUESTED',requestable:false,requestId:88}]}};
+    f.mutateAsync.mockResolvedValue({state:'REQUESTED'});
+    const dom=await ownerDom({mode:'bro'});
+    try{
+      await dom.render();
+      expect(dom.host.querySelector<HTMLInputElement>('[data-testid="check-entitlement-D:2"]')?.disabled).toBe(true);
+      expect(dom.host.querySelector<HTMLInputElement>('[data-testid="check-entitlement-D:3"]')?.disabled).toBe(true);
+      await dom.click('check-entitlement-D:1');
+      expect(dom.host.querySelector('[data-testid="button-request-withdrawal"]')?.textContent).toContain('150');
+      await dom.input('input-withdraw-reason','Request my accrued earnings');
+      await dom.click('button-request-withdrawal');
+      expect(f.mutateAsync).toHaveBeenCalledOnce();
+      expect(f.mutateAsync.mock.calls[0][0].data).toMatchObject({action:'WITHDRAW_REQUEST',payload:{entitlementKeys:['D:1']}});
+    }finally{await dom.close();}
+  });
+  it('Owner recording shows frozen instructions and records only confirmed, already-completed external transfers',async()=>{
+    f.result={data:{...overview,owner:true,bro:false,blockers:[],payouts:[{id:51,entitlementKey:'D:1',
+      amountMinor:15000,state:'PENDING',reference:'YETENIA_CURRENT_51',partnerId:9,broName:'Fictional BRO',
+      bankFingerprint:'fixture-bank',bankName:'Fictional Bank',maskedAccountNumber:'****0001'}]}};
+    f.mutateAsync.mockImplementation(async({data}:any)=>data.action==='PAYOUT_BANK_REVEAL'
+      ?{bankName:'Fictional Bank',accountName:'Fictional BRO',accountNumber:'0000000001'}:{state:'SUCCEEDED',moneySentByApp:false});
+    const dom=await ownerDom();
+    try{
+      await dom.render();
+      await dom.click('button-record-external-51');
+      expect(document.body.textContent).toContain('does not send money');
+      expect(document.querySelector<HTMLButtonElement>('[data-testid="button-submit-external-transfer"]')?.disabled).toBe(true);
+      await dom.click('button-reveal-current-bank');
+      expect(document.querySelector('[data-testid="frozen-current-bank"]')?.textContent).toContain('0000000001');
+      await dom.input('input-external-transferReference','FICTIONAL-TRANSFER-51');
+      await dom.input('input-external-statementReference','FICTIONAL-STATEMENT-51');
+      await dom.input('input-external-transferDate','2026-11-01');
+      await dom.input('input-external-reason','Reviewed completed bank debit');
+      await dom.click('check-external-completed');
+      expect(document.querySelector<HTMLButtonElement>('[data-testid="button-submit-external-transfer"]')?.disabled).toBe(true);
+      await dom.click('check-external-statement');await dom.click('button-submit-external-transfer');
+      expect(f.mutateAsync.mock.calls.map(c=>c[0].data.action)).toEqual(['PAYOUT_BANK_REVEAL','PAYOUT_RECORD_EXTERNAL']);
+      expect(f.mutateAsync.mock.calls[1][0].data.payload).toMatchObject({ids:[51],amountMinor:15000,
+        transferReference:'FICTIONAL-TRANSFER-51',transferDate:'2026-11-01',confirmExternalTransfer:true,independentlyChecked:true});
+    }finally{await dom.close();}
+  });
   it('separates accrued earnings from bank-verified money and shows gates', () => {
     f.result = { isLoading: false, isError: false, data: overview, refetch: vi.fn() };
     const html = renderToStaticMarkup(<ConnectedFinancePanel mode="bro" />);
     expect(html).toContain('₦1,500.00'); expect(html).toContain('Approval is not a bank credit');
-    expect(html).toContain('Bank-verified paid'); expect(html).toContain('Payout transport paused');
+    expect(html).toContain('Confirmed / recorded paid'); expect(html).toContain('Payout transport paused');
     expect(html).not.toContain('Initiate payout');
   });
   it('bulk receipts/recovery follow backend phases; school users cannot create refunds; BRO selects REQUESTED unrequested', () => {

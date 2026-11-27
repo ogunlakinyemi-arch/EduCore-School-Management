@@ -15,6 +15,13 @@ uploaded/manual receipt must never become platform entitlement. Internal
 student remittance reminders belong to authorized school finance; employee
 subscription reminders belong to that employee.
 
+Include every eligible linked parent/guardian independently, not only an
+invoice's named parent or the family's default contact. Require an active Parent
+role in the relevant school as well as a live child relationship. A parent's
+profile-default school must not hide authorized linked-child invoice/payment
+history in another school; retained invoices keep their original school's
+authority and identity.
+
 Guardians separately receive a non-financial required-NFC-outstanding notice
 on the existing Monday/Friday schedule after their school's own D+6 grace
 ends. It must only ask them to contact the school, with no amount, payment

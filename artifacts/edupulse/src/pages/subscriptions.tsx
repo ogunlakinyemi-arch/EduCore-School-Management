@@ -316,7 +316,10 @@ function SubscriptionRow({
 // Subscription status is always taken from the server list/payment endpoints. Flutterwave's
 // return query is only a verification signal and is never accepted as proof of payment.
 export function SubscriptionsPage() {
-  return <><SchoolBillingDashboard legacy={<LegacySubscriptionsPage/>}/><ConnectedCollections /></>;
+  const {isPlatformOwner}=useSchoolAdminAccess();
+  return <><PageHeading eyebrow="Finance / Students" title="Student subscriptions" action={<TenantPicker/>}/>
+    <ConnectedCollections />
+    {!isPlatformOwner&&<SchoolBillingDashboard legacy={<LegacySubscriptionsPage/>}/>}</>;
 }
 
 /** School Admin/Accountant of the tenant school, or Owner with an explicitly selected school. */

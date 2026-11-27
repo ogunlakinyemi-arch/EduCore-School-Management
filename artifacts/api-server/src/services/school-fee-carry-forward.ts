@@ -22,6 +22,19 @@ export function publishedSchoolInvoiceSql(alias="i"){
   AND NOT EXISTS(SELECT 1 FROM student_subscription_terms legacy_nfc
    WHERE legacy_nfc.school_id=${alias}.school_id AND legacy_nfc.legacy_invoice_id=${alias}.id)`;
 }
+/** A profile's default school is not the authority for every linked child.
+ * Require the recipient's live Parent membership in the invoice's own school.
+ * Do not join the child's current school: transfers never move old invoices. */
+export function linkedGuardianInvoiceSql(alias="i"){
+ if(!/^[a-z_][a-z0-9_]*$/i.test(alias))throw Error("Invalid invoice alias");
+ return `EXISTS(SELECT 1 FROM parents fee_guardian
+  JOIN parent_student_relationships fee_link ON fee_link.parent_id=fee_guardian.id
+  JOIN school_memberships fee_guardian_role ON fee_guardian_role.user_id=fee_guardian.user_id
+   AND fee_guardian_role.school_id=${alias}.school_id AND fee_guardian_role.role='PARENT'
+   AND upper(fee_guardian_role.status)='ACTIVE'
+  WHERE fee_guardian.user_id=$1 AND upper(fee_guardian.status)='ACTIVE'
+   AND fee_link.student_id=${alias}.student_id AND upper(fee_link.status)='ACTIVE')`;
+}
 /** Preserve the separately authorized existing replacement-card payment flow.
  * This exception does not publish a platform subscription or put replacement
  * requests into ordinary-fee arrears/reminder selection. Callers must still

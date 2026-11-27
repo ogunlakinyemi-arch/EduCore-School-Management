@@ -21,8 +21,9 @@ Granting creates no payment or commission; suspension does not revoke
 independently paid access or supersede the free-launch policy.
 
 **Why:** The user explicitly required financial-history preservation and
-reconciliation with the already approved current-term free launch and each
-school's January 2027 second-term gate, without changing those policies.
+independently paid access. The later school-date instruction superseded the
+former nationwide January anchor: each saved term now uses its own D..D+6 grace
+and D+7 enforcement, while an explicit free grant remains a non-payment entitlement.
 
 **How to apply:** Keep prospective usage/collection eligibility separate from
 historical payment finalization and BRO eligibility. Manual school and physical

@@ -3,6 +3,8 @@ import { pool } from "@workspace/db";
 import { AuthError, getUserContext, handleAuthError, requireAuthentication } from "../middlewares/auth";
 import { activitiesReports } from "./reporting/activities";
 import { businessReports } from "./reporting/business";
+import {financialInsights} from "./reporting/financial-insights";
+import {currentPlatformInsights} from "./reporting/current-platform-insights";
 import { learningReports } from "./reporting/learning";
 import { organizationReports } from "./reporting/organization";
 import { directoryReports } from "./reporting/directories";
@@ -27,6 +29,8 @@ const router = Router();
 router.use("/reports", requireAuthentication());
 
 const reports: Record<string, ReportDefinition> = {
+  "financial-insights":financialInsights,
+  "current-platform-finance":currentPlatformInsights(),
   ...directoryReports,
   ...organizationReports,
   ...learningReports,

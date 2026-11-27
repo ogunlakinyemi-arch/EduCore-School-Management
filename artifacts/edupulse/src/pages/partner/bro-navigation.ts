@@ -16,7 +16,7 @@ export const broSecondaryNav: BroNavItem[] = [
 ];
 
 export function visibleBroNav(items: BroNavItem[], opts: { isOwner: boolean; dev: boolean }) {
-  const retiredOwnerFinance = new Set(['/partners/term-commissions', '/partners/finance', '/partners/payouts', '/partners/live-readiness']);
+  const retiredOwnerFinance = new Set(['/partners/live-readiness']);
   return items.filter(i => (!opts.isOwner || !retiredOwnerFinance.has(i.href))
     && (!i.ownerOnly || opts.isOwner) && (!i.devOnly || opts.dev));
 }

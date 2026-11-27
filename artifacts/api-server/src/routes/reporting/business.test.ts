@@ -86,7 +86,7 @@ describe("business reporting", () => {
     expect(businessReports.finance.roles).not.toContain("PARTNER");
     expect(businessReports["finance-payments"].roles).toContain("PARENT");
     expect(businessReports["finance-payments"].roles).toContain("STUDENT");
-    expect(businessReports.subscriptions.roles).toEqual(["OWNER", "ADMIN", "ACCOUNTANT"]);
+    expect(businessReports.subscriptions.roles).toEqual(["OWNER"]);
     expect(businessReports.communication.roles).not.toContain("PARENT");
     expect(businessReports.communication.roles).not.toContain("STUDENT");
     expect(businessReports.communication.roles).not.toContain("PARTNER");

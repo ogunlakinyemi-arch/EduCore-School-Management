@@ -211,8 +211,10 @@ export async function reconcileSchoolSubscription(
     if (changed) {
       const restored = oldIds.filter(id => !snapshot.restrictedStudentIds.includes(id));
       const newlyLocked = snapshot.restrictedStudentIds.filter(id => !oldIds.includes(id));
-      const actionSource = restored.length && !newlyLocked.length && !snapshot.inGracePeriod
-        ? "SUBSCRIPTION_PAYMENT_RESTORATION" : source;
+      const nonPaymentEntitlement = snapshot.inGracePeriod || snapshot.status === "NOT_REQUIRED" || snapshot.status === "WAIVED";
+      const actionSource = restored.length && !newlyLocked.length
+        ? nonPaymentEntitlement ? "SUBSCRIPTION_ENTITLEMENT_RESTORATION" : "SUBSCRIPTION_PAYMENT_RESTORATION"
+        : source;
       await client.query(
         `INSERT INTO audit_logs("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,severity,event_type,result,metadata)
          VALUES($1,$2,$3,$4,$5,'Term subscription restriction evaluated','Subscriptions',$6,'info','SUBSCRIPTION_ENFORCEMENT','SUCCESS',$7::jsonb)`,
@@ -256,11 +258,15 @@ export async function reconcileSchoolSubscription(
           category: "ACCOUNT",
           eventKey: `subscription-enforcement:${schoolId}:${snapshot.termId}:${version}:${recipient.userId}:${recipient.studentId ?? "teacher"}`,
           subject: recipient.studentId == null ? "Student subscription coverage updated"
-            : restricted ? "Subscription required" : "Student subscription verified",
+            : restricted ? "Subscription required" : nonPaymentEntitlement ? "Subscription access restored" : "Student subscription verified",
           body: recipient.studentId == null
             ? "Current-term student subscription coverage has changed. Review the school's subscription overview. Teacher and reader access is not automatically restricted by individual student nonpayment."
             : restricted
             ? "Some EduCore services are currently restricted because the termly subscription has not been completed. Please contact your School Administrator."
+            : nonPaymentEntitlement
+              ? manual.schoolLocked
+                ? "This student's term subscription restriction is removed under a grace period or free entitlement; this does not record a payment. The Platform Owner's school lock still applies, together with any other account, card or device restrictions."
+                : "This student's term subscription restriction is removed under a grace period or free entitlement; this does not record a payment. Other account, card or device restrictions remain unchanged."
             : manual.schoolLocked
               ? "This student's termly subscription is now verified. The Platform Owner's school lock still applies, together with any other account, card or device restrictions."
               : "This student's termly subscription restriction is removed. Other account, card or device restrictions remain unchanged.",

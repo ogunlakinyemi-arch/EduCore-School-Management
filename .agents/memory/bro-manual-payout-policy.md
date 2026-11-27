@@ -15,7 +15,9 @@ BROs may request withdrawal against their own eligible accrued entitlements.
 Platform Owner approves or rejects each student entitlement inside that request.
 The decision is the entitlement's approval: do not add a redundant second
 approval stage before the payout workflow. Requested, approved and available
-are distinct from independently verified paid funds.
+are distinct from paid funds. Distinguish Owner-recorded, statement-reviewed
+external transfers from independently provider-reconciled transfers; never label
+the former automatic bank verification.
 
 **Why:** The user explicitly chose withdrawal requests with per-student Owner
 decisions and consistent dashboard totals while retaining the ₦150 rate.
@@ -25,6 +27,19 @@ verified-bank evidence, adverse-event holds, concurrency and recovery controls.
 Use supported payout evidence, never an approval checkbox as proof of credit.
 This product decision does not authorize real transfers or runtime activation.
 Keep the historical manual workflow below distinct from new withdrawal requests.
+
+A single completed external transfer may cover several already-reserved,
+approved current entitlements only for the same BRO and frozen verified bank.
+Its exact amount must equal those lines; preserve one reusable-evidence boundary
+across both current and retained payout history, not separate payment ledgers.
+
+**Why:** External bank transfers are often aggregated. Supporting that workflow
+must not turn an arbitrary amount, approval, typed reference or repeated
+submission into additional commission or a claim of automatic verification.
+
+**How to apply:** Keep actual transfer date, Owner recording identity/time,
+statement reference and immutable audit history. Require explicit external
+completion and statement-review confirmations; recording never sends money.
 
 ## Retained manual payout and beneficiary policy
 

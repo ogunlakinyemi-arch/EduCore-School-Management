@@ -37,6 +37,7 @@ export type PayoutFacts = {
 export type FrozenBank = {
   fingerprint: string; sealed: {ciphertext: string; keyVersion: string};
   maskedAccountNumber: string; verified: true;
+  bankName?: string; accountName?: string;
 };
 export type CurrentCapabilities = {
   now?: () => Date;

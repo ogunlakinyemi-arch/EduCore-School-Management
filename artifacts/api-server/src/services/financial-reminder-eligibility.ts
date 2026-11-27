@@ -44,6 +44,9 @@ export const guardianSchoolFeeSql=`SELECT i.id,i.school_id AS "schoolId",i.stude
  JOIN parent_student_relationships rel ON rel.student_id=st.id AND upper(rel.status)='ACTIVE'
  JOIN parents p ON p.id=rel.parent_id AND upper(p.status)='ACTIVE' AND ${familyChildSchoolScope("p","st")}
  JOIN app_users u ON u.id=p.user_id AND upper(u.status)='ACTIVE'
+ JOIN school_memberships fee_guardian_role ON fee_guardian_role.user_id=p.user_id
+  AND fee_guardian_role.school_id=i.school_id AND fee_guardian_role.role='PARENT'
+  AND upper(fee_guardian_role.status)='ACTIVE'
  WHERE i.school_id=$1 AND i.outstanding_minor>0 AND i.due_date<=$2::date
  AND i.currency='NGN' AND i.status IN ('UNPAID','PARTIALLY_PAID','OVERDUE')
  AND ${publishedSchoolInvoiceSql("i")}`;

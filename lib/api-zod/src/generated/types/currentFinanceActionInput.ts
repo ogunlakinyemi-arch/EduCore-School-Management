@@ -9,7 +9,7 @@ import type { CurrentFinanceActionInputAction } from './currentFinanceActionInpu
 import type { CurrentFinanceActionInputPayload } from './currentFinanceActionInputPayload';
 
 /**
- * BANK_REQUEST uses schoolId, termId, distinct studentIds, key and reason. BANK_VERIFY uses id, bankName, statementReference, creditDate, exact amountMinor, independentlyChecked=true, key and reason. BANK_POST uses id, key and reason. BANK_REJECT/BANK_CANCEL use id, key and reason, only before verified credit. BULK_RETRY uses id, key and reason; fresh server verification of a retained failed zero-charge transaction is mandatory. No client no-charge assertion is accepted.
+ * BANK_REQUEST uses schoolId, termId, distinct studentIds, key and reason. BANK_VERIFY uses id, bankName, statementReference, creditDate, exact amountMinor, independentlyChecked=true, key and reason. BANK_POST uses id, key and reason. BANK_REJECT/BANK_CANCEL use id, key and reason, only before verified credit. BULK_RETRY uses id, key and reason; fresh server verification of a retained failed zero-charge transaction is mandatory. No client no-charge assertion is accepted. PAYOUT_BANK_REVEAL uses id, key and reason for an audited Owner-only reveal of the existing frozen bank instructions. PAYOUT_RECORD_EXTERNAL uses distinct ids, key, reason, transferReference, statementReference, transferDate (YYYY-MM-DD), exact amountMinor, confirmExternalTransfer=true and independentlyChecked=true. It records the Owner's independently checked, already-completed external bank transfer against approved reserved lines in the existing ledger; it never sends money or claims automatic bank/provider verification.
  */
 export interface CurrentFinanceActionInput {
   action: CurrentFinanceActionInputAction;

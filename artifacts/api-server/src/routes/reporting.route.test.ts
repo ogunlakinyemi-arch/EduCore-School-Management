@@ -245,6 +245,23 @@ beforeEach(() => {
 });
 
 describe("report route authorization and exports", () => {
+  it.each(["SCHOOL_ADMIN","ACCOUNTANT","PARENT","STUDENT","TEACHER","PARTNER","COMPANY_ACCOUNTANT"])(
+    "denies private Financial Insights and platform subscription reporting, including exports, to %s",async role=>{
+      state.context.roles=[{role,schoolId:10,status:"ACTIVE"}];
+      for(const id of ["financial-insights","current-platform-finance","subscriptions"]){
+        for(const suffix of ["","/export?format=csv"]){
+          const response=await fetch(`${baseUrl}/api/reports/${id}${suffix}`);
+          expect([403,404]).toContain(response.status);
+        }
+      }
+      const catalog=await fetch(`${baseUrl}/api/reports/catalog?schoolId=10`);
+      if(catalog.ok){
+        const json=await catalog.json() as any;
+        expect(json.items.map((i:any)=>i.id)).not.toContain("financial-insights");
+        expect(json.items.map((i:any)=>i.id)).not.toContain("current-platform-finance");
+        expect(json.items.map((i:any)=>i.id)).not.toContain("subscriptions");
+      }
+    });
   it("returns 401 when authentication is missing", async () => {
     state.authenticated = false;
     const response = await fetch(`${baseUrl}/api/reports/overview`);

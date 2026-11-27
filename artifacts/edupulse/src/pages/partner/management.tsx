@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import LiveReadinessPage from './live-readiness';
+import { ConnectedFinancePanel } from '@/components/current-finance-panel';
 import { Route, Switch, Link, useLocation, Redirect } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
@@ -1089,12 +1090,12 @@ export default function PartnerManagement() {
 
       <Switch>
         <Route path="/partners" component={PartnersOverview} />
-        <Route path="/partners/term-commissions">{isOwner ? <Redirect to="/partners" /> : <TermCommissionsPage />}</Route>
-        <Route path="/partners/payouts">{isOwner ? <Redirect to="/partners" /> : <PayoutsOverview />}</Route>
+        <Route path="/partners/term-commissions">{isOwner ? <ConnectedFinancePanel mode="owner" commissionsOnly /> : <NotFound />}</Route>
+        <Route path="/partners/payouts">{isOwner ? <><ConnectedFinancePanel mode="owner" commissionsOnly /><details><summary>Historical payout records</summary><PayoutsOverview /></details></> : <NotFound />}</Route>
         <Route path="/partners/conflicts" component={AttributionConflicts} />
         <Route path="/partners/live-readiness">{isOwner ? <Redirect to="/partners" /> : <LiveReadinessPage />}</Route>
         <Route path="/partners/field-operations" component={FieldOperationsPage} />
-        <Route path="/partners/finance">{isOwner ? <Redirect to="/partners" /> : <NotFound />}</Route>
+        <Route path="/partners/finance">{isOwner ? <ConnectedFinancePanel mode="owner" commissionsOnly /> : <NotFound />}</Route>
         <Route path="/partners/:id">
           {params => <PartnerDetail id={Number(params.id)} />}
         </Route>

@@ -45,6 +45,14 @@ school's saved WAT dates, not a national date. Calendar rollover never waits
 for grace or payment. Ordinary school invoices have no NFC grace and keep
 their own original due dates.
 
+“Automatic term subscription activation after grace” means refreshing the
+existing enforcement/checkout-required state at D+7 inside the saved term's
+boundaries. It never means initiating checkout, charging Flutterwave or creating
+another obligation. Verified students remain entitled; an explicit free-term
+grant suppresses charges/enforcement for that exact term only. Calendar opening
+remains independent. Non-payment restoration must not be described as verified
+payment.
+
 Student platform price remains ₦3,200. An eligible ₦150 BRO liability is a
 separate independently verified, exactly-once expense, not a collection split.
 Preserve historical prices, amounts, payment evidence, commission eligibility,

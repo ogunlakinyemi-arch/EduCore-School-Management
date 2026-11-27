@@ -85,7 +85,7 @@ import { CommunicationInbox } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
 import { LibraryPage } from '@/pages/library';
 import { OperationsPage } from '@/pages/operations';
-import { ReportingPage } from '@/pages/reporting';
+import { ReportingPage,OwnerFinancialInsightsPage } from '@/pages/reporting';
 import { ActivationHistoryPage, EidActivationPage } from '@/pages/e-id-activation';
 
 import CardVerificationPage from '@/pages/card-verification';
@@ -307,6 +307,7 @@ export function ProtectedRoutes() {
           <Route path="/flutterwave-split-simulation"><RoleGuard isPlatformOwnerOnly><ArchivedPaymentWorkflowPage /></RoleGuard></Route>
           <Route path="/payroll"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PayrollPage /></RoleGuard></Route>
           <Route path="/my-payslips"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyPayslipsPage /></RoleGuard></Route>
+          <Route path="/financial-insights"><RoleGuard isPlatformOwnerOnly><OwnerFinancialInsightsPage /></RoleGuard></Route>
           <Route path="/finance-workspace"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><FinanceWorkspacePage /></RoleGuard></Route>
           <Route path="/partners">
             <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>
@@ -426,7 +427,7 @@ export function ProtectedRoutes() {
             <RoleGuard isPlatformOwnerOnly><NotificationsPage /></RoleGuard>
           </Route>
           <Route path="/subscriptions">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT', 'TEACHER', 'STUDENT']} ownerCanView ownerReadOnly>{context?.isPlatformOwner ? <Redirect to="/free-academic-terms" /> : <SubscriptionsRoute />}</RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT', 'TEACHER', 'STUDENT']} ownerCanView><SubscriptionsRoute /></RoleGuard>
           </Route>
           <Route path="/subscription-enforcement">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView>{context?.isPlatformOwner ? <Redirect to="/free-academic-terms" /> : <SubscriptionEnforcementPage />}</RoleGuard>

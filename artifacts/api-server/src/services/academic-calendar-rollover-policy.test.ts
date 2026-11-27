@@ -111,6 +111,8 @@ it("keeps reviewed target material identical across expected rollover",()=>{
  const original=calendarFixture();expect(advanceDigest(materialCalendar(db(f.terms[1]))))
   .toBe(advanceDigest(materialCalendar(db(original.terms[1]))));
  expect(advanceCheckoutOpen("2027-01-18",f.terms[1].startDate,f.terms[1].endDate,f.terms[1].isCurrent,f.sessions[0].isCurrent,
+  f.terms[1].status,f.sessions[0].status)).toBe(false);
+ expect(advanceCheckoutOpen("2027-01-25",f.terms[1].startDate,f.terms[1].endDate,f.terms[1].isCurrent,f.sessions[0].isCurrent,
   f.terms[1].status,f.sessions[0].status)).toBe(true);
 });
 it("does not make a changed-and-restored financial approval fresh",()=>{

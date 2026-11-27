@@ -84,4 +84,14 @@ describe("Owner-only BRO financial visibility", () => {
       allocations: [{ recipientType: "SCHOOL", amountMinor: 350000 }] });
     expect(original.allocations).toHaveLength(2);
   });
+  it("keeps school operational prices and settlement totals but omits internal platform/provider allocations",()=>{
+    const input={feeAmountMinor:500000,schoolTotalMinor:500000,settlementAmountMinor:350000,
+      platformShareMinor:135000,platformNetMinor:120000,platform_amount_minor:135000,
+      providerFeeMinor:15000,internalPartnerAccrualMinor:15000,broAccrualPending:true,
+      allocations:[{recipientType:"SCHOOL",amountMinor:350000},{recipientType:"PLATFORM",amountMinor:135000},
+        {recipientType:"PLATFORM_PROVIDER_FEE",amountMinor:15000},{recipientType:"PARTNER",amountMinor:15000}]};
+    expect(withoutBroFinancialData(input)).toEqual({feeAmountMinor:500000,schoolTotalMinor:500000,settlementAmountMinor:350000,
+      allocations:[{recipientType:"SCHOOL",amountMinor:350000}]});
+    expect(input.allocations).toHaveLength(4);
+  });
 });

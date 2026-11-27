@@ -168,15 +168,15 @@ it("honors the existing advisory lock, other weekdays and WAT rollover",async()=
  await queueWeeklyFinancialReminders(pool,new Date());
  expect(f.notifications[0].eventKey).toContain(":2027-01-25:");
 });
-it.each([true,false,undefined])("requires explicit SMS consent and honors category preferences %s",async enabled=>{
+it.each([true,false,undefined])("requires explicit SMS consent and keeps standard Push selected despite retired preference %s",async enabled=>{
  const pool=poolFixture();
  f.preferences=[{channel:"EMAIL",enabled:false},{channel:"PUSH",enabled:false},{channel:"TELEGRAM",enabled:false},
   ...(enabled===undefined?[]:[{channel:"SMS",enabled}])];
  await queueWeeklyFinancialReminders(pool,monday());
- expect([...f.deliveries].map(x=>x.split(":")[1]).sort()).toEqual(enabled?["IN_APP","SMS"]:["IN_APP"]);
+ expect([...f.deliveries].map(x=>x.split(":")[1]).sort()).toEqual(enabled?["IN_APP","PUSH","SMS"]:["IN_APP","PUSH"]);
 });
 it("retains Owner ceilings and the narrow scheduled NFC SMS purpose",async()=>{
- const pool=poolFixture();f.policy.events.NFC_REMINDER.allowed=["IN_APP"];
+ const pool=poolFixture();f.policy.events.NFC_REMINDER.allowed=["IN_APP"];f.policy.events.NFC_REMINDER.defaults=["IN_APP"];
  await queueWeeklyFinancialReminders(pool,monday());
  expect([...f.deliveries]).toEqual(["1:IN_APP"]);
  const n=f.notifications[0];

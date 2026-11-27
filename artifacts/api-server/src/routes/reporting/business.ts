@@ -88,7 +88,7 @@ function pagination(values: unknown[], filters: ReportFilters) {
   return { limit, offset };
 }
 
-const finance: ReportDefinition = {
+export const finance: ReportDefinition = {
   roles: ["OWNER", "ADMIN", "ACCOUNTANT", "PARENT", "STUDENT"],
   filters: ["schoolId", "from", "to", "sessionId", "termId", "classId", "section", "studentId", "status", "method", "limit", "offset"],
   async run(context, filters): Promise<ReportResult> {
@@ -261,7 +261,7 @@ const financePayments: ReportDefinition = {
 };
 
 const subscriptions: ReportDefinition = {
-  roles: ["OWNER", "ADMIN", "ACCOUNTANT"],
+  roles: ["OWNER"],
   filters: ["schoolId", "from", "to", "status", "limit", "offset"],
   async run(context, filters): Promise<ReportResult> {
     const values: unknown[] = [];

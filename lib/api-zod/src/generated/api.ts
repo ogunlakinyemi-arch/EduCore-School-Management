@@ -14,18 +14,19 @@ import * as zod from 'zod';
 
 export const GetCurrentFinanceOverviewQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).optional(),
-  "termId": zod.coerce.number().int().min(1).optional()
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "view": zod.enum(['SCHOOL', 'BRO', 'OWNER']).optional()
 })
 
-export const GetCurrentFinanceOverviewResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+export const GetCurrentFinanceOverviewResponse = zod.record(zod.string(), zod.unknown()).describe('Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.')
 
 
 export const ActOnCurrentFinanceBody = zod.object({
-  "action": zod.enum(['REFUND_REQUEST', 'REFUND_APPROVE', 'REFUND_DISPATCH', 'REFUND_RECONCILE', 'COLLECTION_REVERSAL', 'WITHDRAW_REQUEST', 'WITHDRAW_DECIDE', 'PAYOUT_INITIATE', 'PAYOUT_RECONCILE', 'BRO_RECOVERY', 'BULK_CREATE', 'BULK_VERIFY', 'BULK_RECOVER', 'BULK_RETRY', 'BANK_REQUEST', 'BANK_INSTRUCTIONS', 'BANK_VERIFY', 'BANK_POST', 'BANK_REJECT', 'BANK_CANCEL', 'LEGACY_ASSISTANCE_CANCEL']),
+  "action": zod.enum(['REFUND_REQUEST', 'REFUND_APPROVE', 'REFUND_DISPATCH', 'REFUND_RECONCILE', 'COLLECTION_REVERSAL', 'WITHDRAW_REQUEST', 'WITHDRAW_DECIDE', 'PAYOUT_INITIATE', 'PAYOUT_RECONCILE', 'PAYOUT_BANK_REVEAL', 'PAYOUT_RECORD_EXTERNAL', 'BRO_RECOVERY', 'BULK_CREATE', 'BULK_VERIFY', 'BULK_RECOVER', 'BULK_RETRY', 'BANK_REQUEST', 'BANK_INSTRUCTIONS', 'BANK_VERIFY', 'BANK_POST', 'BANK_REJECT', 'BANK_CANCEL', 'LEGACY_ASSISTANCE_CANCEL']),
   "payload": zod.record(zod.string(), zod.unknown())
-}).describe('BANK_REQUEST uses schoolId, termId, distinct studentIds, key and reason. BANK_VERIFY uses id, bankName, statementReference, creditDate, exact amountMinor, independentlyChecked=true, key and reason. BANK_POST uses id, key and reason. BANK_REJECT/BANK_CANCEL use id, key and reason, only before verified credit. BULK_RETRY uses id, key and reason; fresh server verification of a retained failed zero-charge transaction is mandatory. No client no-charge assertion is accepted.')
+}).describe('BANK_REQUEST uses schoolId, termId, distinct studentIds, key and reason. BANK_VERIFY uses id, bankName, statementReference, creditDate, exact amountMinor, independentlyChecked=true, key and reason. BANK_POST uses id, key and reason. BANK_REJECT/BANK_CANCEL use id, key and reason, only before verified credit. BULK_RETRY uses id, key and reason; fresh server verification of a retained failed zero-charge transaction is mandatory. No client no-charge assertion is accepted. PAYOUT_BANK_REVEAL uses id, key and reason for an audited Owner-only reveal of the existing frozen bank instructions. PAYOUT_RECORD_EXTERNAL uses distinct ids, key, reason, transferReference, statementReference, transferDate (YYYY-MM-DD), exact amountMinor, confirmExternalTransfer=true and independentlyChecked=true. It records the Owner\'s independently checked, already-completed external bank transfer against approved reserved lines in the existing ledger; it never sends money or claims automatic bank/provider verification.')
 
-export const ActOnCurrentFinanceResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+export const ActOnCurrentFinanceResponse = zod.record(zod.string(), zod.unknown()).describe('Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.')
 
 
 
@@ -42,10 +43,10 @@ export const GetCurrentFinanceReceiptQueryParams = zod.object({
   "allocationId": zod.coerce.number().int().min(1).optional()
 })
 
-export const GetCurrentFinanceReceiptResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+export const GetCurrentFinanceReceiptResponse = zod.record(zod.string(), zod.unknown()).describe('Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.')
 
 
-export const GetFieldSmsCampaignsResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+export const GetFieldSmsCampaignsResponse = zod.record(zod.string(), zod.unknown()).describe('Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.')
 
 
 export const previewFieldSmsCampaignBodyMessageMax = 1000;
@@ -65,7 +66,7 @@ export const PreviewFieldSmsCampaignBody = zod.object({
   "leadIds": zod.array(zod.number().int().min(1)).max(previewFieldSmsCampaignBodyLeadIdsMax).optional()
 })
 
-export const PreviewFieldSmsCampaignResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+export const PreviewFieldSmsCampaignResponse = zod.record(zod.string(), zod.unknown()).describe('Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.')
 
 
 
@@ -80,7 +81,7 @@ export const RecordFieldSmsPermissionBody = zod.object({
   "reason": zod.string().min(recordFieldSmsPermissionBodyReasonMin).max(recordFieldSmsPermissionBodyReasonMax)
 })
 
-export const RecordFieldSmsPermissionResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+export const RecordFieldSmsPermissionResponse = zod.record(zod.string(), zod.unknown()).describe('Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.')
 
 
 
@@ -98,7 +99,7 @@ export const DispatchFieldSmsCampaignBody = zod.object({
   "confirm": zod.boolean()
 })
 
-export const DispatchFieldSmsCampaignResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
+export const DispatchFieldSmsCampaignResponse = zod.record(zod.string(), zod.unknown()).describe('Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.')
 
 
 export const ListBroFieldLeadsQueryParams = zod.object({

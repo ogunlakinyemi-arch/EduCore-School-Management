@@ -95,6 +95,8 @@ const nav: NavItem[] = [
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/people/imports', label: 'Import Records', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
   { href: '/partners', label: 'Business Relationship Officers (BRO)', icon: Handshake, roles: ['PLATFORM_OWNER'] },
+  { href: '/partners/finance', label: 'BRO commissions & withdrawals', icon: Handshake, roles: ['PLATFORM_OWNER'] },
+  { href: '/financial-insights', label: 'Financial Insights', icon: WalletCards, roles: ['PLATFORM_OWNER'] },
   { href: '/account-applications', label: 'New Users / Applications', icon: ClipboardCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/card-uid-inventory', label: 'Card UID Inventory', icon: CreditCard, roles: ['PLATFORM_OWNER'] },
@@ -122,10 +124,10 @@ const ownerNavPaths = new Set([
   '/devices', '/card-uid-inventory', '/nfc-scan-audit', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results', '/platform/attendance',
-  '/communications',
+  '/communications', '/subscriptions', '/partners/finance', '/financial-insights',
   '/payment-assistance', '/free-academic-terms', '/staff-nfc-finance', '/notification-settings',
 ]);
-const ownerPaymentNavPaths = new Set(['/payment-assistance', '/free-academic-terms', '/staff-nfc-finance']);
+const ownerPaymentNavPaths = new Set(['/payment-assistance', '/free-academic-terms', '/staff-nfc-finance','/partners/finance','/subscriptions','/financial-insights']);
 
 export function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();

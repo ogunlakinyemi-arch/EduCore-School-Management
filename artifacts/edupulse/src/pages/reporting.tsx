@@ -31,7 +31,7 @@ const reportFamilies: Record<string, string> = {
   'attendance-term': 'attendance', nfc: 'attendance',
   academics: 'academics', 'academic-results': 'academics', 'academic-assessments': 'academics',
   timetable: 'academics', 'report-card-summary': 'academics', 'grade-distribution': 'academics',
-  finance: 'finance', 'finance-payments': 'finance', subscriptions: 'finance',
+  finance: 'finance', 'finance-payments': 'finance', subscriptions: 'finance', 'financial-insights':'finance','current-platform-finance':'finance',
   communication: 'activity', library: 'activity', 'library-loans': 'activity',
   operations: 'activity', 'operations-history': 'activity', partners: 'platform', audit: 'platform',
 };
@@ -192,7 +192,17 @@ export function ReportingWorkspace({ item, owner, scope, schools }: {
   </div>;
 }
 
-export function ReportingPage({ audience = 'school' }: { audience?: 'school' | 'parent' | 'partner' }) {
+export function OwnerFinancialInsightsPage(){
+  const q=useGetAuthorizedContext(),context=q.data;
+  if(q.isLoading)return <SkeletonPage/>;
+  const owner=context?.isPlatformOwner===true&&context.user?.status==='ACTIVE'
+    &&context.roles?.some(r=>r.role==='PLATFORM_OWNER'&&r.status==='ACTIVE'&&r.schoolId===null)
+    &&!context.roles?.some(r=>r.status==='ACTIVE'&&['COMPANY_ACCOUNTANT','DEVICE_ACTIVATION_OFFICER'].includes(r.role));
+  if(!owner)return <div className="panel p-6" role="alert">Financial Insights is available only to the Platform Owner.</div>;
+  return <ReportingPage financialInsights/>;
+}
+
+export function ReportingPage({ audience = 'school',financialInsights=false }: { audience?: 'school' | 'parent' | 'partner';financialInsights?:boolean }) {
   const { schoolId } = useTenant();
   const contextQuery = useGetAuthorizedContext();
   const context = contextQuery.data;
@@ -209,13 +219,22 @@ export function ReportingPage({ audience = 'school' }: { audience?: 'school' | '
   const [selected, setSelected] = useState('');
   const [family, setFamily] = useState('all');
   const [search, setSearch] = useState('');
-  const available = useMemo(() => catalogReports(catalogQuery.data), [catalogQuery.data]);
+  const available = useMemo(() => {
+    const catalog=catalogReports(catalogQuery.data);
+    return financialInsights?['financial-insights','current-platform-finance','subscriptions'].flatMap(id=>catalog.filter(item=>item.id===id)):catalog;
+  }, [catalogQuery.data,financialInsights]);
   const active = available.find(item => item.id === selected) ?? available[0];
   const visible = available.filter(item => (family === 'all' || reportFamilies[item.id] === family) && `${item.title} ${item.id}`.toLowerCase().includes(search.toLowerCase()));
   const visibleFamilies = families.filter(group => group.id === 'all' || available.some(item => reportFamilies[item.id] === group.id));
 
   return <div className="fade-up">
-    <PageHeading eyebrow={owner ? 'Platform / Intelligence' : audience === 'parent' ? 'Family / Intelligence' : audience === 'partner' ? 'BRO / Intelligence' : 'Workspace / Intelligence'} title="Reporting." description={owner ? 'Read across the network, then narrow to a school without entering its operational workspace.' : audience === 'parent' ? 'Reports concerning your linked children, in one place.' : audience === 'partner' ? 'Reports available to your BRO account, in one place.' : 'One place to inspect the records behind your school’s work.'} action={!owner && audience === 'school' ? <TenantPicker /> : audience === 'parent' && parentSchools.length > 1 ? <label className="block text-xs font-bold">School<select className={`${selectInput} mt-1`} value={parentSchoolId} onChange={event => setParentSchool(Number(event.target.value))} data-testid="select-parent-report-school">{parentSchools.map(id => <option key={id} value={id}>School {id}</option>)}</select></label> : undefined} />
+    <PageHeading eyebrow={owner ? 'Platform / Intelligence' : audience === 'parent' ? 'Family / Intelligence' : audience === 'partner' ? 'BRO / Intelligence' : 'Workspace / Intelligence'} title={financialInsights?'Financial Insights.':'Reporting.'} description={owner ? 'Read across the network, then narrow to a school without entering its operational workspace.' : audience === 'parent' ? 'Reports concerning your linked children, in one place.' : audience === 'partner' ? 'Reports available to your BRO account, in one place.' : 'One place to inspect the records behind your school’s work.'} action={!owner && audience === 'school' ? <TenantPicker /> : audience === 'parent' && parentSchools.length > 1 ? <label className="block text-xs font-bold">School<select className={`${selectInput} mt-1`} value={parentSchoolId} onChange={event => setParentSchool(Number(event.target.value))} data-testid="select-parent-report-school">{parentSchools.map(id => <option key={id} value={id}>School {id}</option>)}</select></label> : undefined} />
+    {financialInsights&&<div className="panel mb-5 space-y-2 p-5 text-sm" data-testid="financial-insights-scope">
+      <p>All schools by default, independently of the school selected elsewhere. Use each report’s school, date and available academic-period filters.</p>
+      <p>School fee collections and verified subscription revenue are separate sources—not amounts to add together. Pending requests, unpaid balances and waivers are not received money. Kobo columns use 100 kobo = ₦1.</p>
+      <p>Current platform collections use verified direct payments and posted bulk allocations, net of confirmed refunds and reversals. The separate subscription report retains its historical definition; do not add overlapping reports. Dates for current platform collections use verification time in WAT.</p>
+      <div className="flex flex-wrap gap-4"><a href="/subscriptions" className="font-bold underline">Student payment records</a><a href="/staff-nfc-finance" className="font-bold underline">Teacher/staff subscription records</a><a href="/partners/finance" className="font-bold underline">BRO commissions & withdrawals</a></div>
+    </div>}
     <div className="mb-6 grid gap-4 lg:grid-cols-[1.6fr_.4fr]">
       <div className="relative overflow-hidden rounded-2xl bg-[hsl(var(--sidebar))] p-6 text-[hsl(var(--sidebar-foreground))] md:p-8">
         <div className="eyebrow text-[hsl(var(--accent))]">The record, in focus</div>

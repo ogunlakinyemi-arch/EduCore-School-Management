@@ -7,6 +7,6 @@
  */
 
 /**
- * Domain document validated further by the service; never accepts client money evidence.
+ * Role-scoped domain document; payment assertions never replace the applicable server verification or explicit Owner bank-statement review.
  */
 export interface CurrentFinanceDocument { [key: string]: unknown }

@@ -34,8 +34,8 @@ export const adminGroups: NavGroupDef[] = [
 /** Platform Owner groups: platform-wide work only. Every group renders expanded, so nothing is hidden. */
 export const ownerGroups: NavGroupDef[] = [
   { id: 'owner-schools', label: 'Schools & people', hrefs: ['/schools', '/account-applications', '/records', '/students', '/users', '/company-employees'] },
-  { id: 'owner-bro', label: 'BRO oversight', hrefs: ['/partners'] },
-  { id: 'owner-platform-finance', label: 'School subscriptions', hrefs: ['/free-academic-terms', '/staff-nfc-finance', '/payment-assistance'] },
+  { id: 'owner-bro', label: 'BRO oversight', hrefs: ['/partners', '/partners/finance'] },
+  { id: 'owner-platform-finance', label: 'School subscriptions', hrefs: ['/financial-insights','/subscriptions', '/free-academic-terms', '/staff-nfc-finance', '/payment-assistance'] },
   { id: 'owner-nfc', label: 'NFC cards & devices', hrefs: ['/cards', '/card-replacements', '/employee-nfc', '/devices', '/card-uid-inventory', '/nfc-scan-audit', '/activation', '/activation/history'] },
   { id: 'owner-monitoring', label: 'School monitoring', hrefs: ['/platform/attendance', '/results', '/curriculum-management', '/transport', '/security'] },
   { id: 'owner-comms-audit', label: 'Messages, reports & audit', hrefs: ['/communications', '/notification-settings', '/reporting', '/audit'] },

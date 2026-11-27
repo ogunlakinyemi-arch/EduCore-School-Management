@@ -5,7 +5,7 @@ import { ConnectedFinancePanel } from '@/components/current-finance-panel';
 
 const naira = (minor: number) => `₦${(minor / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 export default function OwnBroCommissions() {
-  return <><LegacyBroCommissions /><ConnectedFinancePanel mode="bro" /></>;
+  return <><ConnectedFinancePanel mode="bro" /><details><summary>Original accrual evidence</summary><LegacyBroCommissions /></details></>;
 }
 
 function LegacyBroCommissions() {

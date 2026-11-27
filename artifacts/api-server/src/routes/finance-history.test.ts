@@ -25,7 +25,7 @@ const poolMock = vi.hoisted(() => ({
       return { rows: [{ id: state.bankInvoiceSchoolId, name: "Example School" }] };
     }
     if (sql.includes("action='finance settings: verified school bank'")) return { rows: [{ id: 1 }] };
-    if (sql.includes("FROM fee_invoices i") && sql.includes("WHERE i.id=$1 AND EXISTS")) {
+    if (sql.includes("FROM fee_invoices i") && sql.includes("WHERE i.id=$1") && sql.includes("FROM parents p")) {
       if (!sql.includes("p.status='ACTIVE'") || !sql.includes("r.status='ACTIVE'")) {
         throw new Error("Parent bank-details query is missing active relationship filters");
       }
@@ -55,8 +55,9 @@ const poolMock = vi.hoisted(() => ({
         ? { rows: [{ ...state.payment }] }
         : { rows: [] };
     }
-    if (sql.includes("FROM fee_payments p") && sql.includes("FROM parents pa")) {
-      if (!sql.includes("pa.status='ACTIVE'") || !sql.includes("rel.status='ACTIVE'")) {
+    if (sql.includes("FROM fee_payments p") && sql.includes("FROM parents fee_guardian")) {
+      if (!sql.includes("upper(fee_guardian.status)='ACTIVE'") || !sql.includes("upper(fee_link.status)='ACTIVE'")
+        ||!sql.includes("fee_guardian_role.school_id=i.school_id")||!sql.includes("fee_guardian_role.role='PARENT'")) {
         throw new Error("Parent payment history query is missing active relationship filters");
       }
       return Number(values[0]) === state.userId
@@ -237,7 +238,7 @@ describe("school-scoped payment and adjustment queues", () => {
     expect(parentRows).toHaveLength(1);
     expect(parentRows[0]).toMatchObject({ studentId: 31, studentName: "Linked Student", reviewerNotes: null });
     expect(parentRows[0].verificationEvidenceReference).toBeNull();
-    expect(state.calls.at(-1)?.sql).toContain("rel.student_id=p.student_id");
+    expect(state.calls.at(-1)?.sql).toContain("fee_link.student_id=i.student_id");
 
     const student = await fetch(`${baseUrl}/student/fees/payments`, { headers: { "x-test-role": "STUDENT" } });
     expect(student.status).toBe(200);

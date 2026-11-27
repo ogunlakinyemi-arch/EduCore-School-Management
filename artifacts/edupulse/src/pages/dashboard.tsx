@@ -211,7 +211,7 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
       <PageHeading 
         eyebrow={`Platform overview · ${today}`} 
         title="The whole network, at a glance." 
-        description="A calm operational read on the schools, people and payments moving through Yetenia EduCore."
+        description="Schools, people and payments."
         action={
           <Link href="/schools" className="inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]" data-testid="link-manage-schools">
             <Building2 size={16} />Manage schools
@@ -233,6 +233,9 @@ function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
+        <Link href="/financial-insights" className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold" data-testid="link-owner-financial-insights">Financial Insights · all schools</Link>
+        <Link href="/subscriptions" className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold" data-testid="link-owner-student-subscriptions">Student subscriptions</Link>
+        <Link href="/partners/finance" className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold" data-testid="link-owner-bro-finance">BRO commissions & withdrawals</Link>
         <Link href="/payment-assistance" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--primary)/.35)] bg-[hsl(var(--primary)/.06)] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.6)]" data-testid="link-owner-payment-assistance">
           <CircleDollarSign size={16} />School payment assistance
         </Link>
@@ -377,9 +380,10 @@ function SchoolDashboard({ schoolId, canOpenFinance, showTeacherWork = false }: 
       <PageHeading 
         eyebrow={`School overview · ${today}`} 
         title={`${school?.name || 'Your School'} Command Centre`} 
-        description="The pulse of your students, staff, and daily operations." 
+        description="Students, staff and daily operations."
         action={
           <div className="flex flex-wrap gap-2">
+          {canOpenFinance&&<Link href="/subscriptions" className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold" data-testid="link-school-student-subscriptions">Student subscriptions</Link>}
           {canOpenFinance && <Link href="/finance" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold transition-colors hover:border-[hsl(var(--primary)/.4)]" data-testid="link-school-finance">
             <CircleDollarSign size={16} />School finance
           </Link>}

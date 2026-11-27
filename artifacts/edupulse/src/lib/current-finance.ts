@@ -12,12 +12,16 @@ import {
 export type Source = 'DIRECT' | 'BULK';
 export type FinanceSummary = { studentCount: number; earnedMinor: number; pendingMinor: number; approvedMinor: number; availableMinor: number; paidMinor: number;
   requestedMinor?:number;pendingApprovalMinor?:number;failedMinor?:number;reversedMinor?:number };
-export type Entitlement = { key: string; studentId: number; studentName: string; schoolId: number; schoolName: string; termId: number; termName: string; amountMinor: number; state: string; requestId: number | null; available: boolean };
+export type Entitlement = { key: string; studentId: number; studentName: string; schoolId: number; schoolName: string; termId: number; termName: string; amountMinor: number; state: string; requestId: number | null; available: boolean; partnerId?:number;broName?:string;requestable?:boolean };
 export type RequestLine = { entitlementKey: string; studentName: string; state: string; reason: string | null };
-export type WithdrawalRequest = { id: number; partnerId: number; broName: string; totalMinor: number; createdAt: string; lines: RequestLine[] };
+export type WithdrawalRequest = { id: number; partnerId: number; broName: string; totalMinor: number; createdAt: string; lines: RequestLine[];
+  availableMinor?:number;requestableMinor?:number;bankDetails?:{bankName:string;accountName:string;maskedAccountNumber:string}|null };
 export type Payment = { id: number; source: Source; paymentMethod?: 'FLUTTERWAVE'|'COMPANY_BANK'; studentName: string; studentId: number; schoolId: number; termId: number; reference: string; state: string; amountMinor: number; refundedMinor: number; netPaidMinor: number };
 export type Refund = { id: number; studentName: string; amountMinor: number; state: string; source: Source; sourceId: number };
-export type Payout = { id: number; entitlementKey: string; amountMinor: number; state: string; reference: string | null; maskedAccountNumber: string | null };
+export type Payout = { id: number; entitlementKey: string; amountMinor: number; state: string; reference: string | null; maskedAccountNumber: string | null;
+  partnerId?:number;broName?:string;requestId?:number|null;bankName?:string|null;accountName?:string|null;bankFingerprint?:string|null;
+  paymentReference?:string|null;transferDate?:string|null;recordedAt?:string|null;recordedBy?:number|null;verificationMethod?:string|null;
+  audit?:{state:string;actorId:number|null;at:string;action:string|null}[] };
 export type BatchItem = { id: number; studentId: number; studentName: string; state: string; error: string | null; broAccrualPending?:boolean };
 export type BankProof = {bankName:string;statementReference:string;creditDate:string;amountMinor:number;verifiedAt:string;verifiedBy:number};
 export type Batch = { id: number; reference: string; state: string; amountMinor: number; checkoutUrl: string | null; items: BatchItem[];method:'FLUTTERWAVE'|'COMPANY_BANK';bankProof?:BankProof };
@@ -26,7 +30,7 @@ export type FinanceOverview = {
   owner: boolean; bro: boolean;
   schools: { id: number; name: string }[];
   terms: { id: number; schoolId: number; name: string }[];
-  summary: FinanceSummary;
+  summary?: FinanceSummary;
   entitlements: Entitlement[]; requests: WithdrawalRequest[]; payments: Payment[]; refunds: Refund[];
   payouts: Payout[]; batches: Batch[]; eligibleStudents: EligibleStudent[]; blockers: string[];
 };
@@ -76,15 +80,15 @@ export function isUnavailable(err: unknown): boolean {
 
 export function isOverview(d: unknown): d is FinanceOverview {
   const o = d as FinanceOverview | null;
-  return !!o && typeof o === 'object' && !!o.summary && typeof o.summary.earnedMinor === 'number'
+  return !!o && typeof o === 'object' && ((!!o.summary && typeof o.summary.earnedMinor === 'number') || o.summary === undefined)
     && Array.isArray(o.entitlements) && Array.isArray(o.requests) && Array.isArray(o.payments)
     && Array.isArray(o.refunds) && Array.isArray(o.payouts) && Array.isArray(o.batches)
     && Array.isArray(o.schools) && Array.isArray(o.terms) && Array.isArray(o.eligibleStudents) && Array.isArray(o.blockers);
 }
 
-export function useCurrentFinance(params: { schoolId?: number; termId?: number }, enabled = true) {
+export function useCurrentFinance(params: { schoolId?: number; termId?: number; view?:'SCHOOL'|'BRO'|'OWNER' }, enabled = true) {
   const { user } = useUser();
-  const clean = { ...(params.schoolId ? { schoolId: params.schoolId } : {}), ...(params.schoolId&&params.termId ? { termId: params.termId } : {}) };
+  const clean = { ...(params.schoolId ? { schoolId: params.schoolId } : {}), ...(params.schoolId&&params.termId ? { termId: params.termId } : {}),...(params.view?{view:params.view}:{}) };
   return useGetCurrentFinanceOverview(clean, { query: {
     queryKey: [...getGetCurrentFinanceOverviewQueryKey(clean), user?.id ?? 'anonymous'],
     enabled: enabled && !!user?.id, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,

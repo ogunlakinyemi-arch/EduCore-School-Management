@@ -12,6 +12,7 @@ import {requestCurrentStudentRefund,approveCurrentStudentRefund,dispatchCurrentS
  reconcileCurrentStudentRefund,recordCurrentCollectionReversal} from "../services/current-student-refunds";
 import {initiateCurrentBroPayout,reconcileCurrentBroPayout,recordCurrentBroRecovery} from "../services/current-bro-lifecycle";
 import {requestCurrentBroWithdrawal,decideCurrentBroWithdrawal} from "../services/current-bro-withdrawals";
+import {recordCurrentExternalBroTransfer,revealCurrentBroPayoutBank} from "../services/current-bro-payout-recording";
 import {createCurrentBulk,verifyCurrentBulk,recoverCurrentBulk,type BulkDependencies} from "../services/current-bulk-subscriptions";
 import {readCurrentFinanceOverview,readCurrentBulkReceipt} from "../services/current-finance-overview";
 import {requestBankRemittance,bankRemittanceInstructions,verifyBankRemittance,postBankRemittance,
@@ -39,7 +40,7 @@ export function createCurrentFinanceRouter(pool:CurrentPool=appPool,dependencies
  });
  router.get("/current-finance/overview",async(req,res)=>{
   try{const p=GetCurrentFinanceOverviewQueryParams.parse(req.query);
-   const projection=await readCurrentFinanceOverview(pool,res.locals.currentActorId,p.schoolId,p.termId);
+   const projection=await readCurrentFinanceOverview(pool,res.locals.currentActorId,p.schoolId,p.termId,new Date(),p.view);
    res.locals.scopedCurrentFinanceProjection=true;
    res.json(GetCurrentFinanceOverviewResponse.parse(projection));}
   catch(e){currentFinanceError(res,e);}
@@ -86,6 +87,17 @@ export function createCurrentFinanceRouter(pool:CurrentPool=appPool,dependencies
     case "PAYOUT_INITIATE":{
      const p=z.object({entitlementKey:z.string(),key,reason}).strict().parse(payload);
      result=await initiateCurrentBroPayout(pool,actorId,parseEntitlementKey(p.entitlementKey),p.key,p.reason,caps());break;
+    }
+    case "PAYOUT_BANK_REVEAL":{
+     const p=z.object({id,key,reason}).strict().parse(payload);
+     result=await revealCurrentBroPayoutBank(pool,actorId,p.id,p.key,p.reason);break;
+    }
+    case "PAYOUT_RECORD_EXTERNAL":{
+     const p=z.object({ids:z.array(id).min(1).max(500),key,reason,amountMinor:id,
+       transferReference:z.string().trim().min(6).max(120),statementReference:z.string().trim().min(6).max(120),
+       transferDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+       confirmExternalTransfer:z.literal(true),independentlyChecked:z.literal(true)}).strict().parse(payload);
+     result=await recordCurrentExternalBroTransfer(pool,actorId,p);break;
     }
     case "PAYOUT_RECONCILE":{
      const p=z.object({id}).strict().parse(payload);result=await reconcileCurrentBroPayout(pool,actorId,p.id,caps());break;
