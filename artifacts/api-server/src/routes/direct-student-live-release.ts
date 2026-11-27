@@ -5,6 +5,11 @@ import {requireAuthentication,getUserContext} from "../middlewares/auth";
 import {previewDirectRelease,listDirectReleaseReviews,createDirectReleaseReview,decideDirectReleaseReview,
   DirectReleaseError,type ReleaseDependencies} from "../services/direct-student-live-release";
 import type {StudentSubscriptionSqlPool} from "../lib/student-subscription-billing";
+import {GetAdvanceSubscriptionReadinessQueryParams,GetAdvanceSubscriptionReadinessResponse,
+ ListAdvanceSubscriptionAuthorizationsQueryParams,ListAdvanceSubscriptionAuthorizationsResponse,
+ CreateAdvanceSubscriptionAuthorizationBody,CreateAdvanceSubscriptionAuthorizationResponse,
+ DecideAdvanceSubscriptionAuthorizationBody,DecideAdvanceSubscriptionAuthorizationResponse} from "@workspace/api-zod";
+import {previewAdvanceAuthorization,listAdvanceAuthorizations,createAdvanceAuthorization,decideAdvanceAuthorization} from "../services/advance-subscription-authorizations";
 const positive=z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const scope=z.object({schoolId:positive,termId:positive,ruleId:positive}).strict();
 const sha=z.string().regex(/^[a-f0-9]{64}$/);
@@ -43,6 +48,22 @@ export function createDirectReleaseRouter(db:StudentSubscriptionSqlPool=pool,dep
   router.post(`${base}/reviews/:id/decisions`,wrap(async(req,res)=>{
     res.json(await decideDirectReleaseReview(db,positive.parse(req.params.id),decision.parse(req.body),
       getUserContext(req).user.id,deps));
+  }));
+  router.get(`${base}/advance/readiness`,wrap(async(req,res)=>{
+    res.json(GetAdvanceSubscriptionReadinessResponse.parse(await previewAdvanceAuthorization(db,
+      GetAdvanceSubscriptionReadinessQueryParams.parse(req.query),deps)));
+  }));
+  router.get(`${base}/advance/authorizations`,wrap(async(req,res)=>{
+    res.json(ListAdvanceSubscriptionAuthorizationsResponse.parse(await listAdvanceAuthorizations(db,
+      ListAdvanceSubscriptionAuthorizationsQueryParams.parse(req.query),deps)));
+  }));
+  router.post(`${base}/advance/authorizations`,wrap(async(req,res)=>{
+    res.status(201).json(CreateAdvanceSubscriptionAuthorizationResponse.parse(await createAdvanceAuthorization(db,
+      CreateAdvanceSubscriptionAuthorizationBody.parse(req.body),getUserContext(req).user.id,deps)));
+  }));
+  router.post(`${base}/advance/authorizations/:id/decisions`,wrap(async(req,res)=>{
+    res.json(DecideAdvanceSubscriptionAuthorizationResponse.parse(await decideAdvanceAuthorization(db,positive.parse(req.params.id),
+      DecideAdvanceSubscriptionAuthorizationBody.parse(req.body),getUserContext(req).user.id,deps)));
   }));
   return router;
 }

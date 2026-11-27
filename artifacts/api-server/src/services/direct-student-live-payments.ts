@@ -54,6 +54,9 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
   actorId:number;email:string;idempotencyKey:string;assistanceId?:number;
 },deps:Dependencies={}){
   if(!/^[A-Za-z0-9_-]{16,100}$/.test(input.idempotencyKey))block("IDEMPOTENCY_KEY_REQUIRED");
+  if(initialStudentFreePeriod())block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
+  const {reconcileAdvanceCheckout}=await import("./advance-subscription-authorizations");
+  await reconcileAdvanceCheckout(pool,input,input.actorId,!!input.assistanceId,{env:deps.env});
   const readiness=await directStudentReadiness(pool,input,deps);
   if(!readiness.ready)block(readiness.blockers[0]);
   const review=readiness.review!;
@@ -74,7 +77,7 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
       [`direct-student:${input.schoolId}:${input.studentId}:${input.termId}`]);
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`direct-release:${review.request_id}`]);
     // Revalidate reviewed facts after acquiring the scope lock.
-    const fresh=await findApprovedDirectReview(c,input,review.report_digest,directLiveConfiguration(deps.env));
+    const fresh=await findApprovedDirectReview(c,input,review.report_digest,directLiveConfiguration(deps.env),true);
     if(!fresh||Number(fresh.id)!==Number(review.id))block("REVIEW_CHANGED");
     if(input.assistanceId){
       const bank=(await c.query(`SELECT b.* FROM subscription_payment_assistance_requests b WHERE b.id=$1

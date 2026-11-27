@@ -30631,6 +30631,232 @@ export const GetDirectLiveReleaseReadinessResponse = zod.object({
 })
 
 
+
+
+
+
+
+export const GetAdvanceSubscriptionReadinessQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "termId": zod.coerce.number().int().min(1),
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+export const GetAdvanceSubscriptionReadinessResponse = zod.object({
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "calendar": zod.record(zod.string(), zod.unknown()),
+  "session": zod.record(zod.string(), zod.unknown()),
+  "calendarVersion": zod.string(),
+  "materialVersion": zod.string(),
+  "reportDigest": zod.string(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "rule": zod.record(zod.string(), zod.unknown()),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "notBefore": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+}),
+  "digest": zod.string(),
+  "today": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "calendarStatus": zod.string(),
+  "sessionStatus": zod.string(),
+  "termCurrent": zod.boolean(),
+  "sessionCurrent": zod.boolean(),
+  "approvalReady": zod.boolean(),
+  "runtimeReleased": zod.boolean(),
+  "checkoutEnabled": zod.boolean()
+})
+
+
+
+
+
+
+
+export const ListAdvanceSubscriptionAuthorizationsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "termId": zod.coerce.number().int().min(1),
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+export const ListAdvanceSubscriptionAuthorizationsResponse = zod.object({
+  "authorizations": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "status": zod.string(),
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "calendar": zod.record(zod.string(), zod.unknown()),
+  "session": zod.record(zod.string(), zod.unknown()),
+  "calendarVersion": zod.string(),
+  "materialVersion": zod.string(),
+  "reportDigest": zod.string(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "rule": zod.record(zod.string(), zod.unknown()),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "notBefore": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+}),
+  "previewDigest": zod.string(),
+  "evidenceDigest": zod.string(),
+  "merchantEvidenceReference": zod.string(),
+  "merchantEvidenceHash": zod.string(),
+  "notBefore": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "reason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.number().int(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actorId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+})
+
+
+
+
+
+export const createAdvanceSubscriptionAuthorizationBodyPreviewDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+export const createAdvanceSubscriptionAuthorizationBodyMerchantEvidenceReferenceMin = 8;
+export const createAdvanceSubscriptionAuthorizationBodyMerchantEvidenceReferenceMax = 300;
+
+export const createAdvanceSubscriptionAuthorizationBodyMerchantEvidenceHashRegExp = new RegExp('^[a-f0-9]{64}$');
+export const createAdvanceSubscriptionAuthorizationBodyRequestKeyRegExp = new RegExp('^[A-Za-z0-9_-]{16,100}$');
+export const createAdvanceSubscriptionAuthorizationBodyReasonMin = 3;
+export const createAdvanceSubscriptionAuthorizationBodyReasonMax = 500;
+
+
+
+export const CreateAdvanceSubscriptionAuthorizationBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "ruleId": zod.number().int().min(1),
+  "previewDigest": zod.string().regex(createAdvanceSubscriptionAuthorizationBodyPreviewDigestRegExp),
+  "merchantEvidenceReference": zod.string().min(createAdvanceSubscriptionAuthorizationBodyMerchantEvidenceReferenceMin).max(createAdvanceSubscriptionAuthorizationBodyMerchantEvidenceReferenceMax),
+  "merchantEvidenceHash": zod.string().regex(createAdvanceSubscriptionAuthorizationBodyMerchantEvidenceHashRegExp),
+  "noSplitConfirmed": zod.boolean(),
+  "requestKey": zod.string().regex(createAdvanceSubscriptionAuthorizationBodyRequestKeyRegExp),
+  "reason": zod.string().min(createAdvanceSubscriptionAuthorizationBodyReasonMin).max(createAdvanceSubscriptionAuthorizationBodyReasonMax)
+})
+
+export const CreateAdvanceSubscriptionAuthorizationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "status": zod.string(),
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "calendar": zod.record(zod.string(), zod.unknown()),
+  "session": zod.record(zod.string(), zod.unknown()),
+  "calendarVersion": zod.string(),
+  "materialVersion": zod.string(),
+  "reportDigest": zod.string(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "rule": zod.record(zod.string(), zod.unknown()),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "notBefore": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+}),
+  "previewDigest": zod.string(),
+  "evidenceDigest": zod.string(),
+  "merchantEvidenceReference": zod.string(),
+  "merchantEvidenceHash": zod.string(),
+  "notBefore": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "reason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.number().int(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actorId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+
+
+
+export const DecideAdvanceSubscriptionAuthorizationParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const decideAdvanceSubscriptionAuthorizationBodyEvidenceDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+export const decideAdvanceSubscriptionAuthorizationBodyReasonMin = 3;
+export const decideAdvanceSubscriptionAuthorizationBodyReasonMax = 500;
+
+
+
+export const DecideAdvanceSubscriptionAuthorizationBody = zod.object({
+  "action": zod.enum(['APPROVED', 'REJECTED', 'WITHDRAWN']),
+  "evidenceDigest": zod.string().regex(decideAdvanceSubscriptionAuthorizationBodyEvidenceDigestRegExp),
+  "confirmScope": zod.boolean(),
+  "reason": zod.string().min(decideAdvanceSubscriptionAuthorizationBodyReasonMin).max(decideAdvanceSubscriptionAuthorizationBodyReasonMax)
+})
+
+export const DecideAdvanceSubscriptionAuthorizationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "status": zod.string(),
+  "facts": zod.object({
+  "schoolId": zod.number().int(),
+  "termId": zod.number().int(),
+  "ruleId": zod.number().int(),
+  "release": zod.string(),
+  "calendar": zod.record(zod.string(), zod.unknown()),
+  "session": zod.record(zod.string(), zod.unknown()),
+  "calendarVersion": zod.string(),
+  "materialVersion": zod.string(),
+  "reportDigest": zod.string(),
+  "eligibleStudentIds": zod.array(zod.number().int()),
+  "rule": zod.record(zod.string(), zod.unknown()),
+  "merchantScope": zod.string().nullish(),
+  "callbackUrl": zod.string().nullish(),
+  "webhookUrl": zod.string().nullish(),
+  "notBefore": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+}),
+  "previewDigest": zod.string(),
+  "evidenceDigest": zod.string(),
+  "merchantEvidenceReference": zod.string(),
+  "merchantEvidenceHash": zod.string(),
+  "notBefore": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "reason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.number().int(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actorId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
 export const ListDirectLiveReleaseReviewsQueryParams = zod.object({
   "schoolId": zod.coerce.number().int(),
   "termId": zod.coerce.number().int(),

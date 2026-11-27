@@ -16958,6 +16958,123 @@ export interface DirectReleaseReview {
   events: DirectReleaseDecision[];
 }
 
+export interface AdvanceSubscriptionInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  ruleId: number;
+  /** @pattern ^[a-f0-9]{64}$ */
+  previewDigest: string;
+  /**
+     * @minLength 8
+     * @maxLength 300
+     */
+  merchantEvidenceReference: string;
+  /** @pattern ^[a-f0-9]{64}$ */
+  merchantEvidenceHash: string;
+  noSplitConfirmed: boolean;
+  /** @pattern ^[A-Za-z0-9_-]{16,100}$ */
+  requestKey: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type AdvanceSubscriptionDecisionInputAction = typeof AdvanceSubscriptionDecisionInputAction[keyof typeof AdvanceSubscriptionDecisionInputAction];
+
+
+export const AdvanceSubscriptionDecisionInputAction = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  WITHDRAWN: 'WITHDRAWN',
+} as const;
+
+export interface AdvanceSubscriptionDecisionInput {
+  action: AdvanceSubscriptionDecisionInputAction;
+  /** @pattern ^[a-f0-9]{64}$ */
+  evidenceDigest: string;
+  confirmScope: boolean;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type AdvanceSubscriptionFactsCalendar = { [key: string]: unknown };
+
+export type AdvanceSubscriptionFactsSession = { [key: string]: unknown };
+
+export type AdvanceSubscriptionFactsRule = { [key: string]: unknown };
+
+export interface AdvanceSubscriptionFacts {
+  schoolId: number;
+  termId: number;
+  ruleId: number;
+  release: string;
+  calendar: AdvanceSubscriptionFactsCalendar;
+  session: AdvanceSubscriptionFactsSession;
+  calendarVersion: string;
+  materialVersion: string;
+  reportDigest: string;
+  eligibleStudentIds: number[];
+  rule: AdvanceSubscriptionFactsRule;
+  /** @nullable */
+  merchantScope?: string | null;
+  /** @nullable */
+  callbackUrl?: string | null;
+  /** @nullable */
+  webhookUrl?: string | null;
+  notBefore: string;
+  expiresAt: string;
+  [key: string]: unknown;
+ }
+
+export interface AdvanceSubscriptionReadiness {
+  facts: AdvanceSubscriptionFacts;
+  digest: string;
+  today: string;
+  start: string;
+  end: string;
+  calendarStatus: string;
+  sessionStatus: string;
+  termCurrent: boolean;
+  sessionCurrent: boolean;
+  approvalReady: boolean;
+  runtimeReleased: boolean;
+  checkoutEnabled: boolean;
+}
+
+export interface AdvanceSubscriptionDecision {
+  id: number;
+  action: string;
+  reason: string;
+  /** @nullable */
+  actorId: number | null;
+  createdAt: string;
+}
+
+export interface AdvanceSubscriptionAuthorization {
+  id: number;
+  schoolId: number;
+  termId: number;
+  ruleId: number;
+  status: string;
+  facts: AdvanceSubscriptionFacts;
+  previewDigest: string;
+  evidenceDigest: string;
+  merchantEvidenceReference: string;
+  merchantEvidenceHash: string;
+  notBefore: string;
+  expiresAt: string;
+  reason: string;
+  events: AdvanceSubscriptionDecision[];
+}
+
 export type AccountApplicationInput4b96100ApplicantType = typeof AccountApplicationInput4b96100ApplicantType[keyof typeof AccountApplicationInput4b96100ApplicantType];
 
 
@@ -28891,6 +29008,40 @@ export type GetDirectLiveReleaseReadinessParams = {
 schoolId: number;
 termId: number;
 ruleId: number;
+};
+
+export type GetAdvanceSubscriptionReadinessParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+termId: number;
+/**
+ * @minimum 1
+ */
+ruleId: number;
+};
+
+export type ListAdvanceSubscriptionAuthorizationsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+termId: number;
+/**
+ * @minimum 1
+ */
+ruleId: number;
+};
+
+export type ListAdvanceSubscriptionAuthorizations200 = {
+  authorizations: AdvanceSubscriptionAuthorization[];
 };
 
 export type ListDirectLiveReleaseReviewsParams = {

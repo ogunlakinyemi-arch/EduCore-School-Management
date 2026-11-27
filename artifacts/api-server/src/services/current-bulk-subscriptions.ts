@@ -64,8 +64,9 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
    &&input.studentIds.every(v=>v>0)&&new Set(input.studentIds).size===input.studentIds.length,"DISTINCT_STUDENTS_REQUIRED");
  const ids=[...input.studentIds].sort((a,b)=>a-b);
  // Readiness is computed outside the gate, then exact authority is rechecked inside.
+  let ownerActor=false;
  const pre=await financialTransaction(pool,async c=>{
-   await currentSchoolAuthority(c,actorId,input.schoolId);await requireCurrentExtensions(c);
+    ownerActor=(await currentSchoolAuthority(c,actorId,input.schoolId)).owner;await requireCurrentExtensions(c);
    const old=(await c.query("SELECT * FROM current_payment_batches WHERE request_key=$1",[input.key])).rows[0];
    if(old)demand(old.snapshot.method!=="COMPANY_BANK"&&Number(old.created_by)===actorId&&Number(old.school_id)===input.schoolId
      &&Number(old.academic_term_id)===input.termId&&digest(old.snapshot.studentIds)===digest(ids)
@@ -73,6 +74,8 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
    return old;
  });
  if(pre)return bulkView(pool,actorId,Number(pre.id));
+  const {reconcileAdvanceCheckout}=await import("./advance-subscription-authorizations");
+  await reconcileAdvanceCheckout(pool as any,input,actorId,ownerActor);
  const reviews=new Map<number,Review>();
  for(const studentId of ids)reviews.set(studentId,await (deps.review??(s=>defaultReview(pool,s)))({...input,studentId}));
  const batch=await financialTransaction(pool,async c=>{
@@ -105,7 +108,7 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
      const review=reviews.get(studentId)!;
      const scope={schoolId:input.schoolId,studentId,termId:input.termId};
      const valid=deps.revalidate?await deps.revalidate(c,scope,review):
-       Number((await findApprovedDirectReview(c as CurrentSql&{release():void},scope,review.report_digest,directLiveConfiguration()))?.id)===Number(review.id);
+        Number((await findApprovedDirectReview(c as CurrentSql&{release():void},scope,review.report_digest,directLiveConfiguration(),true))?.id)===Number(review.id);
      demand(valid,"REVIEW_CHANGED_OR_WITHDRAWN");
      students.push({studentId,studentName:[st.first_name,st.last_name].filter(Boolean).join(" ")||`Student #${studentId}`,
        reviewId:Number(review.id),ruleId:Number(review.rule_id),reviewDigest:review.report_digest,

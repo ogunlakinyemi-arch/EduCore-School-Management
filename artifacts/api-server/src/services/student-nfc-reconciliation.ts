@@ -39,10 +39,18 @@ const LINKS = ["school_id","student_id","subscription_id","invoice_id","order_re
 
 /** No DDL, provider request, lock-for-update, audit insert or other business write. */
 export async function previewStudentNfcReconciliation(pool: Pool, scope: { schoolId: number; termId: number }): Promise<StudentNfcReconciliationReport> {
+  return collectReconciliation(pool,scope);
+}
+/** Separate stable review evidence; never changes the ordinary dated report.
+ * Caller owns the pinned transaction and its locks. No nested BEGIN/COMMIT. */
+export async function previewAdvanceReconciliation(c:Sql,scope:{schoolId:number;termId:number}){
+  return collectReconciliation({connect:async()=>({...c,query:c.query.bind(c),release(){}})},scope,true);
+}
+async function collectReconciliation(pool:Pool,scope:{schoolId:number;termId:number},advance=false):Promise<StudentNfcReconciliationReport>{
   const c = await pool.connect();
   let transaction = false;
   try {
-    await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"); transaction = true;
+    if(!advance){await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"); transaction = true;}
     await c.query("SET LOCAL statement_timeout = '8s'");
     await c.query("SET LOCAL lock_timeout = '2s'");
     const catalog = await c.query(`SELECT t.relname AS name,t.relkind, row_security_active(t.oid) AS rls,
@@ -105,6 +113,13 @@ export async function previewStudentNfcReconciliation(pool: Pool, scope: { schoo
       if (rows.rows.length>LIMIT) { source.complete=false; source.issues.push("SOURCE_TRUNCATED_NO_CONVERSION_ALLOWED"); }
       evidence[name]=rows.rows.slice(0,LIMIT).map(r=>r.record as EvidenceRecord);
     }
+    if(advance){
+      // Only PLANNED/ACTIVE lifecycle transitions are accepted by the separate
+      // authorization service. All other fields, including dates, stay bound.
+      for(const name of ["academic_terms","academic_sessions"]){
+        evidence[name]=evidence[name].map(({is_current,status,updated_at,...material})=>({...material,status:"ACTIVE"}));
+      }
+    }
     const school=evidence.schools?.find(r=>Number(r.id)===scope.schoolId);
     const term=evidence.academic_terms?.find(r=>Number(r.id)===scope.termId && Number(r.school_id)===scope.schoolId);
     if (!sources.filter(s=>["schools","academic_terms"].includes(s.name)).every(s=>s.complete))
@@ -138,8 +153,9 @@ export async function previewStudentNfcReconciliation(pool: Pool, scope: { schoo
     const complete=sources.every(s=>s.complete);
     const stamp=(await c.query(`SELECT transaction_timestamp()::text AS generated_at,
       (transaction_timestamp() AT TIME ZONE 'Africa/Lagos')::date::text AS today`)).rows[0];
+    const evidenceDay=advance?String(term.start_date):stamp.today;
     const rows=[...subjects.values()].map(student=>
-      classifyStudentNfcPreview({ evidence, student, term, session, schoolId:scope.schoolId, complete, today:stamp.today }))
+      classifyStudentNfcPreview({ evidence, student, term, session, schoolId:scope.schoolId, complete, today:evidenceDay }))
       .sort((a,b)=>a.studentId-b.studentId);
     const report: StudentNfcReconciliationReport = {
       reportVersion: RECONCILIATION_REPORT_VERSION, readOnly:true, applyAvailable:false, approvalRequired:true,
@@ -160,10 +176,10 @@ export async function previewStudentNfcReconciliation(pool: Pool, scope: { schoo
         "PARENT_FEE_CONFIGURATION_AND_NEW_CHECKOUT_POLICY_NOT_APPROVED_BY_THIS_PREVIEW",
         ...(!complete?["INCOMPLETE_SOURCES_NO_CANDIDATES_MAY_BE_APPLIED"]:[]),
       ],
-      evidenceDigest:reconciliationDigest({ version:RECONCILIATION_REPORT_VERSION,effectiveDate:stamp.today,scope,sources,evidence,
+      evidenceDigest:reconciliationDigest({ version:RECONCILIATION_REPORT_VERSION,effectiveDate:evidenceDay,scope,sources,evidence,
         decisions:rows.map(r=>({studentId:r.studentId,status:r.status,evidenceDigest:r.evidenceDigest})) }),
     };
-    await c.query("COMMIT"); transaction=false; return report;
+    if(transaction)await c.query("COMMIT"); transaction=false; return report;
   } catch(error) {
     if(transaction) await c.query("ROLLBACK").catch(()=>undefined);
     throw error;

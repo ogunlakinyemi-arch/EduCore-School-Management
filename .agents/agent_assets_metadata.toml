@@ -1008,3 +1008,17 @@ mtime_ms = 1795782181685
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/38131972-49f8-497d-8dc4-56d141a57296/1b007ca9-19f0-417a-9498-0178667d652e"
 storage_version_token = "1795782202531350"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "Pmay_3VcaDaZEImYZ9Dbh"
+uri = "file://docs/advance-subscription-authorization-source-review.md"
+type = "text"
+title = "Advance subscription authorization — source review"
+description = "Behavior, exact 39-file manifest, 36 authored regression cases, executed static checks and operational blockers. Candidate SQL and tests remain unexecuted."
+logical_id = "66e3bb46-d280-45e9-a864-50992e8a522b"
+content_hash = "sha256:0eb877052daa4fd6b8d776e18038269fa42e210b3bce5f6599210b7cb217c7c5"
+size = 12403
+mtime_ms = 1795785161920
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/66e3bb46-d280-45e9-a864-50992e8a522b/f203a301-650f-41bc-9fa0-68a774914e44"
+storage_version_token = "1795785192091165"
+content_type = "text/markdown"

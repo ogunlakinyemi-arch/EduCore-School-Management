@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
+import {AdvanceSubscriptionAuthorizationPanel} from '../components/advance-subscription-authorization';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, CircleSlash, FileClock, Lock, ShieldCheck } from 'lucide-react';
 import {
@@ -206,6 +207,7 @@ function ScopeWorkspace({ actor, scope, rule }: { actor: number; scope: Scope; r
             : <div className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm font-bold text-emerald-900"><CheckCircle2 size={16} /> No approval blockers. LIVE remains off.</div>}</div>
         </div>}
     </section>
+    <AdvanceSubscriptionAuthorizationPanel scope={scope} actor={actor} />
     {r && <CreateReview scope={scope} readiness={r} disabled={open} onSettled={reconcile} />}
     <section className="panel overflow-hidden" data-testid="section-reviews">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] p-5">

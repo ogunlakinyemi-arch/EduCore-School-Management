@@ -86,6 +86,10 @@ import type {
   AdmissionReviewInput,
   AdmissionStatusTransitionInput,
   AdmissionTrackingInput,
+  AdvanceSubscriptionAuthorization,
+  AdvanceSubscriptionDecisionInput,
+  AdvanceSubscriptionInput,
+  AdvanceSubscriptionReadiness,
   ApiBadRequestResponse,
   ApiError,
   ApiError0a0c478,
@@ -368,6 +372,7 @@ import type {
   GetAcademicResultCompilationParams,
   GetAdmissionApplicationParams,
   GetAdmissionPortalSettingsParams,
+  GetAdvanceSubscriptionReadinessParams,
   GetChildAcademicContext200,
   GetChildAcademicContextParams,
   GetChildAcademicTimetableParams,
@@ -490,6 +495,8 @@ import type {
   ListAcademicTermsParams,
   ListAcademicTimetableParams,
   ListAdmissionApplicationsParams,
+  ListAdvanceSubscriptionAuthorizations200,
+  ListAdvanceSubscriptionAuthorizationsParams,
   ListAttendanceDiscrepanciesParams,
   ListAuditLogsParams,
   ListBroFieldLeadsParams,
@@ -61326,6 +61333,327 @@ export function useGetDirectLiveReleaseReadiness<TData = Awaited<ReturnType<type
 
 
 
+
+export const getGetAdvanceSubscriptionReadinessUrl = (params: GetAdvanceSubscriptionReadinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/direct-student-live/advance/readiness?${stringifiedParams}` : `/api/platform/direct-student-live/advance/readiness`
+}
+
+export const getAdvanceSubscriptionReadiness = async (params: GetAdvanceSubscriptionReadinessParams, options?: Parameters<typeof customFetch>[1]): Promise<AdvanceSubscriptionReadiness> => {
+
+  return customFetch<AdvanceSubscriptionReadiness>(getGetAdvanceSubscriptionReadinessUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdvanceSubscriptionReadinessQueryKey = (params?: GetAdvanceSubscriptionReadinessParams,) => {
+    return [
+    `/api/platform/direct-student-live/advance/readiness`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdvanceSubscriptionReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getAdvanceSubscriptionReadiness>>, TError = ErrorType<void>>(params: GetAdvanceSubscriptionReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdvanceSubscriptionReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdvanceSubscriptionReadinessQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdvanceSubscriptionReadiness>>> = ({ signal }) => getAdvanceSubscriptionReadiness(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdvanceSubscriptionReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdvanceSubscriptionReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getAdvanceSubscriptionReadiness>>>
+export type GetAdvanceSubscriptionReadinessQueryError = ErrorType<void>
+
+
+
+export function useGetAdvanceSubscriptionReadiness<TData = Awaited<ReturnType<typeof getAdvanceSubscriptionReadiness>>, TError = ErrorType<void>>(
+ params: GetAdvanceSubscriptionReadinessParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdvanceSubscriptionReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdvanceSubscriptionReadinessQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdvanceSubscriptionAuthorizationsUrl = (params: ListAdvanceSubscriptionAuthorizationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/direct-student-live/advance/authorizations?${stringifiedParams}` : `/api/platform/direct-student-live/advance/authorizations`
+}
+
+export const listAdvanceSubscriptionAuthorizations = async (params: ListAdvanceSubscriptionAuthorizationsParams, options?: Parameters<typeof customFetch>[1]): Promise<ListAdvanceSubscriptionAuthorizations200> => {
+
+  return customFetch<ListAdvanceSubscriptionAuthorizations200>(getListAdvanceSubscriptionAuthorizationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdvanceSubscriptionAuthorizationsQueryKey = (params?: ListAdvanceSubscriptionAuthorizationsParams,) => {
+    return [
+    `/api/platform/direct-student-live/advance/authorizations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdvanceSubscriptionAuthorizationsQueryOptions = <TData = Awaited<ReturnType<typeof listAdvanceSubscriptionAuthorizations>>, TError = ErrorType<void>>(params: ListAdvanceSubscriptionAuthorizationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdvanceSubscriptionAuthorizations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdvanceSubscriptionAuthorizationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdvanceSubscriptionAuthorizations>>> = ({ signal }) => listAdvanceSubscriptionAuthorizations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdvanceSubscriptionAuthorizations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdvanceSubscriptionAuthorizationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdvanceSubscriptionAuthorizations>>>
+export type ListAdvanceSubscriptionAuthorizationsQueryError = ErrorType<void>
+
+
+
+export function useListAdvanceSubscriptionAuthorizations<TData = Awaited<ReturnType<typeof listAdvanceSubscriptionAuthorizations>>, TError = ErrorType<void>>(
+ params: ListAdvanceSubscriptionAuthorizationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdvanceSubscriptionAuthorizations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdvanceSubscriptionAuthorizationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdvanceSubscriptionAuthorizationUrl = () => {
+
+
+
+
+  return `/api/platform/direct-student-live/advance/authorizations`
+}
+
+export const createAdvanceSubscriptionAuthorization = async (advanceSubscriptionInput: AdvanceSubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvanceSubscriptionAuthorization> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvanceSubscriptionAuthorization>(getCreateAdvanceSubscriptionAuthorizationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advanceSubscriptionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdvanceSubscriptionAuthorizationMutationKey = () => ['createAdvanceSubscriptionAuthorization'] as const;
+
+export const getCreateAdvanceSubscriptionAuthorizationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdvanceSubscriptionAuthorization>>, TError,CreateAdvanceSubscriptionAuthorizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdvanceSubscriptionAuthorization>>, TError,CreateAdvanceSubscriptionAuthorizationMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdvanceSubscriptionAuthorizationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdvanceSubscriptionAuthorization>>, CreateAdvanceSubscriptionAuthorizationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdvanceSubscriptionAuthorization(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdvanceSubscriptionAuthorizationMutationResult = NonNullable<Awaited<ReturnType<typeof createAdvanceSubscriptionAuthorization>>>
+    export type CreateAdvanceSubscriptionAuthorizationMutationBody = BodyType<AdvanceSubscriptionInput>
+    export type CreateAdvanceSubscriptionAuthorizationMutationError = ErrorType<void>
+    export type CreateAdvanceSubscriptionAuthorizationMutationVariables = {data: BodyType<AdvanceSubscriptionInput>}
+
+    export const useCreateAdvanceSubscriptionAuthorization = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdvanceSubscriptionAuthorization>>, TError,CreateAdvanceSubscriptionAuthorizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdvanceSubscriptionAuthorization>>,
+        TError,
+        CreateAdvanceSubscriptionAuthorizationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdvanceSubscriptionAuthorizationMutationOptions(options));
+    }
+
+export const getDecideAdvanceSubscriptionAuthorizationUrl = (id: number,) => {
+
+
+
+
+  return `/api/platform/direct-student-live/advance/authorizations/${id}/decisions`
+}
+
+export const decideAdvanceSubscriptionAuthorization = async (id: number,
+    advanceSubscriptionDecisionInput: AdvanceSubscriptionDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvanceSubscriptionAuthorization> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvanceSubscriptionAuthorization>(getDecideAdvanceSubscriptionAuthorizationUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advanceSubscriptionDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideAdvanceSubscriptionAuthorizationMutationKey = () => ['decideAdvanceSubscriptionAuthorization'] as const;
+
+export const getDecideAdvanceSubscriptionAuthorizationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAdvanceSubscriptionAuthorization>>, TError,DecideAdvanceSubscriptionAuthorizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideAdvanceSubscriptionAuthorization>>, TError,DecideAdvanceSubscriptionAuthorizationMutationVariables, TContext> => {
+
+const mutationKey = getDecideAdvanceSubscriptionAuthorizationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideAdvanceSubscriptionAuthorization>>, DecideAdvanceSubscriptionAuthorizationMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  decideAdvanceSubscriptionAuthorization(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideAdvanceSubscriptionAuthorizationMutationResult = NonNullable<Awaited<ReturnType<typeof decideAdvanceSubscriptionAuthorization>>>
+    export type DecideAdvanceSubscriptionAuthorizationMutationBody = BodyType<AdvanceSubscriptionDecisionInput>
+    export type DecideAdvanceSubscriptionAuthorizationMutationError = ErrorType<void>
+    export type DecideAdvanceSubscriptionAuthorizationMutationVariables = {id: number;data: BodyType<AdvanceSubscriptionDecisionInput>}
+
+    export const useDecideAdvanceSubscriptionAuthorization = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAdvanceSubscriptionAuthorization>>, TError,DecideAdvanceSubscriptionAuthorizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideAdvanceSubscriptionAuthorization>>,
+        TError,
+        DecideAdvanceSubscriptionAuthorizationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideAdvanceSubscriptionAuthorizationMutationOptions(options));
+    }
 
 export const getListDirectLiveReleaseReviewsUrl = (params: ListDirectLiveReleaseReviewsParams,) => {
   const normalizedParams = new URLSearchParams();

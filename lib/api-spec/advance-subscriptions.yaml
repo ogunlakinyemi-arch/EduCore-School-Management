@@ -1,0 +1,160 @@
+paths:
+  /platform/direct-student-live/advance/readiness:
+    get:
+      operationId: getAdvanceSubscriptionReadiness
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: termId, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: ruleId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        '200':
+          description: Future-term evidence only; never initiates checkout
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdvanceSubscriptionReadiness'}
+        '403': {description: Active global Owner required}
+        '409': {description: Missing schema or incomplete evidence}
+        '503': {description: Evidence unavailable}
+  /platform/direct-student-live/advance/authorizations:
+    get:
+      operationId: listAdvanceSubscriptionAuthorizations
+      parameters:
+        - {name: schoolId, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: termId, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: ruleId, in: query, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        '200':
+          description: Retained history; stale evidence and expiry reconciled without payments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorizations]
+                properties:
+                  authorizations: {type: array, items: {$ref: '#/components/schemas/AdvanceSubscriptionAuthorization'}}
+        '403': {description: Active global Owner required}
+        '409': {description: Required schema unavailable}
+    post:
+      operationId: createAdvanceSubscriptionAuthorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdvanceSubscriptionInput'}
+      responses:
+        '201':
+          description: Explicit reviewed evidence; separate approval still required
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdvanceSubscriptionAuthorization'}
+        '403': {description: Active global Owner required}
+        '409': {description: Stale or blocked evidence}
+  /platform/direct-student-live/advance/authorizations/{id}/decisions:
+    post:
+      operationId: decideAdvanceSubscriptionAuthorization
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdvanceSubscriptionDecisionInput'}
+      responses:
+        '200':
+          description: Explicit audited decision; no runtime configuration or payment
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdvanceSubscriptionAuthorization'}
+        '403': {description: Active global Owner required}
+        '409': {description: "Stale, expired or terminal authorization"}
+components:
+  schemas:
+    AdvanceSubscriptionInput:
+      type: object
+      additionalProperties: false
+      required: [schoolId, termId, ruleId, previewDigest, merchantEvidenceReference, merchantEvidenceHash, noSplitConfirmed, reason, requestKey]
+      properties:
+        schoolId: {type: integer, minimum: 1}
+        termId: {type: integer, minimum: 1}
+        ruleId: {type: integer, minimum: 1}
+        previewDigest: {type: string, pattern: '^[a-f0-9]{64}$'}
+        merchantEvidenceReference: {type: string, minLength: 8, maxLength: 300}
+        merchantEvidenceHash: {type: string, pattern: '^[a-f0-9]{64}$'}
+        noSplitConfirmed: {type: boolean}
+        requestKey: {type: string, pattern: '^[A-Za-z0-9_-]{16,100}$'}
+        reason: {type: string, minLength: 3, maxLength: 500}
+    AdvanceSubscriptionDecisionInput:
+      type: object
+      additionalProperties: false
+      required: [action, evidenceDigest, confirmScope, reason]
+      properties:
+        action: {type: string, enum: [APPROVED, REJECTED, WITHDRAWN]}
+        evidenceDigest: {type: string, pattern: '^[a-f0-9]{64}$'}
+        confirmScope: {type: boolean}
+        reason: {type: string, minLength: 3, maxLength: 500}
+    AdvanceSubscriptionFacts:
+      type: object
+      additionalProperties: true
+      required: [schoolId, termId, ruleId, release, calendar, session, calendarVersion, materialVersion, reportDigest, eligibleStudentIds, rule, notBefore, expiresAt]
+      properties:
+        schoolId: {type: integer}
+        termId: {type: integer}
+        ruleId: {type: integer}
+        release: {type: string}
+        calendar: {type: object, additionalProperties: true}
+        session: {type: object, additionalProperties: true}
+        calendarVersion: {type: string}
+        materialVersion: {type: string}
+        reportDigest: {type: string}
+        eligibleStudentIds: {type: array, items: {type: integer}}
+        rule: {type: object, additionalProperties: true}
+        merchantScope: {type: [string, 'null']}
+        callbackUrl: {type: [string, 'null']}
+        webhookUrl: {type: [string, 'null']}
+        notBefore: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
+    AdvanceSubscriptionReadiness:
+      type: object
+      required: [facts, digest, today, start, end, calendarStatus, sessionStatus, termCurrent, sessionCurrent, approvalReady, runtimeReleased, checkoutEnabled]
+      properties:
+        facts: {$ref: '#/components/schemas/AdvanceSubscriptionFacts'}
+        digest: {type: string}
+        today: {type: string}
+        start: {type: string}
+        end: {type: string}
+        calendarStatus: {type: string}
+        sessionStatus: {type: string}
+        termCurrent: {type: boolean}
+        sessionCurrent: {type: boolean}
+        approvalReady: {type: boolean}
+        runtimeReleased: {type: boolean}
+        checkoutEnabled: {type: boolean}
+    AdvanceSubscriptionAuthorization:
+      type: object
+      required: [id, schoolId, termId, ruleId, status, facts, previewDigest, evidenceDigest, merchantEvidenceReference, merchantEvidenceHash, notBefore, expiresAt, reason, events]
+      properties:
+        id: {type: integer}
+        schoolId: {type: integer}
+        termId: {type: integer}
+        ruleId: {type: integer}
+        status: {type: string}
+        facts: {$ref: '#/components/schemas/AdvanceSubscriptionFacts'}
+        previewDigest: {type: string}
+        evidenceDigest: {type: string}
+        merchantEvidenceReference: {type: string}
+        merchantEvidenceHash: {type: string}
+        notBefore: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
+        reason: {type: string}
+        events:
+          type: array
+          items: {$ref: '#/components/schemas/AdvanceSubscriptionDecision'}
+    AdvanceSubscriptionDecision:
+      type: object
+      required: [id, action, reason, actorId, createdAt]
+      properties:
+        id: {type: integer}
+        action: {type: string}
+        reason: {type: string}
+        actorId: {type: [integer, 'null']}
+        createdAt: {type: string, format: date-time}

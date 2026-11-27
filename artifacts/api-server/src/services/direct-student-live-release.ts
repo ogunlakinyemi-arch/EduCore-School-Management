@@ -68,7 +68,10 @@ export async function inspectDirectReleaseSchema(c:Db){
 }
 /** Same predicate before and under the permanent checkout claim's lock. Old unbound approvals never qualify. */
 export async function findApprovedDirectReview(c:Db,scope:{schoolId:number;termId:number;studentId:number},
-  reportDigest:string,config:ReturnType<typeof directLiveConfiguration>){
+  reportDigest:string,config:ReturnType<typeof directLiveConfiguration>,locked=false){
+  const {findAdvanceReview}=await import("./advance-subscription-authorizations");
+  const advance=await findAdvanceReview(c,scope,{configuration:config},locked);
+  if(advance!==undefined)return advance;
   return(await c.query(`SELECT v.*,b.request_id,r.version AS rule_version
     FROM student_direct_live_reviews v JOIN student_direct_live_review_bindings b ON b.review_id=v.id
     JOIN student_direct_live_release_requests q ON q.id=b.request_id
