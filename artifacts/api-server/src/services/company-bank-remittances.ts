@@ -132,6 +132,11 @@ export async function verifyBankRemittance(pool:CurrentPool,actorId:number,input
      return;
    }
    demand(await batchState(c,input.id)==="REQUESTED","BANK_REQUEST_NOT_OPEN");
+    // The statement's actual credit day, not the Owner's review day, must
+    // belong to this school's saved term (both endpoints inclusive).
+    demand((await c.query(`SELECT 1 FROM academic_terms WHERE id=$1 AND school_id=$2
+      AND $3::date BETWEEN start_date AND end_date`,
+      [b.academic_term_id,b.school_id,input.creditDate])).rows[0],"BANK_CREDIT_OUTSIDE_ACADEMIC_TERM");
    const rollout=await readStudentUsageRollout(c,Number(b.school_id),Number(b.academic_term_id));
    demand(rollout.chargeable,"FREE_OR_INELIGIBLE_TERM");
    const rule=await bankRule(c,Number(b.school_id),Number(b.academic_term_id));

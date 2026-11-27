@@ -14,7 +14,7 @@ import {retryCurrentBulk} from "./current-bulk-retry";
 import {readCurrentBulkReceipt} from "./current-finance-overview";
 import {verifiedBulkStudentIds} from "./current-bulk-payment-evidence";
 import {positiveDirectStudentIds} from "./current-payment-evidence";
-import {createOperation,appendState} from "./current-financial-store";
+import {createOperation,appendState,refundAmounts} from "./current-financial-store";
 import {financialTransaction} from "./financial-transaction";
 vi.mock("./owner-bank-transfer-instructions",()=>({ownerBankTransferInstructions:vi.fn(async()=>({
  available:true,collectionPeriodEligible:true,message:"Fictional isolated fixture",
@@ -43,7 +43,11 @@ beforeAll(async()=>{
      (7,1,'ACTIVE','ADMITTED','Seven','Student');
  UPDATE app_users SET email='fixture@example.invalid',clerk_user_id='fictional-'||id;
  UPDATE partner_profiles SET user_id=4,full_name='Fictional BRO';
- UPDATE schools SET name='Fictional school';`);
+ UPDATE schools SET name='Fictional school';
+ -- A separate historical date-boundary fixture; never alter/broaden the
+ -- existing January term or fake either clock to exercise these guards.
+ INSERT INTO academic_terms(id,school_id,academic_session_id,start_date,end_date,name,is_current,status)
+ VALUES(3,1,1,'2026-11-01','2026-11-02','Historical credit boundary fixture',false,'ACTIVE');`);
  for(const file of ["0182_current_bulk_withdrawals_field_sms.sql","0185_company_bank_remittance_recovery.sql"])
    await f.pool.query(readFileSync(join(f.root,"lib/db/drizzle",file),"utf8"));
 },30000);
@@ -73,6 +77,86 @@ function provider():BulkDependencies{
  currency:"NGN",providerReference:`fictional-${transactionId}`,providerFeeMinor:0,additionalFeeMinor:0,
  chargedAmountMinor:0,status:"failed" as const}))};
 }
+async function rawBankBatch(s:string,termId=1){
+ return Number((await f.pool.query(`INSERT INTO current_payment_batches
+   (school_id,academic_term_id,reference,request_key,amount_minor,created_by,snapshot)
+   VALUES(1,$1,$2,$3,320000,2,$4::jsonb) RETURNING id`,
+   [termId,`YEC_BANK_${s}`,key(s),JSON.stringify({method:"COMPANY_BANK",studentIds:[2],
+     students:[{studentId:2,amountMinor:320000}],reason:"Fictional native guard probe"})])).rows[0].id);
+}
+const reserveSql=`INSERT INTO current_bulk_allocations
+ (batch_id,school_id,student_id,academic_term_id,review_id) VALUES($1,1,2,$2,NULL)`;
+it.each([
+ ["READ COMMITTED",0],["READ COMMITTED",1],["REPEATABLE READ",0],["REPEATABLE READ",1],
+] as const)("concurrent %s reservations have exactly one winner (connection %i)",async(isolation,winner)=>{
+ // Intentionally bypass financialTransaction's global gate: exercise the
+ // native reservation trigger/index, not incidental application serialization.
+ const batches=[await rawBankBatch("race_a"),await rawBankBatch("race_b")];
+ const clients=[await f.pool.connect(),await f.pool.connect()];
+ let competing:Promise<{ok:boolean;code?:string}>|undefined;
+ try{
+   const pids:number[]=[];
+   for(const c of clients){
+     await c.query(`BEGIN ISOLATION LEVEL ${isolation}`);
+     await c.query("SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='8s'");
+     pids.push(Number((await c.query("SELECT pg_backend_pid() AS pid")).rows[0].pid));
+     // Establish both snapshots before either insert, crucial under RR.
+     expect((await c.query(`SELECT count(*) FROM current_bulk_allocations
+       WHERE student_id=2 AND academic_term_id=1`)).rows[0].count).toBe("0");
+   }
+   expect(pids[0]).not.toBe(pids[1]);
+   await clients[winner].query(reserveSql,[batches[winner],1]);
+   const loser=1-winner;
+   competing=clients[loser].query(reserveSql,[batches[loser],1]).then(
+     ()=>({ok:true}),e=>({ok:false,code:e.code}));
+   // Prove actual overlap/blocking, not two serial attempts or a sleep-based guess.
+   let blocked=false;
+   const deadline=Date.now()+3000;
+   while(Date.now()<deadline){
+     blocked=(await f.pool.query("SELECT $1::int=ANY(pg_blocking_pids($2)) AS blocked",
+       [pids[winner],pids[loser]])).rows[0].blocked===true;
+     if(blocked)break;
+     await new Promise(resolve=>setTimeout(resolve,10));
+   }
+   expect(blocked).toBe(true);
+   await clients[winner].query("COMMIT");
+   const outcome=await competing;
+   expect(outcome.ok).toBe(false);
+   // RR retains its old SELECT snapshot; native uniqueness must still reject.
+   expect(outcome.code).toBe(isolation==="REPEATABLE READ"?"23505":"P0001");
+   await clients[loser].query("ROLLBACK");
+   expect((await f.pool.query(`SELECT a.batch_id FROM current_bulk_allocations a
+     JOIN current_bulk_term_claims c ON c.allocation_id=a.id
+     WHERE c.student_id=2 AND c.academic_term_id=1`)).rows).toEqual([{batch_id:String(batches[winner])}]);
+   expect((await f.pool.query("SELECT count(*) FROM current_bulk_allocations")).rows[0].count).toBe("1");
+ }finally{
+   // Release the winner before awaiting a potentially blocked losing INSERT.
+   await clients[winner].query("ROLLBACK").catch(()=>undefined);
+   await competing?.catch(()=>undefined);
+   await clients[1-winner].query("ROLLBACK").catch(()=>undefined);
+   clients.forEach(c=>c.release());
+ }
+},15000);
+it.each([
+ ["2026-10-31",false],["2026-11-01",true],["2026-11-02",true],["2026-11-03",false],
+] as const)("native bank-credit term range includes endpoints only: %s",async(creditDate,allowed)=>{
+ const id=await rawBankBatch("date_boundary",3);
+ await f.pool.query(reserveSql,[id,3]);
+ await f.pool.query(`INSERT INTO current_bulk_events(batch_id,event_key,state,actor_user_id)
+   VALUES($1,$2,'REQUESTED',2)`,[id,key("date_requested")]);
+ const insert=()=>f.pool.query(`INSERT INTO current_bank_credits
+   (batch_id,bank_name,statement_reference,normalized_reference,credit_date,amount_minor,
+    independently_checked,account_fingerprint,request_key,reason,verified_by)
+   VALUES($1,'Fictional Bank','Boundary 123456','boundary123456',$2,320000,true,$3,$4,
+     'Fictional independently checked credit',1)`,[id,creditDate,"a".repeat(64),key("boundary_credit")]);
+ if(allowed)await insert();
+ else{
+   await expect(verifyBankRemittance(f.pool,1,{...verifyInput(id),creditDate,amountMinor:320000}))
+     .rejects.toThrow("BANK_CREDIT_OUTSIDE_ACADEMIC_TERM");
+   await expect(insert()).rejects.toThrow("Invalid independently checked aggregate company credit");
+ }
+ expect((await f.pool.query("SELECT count(*) FROM current_bank_credits")).rows[0].count).toBe(allowed?"1":"0");
+});
 it("requests are unpaid; only Owner credit verification plus explicit posting activates each student",async()=>{
  const b=await requestBankRemittance(f.pool,2,input());
  expect((await verifiedBulkStudentIds(f.pool,1,1)).has(2)).toBe(false);
@@ -130,29 +214,60 @@ it("one failed allocation recovers without reposting its already paid sibling",a
  expect([...await verifiedBulkStudentIds(f.pool,1,1)].sort()).toEqual([2,4]);
  expect((await f.pool.query("SELECT count(*) FROM current_bulk_events WHERE state='POSTED'")).rows[0].count).toBe("2");
 });
-async function confirmedFixtureRefund(source:number|{allocationId:number},amount:number,s:string){
+async function fixtureRefund(source:number|{allocationId:number},amount:number,s:string,
+ movement:"REFUND"|"COLLECTION_REVERSAL"="REFUND",confirmed=true){
  // Fictional retained ledger evidence tests shared readers, NOT an adapter for
  // bank refunds. The application explicitly refuses unsupported bank refunds.
  return financialTransaction(f.pool,async c=>{
    const r=await createOperation(c,{kind:"REFUND",key:key(s),schoolId:1,termId:1,
      ...(typeof source==="number"?{attemptId:source}:{allocationId:source.allocationId}),
      amountMinor:amount,actorId:1,reason:"Fictional confirmed refund reader fixture",
-     snapshot:{movement:"REFUND",fictionalFixtureOnly:true}});
-   await appendState(c,Number(r.id),"SUCCEEDED",key(`confirmed_${s}`),1,{fictionalFixtureOnly:true});
+     snapshot:{movement,fictionalFixtureOnly:true}});
+   if(confirmed)await appendState(c,Number(r.id),"SUCCEEDED",key(`confirmed_${s}`),1,{fictionalFixtureOnly:true});
+   return Number(r.id);
  });
 }
 it("direct and aggregate access retains positive net after a partial refund but not a full refund",async()=>{
  const b=await bankPaid(),allocation=Number((await f.pool.query(
    "SELECT id FROM current_bulk_allocations WHERE batch_id=$1 AND student_id=2",[b.id])).rows[0].id);
- await confirmedFixtureRefund(1,1000,"directpartial");
- await confirmedFixtureRefund({allocationId:allocation},1000,"bulkpartial");
+ await fixtureRefund(1,1000,"directpartial");
+ await fixtureRefund({allocationId:allocation},1000,"bulkpartial");
  expect((await positiveDirectStudentIds(f.pool,1,1)).has(1)).toBe(true);
  expect((await verifiedBulkStudentIds(f.pool,1,1)).has(2)).toBe(true);
- await confirmedFixtureRefund(1,319000,"directrest");
- await confirmedFixtureRefund({allocationId:allocation},319000,"bulkrest");
+ await fixtureRefund(1,319000,"directrest");
+ await fixtureRefund({allocationId:allocation},319000,"bulkrest");
  expect((await positiveDirectStudentIds(f.pool,1,1)).has(1)).toBe(false);
  expect((await verifiedBulkStudentIds(f.pool,1,1)).has(2)).toBe(false);
  expect((await readCurrentBulkReceipt(f.pool,2,b.id)).netPaidMinor).toBe(320000);
+});
+it.each(["REFUND","COLLECTION_REVERSAL"] as const)(
+ "%s affects direct/bulk net evidence only after success, with identical partial/full policy",async(movement)=>{
+ const b=await bankPaid(),allocationId=Number((await f.pool.query(
+   "SELECT id FROM current_bulk_allocations WHERE batch_id=$1 AND student_id=2",[b.id])).rows[0].id);
+ const sources=[1,{allocationId}];
+ const operations=[];
+ for(const [i,source] of sources.entries()){
+   operations.push(await fixtureRefund(source,1000,`pending_${i}`,movement,false));
+   expect((await refundAmounts(f.pool,source)).netPaidMinor).toBe(320000);
+ }
+ expect((await positiveDirectStudentIds(f.pool,1,1)).has(1)).toBe(true);
+ expect((await verifiedBulkStudentIds(f.pool,1,1)).has(2)).toBe(true);
+ for(const [i,id] of operations.entries())await financialTransaction(f.pool,c=>
+   appendState(c,id,"SUCCEEDED",key(`settled_${i}`),1,{fictionalFixtureOnly:true}));
+ for(const source of sources){
+   const money=await refundAmounts(f.pool,source);
+   expect(money.netPaidMinor).toBe(319000);
+   expect(money.refundedMinor).toBe(movement==="REFUND"?1000:0);
+   expect(money.collectionReversedMinor).toBe(movement==="COLLECTION_REVERSAL"?1000:0);
+ }
+ expect((await positiveDirectStudentIds(f.pool,1,1)).has(1)).toBe(true);
+ expect((await verifiedBulkStudentIds(f.pool,1,1)).has(2)).toBe(true);
+ for(const [i,source] of sources.entries()){
+   await fixtureRefund(source,319000,`rest_${i}`,movement);
+   expect((await refundAmounts(f.pool,source)).netPaidMinor).toBe(0);
+ }
+ expect((await positiveDirectStudentIds(f.pool,1,1)).has(1)).toBe(false);
+ expect((await verifiedBulkStudentIds(f.pool,1,1)).has(2)).toBe(false);
 });
 it("UNKNOWN never resends, even with a new key or caller intent",async()=>{
  const deps=provider();deps.checkout=vi.fn(async()=>{throw Error("Fictional lost response");});

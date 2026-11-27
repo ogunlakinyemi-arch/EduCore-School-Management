@@ -118,7 +118,8 @@ BEGIN
   SELECT * INTO b FROM current_payment_batches WHERE id=NEW.batch_id FOR SHARE;
   IF b.snapshot->>'method' IS DISTINCT FROM 'COMPANY_BANK' OR NEW.amount_minor<>b.amount_minor
     OR NEW.credit_date>(clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date
-    OR NOT EXISTS(SELECT 1 FROM academic_terms t WHERE t.id=b.academic_term_id AND NEW.credit_date>=t.start_date)
+     OR NOT EXISTS(SELECT 1 FROM academic_terms t WHERE t.id=b.academic_term_id AND t.school_id=b.school_id
+       AND NEW.credit_date BETWEEN t.start_date AND t.end_date)
     OR (SELECT count(*)*320000 FROM current_bulk_allocations a WHERE a.batch_id=b.id)<>b.amount_minor
     OR EXISTS(SELECT 1 FROM current_bulk_allocations a JOIN current_bulk_allocation_releases r ON r.allocation_id=a.id WHERE a.batch_id=b.id)
     OR COALESCE((SELECT state FROM current_bulk_events e WHERE e.batch_id=b.id AND e.allocation_id IS NULL ORDER BY id DESC LIMIT 1),'')<>'REQUESTED'
