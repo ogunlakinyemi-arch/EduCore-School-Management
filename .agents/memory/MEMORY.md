@@ -105,7 +105,7 @@
 - [Push worker activation](pwa-push-readiness.md) — proxy-private offline assets must stay uncached without making optional cache warming block push activation.
 - [Notification launch cutoff](first-school-notification-launch.md) — gate notice/delivery age, not school/account age; preserve history, consent and separate send authorization.
 - [Parent publication notices](parent-notification-publication-policy.md) — publication and notice intent are atomic; corrected republications differ from retries.
-- [Notification selections](notification-selection-policy.md) — Allowed never implies send; exact event selections, Owner ceilings and current preferences govern delivery.
+- [Notification selections](notification-selection-policy.md) — default-on Push/in-app/Telegram; central Owner-only Email/SMS controls; preserve consent, permissions and delivery holds.
 - [Owner UID reader purpose](owner-reader-purpose-policy.md) — same hardware, exclusive Owner inventory versus school attendance contexts; preserve event-time UIDs.
 - [NFC discovery policy](nfc-discovery-policy.md) — discover received school scans without changing working hardware mode, keys or attendance eligibility.
 - [Test-account archives](test-account-archive-policy.md) — revoke existing test access and re-entry, preserve Owner/history, and refuse mixed legitimate-tenant identities.
@@ -131,3 +131,4 @@
 - [Bank remittance entitlement](bank-remittance-entitlement-policy.md) — newly verified aggregate credits can pay students; partial refunds retain access, full refunds remove it.
 - [Advance subscription authorization](advance-subscription-authorization-policy.md) — future review permits term-gated checkout, never automatic charges or global LIVE activation.
 - [Automatic calendar lifecycle](academic-calendar-rollover-policy.md) — school-local WAT dates, complete due sessions, catch-up and immutable audits; no charges or invented dates.
+- [Owner finance interface](owner-finance-interface-policy.md) — practical school/free-term, teacher-status and requested-assistance controls only; hiding workflows never deletes financial capabilities.

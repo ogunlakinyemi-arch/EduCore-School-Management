@@ -72,7 +72,7 @@ export async function createTelegramDirectoryInvitation(db:CommunicationQueryCli
   // No opaque token or chat identifier ever goes into a notification or push.
   const notice=(await invitationChannels(db,schoolId)).includes("IN_APP")?await queueCommunicationNotification(db,{recipientUserId:parent.userId,schoolId,
     category:"SYSTEM",eventKey:`TELEGRAM_INVITATION:${parentId}:${Math.floor(Date.now()/600000)}`,
-    subject:"Connect Telegram",body:"Your school invited you to connect Telegram. Open your Parent Portal notification preferences, review your linked children and choose whether to consent. No SMS fallback is sent.",
-    link:"/parent/communication?tab=preferences",channels:status.pushAvailable?["IN_APP","PUSH"]:["IN_APP"],useSchoolDefaults:false}):null;
+    subject:"Connect Telegram",body:"Your school invited you to connect Telegram. Open the Communication centre, review your linked children and choose whether to consent. No SMS fallback is sent.",
+    link:"/parent/communication",channels:status.pushAvailable?["IN_APP","PUSH"]:["IN_APP"],useSchoolDefaults:false}):null;
   return {...status,...invitation,status:"Invitation pending",noticeId:notice};
 }

@@ -2,7 +2,7 @@ import { UserButton } from '@clerk/react';
 import ParentCommunicationCentre from './parent-communication';
 import { ThreadLinkPage } from './parent-communication/threads';
 import { useState } from 'react';
-import { Link, Route, Switch } from 'wouter';
+import { Link, Route, Switch, Redirect } from 'wouter';
 import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText, FileSpreadsheet } from 'lucide-react';
 import { 
   useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance, getGetParentChildAttendanceQueryKey,
@@ -17,7 +17,6 @@ import { ParentFeesPage } from './finance';
 import { ParentCheckoutReturn } from './finance-online';
 import { FeePaymentNotifications } from '@/components/fee-payment-notifications';
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
-import { NotificationSettings } from '@/pages/notification-settings';
 import { Loans } from '@/pages/library';
 import { ReportingPage } from '@/pages/reporting';
 import { cx } from 'class-variance-authority';
@@ -43,7 +42,6 @@ function PortalHeader() {
           <Link href="/reporting" className="inline-flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-parent-reporting"><FileSpreadsheet size={15} /> Reports</Link>
           <FeePaymentNotifications audience="parent" />
           <CommunicationInboxBadge />
-          <Link href="/notification-settings" className="hidden text-xs font-bold text-[hsl(var(--primary))] sm:block" data-testid="link-parent-notification-settings">Preferences</Link>
           <UserButton />
         </div>
       </div>
@@ -450,5 +448,5 @@ export default function ParentPortal() {
 }
 
 function ParentPortalContent() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent" component={ParentDashboard} /><Route path="/parent/" component={ParentDashboard} /><Route path="/parent/dashboard" component={ParentDashboard} /><Route path="/parent/timetable" component={ParentTimetables} /><Route path="/timetable" component={ParentTimetables} /><Route path="/parent/timetable/:studentId" component={ChildTimetableRoute} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/card-replacements"><Shell><CardReplacementsPage /></Shell></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent" component={ParentDashboard} /><Route path="/parent/" component={ParentDashboard} /><Route path="/parent/dashboard" component={ParentDashboard} /><Route path="/parent/timetable" component={ParentTimetables} /><Route path="/timetable" component={ParentTimetables} /><Route path="/parent/timetable/:studentId" component={ChildTimetableRoute} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><Redirect to="/inbox" /></Route><Route path="/card-replacements"><Shell><CardReplacementsPage /></Shell></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }

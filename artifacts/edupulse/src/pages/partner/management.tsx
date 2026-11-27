@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import LiveReadinessPage from './live-readiness';
-import { LiveReadinessAccess } from '@/components/live-readiness-access';
-import { Route, Switch, Link, useLocation } from 'wouter';
+import { Route, Switch, Link, useLocation, Redirect } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
   useListPartners,
@@ -52,7 +51,6 @@ import NotFound from '@/pages/not-found';
 import { PartnerNfcOwnerControl } from '@/pages/partner/nfc-owner-control';
 import FieldOperationsPage from '@/pages/partner/field-operations';
 import TermCommissionsPage from '@/pages/partner/term-commissions';
-import { ConnectedFinancePanel } from '@/components/current-finance-panel';
 import { broPrimaryNav, broSecondaryNav, isBroNavActive, visibleBroNav } from '@/pages/partner/bro-navigation';
 import { clearPayoutDraft, readPayoutDraft, savePayoutDraft, type PayoutDraft } from '@/lib/partner-payout-retry';
 
@@ -526,7 +524,6 @@ function PartnerDetail({ id }: { id: number }) {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <PartnerSchoolsList partnerId={id} />
-        <PartnerCommissionsList partnerId={id} />
       </div>
     </div>
   );
@@ -1068,7 +1065,6 @@ export default function PartnerManagement() {
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl">
-      <LiveReadinessAccess isOwner={isOwner} />
       <nav data-testid="partner-navigation" aria-label="BRO oversight" className="mb-8 min-w-0 max-w-full border-b border-[hsl(var(--border))] pb-3">
         <div className="eyebrow mb-2">BRO oversight · Platform Owner · all schools</div>
         <ol className="flex min-w-0 snap-x gap-2 overflow-x-auto pb-1 scrollbar-thin">
@@ -1093,12 +1089,12 @@ export default function PartnerManagement() {
 
       <Switch>
         <Route path="/partners" component={PartnersOverview} />
-        <Route path="/partners/term-commissions" component={TermCommissionsPage} />
-        <Route path="/partners/payouts" component={PayoutsOverview} />
+        <Route path="/partners/term-commissions">{isOwner ? <Redirect to="/partners" /> : <TermCommissionsPage />}</Route>
+        <Route path="/partners/payouts">{isOwner ? <Redirect to="/partners" /> : <PayoutsOverview />}</Route>
         <Route path="/partners/conflicts" component={AttributionConflicts} />
-        <Route path="/partners/live-readiness" component={LiveReadinessPage} />
+        <Route path="/partners/live-readiness">{isOwner ? <Redirect to="/partners" /> : <LiveReadinessPage />}</Route>
         <Route path="/partners/field-operations" component={FieldOperationsPage} />
-        <Route path="/partners/finance">{isOwner ? <ConnectedFinancePanel mode="owner" /> : <NotFound />}</Route>
+        <Route path="/partners/finance">{isOwner ? <Redirect to="/partners" /> : <NotFound />}</Route>
         <Route path="/partners/:id">
           {params => <PartnerDetail id={Number(params.id)} />}
         </Route>

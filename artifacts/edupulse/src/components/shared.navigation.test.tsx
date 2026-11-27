@@ -80,7 +80,7 @@ describe('Platform Owner navigation', () => {
       <Shell><div>Dashboard content</div></Shell>,
     );
 
-    for (const href of ['/schools', '/records', '/students', '/company-employees', '/partners', '/account-applications', '/devices', '/card-uid-inventory', '/cards', '/audit', '/users', '/results', '/communications', '/platform/attendance', '/subscription-payment-rules', '/payment-settlement?tab=schools']) {
+    for (const href of ['/schools', '/records', '/students', '/company-employees', '/partners', '/account-applications', '/devices', '/card-uid-inventory', '/cards', '/audit', '/users', '/results', '/communications', '/platform/attendance', '/payment-assistance', '/free-academic-terms', '/staff-nfc-finance', '/notification-settings']) {
       expect(html).toContain(`href="${href}"`);
     }
     for (const href of ['/parents', '/employees', '/academics', '/subjects', '/classes', '/academic-work', '/timetable', '/attendance', '/finance', '/people/imports', '/my-academics', '/my-fees']) {
@@ -108,25 +108,27 @@ describe('Platform Owner navigation', () => {
     for (const context of denied) {
       state.context=context;
       const html=renderToStaticMarkup(<Shell>Content</Shell>);
-      expect(html).not.toContain('href="/subscription-payment-rules"');
-      expect(html).not.toContain('href="/payment-settlement?tab=schools"');
+      expect(html).not.toContain('href="/payment-assistance"');
+      expect(html).not.toContain('href="/free-academic-terms"');
     }
     state.context=owner;
     state.schoolId=0;
     const html=renderToStaticMarkup(<Shell>Owner content</Shell>);
-    expect(html).toContain('Subscription &amp; Payment Rules');
-    expect(html).toContain('NFC Fee Collection Oversight');
+    expect(html).toContain('School payment assistance');
+    expect(html).toContain('Free academic terms');
+    expect(html).toContain('Teacher payment status');
+    expect(html).not.toContain('Subscription &amp; Payment Rules');
+    expect(html).not.toContain('NFC Fee Collection Oversight');
     expect(html).not.toContain('Split Settlements');
     expect(html).not.toContain('Hosted Payments');
   });
 
-  it('highlights the direct oversight link only for the schools query tab', () => {
-    state.location='/payment-settlement';
-    for(const [search,active] of [['tab=schools',true],['tab=company',false],['tab=history',false],['',false]] as const){
-      state.search=search;
+  it('highlights payment assistance only on its own page', () => {
+    for(const [location,active] of [['/payment-assistance',true],['/free-academic-terms',false],['/schools',false]] as const){
+      state.location=location;
       const host=document.createElement('div');
       host.innerHTML=renderToStaticMarkup(<Shell>Owner content</Shell>);
-      expect(host.querySelector('a[href="/payment-settlement?tab=schools"]')?.getAttribute('aria-current'))
+      expect(host.querySelector('a[href="/payment-assistance"]')?.getAttribute('aria-current'))
         .toBe(active?'page':null);
     }
   });

@@ -86,7 +86,7 @@ const nav: NavItem[] = [
   { href: '/parent/communication', label: 'Communication Centre', icon: Bell, roles: ['PARENT'] },
   { href: '/communications', label: 'Communications', icon: Bell, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
-  { href: '/notification-settings', label: 'Notification settings', icon: Settings2, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
+  { href: '/notification-settings', label: 'Email & SMS', icon: Settings2, roles: ['PLATFORM_OWNER'] },
   { href: '/platform/attendance', label: 'Attendance Monitor', icon: ClipboardCheck, roles: ['PLATFORM_OWNER'] },
   { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/attendance/schedule', label: 'Schedule', icon: Calendar, roles: ['SCHOOL_ADMIN'] },
@@ -100,9 +100,9 @@ const nav: NavItem[] = [
   { href: '/card-uid-inventory', label: 'Card UID Inventory', icon: CreditCard, roles: ['PLATFORM_OWNER'] },
   { href: '/nfc-scan-audit', label: 'NFC Card Scan Audit', icon: CreditCard, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
-  { href: '/subscription-payment-rules', label: 'Subscription & Payment Rules', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
-  { href: '/direct-flutterwave-live-readiness', label: 'Direct Flutterwave LIVE Readiness', icon: ShieldCheck, roles: ['PLATFORM_OWNER'] },
-  { href: '/payment-settlement?tab=schools', label: 'NFC Fee Collection Oversight', icon: ReceiptText, roles: ['PLATFORM_OWNER'] },
+  { href: '/payment-assistance', label: 'School payment assistance', icon: ReceiptText, roles: ['PLATFORM_OWNER'] },
+  { href: '/free-academic-terms', label: 'Free academic terms', icon: WalletCards, roles: ['PLATFORM_OWNER'] },
+  { href: '/staff-nfc-finance', label: 'Teacher payment status', icon: WalletCards, roles: ['PLATFORM_OWNER'] },
   { href: '/student-subscription', label: 'My Subscription', icon: WalletCards, roles: ['STUDENT'] },
   { href: '/subscription-enforcement', label: 'Term Enforcement', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
@@ -119,13 +119,13 @@ const nav: NavItem[] = [
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/records', '/students', '/company-employees', '/users', '/partners', '/account-applications',
-  '/devices', '/card-uid-inventory', '/nfc-scan-audit', '/subscriptions', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
-  '/finance-workspace', '/employee-nfc', '/transport', '/security',
+  '/devices', '/card-uid-inventory', '/nfc-scan-audit', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
+  '/employee-nfc', '/transport', '/security',
   '/curriculum-management', '/results', '/platform/attendance',
   '/communications',
-  '/subscription-payment-rules', '/payment-settlement?tab=schools', '/direct-flutterwave-live-readiness',
+  '/payment-assistance', '/free-academic-terms', '/staff-nfc-finance', '/notification-settings',
 ]);
-const ownerPaymentNavPaths = new Set(['/subscription-payment-rules', '/payment-settlement?tab=schools', '/direct-flutterwave-live-readiness']);
+const ownerPaymentNavPaths = new Set(['/payment-assistance', '/free-academic-terms', '/staff-nfc-finance']);
 
 export function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();

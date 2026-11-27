@@ -466,6 +466,17 @@ describe("communication inbox recipient, tenant, and push privacy", () => {
     expect(state.calls.some(({ sql }) => sql.includes("INSERT INTO communication_preferences"))).toBe(false);
   });
 
+  it.each(["IN_APP","PUSH","TELEGRAM"])("does not expose a preference switch for standard channel %s",async channel=>{
+    for(const enabled of [false,true]){
+      const response=await fetch(`${baseUrl}/communication/preferences`,{
+        method:"PUT",headers:{"content-type":"application/json"},
+        body:JSON.stringify({schoolId:4,category:"ACADEMIC",channel,enabled}),
+      });
+      expect(response.status).toBe(400);
+    }
+    expect(state.calls.some(({sql})=>sql.includes("INSERT INTO communication_preferences"))).toBe(false);
+  });
+
   it("stores a preference for the authenticated user and requested school only", async () => {
     const response = await fetch(`${baseUrl}/communication/preferences`, {
       method: "PUT",

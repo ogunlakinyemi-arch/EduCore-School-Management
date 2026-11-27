@@ -61,13 +61,12 @@ import TransportPage from '@/pages/transport';
 import DriverTransportPage from '@/pages/driver-transport';
 import FamilyTransportPage from '@/pages/family-transport';
 import { EmployeeNfcPage, MyEmployeeNfcPage } from '@/pages/employee-nfc';
-import { MyStaffNfcSubscriptionPage, StaffNfcFinancePage, StaffNfcBillingRulesPage, PartnerStaffNfcCommissionsPage } from '@/pages/staff-nfc-billing';
-import { SubscriptionPaymentRulesContainer } from '@/pages/subscription-payment-rules-container';
-import { DirectFlutterwaveLiveReadinessPage } from '@/pages/direct-flutterwave-live-readiness';
+import { MyStaffNfcSubscriptionPage, StaffNfcFinancePage, PartnerStaffNfcCommissionsPage } from '@/pages/staff-nfc-billing';
+import { OwnerPaymentAssistancePage } from '@/pages/owner-payment-assistance';
+import { OwnerFreeAcademicTerms } from '@/components/owner-free-academic-terms';
 import { hasActiveGlobalOwner } from '@/components/navigation-model';
 import { ArchivedPaymentWorkflowPage } from '@/pages/archived-payment-workflow';
 import { StudentSubscriptionStatusPage } from '@/components/student-subscription-guard';
-import { PaymentSettlementPage } from '@/pages/payment-settlement';
 import { PayrollPage } from '@/pages/payroll';
 import { MyPayslipsPage } from '@/pages/my-payslips';
 import { FinanceWorkspacePage } from '@/pages/finance-workspace';
@@ -296,10 +295,12 @@ export function ProtectedRoutes() {
           <Route path="/my-employee-nfc"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyEmployeeNfcPage /></RoleGuard></Route>
           <Route path="/my-nfc-subscription"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyStaffNfcSubscriptionPage /></RoleGuard></Route>
           <Route path="/staff-nfc-finance"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><StaffNfcFinancePage /></RoleGuard></Route>
-          <Route path="/billing-rules"><RoleGuard isPlatformOwnerOnly><StaffNfcBillingRulesPage /></RoleGuard></Route>
-          <Route path="/subscription-payment-rules"><RoleGuard isPlatformOwnerOnly><SubscriptionPaymentRulesContainer /></RoleGuard></Route>
-          <Route path="/direct-flutterwave-live-readiness"><RoleGuard isPlatformOwnerOnly><OwnerOnlyGate><DirectFlutterwaveLiveReadinessPage /></OwnerOnlyGate></RoleGuard></Route>
-          <Route path="/payment-settlement"><RoleGuard isPlatformOwnerOnly><PaymentSettlementPage /></RoleGuard></Route>
+          <Route path="/free-academic-terms"><RoleGuard isPlatformOwnerOnly><OwnerOnlyGate><OwnerFreeAcademicTerms /></OwnerOnlyGate></RoleGuard></Route>
+          <Route path="/payment-assistance"><RoleGuard isPlatformOwnerOnly><OwnerOnlyGate><OwnerPaymentAssistancePage /></OwnerOnlyGate></RoleGuard></Route>
+          <Route path="/billing-rules"><RoleGuard isPlatformOwnerOnly><Redirect to="/staff-nfc-finance" /></RoleGuard></Route>
+          <Route path="/subscription-payment-rules"><RoleGuard isPlatformOwnerOnly><Redirect to="/payment-assistance" /></RoleGuard></Route>
+          <Route path="/direct-flutterwave-live-readiness"><RoleGuard isPlatformOwnerOnly><Redirect to="/payment-assistance" /></RoleGuard></Route>
+          <Route path="/payment-settlement"><RoleGuard isPlatformOwnerOnly><Redirect to="/payment-assistance" /></RoleGuard></Route>
           <Route path="/flutterwave-settlements"><ArchivedPaymentWorkflowPage /></Route>
           <Route path="/hosted-payments"><ArchivedPaymentWorkflowPage /></Route>
           <Route path="/student-subscription"><RoleGuard allowedRoles={['STUDENT']}><StudentSubscriptionStatusPage /></RoleGuard></Route>
@@ -392,7 +393,7 @@ export function ProtectedRoutes() {
           <Route path="/communications-center"><Redirect to="/communications" /></Route>
           <Route path="/communications-centre"><Redirect to="/communications" /></Route>
           <Route path="/inbox"><CommunicationInbox /></Route>
-          <Route path="/notification-settings"><NotificationSettings /></Route>
+          <Route path="/notification-settings"><RoleGuard isPlatformOwnerOnly><OwnerOnlyGate><NotificationSettings /></OwnerOnlyGate></RoleGuard></Route>
           <Route path="/classes">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView ownerReadOnly><ClassesPage /></RoleGuard>
           </Route>
@@ -425,10 +426,10 @@ export function ProtectedRoutes() {
             <RoleGuard isPlatformOwnerOnly><NotificationsPage /></RoleGuard>
           </Route>
           <Route path="/subscriptions">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT', 'TEACHER', 'STUDENT']} ownerCanView ownerReadOnly><SubscriptionsRoute /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT', 'TEACHER', 'STUDENT']} ownerCanView ownerReadOnly>{context?.isPlatformOwner ? <Redirect to="/free-academic-terms" /> : <SubscriptionsRoute />}</RoleGuard>
           </Route>
           <Route path="/subscription-enforcement">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><SubscriptionEnforcementPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView>{context?.isPlatformOwner ? <Redirect to="/free-academic-terms" /> : <SubscriptionEnforcementPage />}</RoleGuard>
           </Route>
           <Route path="/cards">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView><CardsPage /></RoleGuard>

@@ -31,6 +31,11 @@ function notificationInput(
   };
 }
 
+function queuedChannels(calls: Array<{sql:string;values?:unknown[]}>) {
+  return calls.filter(c=>c.sql.includes("INSERT INTO communication_deliveries"))
+    .map(c=>c.sql.includes("'IN_APP'")?"IN_APP":c.values?.[1]);
+}
+
 describe("scoped SMS activation consent and isolation",()=>{
   afterEach(()=>vi.unstubAllEnvs());
   function smsPolicy(event="ATTENDANCE_ABSENCE") {
@@ -134,10 +139,10 @@ describe("teacher period channel gating",()=>{
   it.each([
     {allowed:["IN_APP","PUSH"],selected:["IN_APP","PUSH","EMAIL","TELEGRAM"],preferences:[],expected:["IN_APP","PUSH"]},
     {allowed:["IN_APP"],selected:["IN_APP","PUSH"],preferences:[],expected:["IN_APP"]},
-    {allowed:["IN_APP","PUSH"],selected:[],preferences:[],expected:[]},
-    {allowed:["IN_APP","PUSH"],selected:["IN_APP","PUSH"],preferences:[{channel:"PUSH",enabled:false}],expected:["IN_APP"]},
-    {allowed:["IN_APP","PUSH"],selected:["PUSH"],preferences:[],expected:["PUSH"]},
-  ])("intersects Owner, school, recipient and the two-channel ceiling %j",async ({allowed,selected,preferences,expected})=>{
+    {allowed:["IN_APP","PUSH"],selected:[],preferences:[],expected:["IN_APP","PUSH"]},
+    {allowed:["IN_APP","PUSH"],selected:["IN_APP","PUSH"],preferences:[{channel:"PUSH",enabled:false}],expected:["IN_APP","PUSH"]},
+    {allowed:["IN_APP","PUSH"],selected:["PUSH"],preferences:[],expected:["IN_APP","PUSH"]},
+  ])("keeps standard preferences while respecting the Owner permission ceiling %j",async ({allowed,selected,preferences,expected})=>{
     const policy=defaultNotificationPolicy();
     policy.events.ACADEMIC={allowed:allowed as any,defaults:[]};
     const {client,calls}=queueClient({policy,schoolChoices:{ACADEMIC:selected},preferences});
@@ -232,37 +237,37 @@ describe("communication queue", () => {
     ["ATTENDANCE", "attendance:9:301:SCHOOL_EXIT"],
     ["ATTENDANCE", "attendance:9:301:CLASSROOM_ENTRY"],
     ["ACCOUNT", "account:17"],
-  ] as const)("does not turn Allowed into Default for %s (%s)", async (category,eventKey) => {
+  ] as const)("defaults standard channels but not Email for %s (%s)", async (category,eventKey) => {
     const {client,calls}=queueClient({isParent:true,policy:defaultNotificationPolicy()});
     await queueCommunicationNotification(client,notificationInput({category,eventKey,channels:["IN_APP","EMAIL","PUSH"]}));
     const inserts=calls.filter(call=>call.sql.includes("INSERT INTO communication_deliveries"));
-    expect(inserts).toHaveLength(1);
+    expect(queuedChannels(calls)).toEqual(["IN_APP","PUSH"]);
+    expect(inserts).toHaveLength(2);
     expect(inserts[0].sql).toContain("'IN_APP'");
   });
 
-  it("keeps In-App off when Email alone is selected, regardless of caller hints", async () => {
+  it("keeps standard channels when an older policy selected Email alone", async () => {
     const policy=defaultNotificationPolicy();policy.events.ACADEMIC!.defaults=["EMAIL"];
     const {client,calls}=queueClient({isParent:true,policy});
     await queueCommunicationNotification(client,notificationInput({category:"ACADEMIC",channels:["IN_APP"]}));
     const inserts=calls.filter(call=>call.sql.includes("INSERT INTO communication_deliveries"));
-    expect(inserts.map(call=>call.values?.[1])).toEqual(["EMAIL"]);
+    expect(queuedChannels(calls)).toEqual(["IN_APP","PUSH","EMAIL"]);
   });
 
   it("permits an explicit school Email selection only inside Owner event permissions", async () => {
     for(const globallyAllowed of [true,false]){
       const policy=defaultNotificationPolicy();
-      if(!globallyAllowed)policy.events.ACADEMIC!.allowed=["IN_APP"];
+      if(!globallyAllowed)policy.events.ACADEMIC={allowed:["IN_APP"],defaults:["IN_APP"]};
       const {client,calls}=queueClient({isParent:true,policy,schoolChoices:{ACADEMIC:["EMAIL"]}});
       await queueCommunicationNotification(client,notificationInput({category:"ACADEMIC",channels:["IN_APP","EMAIL"]}));
-      expect(calls.filter(call=>call.sql.includes("INSERT INTO communication_deliveries")).map(call=>call.values?.[1]))
-        .toEqual(globallyAllowed?["EMAIL"]:[]);
+      expect(queuedChannels(calls)).toEqual(globallyAllowed?["IN_APP","PUSH","EMAIL"]:["IN_APP"]);
     }
   });
 
-  it.each([false,true])("honors an explicitly empty school event selection (explicit request=%s)",async explicit=>{
+  it.each([false,true])("old empty selections suppress Email but not standard channels (explicit request=%s)",async explicit=>{
     const {client,calls}=queueClient({isParent:true,schoolChoices:{ACADEMIC:[]}});
     await queueCommunicationNotification(client,notificationInput({category:"ACADEMIC",channels:["IN_APP","EMAIL"],useSchoolDefaults:!explicit}));
-    expect(calls.some(call=>call.sql.includes("INSERT INTO communication_deliveries"))).toBe(false);
+    expect(queuedChannels(calls)).toEqual(["IN_APP","PUSH"]);
   });
 
   it.each([false,true])("a school restriction never expands Owner permissions (school disabled=%s)",async disabled=>{
@@ -270,7 +275,7 @@ describe("communication queue", () => {
     policy.schools["9"]={enabled:!disabled,allowed:["IN_APP"]};
     const {client,calls}=queueClient({isParent:true,policy,schoolChoices:{ACADEMIC:["EMAIL"]}});
     await queueCommunicationNotification(client,notificationInput({category:"ACADEMIC",channels:["IN_APP","EMAIL"]}));
-    expect(calls.some(call=>call.sql.includes("INSERT INTO communication_deliveries"))).toBe(false);
+    expect(queuedChannels(calls)).toEqual(disabled?[]:["IN_APP"]);
   });
 
   it("uses the absence event's own selection rather than generic Attendance defaults",async()=>{
@@ -278,13 +283,13 @@ describe("communication queue", () => {
     const {client,calls}=queueClient({isParent:true,policy,schoolChoices:{ATTENDANCE:["EMAIL"]}});
     await queueCommunicationNotification(client,notificationInput({category:"ATTENDANCE",eventKey:"attendance:9:301:ABSENT",channels:["EMAIL"]}));
     const inserts=calls.filter(call=>call.sql.includes("INSERT INTO communication_deliveries"));
-    expect(inserts).toHaveLength(1);expect(inserts[0].sql).toContain("'IN_APP'");
+    expect(queuedChannels(calls)).toEqual(["IN_APP","PUSH"]);expect(inserts[0].sql).toContain("'IN_APP'");
   });
 
-  it("does not let an explicit campaign channel expand effective defaults",async()=>{
+  it("does not let campaign Email hints expand effective defaults or suppress standard channels",async()=>{
     const {client,calls}=queueClient({policy:defaultNotificationPolicy()});
     await queueCommunicationNotification(client,notificationInput({channels:["EMAIL"],useSchoolDefaults:false}));
-    expect(calls.some(call=>call.sql.includes("INSERT INTO communication_deliveries"))).toBe(false);
+    expect(queuedChannels(calls)).toEqual(["IN_APP","PUSH"]);
   });
 
   it.each(["ATTENDANCE", "ACADEMIC", "ASSIGNMENT", "FINANCE", "PAYMENT", "ANNOUNCEMENT", "SECURITY"] as const)(
@@ -358,10 +363,7 @@ describe("communication queue", () => {
       "Body with $1 still remains data.", "/announcements/1",
     ]);
     const deliveryInserts = calls.filter(call => call.sql.includes("INSERT INTO communication_deliveries"));
-    expect([
-      deliveryInserts[0].sql.includes("'IN_APP'") ? "IN_APP" : deliveryInserts[0].values?.[1],
-      deliveryInserts[1].values?.[1],
-    ]).toEqual(["IN_APP", "EMAIL"]);
+    expect(queuedChannels(calls)).toEqual(["IN_APP", "PUSH", "EMAIL"]);
     expect(deliveryInserts[0].sql).toContain("'SENT'");
     expect(deliveryInserts[0].sql).not.toContain("delivered_at");
     expect(deliveryInserts[1].sql).toContain("'QUEUED'");
@@ -466,7 +468,7 @@ describe("communication queue", () => {
 
     expect(id).toBe(51);
     expect(calls.some(call => call.sql.includes("FROM communication_preferences"))).toBe(false);
-    expect(calls.filter(call => call.sql.includes("INSERT INTO communication_deliveries"))).toHaveLength(2);
+    expect(queuedChannels(calls)).toEqual(["IN_APP","PUSH","EMAIL"]);
   });
 
   it("rejects unsafe external links and invalid channel values", async () => {
@@ -782,7 +784,7 @@ describe("communication delivery dispatcher", () => {
   it("rechecks Owner policy before dispatch of an already queued SMS",async()=>{
     // Use an eligible, consented absence fixture so this reaches the policy
     // check rather than correctly stopping at the earlier SMS-scope guard.
-    const policy=defaultNotificationPolicy();policy.events.ATTENDANCE_ABSENCE!.allowed=["IN_APP"];
+    const policy=defaultNotificationPolicy();policy.events.ATTENDANCE_ABSENCE={allowed:["IN_APP"],defaults:["IN_APP"]};
     const {pool,calls}=dispatchPool({policy,preferenceEnabled:true,record:{
       id:42,channel:"SMS",notificationId:33,recipientUserId:17,schoolId:9,subjectStudentId:321,subjectClassId:null,
       category:"ATTENDANCE",eventKey:"attendance:1:ABSENT",subject:"Absence",body:"Fictional absence notice",

@@ -616,6 +616,9 @@ router.put("/communication/preferences", async (req, res): Promise<void> => {
     if (!categories.has(body.category) || !channels.has(body.channel) || typeof body.enabled !== "boolean") {
       throw new AuthError(400, "category, channel, and enabled are invalid");
     }
+    if (["IN_APP", "PUSH", "TELEGRAM"].includes(body.channel)) {
+      throw new AuthError(400, "Standard channels have no preference switch. Device and Telegram consent are managed separately.");
+    }
     if (body.channel === "SMS" && body.enabled && !["ATTENDANCE","SECURITY"].includes(body.category)) {
       throw new AuthError(400, "SMS is restricted to emergency and student absence notifications");
     }

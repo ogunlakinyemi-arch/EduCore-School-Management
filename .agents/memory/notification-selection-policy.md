@@ -1,44 +1,35 @@
 ---
-name: Notification permissions versus selections
-description: Owner ceilings, school event selections, preferences, and accurate delivery claims.
+name: Central notification preferences and delivery safeguards
+description: Standard default-on channels, central Email/SMS controls, and independent consent/permission gates.
 ---
 
-The Platform Owner sets and centrally controls all notification capability.
-School choices and recipient preferences may only narrow that authority, never
-override it. Configured credentials do not authorize delivery.
+Push, in-app and Telegram are standard default-on channel selections for every
+role and notification type, including reminders. They have no user-facing
+preference switches. Only Email and SMS are configurable, in one concise
+Platform Owner-only interface, not in role dashboards or school settings.
 
-**Why:** The user explicitly confirmed that the platform Owner must set and
-control all notifications, including the authority to pause delivery.
+**Why:** The user explicitly restated this policy on 2026-11-27 and requested the
+same simplification across Parent, Student, Teacher, School Admin, Accountant,
+BRO and other dashboards. This supersedes older instructions that an empty
+school event selection disables standard channels or that In-App can be toggled
+off. Preserve existing event types; do not invent a replacement matrix or ask
+the user to upload the previously provided matrix again.
 
-**How to apply:** Preserve server-side Owner gates across dispatch paths, with
-audited actor/time/reason for control changes. Development notification-only
-controls must not release independently paused subscription/payment-test jobs.
-Default new delivery controls to disabled/paused and never invent a push recipient.
+**How to apply:** Distinguish standard channel selection from permission to send.
+Preserve saved Owner and school permission ceilings, disabled-school holds,
+recipient authorization, Telegram linking and consent/withdrawal, browser
+permission/device subscription, launch cutoff, Development locks, deduplication
+and delivery pauses. Do not auto-subscribe browsers or bind Telegram chats.
+Transport connection and consent controls are not channel-preference settings.
 
-Allowed is only a permission ceiling; it is never a request to send.
-For each mapped event, inherit the Owner defaults only if the school has no
-explicit selection. An explicit empty school selection disables all channels for
-that event. Intersect selections with that event's Owner permissions and Owner
-school restrictions; a school cannot enable a globally disallowed channel.
+Email/SMS selection remains event-specific. Allowed never automatically selects
+Email. Generic Attendance selections must not enable Email for Absence. Keep
+the existing delivery engine and fixed scheduled reminder behavior, including
+SMS event restrictions, explicit opt-in and fresh financial-balance checks.
 
-**Why:** The Owner explicitly corrected automatic parent Email behavior that
-treated Allowed as Default. Result publication and attendance, including absence,
-must follow the settings actually shown in the school notification UI.
+**Why:** The user requires notification simplification without bypassing consent,
+role permissions, availability or safety safeguards and without a second engine.
 
-**How to apply:** Do not union caller hints or automatically injected Email into
-effective selections. Event-specific rows are authoritative: generic Attendance
-selections must not silently enable Email for the separate Absence event.
-Explicit campaign channels may narrow, never expand, the effective selection.
-Recheck current selections and implemented recipient preferences before external
-dispatch; preserve existing consent, tenant, launch and deduplication safeguards.
-
-In-App is an independent channel, not an automatic copy of Email or every outbox
-record. Existing genuine In-App delivery history remains historical evidence.
-
-**Why:** Disabling In-App must actually prevent new inbox messages and unread
-counts even when Email is selected.
-
-**How to apply:** Separate outbox/operational history from personal inbox
-visibility. Permission, selection, configured capability, queued intent, provider
-acceptance and confirmed receipt are different states. Never describe a selected
-but held/unavailable channel as successfully delivered.
+**How to apply:** Keep queued intent, configured capability, actual permission,
+provider acceptance and confirmed delivery separate. A default-on channel that
+is held or unavailable must not be described as successfully delivered.

@@ -365,7 +365,7 @@ export function StaffNfcFinancePage() {
   const [status, setStatus] = useState<ListStaffNfcFinanceParams['paymentStatus']>('all');
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
   const [period, setPeriod] = useState({ schoolId: 0, sessionId: '', termId: '' });
-  const [partnerId, setPartnerId] = useState(''); const [search, setSearch] = useState('');
+  const [search, setSearch] = useState('');
   const [cursors, setCursors] = useState<number[]>([]);
   const [message, setMessage] = useState('');
   const [fail, setFail] = useState('');
@@ -385,7 +385,6 @@ export function StaffNfcFinancePage() {
     ...(from ? { from } : {}), ...(to ? { to } : {}),
     ...(sessionId && Number(sessionId) ? { academicSessionId: Number(sessionId) } : {}),
     ...(termId && Number(termId) ? { academicTermId: Number(termId) } : {}),
-    ...(isPlatformOwner && partnerId && Number(partnerId) ? { partnerId: Number(partnerId) } : {}),
     ...(search.trim() ? { search: search.trim() } : {}),
     limit: 25, ...(cursors.length ? { cursor: cursors[cursors.length - 1] } : {}),
   };
@@ -404,7 +403,7 @@ export function StaffNfcFinancePage() {
   const resetPage = () => setCursors([]);
   const t = d?.totals;
   return <div className="fade-up">
-    <PageHeading eyebrow={isPlatformOwner ? 'Owner / Finance' : 'School operations / Finance'} title="Staff NFC finance" description="Term subscriptions for Teacher and Staff E-ID cards. Only server-verified payments count as paid." action={isPlatformOwner ? undefined : <TenantPicker />} />
+    <PageHeading eyebrow={isPlatformOwner ? 'Owner / Finance' : 'School operations / Finance'} title={isPlatformOwner ? 'Teacher subscription payment status' : 'Staff NFC finance'} description="₦2,000 per teacher, paid directly from the Teacher Portal to Yetenia through Flutterwave. No BRO commission or Owner approval." action={isPlatformOwner ? undefined : <TenantPicker />} />
     <Gate allowed={allowed} loading={access.loading} title="Staff NFC finance">
       {isSchoolAdmin && tenantSchool ? <GeneratePanel key={tenantSchool} schoolId={tenantSchool} onDone={m => { setMessage(m); setFail(''); }} /> : null}
       {message && <div role="status" data-testid="status-finance-message" className="mb-5 rounded-xl border border-[hsl(157_37%_43%/.3)] bg-[hsl(157_37%_43%/.08)] px-4 py-3 text-sm font-semibold">{message}</div>}
@@ -416,15 +415,13 @@ export function StaffNfcFinancePage() {
           onChange={(sessionId, termId) => { setPeriod({ schoolId: filterSchoolId ?? 0, sessionId, termId }); resetPage(); }} />
         <Field label="From"><input type="date" className={entry} value={from} onChange={e => { setFrom(e.target.value); resetPage(); }} /></Field>
         <Field label="To"><input type="date" className={entry} value={to} onChange={e => { setTo(e.target.value); resetPage(); }} /></Field>
-        {isPlatformOwner && <Field label="BRO ID"><input className={entry} inputMode="numeric" value={partnerId} onChange={e => { setPartnerId(e.target.value.replace(/\D/g, '')); resetPage(); }} data-testid="filter-partner" /></Field>}
         <Field label="Employee / number"><input className={entry} value={search} onChange={e => { setSearch(e.target.value); resetPage(); }} data-testid="filter-employee" /></Field>
       </section>
       {q.isLoading ? <SkeletonPage /> : q.isError ? <ErrorState retry={() => q.refetch()} message={errMsg(q.error)} /> : <>
         <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="finance-totals">
           <Info label={ownerView ? 'Gross verified' : 'Verified collected'} value={nairaMinor(t?.grossAmountMinor)} />
-          <Info label="School allocation" value={nairaMinor(t?.schoolAllocationMinor)} />
+          {!ownerView && <Info label="School allocation" value={nairaMinor(t?.schoolAllocationMinor)} />}
           {ownerView && <Info label="Platform revenue" value={nairaMinor(t?.platformRevenueMinor)} />}
-          {ownerView && <Info label="BRO commission" value={nairaMinor(t?.partnerCommissionMinor)} />}
           {ownerView && <Info label="Provider fee expense (separate)" value={nairaMinor(t?.providerFeeExpenseMinor)} />}
           <Info label="Paid / pending" value={`${t?.paidCount ?? 0} / ${t?.pendingCount ?? 0}`} />
           <Info label="Failed / refunded" value={`${t?.failedCount ?? 0} / ${t?.refundedCount ?? 0}`} />
@@ -433,12 +430,11 @@ export function StaffNfcFinancePage() {
           {!d?.items.length ? <EmptyState icon={CircleDollarSign} title="No staff subscriptions match" description="Adjust the filters, or generate term subscriptions for a school." /> : <div className="divide-y divide-[hsl(var(--border))]" data-testid="finance-rows">
             {d.items.map(s => { const p = s.latestPayment; return <div key={s.id} className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,1.4fr)_1fr_1fr_auto] md:items-center" data-testid={`row-nfc-${s.id}`}>
               <div><div className="font-bold">{s.employeeName}</div><div className={note}>{s.employeeNumber}{ownerView ? ` · ${s.schoolName ?? `School #${s.schoolId}`}` : ''} · {s.sessionName}, {s.termName}</div></div>
-              <div className="text-sm"><div className="font-bold tabular-nums">{nairaMinor(s.priceMinor)}</div><div className={note}>School {nairaMinor(s.schoolShareMinor)}{ownerView ? ` · Platform ${nairaMinor(s.platformShareMinor)} · BRO ${nairaMinor(s.partnerShareMinor)}` : ''}</div></div>
+              <div className="text-sm"><div className="font-bold tabular-nums">{nairaMinor(s.priceMinor)}</div>{!ownerView && <div className={note}>School {nairaMinor(s.schoolShareMinor)}</div>}</div>
               <div className="text-sm"><Tone value={s.status} /><div className={`mt-1 ${note}`}>{p?.paidAt ? `Paid ${date(p.paidAt)}` : `Due ${date(s.dueDate)}`}{p ? ` · recon ${p.reconciliationStatus.replaceAll('_', ' ').toLowerCase()}` : ''}{ownerView && p?.providerMode && p.providerMode !== 'SANDBOX' ? ` · ${p.providerMode.replaceAll('_', ' ').toLowerCase()}` : ''}</div>{ownerView && p && <div className={note}>Provider fee {nairaMinor(p.providerFeeMinor)} · settlement {nairaMinor(p.settlementAmountMinor)}</div>}</div>
               <div className="flex flex-wrap gap-2">
                 {p && ['PAID', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(s.status) && <Button variant="quiet" onClick={() => setReceipt({ id: p.id, schoolId: s.schoolId })}>Receipt</Button>}
-                {p && ['PENDING', 'RECONCILIATION_REQUIRED', 'FAILED'].includes(p.status) && <Button variant="outline" disabled={reconcile.isPending} onClick={() => doReconcile(s)} testId={`button-reconcile-${s.id}`}>Reconcile</Button>}
-                {isPlatformOwner && p && s.status === 'PAID' && <Button variant="danger" onClick={() => { setMessage(''); setFail(''); setRefundItem(s); }} testId={`button-refund-${s.id}`}>Refund</Button>}
+                {!isPlatformOwner && p && ['PENDING', 'RECONCILIATION_REQUIRED', 'FAILED'].includes(p.status) && <Button variant="outline" disabled={reconcile.isPending} onClick={() => doReconcile(s)} testId={`button-reconcile-${s.id}`}>Reconcile</Button>}
               </div>
             </div>; })}
           </div>}

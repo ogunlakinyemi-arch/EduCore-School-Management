@@ -1,4 +1,4 @@
-import { loadNotificationPolicy, effectiveNotificationChannels, notificationEvent, notificationChannelAvailability,financialReminderSelectedChannels } from "./notification-channel-policy";
+import { loadNotificationPolicy, effectiveNotificationChannels, notificationEvent, notificationChannelAvailability,financialReminderSelectedChannels, defaultOnNotificationChannels } from "./notification-channel-policy";
 import {scheduledReminderKey,parseFinancialReminder,staffFinancialReminder} from "./financial-reminder-policy";
 import {financialReminderStillCurrent} from "./financial-reminder-eligibility";
 import {
@@ -442,7 +442,7 @@ export async function queueCommunicationNotification(
   // Automatic triggers use saved selections, not hardcoded channel hints.
   // Explicit campaign selections may narrow, never expand, the effective set.
   let enabledChannels = input.useSchoolDefaults === false
-    ? effective.filter(c => input.channels.includes(c)) : effective;
+    ? effective.filter(c => defaultOnNotificationChannels.some(standard => standard === c) || input.channels.includes(c)) : effective;
   if(enabledChannels.includes("TELEGRAM")&&await missingTelegramDestination(client,{
     recipientUserId:input.recipientUserId,schoolId:input.schoolId,subjectStudentId:input.subjectStudentId??null,category:input.category,
   },!!input.eventKey?.startsWith(teacherPeriodPrefix)||staffFinancialReminder(input.eventKey))!=="TELEGRAM_WAITING_FOR_LINK")
@@ -468,7 +468,9 @@ export async function queueCommunicationNotification(
       [input.recipientUserId, input.category, input.schoolId],
     );
     const preferenceByChannel = new Map(preferences.rows.map(row => [row.channel, row.enabled]));
-    enabledChannels = enabledChannels.filter(channel => preferenceByChannel.get(channel) !== false);
+    // In-app and Push are standard preferences. Telegram opt-outs remain consent evidence.
+    enabledChannels = enabledChannels.filter(channel =>
+      channel === "IN_APP" || channel === "PUSH" || preferenceByChannel.get(channel) !== false);
   }
 
   for (const channel of enabledChannels) {
@@ -1112,7 +1114,7 @@ export async function dispatchCommunicationDeliveries(
          ORDER BY CASE WHEN school_id=$4 THEN 0 ELSE 1 END LIMIT 1`,
         [record.recipientUserId,record.category,delivery.channel,record.schoolId],
       );
-      if (preference.rows[0]?.enabled === false) {
+      if (delivery.channel !== "PUSH" && preference.rows[0]?.enabled === false) {
         await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='RECIPIENT_PREFERENCE',
           last_error='Recipient disabled this notification channel',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
           [delivery.id,normalizedDate(now())]);

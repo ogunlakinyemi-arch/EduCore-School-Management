@@ -1,16 +1,14 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useClerk } from '@clerk/react';
-import { ShieldCheck, Database, UserRound, Bell } from 'lucide-react';
+import { ShieldCheck, Database, UserRound } from 'lucide-react';
 import { PageHeading, Info, Button, cx } from '@/components/shared';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
-import { NotificationSettings as NotificationSettingsPage } from './notification-settings';
 import { PlatformSchoolExport } from '@/components/platform-school-export';
 
 const tabs = [
   { id: 'general', label: 'General', icon: UserRound },
   { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'export', label: 'Data Export', icon: Database },
 ] as const;
 type Tab = typeof tabs[number]['id'];
@@ -26,7 +24,6 @@ export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('general');
   const owner = context?.isPlatformOwner === true;
   const visible = owner ? tabs : tabs.filter(t => t.id !== 'export');
-  const NotificationsView = NotificationSettingsPage;
 
   return (
     <div className="fade-up">
@@ -71,7 +68,6 @@ export function SettingsPage() {
               <p className="mt-6 rounded-xl bg-[hsl(var(--secondary)/.4)] p-4 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Platform-wide login and security policies are not configured by this app. They are controlled by the identity provider, so no policy switches are shown here.</p>
             </div>
           )}
-          {tab === 'notifications' && <NotificationsView globalOnly={owner} />}
           {tab === 'export' && owner && <PlatformSchoolExport />}
         </div>
       </div>

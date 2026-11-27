@@ -1,6 +1,6 @@
 import {describe,it,expect,vi} from "vitest";
 import {defaultNotificationPolicy,allowedNotificationChannels,notificationEvent,notificationChannelAvailability,
-  loadNotificationPolicy,notificationPolicySchema} from "./notification-channel-policy";
+  loadNotificationPolicy,notificationPolicySchema,effectiveNotificationChannels,financialReminderSelectedChannels,policyEvents} from "./notification-channel-policy";
 import {queueCommunicationNotification} from "./communication-service";
 function fixture(options:{policy?:unknown;choices?:Record<string,string[]>;consent?:boolean}={}){
   const deliveries:string[]=[];
@@ -68,10 +68,33 @@ describe("Owner notification channel governance",()=>{
       COMMUNICATION_SMS_PROVIDER:"termii",VAPID_PUBLIC_KEY:"fictional",VAPID_PRIVATE_KEY:"fictional",VAPID_SUBJECT:"mailto:fixture@example.invalid"});
     expect(result).toEqual({IN_APP:true,SMS:false,EMAIL:false,PUSH:false,TELEGRAM:false});
   });
-  it("permits non-SMS channels across every default category without making them defaults",()=>{
+  it("selects standard channels for every existing event, without selecting Email or SMS",()=>{
     for(const [event,rule] of Object.entries(defaultNotificationPolicy().events)){
       expect(rule?.allowed).toEqual(["IN_APP","EMAIL","PUSH","TELEGRAM",...(["EMERGENCY","ATTENDANCE_ABSENCE","FINANCE","NFC_REMINDER"].includes(event)?["SMS"]:[])]);
-      expect(rule?.defaults).toEqual(["IN_APP"]);
+      expect(rule?.defaults).toEqual(["IN_APP","PUSH","TELEGRAM"]);
     }
+  });
+  it.each(policyEvents)("standard channels remain selected for %s despite old empty selections",event=>{
+    const p=defaultNotificationPolicy();
+    p.events[event]!.defaults=[];
+    expect(effectiveNotificationChannels(p,event,9,{[event]:[]})).toEqual(["IN_APP","PUSH","TELEGRAM"]);
+  });
+  it("does not expand saved Owner or school permission ceilings",()=>{
+    const p=defaultNotificationPolicy();
+    p.events.ACADEMIC!.allowed=["IN_APP","EMAIL"];
+    expect(effectiveNotificationChannels(p,"ACADEMIC",9)).toEqual(["IN_APP"]);
+    p.schools["9"]={enabled:true,allowed:["EMAIL"]};
+    expect(effectiveNotificationChannels(p,"ACADEMIC",9)).toEqual([]);
+    p.schools["9"].enabled=false;
+    expect(effectiveNotificationChannels(p,"ACADEMIC",9)).toEqual([]);
+  });
+  it("keeps Email and SMS selections separate, including the fixed reminder schedule",()=>{
+    const p=defaultNotificationPolicy();
+    p.events.ACADEMIC!.defaults.push("EMAIL");
+    expect(effectiveNotificationChannels(p,"ACADEMIC",9)).toContain("EMAIL");
+    expect(effectiveNotificationChannels(p,"ACADEMIC",9,{ACADEMIC:[]})).not.toContain("EMAIL");
+    expect(financialReminderSelectedChannels(p,"NFC_REMINDER")).toEqual(["IN_APP","TELEGRAM","PUSH","SMS","EMAIL"]);
+    p.events.NFC_REMINDER!.allowed=["IN_APP"];
+    expect(financialReminderSelectedChannels(p,"NFC_REMINDER")).toEqual(["IN_APP"]);
   });
 });

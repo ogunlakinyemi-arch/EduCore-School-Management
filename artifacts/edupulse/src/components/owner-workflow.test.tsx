@@ -8,9 +8,9 @@ const BACKEND_CODES = ['COLLECTION_ROLLOUT', 'MERCHANT_CONFIG', 'HTTPS_ENDPOINTS
 const check = (code: string, status: string) => ({ code, label: code, status, detail: 'd' });
 
 describe('BRO navigation compatibility', () => {
-  it('keeps every existing /partners route reachable as primary or secondary', () => {
+  it('removes redundant Owner finance configuration without changing BRO portal navigation', () => {
     const all = visibleBroNav([...broPrimaryNav, ...broSecondaryNav], { isOwner: true, dev: true }).map(i => i.href);
-    expect(all.sort()).toEqual(['/partners', '/partners/conflicts', '/partners/field-operations', '/partners/finance', '/partners/live-readiness', '/partners/payouts', '/partners/term-commissions']);
+    expect(all.sort()).toEqual(['/partners', '/partners/conflicts', '/partners/field-operations']);
     expect(broPrimaryNav.map(i => i.href)).toEqual(['/partners', '/partners/term-commissions', '/partners/finance', '/partners/payouts', '/partners/field-operations']);
   });
   it('keeps owner-only and dev-only gating', () => {

@@ -1,7 +1,6 @@
 import { Link } from 'wouter';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
 import { PageHeading, useTenant } from '@/components/shared';
-import { hasActiveGlobalOwner } from '@/components/navigation-model';
 
 export function FinanceWorkspacePage() {
   const { schoolId } = useTenant();
@@ -14,15 +13,10 @@ export function FinanceWorkspacePage() {
     role.status === 'ACTIVE' && role.schoolId === schoolId && role.role === 'SCHOOL_ADMIN');
   const links = owner
     ? [
-        ['/staff-nfc-finance', 'Staff NFC subscriptions', 'Payment allocations, provider fees, refunds and reconciliation.'],
-        ...(hasActiveGlobalOwner(data) ? [
-          ['/subscription-payment-rules', 'Subscription & Payment Rules', 'Review platform subscription rules and payment assistance. Student LIVE activation remains separately gated.'],
-          ['/payment-settlement?tab=schools', 'NFC Fee Collection Oversight', 'Read-only parent-to-school fee collection, with school and academic-term filters.'],
-          ['/direct-flutterwave-live-readiness', 'Direct Flutterwave LIVE Readiness', 'Read-only release checks and Owner review lifecycle. Approval never enables LIVE or takes payment.'],
-        ] : []),
-        ['/billing-rules', 'Staff NFC billing rules', 'Existing effective-dated staff billing rules.'],
-        ['/payment-settlement', 'Owner business account & history', 'Owner receiving-account settings for bank-transfer assistance and retained financial history.'],
-        ['/payroll', 'Company payroll', 'YETENIA TECHNOLOGIES LIMITED employees, approvals and verified salary outcomes.'],
+        ['/schools', 'Schools', 'Manage schools.'],
+        ['/free-academic-terms', 'Free academic terms', 'Grant or revoke a free saved academic term.'],
+        ['/staff-nfc-finance', 'Teacher payment status', 'View existing subscription payments.'],
+        ['/payment-assistance', 'School payment assistance', 'Respond to requests submitted by schools.'],
       ]
     : schoolFinance
       ? [
@@ -35,7 +29,7 @@ export function FinanceWorkspacePage() {
         ]
       : [];
   return <div className="fade-up">
-    <PageHeading eyebrow="Finance" title={owner ? 'Platform Finance' : 'School Finance'} description="Choose a finance workflow. Payment and transfer initiation do not mean funds have settled." />
+    <PageHeading eyebrow="Finance" title={owner ? 'School subscriptions' : 'School Finance'} />
     <div className="grid gap-4 md:grid-cols-2">
       {links.map(([href, title, description]) =>
         <Link key={href} href={href} className="panel p-6 transition-colors hover:bg-[hsl(var(--muted))]">

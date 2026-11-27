@@ -28,17 +28,17 @@ export const adminGroups: NavGroupDef[] = [
   { id: 'security-nfc', label: 'School Security/NFC', hrefs: ['/security', '/cards'] },
   { id: 'admissions', label: 'Admissions', hrefs: ['/admissions'] },
   { id: 'reports', label: 'Reports', hrefs: ['/reporting', '/audit'] },
-  { id: 'settings', label: 'Settings', hrefs: ['/users', '/people/imports', '/school-branding', '/notification-settings'] },
+  { id: 'settings', label: 'Settings', hrefs: ['/users', '/people/imports', '/school-branding'] },
 ];
 
 /** Platform Owner groups: platform-wide work only. Every group renders expanded, so nothing is hidden. */
 export const ownerGroups: NavGroupDef[] = [
   { id: 'owner-schools', label: 'Schools & people', hrefs: ['/schools', '/account-applications', '/records', '/students', '/users', '/company-employees'] },
   { id: 'owner-bro', label: 'BRO oversight', hrefs: ['/partners'] },
-  { id: 'owner-platform-finance', label: 'Platform collections & rules', hrefs: ['/subscription-payment-rules', '/direct-flutterwave-live-readiness', '/payment-settlement?tab=schools', '/subscriptions', '/subscription-enforcement', '/finance-workspace'] },
+  { id: 'owner-platform-finance', label: 'School subscriptions', hrefs: ['/free-academic-terms', '/staff-nfc-finance', '/payment-assistance'] },
   { id: 'owner-nfc', label: 'NFC cards & devices', hrefs: ['/cards', '/card-replacements', '/employee-nfc', '/devices', '/card-uid-inventory', '/nfc-scan-audit', '/activation', '/activation/history'] },
   { id: 'owner-monitoring', label: 'School monitoring', hrefs: ['/platform/attendance', '/results', '/curriculum-management', '/transport', '/security'] },
-  { id: 'owner-comms-audit', label: 'Messages, reports & audit', hrefs: ['/communications', '/reporting', '/audit'] },
+  { id: 'owner-comms-audit', label: 'Messages, reports & audit', hrefs: ['/communications', '/notification-settings', '/reporting', '/audit'] },
 ];
 
 export const teacherGroups: NavGroupDef[] = [
@@ -53,7 +53,7 @@ export const teacherGroups: NavGroupDef[] = [
   { id: 'communication', label: 'Communication', hrefs: ['/communications', '/inbox'] },
   { id: 'library', label: 'Library', hrefs: ['/library'] },
   { id: 'payslips', label: 'Payslips', hrefs: ['/my-payslips'] },
-  { id: 'profile', label: 'Profile', hrefs: ['/my-employee-nfc', '/my-nfc-subscription', '/notification-settings'] },
+  { id: 'profile', label: 'Profile', hrefs: ['/my-employee-nfc', '/my-nfc-subscription'] },
 ];
 
 export function navMode(roles: string[], restricted: boolean, globalOwner = false): NavMode {

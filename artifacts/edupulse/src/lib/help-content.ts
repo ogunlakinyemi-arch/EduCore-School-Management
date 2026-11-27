@@ -120,7 +120,7 @@ export const helpManuals: HelpManual[] = [
         id: 'partner-navigation', title: 'Your BRO dashboard and permissions', summary: 'The BRO portal is separate from a school’s operational portal.',
         steps: [
           'Open the BRO dashboard after your membership is approved. If the profile is not ready, contact the administrator rather than creating duplicate accounts.',
-          'Use Schools to see the organisation’s schools. The header also exposes reporting, inbox and preferences where available; on phones use the navigation links below the header.',
+          'Use Schools to see the organisation’s schools. The header also exposes reporting and inbox; on phones use the navigation links below the header.',
           'Organisation owners or BRO Admins can manage the Staff and Settings areas. Commissions and Payouts are shown only to users with the required finance access.',
           'Do not use a BRO account to perform a School Admin’s academic or school-finance work. An additional role must be assigned separately if required.',
         ],
@@ -212,11 +212,11 @@ export const helpManuals: HelpManual[] = [
       {
         id: 'employee-duties', title: 'Messages and additional staff duties', summary: 'Use only the duties and channels assigned to you.',
         steps: [
-          'Open Inbox to read available messages and Notification settings to review your current preferences. An allowed notification channel does not mean every event is selected or delivered.',
+          'Open Inbox for messages. Push, in-app and Telegram are standard channels; delivery still requires setup, consent and permission.',
           'Teachers with communication permission can use Communications. Other Staff should use the channels available to their membership and school process.',
           'Library, Operations, student care and security actions depend on role or assigned duties. If an action is absent, ask the School Admin to review access rather than using another person’s account.',
         ],
-        links: [{ label: 'Inbox', href: '/inbox' }, { label: 'Notification settings', href: '/notification-settings' }],
+        links: [{ label: 'Inbox', href: '/inbox' }],
       },
       security,
     ],

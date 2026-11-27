@@ -1,115 +1,69 @@
-import {useState} from 'react';
-import {useGetNotificationChannelPolicy,getGetNotificationChannelPolicyQueryKey,useUpdateNotificationChannelPolicy,useListOwnerSchoolDirectory} from '@workspace/api-client-react';
-import type {NotificationChannelPolicy} from '@workspace/api-client-react';
-import {OwnerPushBrowserStatus} from './owner-push-browser-status';
-import {OwnerNotificationDeliveryControl} from './OwnerNotificationDeliveryControl';
-const channels=['IN_APP','SMS','EMAIL','PUSH','TELEGRAM'] as const;
-export function OwnerNotificationPolicyControl(){
-  const query=useGetNotificationChannelPolicy({query:{queryKey:getGetNotificationChannelPolicyQueryKey(),refetchInterval:30000}});
-  const [policyReason,setPolicyReason]=useState('');
-  const policyReasonOk=policyReason.trim().length>=5&&policyReason.trim().length<=500;
-  const save=useUpdateNotificationChannelPolicy({request:{headers:{'X-Notification-Policy-Reason':policyReason.trim()}}});
-  const directory=useListOwnerSchoolDirectory({status:'all'});
-  const [draft,setDraft]=useState<NotificationChannelPolicy|null>(null);
-  const [school,setSchool]=useState('');
-  const [schoolSearch,setSchoolSearch]=useState('');
-  const [notice,setNotice]=useState('');
-  const policy=draft??query.data?.policy;
-  const availability:Partial<Record<typeof channels[number],boolean>>=query.data?.availability??{};
-  const channelState=(channel:typeof channels[number])=>{
-    const status=query.data?.readiness?.[channel];
-    if(status?.configurationReady&&status.deliveryHold)return /launch|EDUCORE_NOTIFICATION_LIVE_FROM/i.test(status.deliveryHold)
-      ?'Configured — delivery held by launch safeguard':'Configured — delivery held by safety controls';
-    if(status&&!status.configurationReady)return 'Configuration required — see channel blocker above';
-    return availability[channel]?'Delivery available':'Readiness details unavailable — refresh after the reporting update is published';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useGetNotificationChannelPolicy, getGetNotificationChannelPolicyQueryKey,
+  useUpdateNotificationChannelPolicy, type NotificationChannelPolicy,
+} from '@workspace/api-client-react';
+import { Button, ErrorState } from './shared';
+
+const channels = ['EMAIL', 'SMS'] as const;
+const smsEvents = new Set(['EMERGENCY', 'ATTENDANCE_ABSENCE', 'FINANCE', 'NFC_REMINDER']);
+
+export function OwnerNotificationPolicyControl() {
+  const qc = useQueryClient();
+  const query = useGetNotificationChannelPolicy({ query: {
+    queryKey: getGetNotificationChannelPolicyQueryKey(), refetchInterval: 30000,
+  } });
+  const [draft, setDraft] = useState<NotificationChannelPolicy | null>(null);
+  const [reason, setReason] = useState('');
+  const [notice, setNotice] = useState('');
+  const save = useUpdateNotificationChannelPolicy({ request: {
+    headers: { 'X-Notification-Policy-Reason': reason.trim() },
+  } });
+  const policy = draft ?? query.data?.policy;
+  const change = (event: string, channel: typeof channels[number], checked: boolean) => {
+    if (!policy) return;
+    const rule = policy.events[event];
+    setDraft({ ...policy, events: { ...policy.events, [event]: {
+      ...rule,
+      allowed: checked ? [...new Set([...rule.allowed, channel])] : rule.allowed.filter(c => c !== channel),
+      defaults: checked ? [...new Set([...rule.defaults, channel])] : rule.defaults.filter(c => c !== channel),
+    } } });
+    setNotice('');
   };
-  // Channels allowed for at least one event; school overrides may only opt into these.
-  const globalAllowed=new Set(policy?Object.entries(policy.events).flatMap(([event,rule])=>
-    rule.allowed.filter(channel=>channel!=='SMS'||['EMERGENCY','ATTENDANCE_ABSENCE'].includes(event))):[]);
-  const savedSchools=query.data?.policy.schools??{};
-  const schools=directory.data?.schools??[];
-  const selectedSchool=schools.find(item=>String(item.id)===school);
-  const schoolLabel=(item:typeof schools[number])=>schools.some(other=>other.id!==item.id&&other.name.trim().toLowerCase()===item.name.trim().toLowerCase())
-    ?`${item.name} (reference #${item.id})`:item.name;
-  const visibleSchools=schools.filter(item=>schoolLabel(item).toLowerCase().includes(schoolSearch.trim().toLowerCase()))
-    .slice().sort((a,b)=>a.name.localeCompare(b.name)||a.id-b.id);
-  const schoolPickerDisabled=save.isPending||directory.isLoading||directory.isError||schools.length===0;
-  const change=(event:string,channel:typeof channels[number],kind:'allowed'|'defaults',checked:boolean)=>{
-    if(!policy)return;
-    const rule=policy.events[event];
-    const next={...rule,[kind]:checked?[...new Set([...rule[kind],channel])]:rule[kind].filter(c=>c!==channel)};
-    if(kind==='allowed'&&!checked)next.defaults=next.defaults.filter(c=>c!==channel);
-    setDraft({...policy,events:{...policy.events,[event]:next}});
+  const submit = async () => {
+    if (!draft) return;
+    try {
+      await save.mutateAsync({ data: draft });
+      setDraft(null); setReason(''); setNotice('Notification choices saved.');
+      await qc.invalidateQueries({ queryKey: getGetNotificationChannelPolicyQueryKey() });
+    } catch (e) { setNotice(e instanceof Error ? e.message : 'Could not save. Refresh before trying again.'); }
   };
-  return <section className="panel mb-6 space-y-4 p-5" aria-label="Platform notification policy">
-    <h2 className="display-font text-xl font-bold">Owner notification controls</h2>
-    <p className="text-sm">Allowed means globally permitted for that event, not prohibited and not automatically selected. Default is a separate selection inherited by schools without an override. Provider readiness and delivery safeguards are separate from both. No real school is required to check configuration. SMS is restricted to emergency and student absence, with explicit recipient opt-in.</p>
-    <OwnerNotificationDeliveryControl/>
-    {query.isLoading?<p>Loading policy…</p>:query.isError?<p role="alert">Could not load policy. <button onClick={()=>void query.refetch()}>Retry</button></p>:policy&&<>
-      {query.data?.readiness&&<div className="space-y-3 rounded-xl border p-3" aria-label="External channel readiness">
-        <h3 className="font-bold">Configuration and delivery holds</h3>
-        {(['EMAIL','PUSH','TELEGRAM'] as const).map(channel=>{
-          const status=query.data?.readiness?.[channel];
-          return status&&<div key={channel} className="text-sm" data-testid={`readiness-${channel.toLowerCase()}`}>
-            <p className="font-semibold">{channel}: {status.configurationReady?'configuration ready':'configuration not ready'} · {status.deliveryReady?'delivery available':'delivery held'}</p>
-            <p>{status.configurationDetail}</p>
-            {status.deliveryHold&&<p>{status.deliveryHold}</p>}
-            {channel==='PUSH'&&<OwnerPushBrowserStatus/>}
-          </div>;
-        })}
-      </div>}
-      {!query.data?.readiness&&<p role="status">Detailed channel blockers are not available from this server revision. Publish the reporting update and refresh; unavailable delivery is not being treated as ready.</p>}
-      <p className="text-xs">Allowed is permission, not delivery readiness. A valid configuration held by the launch safeguard is shown separately from missing or invalid setup. Defaults still require delivery availability. No checkbox or browser-status check activates delivery or sends messages.</p>
-      <div className="space-y-3">{Object.entries(policy.events).map(([event,rule])=><fieldset key={event} className="rounded-xl border p-3">
-        <legend className="px-1 text-sm font-bold">{event.replaceAll('_',' ')}</legend>
-        <div className="flex flex-wrap gap-4">{channels.map(channel=><div key={channel} className="text-xs">
-          <div className="font-semibold">{channel.replace('_',' ')} — {rule.allowed.includes(channel)?'Globally permitted':'Not globally permitted'}</div>
-          <div>{rule.defaults.includes(channel)?'Default selected':'Not selected as a default — no automatic send'}</div>
-          <div>{channelState(channel)}</div>
-          <label className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} allowed`}
-            disabled={save.isPending||(channel==='SMS'&&!['EMERGENCY','ATTENDANCE_ABSENCE'].includes(event))} checked={rule.allowed.includes(channel)}
-            onChange={e=>change(event,channel,'allowed',e.target.checked)}/>Allowed</label>
-          <label className="inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`${event} ${channel} default`}
-            disabled={save.isPending||(channel==='SMS'&&!['EMERGENCY','ATTENDANCE_ABSENCE'].includes(event))||!rule.allowed.includes(channel)||(!availability[channel]&&!rule.defaults.includes(channel))} checked={rule.defaults.includes(channel)}
-            onChange={e=>change(event,channel,'defaults',e.target.checked)}/>Default</label>
-        </div>)}</div>
-      </fieldset>)}</div>
-      <h3 className="font-bold">School-level permissions</h3>
-      <p className="text-xs">Schools without an override inherit global rules. Overrides can only restrict global channels, never expand them; a school can opt into a channel only after it is allowed globally.</p>
-      {directory.isLoading?<p role="status">Loading schools…</p>:directory.isError?
-        <p role="alert">Could not load schools. <button type="button" onClick={()=>void directory.refetch()}>Retry school list</button></p>:
-        schools.length===0?<p role="status">No schools are available to your Owner account.</p>:null}
-      <div className="flex flex-wrap items-end gap-2 text-sm">
-        <label className="flex min-w-0 flex-col gap-1">Search schools
-          <input type="search" className="rounded border p-2" value={schoolSearch} disabled={schoolPickerDisabled}
-            onChange={e=>{setSchoolSearch(e.target.value);setSchool('');}}/></label>
-        <label className="flex min-w-0 flex-col gap-1">School
-          <select className="max-w-full rounded border p-2" value={selectedSchool?school:''} disabled={schoolPickerDisabled}
-            onChange={e=>setSchool(e.target.value)}>
-            <option value="">Select a school</option>
-            {visibleSchools.map(item=><option key={item.id} value={String(item.id)}>{schoolLabel(item)}</option>)}
-          </select></label>
-        <button type="button" className="rounded border px-3 py-2"
-          disabled={schoolPickerDisabled||directory.isFetching||!selectedSchool}
-          onClick={()=>{if(!selectedSchool||schoolPickerDisabled||directory.isFetching)return;
-            setDraft({...policy,schools:{...policy.schools,[String(selectedSchool.id)]:{enabled:true,allowed:channels.filter(c=>c!=='SMS'&&globalAllowed.has(c))}}});
-            setSchool('');setSchoolSearch('');}}>Add override</button>
-      </div>
-      {!schoolPickerDisabled&&visibleSchools.length===0&&<p role="status">No schools match your search.</p>}
-      {Object.entries(policy.schools).map(([id,permission])=><fieldset key={id} className="rounded border p-3">
-        <legend>{schools.find(item=>String(item.id)===id)?schoolLabel(schools.find(item=>String(item.id)===id)!):`School not in current directory (reference #${id})`}</legend>
-        <label className="mr-4 inline-flex min-h-10 items-center gap-2"><input type="checkbox" checked={permission.enabled} disabled={save.isPending}
-          onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,enabled:e.target.checked}}})}/>Notifications permitted</label>
-        {channels.map(channel=><label key={channel} className="mr-3 inline-flex min-h-10 items-center gap-1"><input type="checkbox" aria-label={`School ${id} ${channel} permitted`}
-          disabled={save.isPending||(!globalAllowed.has(channel)&&!(permission.allowed.includes(channel)&&savedSchools[id]?.allowed.includes(channel)))} checked={permission.allowed.includes(channel)}
-          onChange={e=>setDraft({...policy,schools:{...policy.schools,[id]:{...permission,allowed:e.target.checked?[...permission.allowed,channel]:permission.allowed.filter(c=>c!==channel)}}})}/>{channel}</label>)}
-        <button type="button" disabled={save.isPending} onClick={()=>{const schools={...policy.schools};delete schools[id];setDraft({...policy,schools});}} className="ml-3 underline">Use global permissions</button>
-      </fieldset>)}
-      <label className="flex flex-col gap-1 text-sm">Policy change reason (required, 5–500 characters, recorded in the audit log)
-        <input type="text" className="rounded border p-2" maxLength={500} value={policyReason} disabled={save.isPending} onChange={e=>setPolicyReason(e.target.value)}/></label>
-      <button type="button" disabled={!draft||!policyReasonOk||save.isPending} className="min-h-11 rounded-lg border px-4 disabled:opacity-50"
-        onClick={()=>draft&&policyReasonOk&&void save.mutateAsync({data:draft}).then(async()=>{await query.refetch();setDraft(null);setPolicyReason('');setNotice('Owner policy saved and audited. No messages sent.');}).catch(()=>setNotice('Policy was not confirmed saved. Reload to check before retrying.'))}>Save Owner policy</button>
+  return <section className="panel max-w-4xl space-y-4 p-5" aria-label="Platform notification policy">
+    <p className="text-sm">Push, in-app and Telegram are standard for everyone, including reminders. Delivery still requires permission, consent and channel setup; existing holds remain in place.</p>
+    {query.isLoading ? <p>Loading…</p> : query.isError ? <ErrorState retry={() => void query.refetch()} /> : policy && <>
+      <div className="overflow-x-auto"><table className="w-full text-sm">
+        <caption className="sr-only">Email and SMS by notification event</caption>
+        <thead><tr className="text-left"><th className="py-2">Event</th>{channels.map(c => <th key={c} className="px-3">{c === 'EMAIL' ? 'Email' : 'SMS'}</th>)}</tr></thead>
+        <tbody>{Object.entries(policy.events).map(([event, rule]) => <tr key={event} className="border-t">
+          <th scope="row" className="py-3 text-left font-medium capitalize">{event.toLowerCase().replaceAll('_', ' ')}</th>
+          {channels.map(channel => {
+            const checked = rule.allowed.includes(channel) && rule.defaults.includes(channel);
+            const supported = channel !== 'SMS' || smsEvents.has(event);
+            const ready = query.data?.availability[channel] === true;
+            return <td key={channel} className="px-3"><input type="checkbox"
+              aria-label={`${event} ${channel}`} checked={checked} disabled={save.isPending || !supported || (!ready && !checked)}
+              onChange={e => change(event, channel, e.target.checked)} /></td>;
+          })}
+        </tr>)}</tbody>
+      </table></div>
+      <p className="text-xs text-[hsl(var(--muted-foreground))]">Unavailable channels cannot be newly selected. SMS remains limited to approved events and opted-in recipients.</p>
+      <label className="block text-sm">Reason for change
+        <input className="mt-1 w-full rounded-lg border bg-transparent p-2" maxLength={500} value={reason} onChange={e => setReason(e.target.value)} disabled={save.isPending} />
+      </label>
+      <Button disabled={!draft || save.isPending || reason.trim().length < 5}
+        onClick={() => void submit()}>Save Email and SMS</Button>
     </>}
-    {notice&&<p role="status">{notice}</p>}
+    {notice && <p role="status" className="text-sm">{notice}</p>}
   </section>;
 }

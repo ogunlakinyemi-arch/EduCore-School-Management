@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Bell, CheckCheck, MailOpen, ArrowRight, RefreshCw } from 'lucide-react';
-import { useListCommunicationNotifications, useMarkCommunicationNotificationRead, useMarkAllCommunicationNotificationsRead, useArchiveCommunicationNotification, useUnarchiveCommunicationNotification, getListCommunicationNotificationsQueryKey } from '@workspace/api-client-react';
+import { useGetAuthorizedContext, useListCommunicationNotifications, useMarkCommunicationNotificationRead, useMarkAllCommunicationNotificationsRead, useArchiveCommunicationNotification, useUnarchiveCommunicationNotification, getListCommunicationNotificationsQueryKey } from '@workspace/api-client-react';
 import type { CommunicationNotification } from '@workspace/api-client-react';
-import { PageHeading, Button, EmptyState, ErrorState, SkeletonPage, cx } from '@/components/shared';
+import { PageHeading, Button, EmptyState, ErrorState, SkeletonPage, cx, useTenant } from '@/components/shared';
+import { NotificationConnections } from '@/components/notification-connections';
 import {notificationTime} from '../../../../lib/api-zod/src/notification-time';
 import { inboxItems, visibleCommunicationNotifications, inboxArchiveView, canArchiveNotification,deliveryStatusLabel,deliveryNextAction } from './communication-contract';
 
@@ -12,6 +13,9 @@ import { inboxItems, visibleCommunicationNotifications, inboxArchiveView, canArc
 const safeLink = (link: string | null) => link && link.startsWith('/') && !link.startsWith('//') && !link.includes('\\') ? link : null;
 
 export function CommunicationInbox({ standalone = false }: { standalone?: boolean }) {
+  const identity = useGetAuthorizedContext().data;
+  const { schoolId } = useTenant();
+  const teacher = identity?.roles.some(r => r.role === 'TEACHER' && r.status === 'ACTIVE' && r.schoolId === schoolId) === true;
   const qc = useQueryClient();
   const [beforeId, setBeforeId] = useState<number | undefined>();
   const [older, setOlder] = useState<CommunicationNotification[]>([]);
@@ -71,7 +75,8 @@ export function CommunicationInbox({ standalone = false }: { standalone?: boolea
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not mark notifications read.'); }
   };
   return <div className={cx('fade-up', standalone && 'mx-auto max-w-6xl p-5 md:p-8')}>
-    <PageHeading eyebrow="Your messages / Communication" title="Inbox." description="School messages and account updates in one place. Fee and payment alerts remain in your finance notifications." action={<div className="flex flex-wrap gap-2"><Link href="/parent/communication" className="inline-flex items-center rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-communication-centre">Communication centre</Link><Link href="/notification-settings" className="inline-flex items-center rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-notification-settings">Preferences</Link><Button variant="outline" onClick={() => void refresh()}><RefreshCw size={15} /> Refresh</Button></div>} />
+    <PageHeading eyebrow="Your messages / Communication" title="Inbox." description="School messages and account updates." action={<div className="flex flex-wrap gap-2"><Link href="/parent/communication" className="inline-flex items-center rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-communication-centre">Communication centre</Link><Button variant="outline" onClick={() => void refresh()}><RefreshCw size={15} /> Refresh</Button></div>} />
+    {identity && !identity.isPlatformOwner && <NotificationConnections key={`${identity.user?.id}:${schoolId}`} schoolId={schoolId} teacher={teacher} />}
     <div className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5">
         <div><div className="eyebrow">Message centre</div><h2 className="display-font mt-1 text-xl font-bold" data-testid="text-unread-messages">{showArchived ? 'Archived messages' : `${unread} unread ${unread === 1 ? 'message' : 'messages'}`}</h2></div>

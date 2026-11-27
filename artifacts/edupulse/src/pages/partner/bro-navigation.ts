@@ -9,14 +9,16 @@ export const broPrimaryNav: BroNavItem[] = [
   { href: '/partners/field-operations', label: 'Field Operations', hint: 'Leads, visits, SMS', testId: 'link-owner-field-operations' },
 ];
 
-/** Secondary evidence and controls. Always reachable; never removed. */
+/** Historical diagnostic entries are not part of the simplified Owner UI. */
 export const broSecondaryNav: BroNavItem[] = [
   { href: '/partners/conflicts', label: 'Attribution conflicts', hint: 'Disputed school attribution', testId: 'link-bro-conflicts' },
   { href: '/partners/live-readiness', label: 'LIVE readiness', hint: 'Development diagnostics', testId: 'link-bro-live-readiness', ownerOnly: true, devOnly: true },
 ];
 
 export function visibleBroNav(items: BroNavItem[], opts: { isOwner: boolean; dev: boolean }) {
-  return items.filter(i => (!i.ownerOnly || opts.isOwner) && (!i.devOnly || opts.dev));
+  const retiredOwnerFinance = new Set(['/partners/term-commissions', '/partners/finance', '/partners/payouts', '/partners/live-readiness']);
+  return items.filter(i => (!opts.isOwner || !retiredOwnerFinance.has(i.href))
+    && (!i.ownerOnly || opts.isOwner) && (!i.devOnly || opts.dev));
 }
 
 export function isBroNavActive(href: string, location: string) {

@@ -22,7 +22,7 @@ function isInstructions(v: unknown): v is BankInstructions {
 
 /** One company-bank remittance batch. Requests and uploads are never payment; only the Owner's
  * independently checked aggregate credit (BANK_VERIFIED) establishes payment, then allocation is a separate step. */
-export function BankRemittanceBatch({ b, fin, report, owner, readOnly }: { b: BankBatch; fin: Fin; report: (r: RunResult, ok: string) => void; owner: boolean; readOnly?: boolean }) {
+export function BankRemittanceBatch({ b, fin, report, owner, readOnly, assistanceOnly = false }: { b: BankBatch; fin: Fin; report: (r: RunResult, ok: string) => void; owner: boolean; readOnly?: boolean; assistanceOnly?: boolean }) {
   const [ins, setIns] = useState<BankInstructions | null>(null);
   const [insErr, setInsErr] = useState('');
   const [verify, setVerify] = useState<{ bank: string; ref: string; date: string; amount: string; checked: boolean; reason: string } | null>(null);
@@ -63,7 +63,7 @@ export function BankRemittanceBatch({ b, fin, report, owner, readOnly }: { b: Ba
     <ul className="mt-2 grid gap-1 text-xs md:grid-cols-2">{b.items.map(i => <li key={i.id} className="flex flex-wrap items-center justify-between gap-2" data-testid={`bank-item-${i.id}`}>
       <span>{i.studentName}{i.error && <span className="ml-1 text-[hsl(var(--destructive))]">{i.error}</span>}</span>
       <span className="flex items-center gap-2"><StatusPill value={i.state} />
-        {owner && i.broAccrualPending && <span className="text-[10px] font-bold uppercase text-[hsl(var(--accent-foreground))]">BRO accrual pending</span>}
+        {!assistanceOnly && owner && i.broAccrualPending && <span className="text-[10px] font-bold uppercase text-[hsl(var(--accent-foreground))]">BRO accrual pending</span>}
         {credited && i.state === 'POSTED' && <CurrentFinanceReceiptButton id={b.id} allocationId={i.id} label="Child receipt" />}</span></li>)}</ul>
 
     {!readOnly && <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -72,7 +72,7 @@ export function BankRemittanceBatch({ b, fin, report, owner, readOnly }: { b: Ba
       {owner && credited && unresolved.length > 0 && <>
         <input className="!w-48 !py-1.5 text-xs" placeholder="Allocation reason" value={postReason} onChange={e => setPostReason(e.target.value)} data-testid={`input-bank-post-reason-${b.id}`} />
         <Button className={btn} disabled={postReason.trim().length < 3 || fin.busy === `bp:${b.id}`} onClick={async () => { const r = await fin.run(`bp:${b.id}`, act('BANK_POST'), { id: b.id, reason: postReason.trim() }, true); report(r, `Allocation requested for ${unresolved.length} unresolved student(s). Statuses below are the server's.`); if (r.ok) setPostReason(''); }} testId={`button-bank-post-${b.id}`}>{fin.pendingKey(`bp:${b.id}`) ? 'Resubmit same allocation' : `Allocate to ${unresolved.length} student(s)`}</Button></>}
-      {owner && credited && unresolved.length === 0 && pendingBro > 0 && <Button variant="outline" className={btn} disabled={fin.busy === `br:${b.id}`} onClick={async () => report(await fin.run(`br:${b.id}`, 'BULK_RECOVER', { id: b.id }, false), 'Pending BRO accrual retried. No charge is made.')} testId={`button-bank-bro-recover-${b.id}`}>Retry {pendingBro} pending BRO accrual(s)</Button>}
+      {!assistanceOnly && owner && credited && unresolved.length === 0 && pendingBro > 0 && <Button variant="outline" className={btn} disabled={fin.busy === `br:${b.id}`} onClick={async () => report(await fin.run(`br:${b.id}`, 'BULK_RECOVER', { id: b.id }, false), 'Pending BRO accrual retried. No charge is made.')} testId={`button-bank-bro-recover-${b.id}`}>Retry {pendingBro} pending BRO accrual(s)</Button>}
       {credited && <CurrentFinanceReceiptButton id={b.id} label="Batch receipt" />}
     </div>}
 

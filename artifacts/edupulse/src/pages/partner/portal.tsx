@@ -50,7 +50,6 @@ import { useBankSelectionGuard } from '@/lib/bank-selection';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
-import { NotificationSettings } from '@/pages/notification-settings';
 import { ReportingPage } from '@/pages/reporting';
 import FieldOperationsPage from '@/pages/partner/field-operations';
 import PartnerStaff from '@/pages/partner/partner-staff';
@@ -106,7 +105,6 @@ function PortalHeader() {
           )}
           <CommunicationInboxBadge />
           {isSetup && <Link href="/reporting" className="inline-flex items-center gap-1 text-xs font-bold text-[hsl(var(--primary))] md:hidden" data-testid="link-partner-reporting-mobile"><FileSpreadsheet size={15} /> Reports</Link>}
-          <Link href="/notification-settings" className="hidden text-xs font-bold text-[hsl(var(--primary))] sm:block" data-testid="link-partner-notification-settings">Preferences</Link>
           <UserButton />
         </div>
       </div>
@@ -119,7 +117,6 @@ function PortalHeader() {
         {nfcAllowed && <Link href="/partner/nfc-activation" data-testid="link-partner-nfc-activation-mobile" className="whitespace-nowrap hover:underline">NFC Activation</Link>}
         {isOwner && <Link href="/partner/profile" data-testid="link-partner-settings-mobile" className="hover:underline">Settings</Link>}
         <Link href="/partner/field-operations" data-testid="link-partner-field-operations-mobile" className="whitespace-nowrap hover:underline">Field Ops</Link>
-        <Link href="/notification-settings" data-testid="link-partner-preferences-mobile" className="hover:underline">Preferences</Link>
       </nav>}
     </header>
   );
@@ -490,7 +487,7 @@ export default function PartnerPortal() {
         <Route path="/"><Redirect to="/partner" replace /><Loading /></Route>
         <Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="partner" /></main></Route>
         <Route path="/inbox"><CommunicationInbox standalone /></Route>
-        <Route path="/notification-settings"><NotificationSettings standalone /></Route>
+        <Route path="/notification-settings"><Redirect to="/inbox" /></Route>
         <Route path="/partner" component={Dashboard} />
         <Route path="/partner/schools" component={MySchools} />
         <Route path="/partner/staff" component={PartnerStaff} />

@@ -489,7 +489,7 @@ export function AssistanceForm({ onSubmit }: { onSubmit: (i: AssistanceRequestIn
 }
 
 /* ---------- Bank verification ---------- */
-function VerifyDialog({ a, onVerify, onClose, onDone }: { a: AssistanceSnapshot; onVerify: NonNullable<SubscriptionPaymentRulesProps['onVerifyBank']>; onClose: () => void; onDone: (m: string) => Promise<void> }) {
+export function VerifyDialog({ a, onVerify, onClose, onDone }: { a: AssistanceSnapshot; onVerify: NonNullable<SubscriptionPaymentRulesProps['onVerifyBank']>; onClose: () => void; onDone: (m: string) => Promise<void> }) {
   const [f, setF] = useState({ bankName: '', ref: '', creditDate: '', amount: '' }); const [checked, setChecked] = useState(false);
   const [err, setErr] = useState<string[]>([]); const [busy, setBusy] = useState(false);
   const today = new Date().toISOString().slice(0, 10);

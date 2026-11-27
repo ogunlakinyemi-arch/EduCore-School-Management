@@ -12,6 +12,8 @@ export const policyEvents = ["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_AB
   "EMERGENCY","ATTENDANCE","ACADEMIC","ASSIGNMENT","FINANCE","PAYMENT","ANNOUNCEMENT","ACCOUNT","SYSTEM","PARTNER","SECURITY"] as const;
 export const policyChannels = ["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const;
 export type PolicyChannel = typeof policyChannels[number];
+/** Preferences, not transport activation: saved permissions and consent still veto delivery. */
+export const defaultOnNotificationChannels = ["IN_APP", "PUSH", "TELEGRAM"] as const;
 const channel = z.enum(policyChannels);
 const rule = z.object({ allowed:z.array(channel).max(5), defaults:z.array(channel).max(5) })
   .refine(r=>r.defaults.every(c=>r.allowed.includes(c)), "Defaults must be allowed channels");
@@ -24,7 +26,7 @@ type Db = {query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
 export function defaultNotificationPolicy():NotificationChannelPolicy {
   return {events:Object.fromEntries(policyEvents.map(event=>[event,{
     allowed:["IN_APP","EMAIL","PUSH","TELEGRAM",...(smsEventAllowed(event)||financialEvent(event)?["SMS"]:[])],
-    defaults:["IN_APP"],
+    defaults:[...defaultOnNotificationChannels],
   }])),schools:{}} as NotificationChannelPolicy;
 }
 /** Append-only existing audit storage avoids a migration; absent policy is conservative. */
@@ -81,8 +83,8 @@ export function allowedNotificationChannels(policy:NotificationChannelPolicy,eve
   // Preserve saved policy, but never allow SMS outside the approved two events.
   return configured.allowed.filter(c=>(c!=="SMS"||smsEventAllowed(event))&&(!school||school.allowed.includes(c)));
 }
-/** Allowed is a ceiling, never a selection. An absent event override inherits
- * the Owner default; an explicit empty override selects no channels. */
+/** Email/SMS inherit saved selections. Standard channels are always selected,
+ * but never expand an Owner/school permission ceiling or activate a transport. */
 export function effectiveNotificationChannels(
   policy: NotificationChannelPolicy, event: string, schoolId: number | null,
   schoolDefaults?: Record<string, readonly string[]>,
@@ -92,7 +94,8 @@ export function effectiveNotificationChannels(
     ? policy.events[event as keyof typeof policy.events]?.defaults ?? []
     : Array.isArray(override) ? override : [];
   const allowed = allowedNotificationChannels(policy, event, schoolId);
-  return [...new Set(selected)].filter((c): c is PolicyChannel => allowed.includes(c as PolicyChannel));
+  return [...new Set([...defaultOnNotificationChannels, ...selected])]
+    .filter((c): c is PolicyChannel => allowed.includes(c as PolicyChannel));
 }
 /** Fixed schedule ignores school campaign selections, never the Owner ceiling
  * or operational delivery pause. Saved settings are not rewritten. */
