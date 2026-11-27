@@ -4,14 +4,18 @@ description: Practical Owner controls only, without deleting financial capabilit
 ---
 
 Keep Owner finance focused on school management, granting/revoking a school's
-free saved academic term, teacher subscription payment status, and responding
-to payment assistance requests submitted by schools. Hide redundant release,
-merchant-evidence, manual calendar/payment authorization and BRO
-commission/eligibility configuration screens, not their backend capabilities
-or retained financial history.
+free saved academic term, teacher subscription payment status, responding
+to payment assistance requests submitted by schools, and existing BRO commission
+accrual/withdrawal oversight. Hide redundant release, merchant-evidence, manual
+calendar/payment authorization and BRO eligibility-configuration screens, not
+actual accrued commission, withdrawal review, backend capabilities or retained
+financial history. Keep school/term-specific multi-student subscription operations
+reachable for the Owner, School Admin and School Accountant.
 
-**Why:** The user requested this focused simplification on 2026-11-27, not a
-redesign of payment execution or financial policy.
+**Why:** The user requested focused simplification on 2026-11-27, then explicitly
+required restoration of missing Owner commission accrual, BRO withdrawal review
+and multi-student subscription selection. Simplification must not remove these
+operational workflows or redesign payment execution and financial policy.
 
 **How to apply:** Add no manual Owner approval to ordinary school payments.
 Preserve school prices/rules and free-term protections: free terms are
