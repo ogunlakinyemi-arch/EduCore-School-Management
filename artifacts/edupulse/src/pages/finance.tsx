@@ -20,7 +20,6 @@ import type { FeeCategory, FeeInvoice, FeeStructure, FeePayment, FinanceSettings
 import { Button, EmptyState, ErrorState, Field, Modal, PageHeading, SkeletonPage, StatusPill, TenantPicker, useTenant } from '@/components/shared';
 import { FamilyPaymentHistory, PendingAdjustments, SchoolPaymentQueue } from './finance-operations';
 import { BulkAssignment, FinanceReports, RefundDesk } from './finance-phase7';
-import { CurrentSubscriptionPolicy } from '@/components/current-subscription-policy';
 import { CashPaymentAction,type CashReceipt } from '@/components/cash-payment-action';
 import { ParentOnlineMethods } from './finance-online';
 import { ParentFeeSelection } from './fee-selection';
@@ -29,6 +28,9 @@ import { StudentNfcObligationsPanel } from '@/components/student-nfc-obligations
 import { FamilyFeeBalances } from '@/components/family-fee-balances';
 import { PublishedFeeCorrections } from '@/components/published-fee-corrections';
 import { eligibleFeeAssignmentStudents } from './fee-assignment-eligibility';
+import { SchoolFeeScopeLabel } from '@/components/school-fee-scope-label';
+import { feeClassSections, feeSectionClass } from '@/lib/school-fee-scope';
+import { SchoolFeeChargeLine, SCHOOL_NFC_CATEGORY, isSchoolNfcCategory, isReservedPlatformCategory, validFeeChargeLines, feeChargeInput } from '@/components/school-fee-charge-line';
 
 const naira = (minor: number) => {
   const cents = BigInt(minor);
@@ -57,7 +59,7 @@ const formatPercentage = (basisPoints: number) => `${Math.floor(basisPoints / 10
 const entry = 'w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2.5 text-sm font-medium outline-none focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--primary)/.12)]';
 const note = 'text-xs leading-5 text-[hsl(var(--muted-foreground))]';
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'The request could not be completed. Please try again.';
-const isReservedNfcCategory = (name: string) => /nfc.*subscription|subscription.*nfc/i.test(name);
+const isReservedNfcCategory = (name: string) => isReservedPlatformCategory(name) || isSchoolNfcCategory(name);
 type Tab = 'overview' | 'invoices' | 'transfers' | 'adjustments' | 'structures' | 'bulk' | 'refunds' | 'reports' | 'nfc' | 'categories' | 'controls';
 
 import { PartnerBankAccountForm } from '@/components/partner-bank-account-form';
@@ -105,6 +107,22 @@ export function BankTransferSettings({ schoolId, settings, canEdit, onSaved }: {
       <p>{settings.bankName || 'Not configured'} · {settings.accountName || 'Not configured'}</p>
       <p className="font-mono">{settings.maskedAccountNumber || 'No account on file'}</p>
       <p className={note}>Only a School Admin can approve or change these settings.</p></div>}
+  </section>;
+}
+
+/** Account setup is optional configuration, never a payment-method choice. */
+export function SchoolCollectionAccount(props: Parameters<typeof BankTransferSettings>[0]) {
+  const [editing, setEditing] = useState(false);
+  if (editing) return <div className="space-y-3">
+    <Button variant="quiet" onClick={() => setEditing(false)}>Back to school account</Button>
+    <BankTransferSettings {...props} onSaved={message => { setEditing(false); props.onSaved(message); }} />
+  </div>;
+  return <section className="panel space-y-3 p-6 md:p-8">
+    <h2 className="text-xl font-bold">School collection account</h2>
+    <p className={note}>Parents pay your school directly. Confirm receipt before marking a bank transfer paid.</p>
+    <p className="text-sm">{props.settings.accountName || 'No school account saved'}</p>
+    <p className="text-sm">{props.settings.bankName} {props.settings.maskedAccountNumber}</p>
+    {props.canEdit && <Button variant="outline" onClick={() => setEditing(true)}>Manage school account</Button>}
   </section>;
 }
 
@@ -171,7 +189,7 @@ function InvoiceList({ invoices, onAdjust, cash }: { invoices: FeeInvoice[]; onA
   if (!invoices.length) return <EmptyState icon={ReceiptText} title="No invoices yet" description="Assigned fee structures will appear here as individual student invoices." />;
   return <div className="divide-y divide-[hsl(var(--border))]">
     {invoices.map(invoice => <div key={invoice.id} className="grid gap-4 px-5 py-5 hover:bg-[hsl(var(--muted)/.2)] md:grid-cols-[minmax(0,1.6fr)_1fr_1fr_auto] md:items-center md:px-6" data-testid={`row-invoice-${invoice.id}`}>
-      <div><div className="font-bold">{invoice.studentName}</div><div className="mt-1 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">{invoice.invoiceNumber} · Student #{invoice.studentId}</div></div>
+      <div><div className="font-bold">{invoice.studentName}</div><div className="mt-1 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">{invoice.invoiceNumber}</div><div className={note}><SchoolFeeScopeLabel schoolId={invoice.schoolId} sessionId={invoice.sessionId} termId={invoice.termId} /></div></div>
       <div><div className="text-xs text-[hsl(var(--muted-foreground))]">Billed / verified paid</div><div className="mt-1 text-sm font-bold tabular-nums">{naira(invoice.totalMinor)} <span className="text-[hsl(var(--muted-foreground))]">/ {naira(invoice.paidMinor)}</span></div></div>
       <div><div className="text-xs text-[hsl(var(--muted-foreground))]">Outstanding</div><div className="mt-1 text-sm font-extrabold tabular-nums">{naira(invoice.outstandingMinor)}</div></div>
       <div className="flex flex-wrap items-center gap-3"><StatusPill value={invoice.status} /><InvoicePrintDocument invoice={invoice} />{cash && <CashPaymentAction invoice={invoice} schoolId={cash.schoolId} onDone={cash.onDone} />}{onAdjust && invoice.outstandingMinor > 0 && <Button variant="quiet" onClick={() => onAdjust(invoice)} testId={`button-adjust-${invoice.id}`}>Adjust</Button>}</div>
@@ -213,6 +231,8 @@ export function FinancePage() {
   const params = { schoolId };
   const summary = useGetSchoolFinanceSummary(params, { query: { enabled: !!schoolId, queryKey: getGetSchoolFinanceSummaryQueryKey(params), refetchInterval: 30000 } });
   const categories = useListFeeCategories(params, { query: { enabled: !!schoolId, queryKey: getListFeeCategoriesQueryKey(params) } });
+  const schoolCategoryNeeded = lines.some(l => l.categoryId !== SCHOOL_NFC_CATEGORY);
+  const chargeLinesValid = validFeeChargeLines(lines, categories.data ?? [], schoolId);
   const structures = useListFeeStructures(params, { query: { enabled: !!schoolId, queryKey: getListFeeStructuresQueryKey(params) } });
   const invoices = useListFeeInvoices(params, { query: { enabled: !!schoolId, queryKey: getListFeeInvoicesQueryKey(params) } });
   const settings = useGetFinanceSettings(params, { query: { enabled: !!schoolId, queryKey: getGetFinanceSettingsQueryKey(params) } });
@@ -271,8 +291,8 @@ export function FinancePage() {
     if (busy) return;
     setFailure('');
     if (!canEditSettings) { setFailure('Only this school’s School Admin can create a fee structure.'); return; }
-    if (sessions.isLoading || terms.isLoading || classes.isLoading || categories.isLoading ||
-        sessions.isError || terms.isError || classes.isError || categories.isError) {
+    if (sessions.isLoading || terms.isLoading || classes.isLoading || (schoolCategoryNeeded && categories.isLoading) ||
+        sessions.isError || terms.isError || classes.isError || (schoolCategoryNeeded && categories.isError)) {
       setFailure('Unable to load fee structure form. Retry the required data before saving.'); return;
     }
     if (!sessions.data?.some(s => s.id === Number(sessionId) && s.schoolId === schoolId) ||
@@ -280,14 +300,13 @@ export function FinancePage() {
         !classes.data?.some(c => c.id === Number(classId) && c.schoolId === schoolId)) {
       setFailure('Select a valid academic session, term and class for this school.'); return;
     }
-    if (lines.some(line => !categories.data?.some(c => c.id === Number(line.categoryId) && c.schoolId === schoolId && c.status === 'ACTIVE') ||
-        !Number.isSafeInteger(toMinor(line.amount)) || toMinor(line.amount) < 1 || toMinor(line.amount) > 2147483647)) {
+    if (!chargeLinesValid) {
       setFailure('Each line needs an active fee category and a valid amount greater than zero.'); return;
     }
     if (new Set(lines.map(line => Number(line.categoryId))).size !== lines.length) { setFailure('Do not duplicate a category in one fee schedule.'); return; }
     if (lines.reduce((total, line) => total + BigInt(toMinor(line.amount)), 0n) > 2147483647n) { setFailure('Fee total exceeds the ledger limit.'); return; }
     try {
-      await createStructure.mutateAsync({ params, data: { sessionId: Number(sessionId), termId: Number(termId), classId: Number(classId), section: section.trim() || null, lines: lines.map(line => ({ categoryId: Number(line.categoryId), amountMinor: toMinor(line.amount), description: line.description.trim() })) } });
+      await createStructure.mutateAsync({ params, data: { sessionId: Number(sessionId), termId: Number(termId), classId: Number(classId), section: section.trim() || null, lines: lines.map(feeChargeInput) } });
       done('Draft structure created. Publish it before assigning.');
     } catch (err) { setFailure(`Unable to save fee structure. ${errorText(err)}`); setFeedback(''); }
   };
@@ -328,8 +347,8 @@ export function FinancePage() {
   const loading = summary.isLoading || categories.isLoading || structures.isLoading || invoices.isLoading || settings.isLoading;
   const broken = summary.isError || categories.isError || structures.isError || invoices.isError || settings.isError;
   return <div className="fade-up">
-    <PageHeading eyebrow="School operations / Finance" title="School fees, accounted for." description="Set the fee schedule, issue invoices and track only verified collections. All amounts are in Nigerian naira." action={<TenantPicker />} />
-    <CurrentSubscriptionPolicy />
+    <PageHeading eyebrow="School operations / Finance" title="School fees" description="Set fees, review invoices and confirm payments received by your school." action={<TenantPicker />} />
+    <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">School fees are collected by your school into its own account or in cash. Yetenia platform subscriptions are separate.</p>
     {feedback && <div className="mb-5 flex items-center gap-2 rounded-xl border border-[hsl(157_37%_43%/.3)] bg-[hsl(157_37%_43%/.08)] px-4 py-3 text-sm font-semibold" role="status" data-testid="status-finance-success"><Check size={16} />{feedback}<button className="ml-auto" onClick={() => setFeedback('')} aria-label="Dismiss message"><X size={15} /></button></div>}
     {failure && !dialog && <div role="alert" className="mb-5 rounded-xl bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{failure}</div>}
     {loading ? <SkeletonPage /> : broken ? <ErrorState message={`School fee data could not be loaded. ${[
@@ -354,7 +373,6 @@ export function FinancePage() {
         <div className="space-y-5"><section className="rounded-[22px] bg-[hsl(var(--secondary))] p-6"><div className="flex items-center gap-2 text-[hsl(var(--primary))]"><ShieldCheck size={19} /><span className="text-xs font-extrabold uppercase tracking-widest">Verification boundary</span></div><h2 className="display-font mt-5 text-xl font-bold">Submitted is not settled.</h2><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">A transfer submission stays pending until a school finance operator checks it against the bank record. No receipt is issued before verification.</p></section>
         <section className="panel p-6"><div className="eyebrow">Manual transfer queue</div><div className="mt-4 text-2xl font-bold">{summary.data?.pendingPayments ?? 0} pending</div><p className={`mt-2 ${note}`}>Open each submission to inspect its reference and supporting evidence against the bank record.</p><Button variant="outline" className="mt-4" onClick={() => setTab('transfers')} testId="button-open-transfer-queue">Review transfers <ArrowRight size={15} /></Button></section></div>
       </div>}
-      {tab === 'controls' && <div className="mt-5"><PlatformPaymentMethodNotice key={`platform-method-${schoolId}`} schoolId={schoolId} /></div>}
       {tab === 'transfers' && <SchoolPaymentQueue schoolId={schoolId} onChanged={message => { setFeedback(message); setFailure(''); }} />}
        {tab === 'adjustments' && <PendingAdjustments schoolId={schoolId} canApprove={canEditSettings} onChanged={message => { setFeedback(message); setFailure(''); }} />}
        {tab === 'refunds' && <RefundDesk key={schoolId} schoolId={schoolId} canApprove={canEditSettings} canRequest={canRequestAdjustment} onChanged={message => { setFeedback(message); setFailure(''); refresh(); }} />}
@@ -383,10 +401,18 @@ export function FinancePage() {
               </>}
             </div>)}</div>}
       </section>}
-      {tab === 'structures' && <section className="panel mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5 md:p-6"><div><div className="eyebrow">Versioned schedules</div><h2 className="display-font mt-1 text-xl font-bold">Fee structures</h2></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setTab('bulk')}>Bulk assignment</Button><Button disabled={!canEditSettings || busy} onClick={() => { setLines([{ categoryId: '', amount: '', description: '' }]); setSessionId(''); setTermId(''); setClassId(''); setSection(''); setReturnToStructure(false); setFailure(''); setDialog('structure'); }} testId="button-create-structure"><Plus size={16} />New structure</Button></div></div>{!structures.data?.length ? <EmptyState icon={BookOpen} title="No fee structures" description="Build a draft schedule for a session, term and class. Publish it when the amounts are final." /> : <div className="divide-y divide-[hsl(var(--border))]">{structures.data.map(structure => <div key={structure.id} className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:px-6"><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="font-bold">Structure #{structure.id} · v{structure.version}</span><StatusPill value={structure.status} /></div><div className={`mt-1 ${note}`}>Session #{structure.sessionId} · Term #{structure.termId} · Class #{structure.classId}{structure.section ? ` · ${structure.section}` : ''}</div><div className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{structure.lines.map(line => `${line.categoryName}: ${naira(line.amountMinor)}`).join(' · ')}</div></div><div className="text-lg font-extrabold tabular-nums">{naira(structure.lines.reduce((sum, line) => sum + line.amountMinor, 0))}</div><div className="flex gap-2">{structure.status === 'DRAFT' && canEditSettings && <Button variant="outline" disabled={busy} onClick={async () => { if (!window.confirm('Publish this structure? Published fees can be assigned to students.')) return; try { await publishStructure.mutateAsync({ structureId: structure.id, params }); done('Structure published.'); } catch (err) { fail(err); } }} testId={`button-publish-structure-${structure.id}`}>Publish</Button>}{structure.status === 'PUBLISHED' && <Button onClick={() => { setSelectedStructure(structure); setStudentId(''); setDueDate(''); setFailure(''); setDialog('assignment'); }} testId={`button-assign-structure-${structure.id}`}>Issue invoice</Button>}</div></div>)}</div>}</section>}
+      {tab === 'structures' && <section className="panel mt-6 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5 md:p-6"><h2 className="display-font text-xl font-bold">Fee structures</h2>
+          <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setTab('bulk')}>Assign invoices</Button><Button disabled={!canEditSettings || busy} onClick={() => { setLines([{ categoryId: '', amount: '', description: '' }]); setSessionId(''); setTermId(''); setClassId(''); setSection(''); setReturnToStructure(false); setFailure(''); setDialog('structure'); }} testId="button-create-structure"><Plus size={16} />New structure</Button></div></div>
+        {!structures.data?.length ? <EmptyState icon={BookOpen} title="No fee structures" description="Create a fee structure, then publish it before assigning invoices." /> : <div className="divide-y divide-[hsl(var(--border))]">{structures.data.map(structure => <div key={structure.id} className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:px-6">
+          <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="font-bold">Fee schedule · version {structure.version}</span><StatusPill value={structure.status} /></div><div className={`mt-1 ${note}`}><SchoolFeeScopeLabel {...structure} /></div><div className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{structure.lines.map(line => `${line.categoryName}: ${naira(line.amountMinor)}`).join(' · ')}</div></div>
+          <div className="text-lg font-extrabold tabular-nums">{naira(structure.lines.reduce((sum, line) => sum + line.amountMinor, 0))}</div>
+          <div className="flex gap-2">{structure.status === 'DRAFT' && canEditSettings && <Button variant="outline" disabled={busy} onClick={async () => { if (!window.confirm('Publish this structure? Published fees can be assigned to students.')) return; try { await publishStructure.mutateAsync({ structureId: structure.id, params }); done('Structure published.'); } catch (err) { fail(err); } }} testId={`button-publish-structure-${structure.id}`}>Publish</Button>}{structure.status === 'PUBLISHED' && <Button onClick={() => { setSelectedStructure(structure); setStudentId(''); setDueDate(''); setFailure(''); setDialog('assignment'); }} testId={`button-assign-structure-${structure.id}`}>Review invoice</Button>}</div>
+        </div>)}</div>}
+      </section>}
       {tab === 'controls' && <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_1.15fr]">
          <section className="panel p-6 md:p-8"><div className="eyebrow">School invoice rules only</div><h2 className="display-font mt-2 text-xl font-bold">Partial school-fee bank transfers</h2><p className="mt-3 max-w-xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">This applies only to school-issued invoices, including a school-controlled NFC/card charge. It does not change, split or partially pay the separate ₦3,200 platform subscription. When disabled, the submitted amount must cover the outstanding school invoice balance. Changing this does not verify any payment or activate NFC.</p><div className="mt-6 flex items-center justify-between gap-5 rounded-xl border border-[hsl(var(--border))] p-4"><div className="text-sm font-bold">{settings.data?.partialPaymentsEnabled ? 'Allowed' : 'Not allowed'}</div>{canEditSettings ? <Button variant="outline" disabled={busy} onClick={async () => { try { await updateSettings.mutateAsync({ params, data: { partialPaymentsEnabled: !settings.data?.partialPaymentsEnabled } }); done('School invoice payment rule saved.'); } catch (err) { fail(err); } }} testId="button-toggle-partial-payments"><SlidersHorizontal size={15} />Change school rule</Button> : <span className={note}>School Admin only</span>}</div></section>
-        {settings.data && <BankTransferSettings key={schoolId} schoolId={schoolId} settings={settings.data} canEdit={canEditSettings} onSaved={message => { setFeedback(message); setFailure(''); refresh(); qc.invalidateQueries({ predicate: query => typeof query.queryKey[0] === 'string' && /^\/api\/parent\/fees\/invoices\/\d+\/bank-details$/.test(query.queryKey[0]) }); }} />}
+        {settings.data && <SchoolCollectionAccount key={schoolId} schoolId={schoolId} settings={settings.data} canEdit={canEditSettings} onSaved={message => { setFeedback(message); setFailure(''); refresh(); qc.invalidateQueries({ predicate: query => typeof query.queryKey[0] === 'string' && /^\/api\/parent\/fees\/invoices\/\d+\/bank-details$/.test(query.queryKey[0]) }); }} />}
       </div>}
     </>}
     {dialog === 'category' && <Modal viewport={returnToStructure} title={editing ? 'Edit category' : 'New fee category'} eyebrow="Fee catalogue" onClose={() => { setDialog(returnToStructure ? 'structure' : null); setReturnToStructure(false); }}><form onSubmit={saveCategory} className="space-y-4"><Field label="Category name"><input required maxLength={100} value={categoryName} onChange={e => setCategoryName(e.target.value)} className={entry} data-testid="input-category-name" /></Field><Field label="Description"><textarea maxLength={500} value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} className={entry} rows={3} data-testid="input-category-description" /></Field><label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={compulsory} onChange={e => setCompulsory(e.target.checked)} data-testid="checkbox-category-compulsory" />Compulsory charge</label><label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={transportOnly} onChange={e=>setTransportOnly(e.target.checked)} data-testid="checkbox-category-transport-only" />School-bus users only</label><p className={note}>Bus-only charges use existing transport invoices and apply only to eligible school-bus assignments. Ordinary fees apply to the selected class and term.</p>{failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}<Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save category'}</Button></form></Modal>}
@@ -401,35 +427,29 @@ export function FinancePage() {
           <Field label="Academic session"><select required value={sessionId} disabled={sessions.isLoading || sessions.isError} onChange={e => { setSessionId(e.target.value); setTermId(''); setClassId(''); setSection(''); }} className={entry} data-testid="select-structure-session"><option value="">Select session</option>{sessions.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
           <Field label="Term"><select required value={termId} disabled={!sessionId || terms.isLoading || terms.isError} onChange={e => { setTermId(e.target.value); setClassId(''); setSection(''); }} className={entry} data-testid="select-structure-term"><option value="">Select term</option>{terms.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
           <Field label="Class"><select required value={classId} disabled={!termId || classes.isLoading || classes.isError} onChange={e => { setClassId(e.target.value); setSection(classes.data?.find(c => c.id === Number(e.target.value))?.section ?? ''); }} className={entry} data-testid="select-structure-class"><option value="">Select class</option>{classes.data?.map(item => <option key={item.id} value={item.id}>{item.name} {item.section}</option>)}</select></Field>
-          <Field label="Section (optional)"><select value={section} disabled={!classId || classes.isLoading || classes.isError} className={entry} data-testid="input-structure-section" onChange={e => {
-            const current=classes.data?.find(c=>c.id===Number(classId));
-            const next=classes.data?.find(c=>c.name===current?.name && c.section===e.target.value);
-            if (next) setClassId(String(next.id)); setSection(e.target.value);
-          }}><option value="">No section restriction</option>{classes.data?.filter(c=>c.name===classes.data?.find(row=>row.id===Number(classId))?.name && c.section).map(c=><option key={c.id} value={c.section!}>{c.section}</option>)}</select></Field>
+          <Field label="Section"><select value={section} disabled={!classId || classes.isLoading || classes.isError} className={entry} data-testid="input-structure-section" onChange={e => {
+            setClassId(String(feeSectionClass(classes.data ?? [], schoolId, Number(classId), e.target.value))); setSection(e.target.value);
+          }}><option value="">All sections</option>{feeClassSections(classes.data ?? [], schoolId, Number(classId)).map(s => <option key={s} value={s}>{s}</option>)}</select>{classId && !classes.isLoading && !classes.isError && !feeClassSections(classes.data ?? [], schoolId, Number(classId)).length && <p className={note}>This class has no saved sections.</p>}</Field>
         </div>
         {!categories.isLoading && !categories.isError && !categories.data?.some(c=>c.status==='ACTIVE') && <div role="status" className="rounded-xl border border-[hsl(var(--border))] p-4">
-          No active fee categories are configured. Create a category before saving this structure.
+          The school NFC charge is built in. Create a category only for other school fees.
           <Button variant="outline" disabled={!canEditSettings || busy} onClick={()=>openCategory(undefined,true)} testId="button-structure-create-category">Create fee category</Button>
         </div>}
         <div className="border-t border-[hsl(var(--border))] pt-4">
           <div className="mb-3 text-sm font-bold">Charge lines</div>
-          {lines.map((line, index) => <div key={index} className="mb-3 rounded-xl bg-[hsl(var(--muted)/.5)] p-3">
-            <div className="grid gap-2 sm:grid-cols-[1fr_110px_auto]">
-              <select required aria-label={`Fee category ${index+1}`} disabled={categories.isLoading || categories.isError || !categories.data?.some(c=>c.status==='ACTIVE')} value={line.categoryId} onChange={e=>setLines(current=>current.map((l,i)=>i===index?{...l,categoryId:e.target.value}:l))} className={entry} data-testid={`select-line-category-${index}`}><option value="">Category</option>{categories.data?.filter(c=>c.status==='ACTIVE'&&!isReservedNfcCategory(c.name)).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
-              <input required aria-label={`Fee amount ${index+1}`} min="0.01" step="0.01" type="number" placeholder="₦ amount" value={line.amount} onChange={e=>setLines(current=>current.map((l,i)=>i===index?{...l,amount:e.target.value}:l))} className={entry} data-testid={`input-line-amount-${index}`}/>
-              <button type="button" disabled={lines.length===1} onClick={()=>setLines(current=>current.filter((_,i)=>i!==index))} aria-label="Remove line" className="px-2 disabled:opacity-30" data-testid={`button-remove-line-${index}`}><X size={16}/></button>
-            </div>
-            <input placeholder="Line note (optional)" maxLength={300} value={line.description} onChange={e=>setLines(current=>current.map((l,i)=>i===index?{...l,description:e.target.value}:l))} className={`${entry} mt-2`} data-testid={`input-line-description-${index}`}/>
-          </div>)}
+          {lines.map((line, index) => <SchoolFeeChargeLine key={index} line={line} index={index}
+            schoolId={schoolId} categories={categories.data ?? []}
+            onChange={next => setLines(current => current.map((l,i) => i === index ? next : l))}
+            onRemove={lines.length > 1 ? () => setLines(current => current.filter((_,i) => i !== index)) : undefined} />)}
           <Button variant="quiet" onClick={()=>setLines(current=>[...current,{categoryId:'',amount:'',description:''}])}><Plus size={15}/>Add line</Button>
         </div>
         {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
-        <Button type="submit" disabled={busy || !canEditSettings || sessions.isLoading || terms.isLoading || classes.isLoading || categories.isLoading || sessions.isError || terms.isError || classes.isError || categories.isError || !sessionId || !termId || !classId || !categories.data?.some(c=>c.status==='ACTIVE')}>Save draft structure</Button>
+        <Button type="submit" disabled={busy || !canEditSettings || sessions.isLoading || terms.isLoading || classes.isLoading || (schoolCategoryNeeded && categories.isLoading) || sessions.isError || terms.isError || classes.isError || (schoolCategoryNeeded && categories.isError) || !sessionId || !termId || !classId || !chargeLinesValid}>Save draft structure</Button>
       </form>
     </Modal>}
     {dialog === 'assignment' && selectedStructure && <Modal viewport title="Issue student invoice" eyebrow={`Structure #${selectedStructure.id}`} onClose={() => setDialog(null)}>
       <form onSubmit={assign} className="space-y-4">
-        <p className={note}>This creates an individual invoice from the published fee schedule. Only students in {assignmentClass?.name ?? `class #${selectedStructure.classId}`}{selectedStructure.section ? ` / ${selectedStructure.section}` : ' / any section'} are eligible.</p>
+        <p className={note}><SchoolFeeScopeLabel {...selectedStructure} />. Review the student and dates before issuing. Existing assignments are not replaced.</p>
         {assignmentLoading && <p role="status">Loading eligible students...</p>}
         {assignmentError && <p role="alert">Unable to load eligible students. <Button variant="quiet" onClick={()=>{ void students.refetch(); void classes.refetch(); }}>Try again</Button></p>}
         {!assignmentLoading && !assignmentError && !assignmentStudents.length && <p role="status" data-testid="status-no-eligible-invoice-students">

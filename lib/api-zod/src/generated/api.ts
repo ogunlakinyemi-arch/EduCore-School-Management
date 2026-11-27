@@ -9662,7 +9662,8 @@ export const CreateFeeStructureBody = zod.object({
   "classId": zod.number().int().min(1),
   "section": zod.string().max(createFeeStructureBodySectionMax).nullish(),
   "lines": zod.array(zod.object({
-  "categoryId": zod.number().int().min(1),
+  "categoryId": zod.number().int().min(1).optional(),
+  "builtInCategory": zod.enum(['SCHOOL_NFC']).optional().describe('Built-in school-owned NFC charge; use instead of categoryId. Never a platform subscription.'),
   "amountMinor": zod.number().int().min(1),
   "description": zod.string().max(createFeeStructureBodyLinesItemDescriptionMax).optional()
 })).min(1)
@@ -10017,7 +10018,7 @@ export const GetSchoolFinanceReportQueryParams = zod.object({
   "section": zod.coerce.string().max(getSchoolFinanceReportQuerySectionMax).optional(),
   "categoryId": zod.coerce.number().int().min(1).optional(),
   "studentId": zod.coerce.number().int().min(1).optional().describe('Restrict invoice and payment data to this student within the authorized school.'),
-  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK']).optional().describe('Payment method filter; distinct from provider.'),
+  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK', 'CASH']).optional().describe('Payment method filter; distinct from provider.'),
   "status": zod.coerce.string().optional(),
   "provider": zod.enum(['MANUAL_BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK']).optional().describe('Payment provider filter; distinct from the payment method.'),
   "from": zod.date().optional(),

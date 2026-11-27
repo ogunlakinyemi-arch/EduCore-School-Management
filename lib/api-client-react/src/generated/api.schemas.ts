@@ -6504,9 +6504,21 @@ export interface FeeCategoryUpdate {
   status?: FeeCategoryUpdateStatus;
 }
 
+/**
+ * Built-in school-owned NFC charge; use instead of categoryId. Never a platform subscription.
+ */
+export type FeeStructureLineInputBuiltInCategory = typeof FeeStructureLineInputBuiltInCategory[keyof typeof FeeStructureLineInputBuiltInCategory];
+
+
+export const FeeStructureLineInputBuiltInCategory = {
+  SCHOOL_NFC: 'SCHOOL_NFC',
+} as const;
+
 export interface FeeStructureLineInput {
   /** @minimum 1 */
-  categoryId: number;
+  categoryId?: number;
+  /** Built-in school-owned NFC charge; use instead of categoryId. Never a platform subscription. */
+  builtInCategory?: FeeStructureLineInputBuiltInCategory;
   /** @minimum 1 */
   amountMinor: number;
   /** @maxLength 300 */
@@ -22672,9 +22684,21 @@ export interface FeeCategoryUpdate4b96100 {
   status?: FeeCategoryUpdate4b96100Status;
 }
 
+/**
+ * Built-in school-owned NFC charge; use instead of categoryId. Never a platform subscription.
+ */
+export type FeeStructureLineInput4b96100BuiltInCategory = typeof FeeStructureLineInput4b96100BuiltInCategory[keyof typeof FeeStructureLineInput4b96100BuiltInCategory];
+
+
+export const FeeStructureLineInput4b96100BuiltInCategory = {
+  SCHOOL_NFC: 'SCHOOL_NFC',
+} as const;
+
 export interface FeeStructureLineInput4b96100 {
   /** @minimum 1 */
-  categoryId: number;
+  categoryId?: number;
+  /** Built-in school-owned NFC charge; use instead of categoryId. Never a platform subscription. */
+  builtInCategory?: FeeStructureLineInput4b96100BuiltInCategory;
   /** @minimum 1 */
   amountMinor: number;
   /** @maxLength 300 */
@@ -26350,6 +26374,7 @@ export const GetSchoolFinanceReportMethod = {
   REMITA: 'REMITA',
   FLUTTERWAVE: 'FLUTTERWAVE',
   PAYSTACK: 'PAYSTACK',
+  CASH: 'CASH',
 } as const;
 
 export type GetSchoolFinanceReportProvider = typeof GetSchoolFinanceReportProvider[keyof typeof GetSchoolFinanceReportProvider];

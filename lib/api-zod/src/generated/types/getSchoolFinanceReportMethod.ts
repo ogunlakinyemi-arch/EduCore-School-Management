@@ -14,4 +14,5 @@ export const GetSchoolFinanceReportMethod = {
   REMITA: 'REMITA',
   FLUTTERWAVE: 'FLUTTERWAVE',
   PAYSTACK: 'PAYSTACK',
+  CASH: 'CASH',
 } as const;

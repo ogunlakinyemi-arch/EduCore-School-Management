@@ -145,6 +145,13 @@ describe("school finance reports", () => {
     expect(state.calls).toHaveLength(0);
   });
 
+  it("accepts school-recorded Cash reports without changing payment records or requiring a gateway", async () => {
+    const response = await fetch(`${baseUrl}/school/finance/reports?schoolId=5&reportType=payments&method=CASH`,
+      { headers: { "x-test-role": "ACCOUNTANT", "x-test-school": "5" } });
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(state.calls.some(c => c.values.includes("CASH"))).toBe(true);
+    expect(state.calls.every(c => !/\b(UPDATE|INSERT|DELETE)\b/.test(c.sql))).toBe(true);
+  });
   it("filters and displays payment date by verification timestamp and returns payment details", async () => {
     const response = await fetch(
       `${baseUrl}/school/finance/reports?schoolId=5&reportType=payments&studentId=19&method=BANK_TRANSFER&provider=MANUAL_BANK_TRANSFER&from=2026-10-01&to=2026-10-31`,

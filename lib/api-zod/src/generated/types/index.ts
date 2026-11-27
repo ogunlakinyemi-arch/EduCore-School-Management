@@ -949,6 +949,8 @@ export * from './feeStructureLine';
 export * from './feeStructureLine4b96100';
 export * from './feeStructureLineInput';
 export * from './feeStructureLineInput4b96100';
+export * from './feeStructureLineInput4b96100BuiltInCategory';
+export * from './feeStructureLineInputBuiltInCategory';
 export * from './feeStructureStatus';
 export * from './finalizePromotionBatchParams';
 export * from './financeReport';

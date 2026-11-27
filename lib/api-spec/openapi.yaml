@@ -1607,7 +1607,7 @@ paths:
           description: Restrict invoice and payment data to this student within the authorized school.
         - name: method
           in: query
-          schema: { type: string, enum: [BANK_TRANSFER, REMITA, FLUTTERWAVE, PAYSTACK] }
+          schema: { type: string, enum: [BANK_TRANSFER, REMITA, FLUTTERWAVE, PAYSTACK, CASH] }
           description: Payment method filter; distinct from provider.
         - name: status
           in: query
@@ -9769,9 +9769,13 @@ components:
         status: { type: string, enum: [ACTIVE, INACTIVE] }
     FeeStructureLineInput:
       type: object
-      required: [categoryId, amountMinor]
+      required: [amountMinor]
       properties:
         categoryId: { type: integer, minimum: 1 }
+        builtInCategory:
+          type: string
+          enum: [SCHOOL_NFC]
+          description: Built-in school-owned NFC charge; use instead of categoryId. Never a platform subscription.
         amountMinor: { type: integer, minimum: 1 }
         description: { type: string, maxLength: 300 }
     FeeStructureInput:

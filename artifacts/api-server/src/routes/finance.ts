@@ -7,6 +7,7 @@ import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-pr
 import { FlutterwavePayrollV3Client } from "../lib/flutterwave-payroll-v3";
 import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions } from "../lib/student-nfc-obligations";
 import {isReservedPlatformNfcCategory as isSystemNfcCategory} from "../lib/student-nfc-policy";
+import { isBuiltInSchoolNfcFee, resolveSchoolNfcFeeLines, schoolNfcPublicationAssignments } from "../lib/school-nfc-fee";
 import {publishedSchoolInvoiceSql,familyPayableInvoiceSql,linkedGuardianInvoiceSql} from "../services/school-fee-carry-forward";
 import { assignPublishedClassFees } from "../services/fee-publication";
 import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
@@ -587,7 +588,7 @@ router.post("/school/finance/categories", async (req, res): Promise<void> => {
   try {
     const schoolId = schoolIdForMutation(req, CreateFeeCategoryQueryParams, ["SCHOOL_ADMIN"]);
     const body = parsed(CreateFeeCategoryBody, req.body);
-    if(isSystemNfcCategory(body.name)) throw new AuthError(403,"NFC Card Subscription is managed automatically by the system");
+    if(isSystemNfcCategory(body.name) || isBuiltInSchoolNfcFee(body.name)) throw new AuthError(403,"NFC categories are provided automatically; select the built-in school charge in the fee structure");
     const context = getUserContext(req);
     await client.query("BEGIN");
     const result = await client.query(
@@ -612,7 +613,8 @@ router.patch("/school/finance/categories/:categoryId", async (req, res): Promise
     const schoolId = schoolIdForMutation(req, UpdateFeeCategoryQueryParams, ["SCHOOL_ADMIN"]);
     const body = parsed(UpdateFeeCategoryBody, req.body);
     const category=await client.query("SELECT name FROM fee_categories WHERE id=$1 AND school_id=$2",[categoryId,schoolId]);
-    if(isSystemNfcCategory(category.rows[0]?.name??"") || isSystemNfcCategory(body.name??"")) {
+    if(isSystemNfcCategory(category.rows[0]?.name??"") || isSystemNfcCategory(body.name??"")
+      || isBuiltInSchoolNfcFee(category.rows[0]?.name??"") || isBuiltInSchoolNfcFee(body.name??"")) {
       throw new AuthError(403,"The system NFC subscription cannot be edited or deleted by School Admin");
     }
     const fields: string[] = [];
@@ -666,8 +668,8 @@ router.post("/school/finance/structures", async (req, res): Promise<void> => {
       WHERE t.school_id=$1 AND t.id=$2 AND t.academic_session_id=$3 AND c.id=$4`,
       [schoolId,body.termId,body.sessionId,body.classId]);
     if (!validPeriod.rows.length) throw new AuthError(404,"Term, session or class does not belong to this school");
-    if (new Set(body.lines.map(l=>l.categoryId)).size!==body.lines.length) throw new AuthError(400,"Do not duplicate a category in one fee schedule");
     if (body.lines.reduce((v,l)=>v+BigInt(l.amountMinor),0n)>2147483647n) throw new AuthError(400,"Fee total exceeds the ledger limit");
+    const lines = await resolveSchoolNfcFeeLines(client,schoolId,context.user.id,body.lines);
     const versionResult = await client.query(
       `SELECT COALESCE(MAX(version),0)+1 AS version FROM fee_structures
        WHERE school_id=$1 AND academic_session_id=$2 AND academic_term_id=$3 AND school_class_id=$4
@@ -679,7 +681,7 @@ router.post("/school/finance/structures", async (req, res): Promise<void> => {
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
       [schoolId, body.sessionId, body.termId, body.classId, body.section ?? null, versionResult.rows[0].version, context.user.id],
     );
-    await createStructureLines(client, schoolId, created.rows[0].id, body.lines);
+    await createStructureLines(client, schoolId, created.rows[0].id, lines);
     await ensureClassNfcSubscriptions(client,schoolId,body.sessionId,body.termId,body.classId,body.section??null);
     await audit(req, client, schoolId, "created", "fee structure", created.rows[0].id);
     const response = await getStructure(client, schoolId, created.rows[0].id);
@@ -738,7 +740,7 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     if (current.rows[0].status === "PUBLISHED") {
       const response = await getStructure(client, schoolId, structureId);
       await ensureClassNfcSubscriptions(client,schoolId,response.sessionId,response.termId,response.classId,response.section);
-      Object.assign(response,await assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent));
+      Object.assign(response,await schoolNfcPublicationAssignments(response.lines,()=>assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent)));
       await client.query("COMMIT");
       res.json(PublishFeeStructureResponse.parse(response));
       return;
@@ -771,7 +773,7 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     await audit(req, client, schoolId, "published", "fee structure", structureId);
     const response = await getStructure(client, schoolId, structureId);
     await ensureClassNfcSubscriptions(client,schoolId,response.sessionId,response.termId,response.classId,response.section);
-    Object.assign(response,await assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent));
+    Object.assign(response,await schoolNfcPublicationAssignments(response.lines,()=>assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent)));
     await client.query("COMMIT");
     res.json(PublishFeeStructureResponse.parse(response));
   } catch (error) {

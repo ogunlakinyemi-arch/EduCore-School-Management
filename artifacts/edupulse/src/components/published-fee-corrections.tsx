@@ -3,9 +3,12 @@ import { useMutation } from '@tanstack/react-query';
 import type { FeeStructure } from '@workspace/api-client-react';
 import { phase9Request } from '@/hooks/use-phase9-api';
 import { Button,Field,Modal } from '@/components/shared';
+import { useSchoolFeeCatalog } from './school-fee-scope-label';
+import { feeScopeLabel } from '@/lib/school-fee-scope';
 
 export function PublishedFeeCorrections({schoolId,structures,onSaved}:{schoolId:number;structures:FeeStructure[];onSaved:(message:string)=>void}) {
-  const published=structures.filter(s=>s.status==='PUBLISHED');
+   const published=structures.filter(s=>s.status==='PUBLISHED' && s.schoolId===schoolId);
+   const catalog=useSchoolFeeCatalog(schoolId);
   const [selected,setSelected]=useState('');
   const [editing,setEditing]=useState<FeeStructure|null>(null);
   const [amounts,setAmounts]=useState<string[]>([]);
@@ -38,7 +41,7 @@ export function PublishedFeeCorrections({schoolId,structures,onSaved}:{schoolId:
     <h2 className="display-font text-lg font-bold">Correct a published fee schedule</h2>
     <p className="my-3 text-sm">Original versions remain unchanged. Repricing is limited to unpaid invoices with no payment, provider-checkout or adjustment history. For protected invoices, use invoice adjustments, refunds or payment review. Issued receipts cannot be edited. Bus-only charges use transport controls.</p>
     <div className="flex flex-wrap gap-3"><select aria-label="Published fee schedule" value={selected} onChange={e=>setSelected(e.target.value)} data-testid="select-published-fee-correction">
-      <option value="">Select a published schedule</option>{published.map(s=><option key={s.id} value={s.id}>#{s.id} · v{s.version} · class #{s.classId} · term #{s.termId}</option>)}
+       <option value="">Select a published schedule</option>{published.map(s=><option key={s.id} value={s.id} disabled={catalog.isPending || catalog.isError}>{feeScopeLabel(catalog.data,s)} · version {s.version}</option>)}
     </select><Button variant="outline" disabled={!selected} onClick={open} testId="button-edit-published-fees">Edit published fees</Button></div>
     {editing&&<Modal title={`Correct fee structure #${editing.id}`} onClose={()=>{if(!save.isPending)setEditing(null);}}>
       <form className="space-y-4" onSubmit={submit}>

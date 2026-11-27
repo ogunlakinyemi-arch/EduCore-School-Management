@@ -7,7 +7,6 @@ import {
   useListSchoolFeeRefunds, useGetSchoolFeeRefund, useGetSchoolFinancePayment,
   useListAcademicSessions, useListAcademicTerms, useListClasses, useListFeeCategories, useListSchoolFinancePayments,
   useGetFeePaymentReceipt, getGetSchoolFinanceReportQueryKey, getListAcademicSessionsQueryKey,
-  GetSchoolFinanceReportMethod,
   getListAcademicTermsQueryKey, getListClassesQueryKey, getListFeeCategoriesQueryKey,
   getListSchoolFinancePaymentsQueryKey, getGetFeePaymentReceiptQueryKey,
   getListFeeInvoicesQueryKey, getGetSchoolFinanceSummaryQueryKey,
@@ -15,8 +14,9 @@ import {
   getListParentFeePaymentsQueryKey, getListStudentFeePaymentsQueryKey,
   getListSchoolFeeRefundsQueryKey, getGetSchoolFeeRefundQueryKey, getGetSchoolFinancePaymentQueryKey,
 } from '@workspace/api-client-react';
-import type { FeeBulkAssignmentResult, FeePaymentHistory, FeeStructure, GetSchoolFinanceReportParams, GetSchoolFinanceReportReportType, GetSchoolFinanceReportProvider, GetSchoolFinanceReportMethod as FinanceReportMethod } from '@workspace/api-client-react';
+import type { FeeBulkAssignmentResult, FeePaymentHistory, FeeStructure, GetSchoolFinanceReportParams, GetSchoolFinanceReportReportType, GetSchoolFinanceReportMethod as FinanceReportMethod } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Modal, StatusPill } from '@/components/shared';
+import { feeClassSections, feeSectionClass, matchingFeeStructures, SCHOOL_FEE_METHODS } from '@/lib/school-fee-scope';
 
 const input = 'w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2.5 text-sm font-medium outline-none focus:border-[hsl(var(--primary))]';
 const money = (minor: number) => {
@@ -33,7 +33,7 @@ const parseMinor = (value: string) => {
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Could not complete this request. Please retry.';
 const reportTypes = [
   ['summary', 'Summary'], ['payments', 'Payments'], ['outstanding', 'Outstanding'], ['category', 'Category'],
-  ['class', 'Class'], ['term', 'Term'], ['adjustment', 'Adjustments'], ['refund', 'Refunds'], ['provider-reconciliation', 'Provider reconciliation'],
+  ['class', 'Class'], ['term', 'Term'], ['adjustment', 'Adjustments'], ['refund', 'Refunds'], ['provider-reconciliation', 'Historical reconciliation'],
 ] as const;
 const invalidateFinance = (qc: ReturnType<typeof useQueryClient>, schoolId: number) => Promise.all([
   qc.invalidateQueries({ queryKey: getListFeeInvoicesQueryKey({ schoolId }) }),
@@ -63,10 +63,18 @@ export function BulkAssignment({ schoolId, structures, onChanged }: { schoolId: 
   const terms = useListAcademicTerms(Number(sessionId), { schoolId }, { query: { enabled: !!schoolId && !!sessionId, queryKey: getListAcademicTermsQueryKey(Number(sessionId), { schoolId }) } });
   const classes = useListClasses({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListClassesQueryKey({ schoolId }) } });
   const bulk = useBulkAssignFeeStructure();
-  const matching = structures.filter(s => s.status === 'PUBLISHED' && s.schoolId === schoolId && s.sessionId === Number(sessionId) && s.termId === Number(termId) && s.classId === Number(classId) && (s.section ?? '') === section);
+  const schoolClasses = (classes.data ?? []).filter(c => c.schoolId === schoolId);
+  const matching = matchingFeeStructures(structures, { schoolId, sessionId: Number(sessionId), termId: Number(termId), classId: Number(classId), section });
+  const structureLabel = (s: FeeStructure) => [
+    sessions.data?.find(a => a.id === s.sessionId && a.schoolId === schoolId)?.name ?? 'Session unavailable',
+    terms.data?.find(t => t.id === s.termId && t.sessionId === s.sessionId)?.name ?? 'Term unavailable',
+    schoolClasses.find(c => c.id === s.classId)?.name ?? 'Class unavailable',
+    s.section || 'All sections', `version ${s.version}`, money(s.lines.reduce((n, l) => n + l.amountMinor, 0)),
+  ].join(' · ');
   const chosen = matching.find(s => s.id === Number(structureId));
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (bulk.isPending) return;
     if (sessions.isLoading || classes.isLoading || terms.isLoading || sessions.isError || classes.isError || terms.isError ||
         !sessions.data?.some(s => s.id === Number(sessionId) && s.schoolId === schoolId) ||
         !terms.data?.some(t => t.id === Number(termId) && t.sessionId === Number(sessionId)) ||
@@ -82,17 +90,18 @@ export function BulkAssignment({ schoolId, structures, onChanged }: { schoolId: 
       onChanged(`${response.createdCount} invoices issued; ${response.skippedCount} students skipped. Review the per-student result below.`);
     } catch (error) { setFailure(errorMessage(error)); }
   };
-  const sections = [...new Set((classes.data ?? []).filter(c => c.id === Number(classId)).map(c => c.section).filter(Boolean).concat(structures.filter(s => s.classId === Number(classId) && s.sessionId === Number(sessionId) && s.termId === Number(termId)).map(s => s.section ?? '').filter(Boolean)))];
+  const sections = feeClassSections(schoolClasses, schoolId, Number(classId));
   return <section className="panel mt-6 overflow-hidden" data-testid="section-bulk-assignment">
-    <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">Issue at scale · duplicate-aware</div><h2 className="display-font mt-1 text-xl font-bold">Bulk invoice assignment</h2><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Choose an academic cohort and its published fee version. Each eligible student receives an invoice; existing assignments are reported, not silently replaced.</p></div>
+    <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><h2 className="display-font mt-1 text-xl font-bold">Assign invoices</h2><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Choose a published fee structure and review before issuing. Existing assignments are skipped, not replaced.</p></div>
     {sessions.isLoading || classes.isLoading ? <div className="space-y-3 p-6"><div className="skeleton h-12 rounded-xl" /><div className="skeleton h-12 rounded-xl" /></div> : sessions.isError || classes.isError ? <ErrorState message={`Bulk assignment could not load ${sessions.isError ? 'academic sessions' : 'classes'}. ${errorMessage(sessions.isError ? sessions.error : classes.error)}`} retry={() => { sessions.refetch(); classes.refetch(); }} /> : <form onSubmit={submit} className="space-y-5 p-5 md:p-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Field label="Academic session"><select required className={input} value={sessionId} onChange={e => { setSessionId(e.target.value); setTermId(''); setStructureId(''); setResult(null); }}><option value="">Select session</option>{sessions.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
-        <Field label="Term"><select required className={input} value={termId} disabled={!sessionId || terms.isLoading} onChange={e => { setTermId(e.target.value); setStructureId(''); setResult(null); }}><option value="">Select term</option>{terms.data?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>{terms.isError && <button type="button" className="mt-1 text-xs underline" onClick={() => terms.refetch()}>Retry terms</button>}</Field>
-        <Field label="Class"><select required className={input} value={classId} onChange={e => { setClassId(e.target.value); setSection(''); setStructureId(''); setResult(null); }}><option value="">Select class</option>{classes.data?.map(c => <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>)}</select></Field>
-        <Field label="Section"><select className={input} value={section} onChange={e => { setSection(e.target.value); setStructureId(''); setResult(null); }}><option value="">Whole class / no section</option>{sections.map(s => <option key={s} value={s}>{s}</option>)}</select></Field>
+        <Field label="Academic session"><select required className={input} value={sessionId} data-testid="select-bulk-session" onChange={e => { setSessionId(e.target.value); setTermId(''); setClassId(''); setSection(''); setStructureId(''); setResult(null); }}><option value="">Select session</option>{sessions.data?.filter(s => s.schoolId === schoolId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+        <Field label="Term"><select required className={input} value={termId} data-testid="select-bulk-term" disabled={!sessionId || terms.isLoading || terms.isError} onChange={e => { setTermId(e.target.value); setClassId(''); setSection(''); setStructureId(''); setResult(null); }}><option value="">Select term</option>{terms.data?.filter(t => t.sessionId === Number(sessionId)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>{terms.isError && <button type="button" className="mt-1 text-xs underline" onClick={() => terms.refetch()}>Retry terms</button>}</Field>
+        <Field label="Class"><select required className={input} value={classId} data-testid="select-bulk-class" onChange={e => { setClassId(e.target.value); setSection(schoolClasses.find(c => c.id === Number(e.target.value))?.section ?? ''); setStructureId(''); setResult(null); }}><option value="">Select class</option>{schoolClasses.map(c => <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>)}</select></Field>
+        <Field label="Section"><select className={input} value={section} disabled={!classId} data-testid="select-bulk-section" onChange={e => { setSection(e.target.value); setClassId(String(feeSectionClass(schoolClasses, schoolId, Number(classId), e.target.value))); setStructureId(''); setResult(null); }}><option value="">All sections</option>{sections.map(s => <option key={s} value={s}>{s}</option>)}</select>{classId && !sections.length && <p className="mt-1 text-xs">This class has no saved sections.</p>}</Field>
       </div>
-      <Field label="Published fee structure"><select required className={input} value={structureId} onChange={e => { setStructureId(e.target.value); setResult(null); }}><option value="">Select matching structure</option>{matching.map(s => <option key={s.id} value={s.id}>Structure #{s.id} · version {s.version} · {money(s.lines.reduce((n, line) => n + line.amountMinor, 0))}</option>)}</select></Field>
+      <Field label="Published fee structure"><select required className={input} value={structureId} data-testid="select-bulk-structure" disabled={!matching.length || terms.isLoading || terms.isError} onChange={e => { setStructureId(e.target.value); setResult(null); }}><option value="">Select matching structure</option>{matching.map(s => <option key={s.id} value={s.id}>{structureLabel(s)}</option>)}</select></Field>
+      {chosen && <div className="rounded-xl border p-4 text-sm" data-testid="bulk-invoice-review"><strong>{structureLabel(chosen)}</strong><p className="mt-2">{chosen.lines.map(l => `${l.categoryName}: ${money(l.amountMinor)}`).join(' · ')}</p><p className="mt-2">No invoices are issued until you review and confirm.</p></div>}
       {sessionId && termId && classId && !matching.length && <p className="rounded-xl bg-[hsl(var(--secondary))] p-4 text-sm">No published structure matches this exact session, term, class and section. Publish one in Fee structures first.</p>}
       <div className="grid gap-4 sm:grid-cols-2"><Field label="Issue date"><input type="date" required className={input} value={issueDate} onChange={e => setIssueDate(e.target.value)} /></Field><Field label="Due date"><input type="date" required min={issueDate} className={input} value={dueDate} onChange={e => setDueDate(e.target.value)} /></Field></div>
       {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
@@ -112,36 +121,34 @@ export function FinanceReports({ schoolId }: { schoolId: number }) {
   const [studentId, setStudentId] = useState('');
   const [method, setMethod] = useState<FinanceReportMethod | ''>('');
   const [status, setStatus] = useState('');
-  const [provider, setProvider] = useState<GetSchoolFinanceReportProvider | ''>('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [rowSearch, setRowSearch] = useState('');
   const parsedStudentId = /^\d+$/.test(studentId.trim()) ? Number(studentId) : null;
   const validStudentId = parsedStudentId !== null && Number.isSafeInteger(parsedStudentId) && parsedStudentId >= 1;
   const invalidStudentId = !!studentId && !validStudentId;
-  const params: GetSchoolFinanceReportParams = { schoolId, reportType, ...(sessionId ? { sessionId: Number(sessionId) } : {}), ...(termId ? { termId: Number(termId) } : {}), ...(classId ? { classId: Number(classId) } : {}), ...(section.trim() ? { section: section.trim() } : {}), ...(categoryId ? { categoryId: Number(categoryId) } : {}), ...(validStudentId ? { studentId: parsedStudentId as number } : {}), ...(method ? { method } : {}), ...(status.trim() ? { status: status.trim() } : {}), ...(provider ? { provider } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  const params: GetSchoolFinanceReportParams = { schoolId, reportType, ...(sessionId ? { sessionId: Number(sessionId) } : {}), ...(termId ? { termId: Number(termId) } : {}), ...(classId ? { classId: Number(classId) } : {}), ...(section.trim() ? { section: section.trim() } : {}), ...(categoryId ? { categoryId: Number(categoryId) } : {}), ...(validStudentId ? { studentId: parsedStudentId as number } : {}), ...(method ? { method } : {}), ...(status.trim() ? { status: status.trim() } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
   const query = useGetSchoolFinanceReport(params, { query: { enabled: !!schoolId && !invalidStudentId && (!from || !to || from <= to), queryKey: getGetSchoolFinanceReportQueryKey(params), refetchInterval: 60000 } });
   const sessions = useListAcademicSessions({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListAcademicSessionsQueryKey({ schoolId }) } });
   const terms = useListAcademicTerms(Number(sessionId), { schoolId }, { query: { enabled: !!schoolId && !!sessionId, queryKey: getListAcademicTermsQueryKey(Number(sessionId), { schoolId }) } });
   const classes = useListClasses({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListClassesQueryKey({ schoolId }) } });
   const categories = useListFeeCategories({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListFeeCategoriesQueryKey({ schoolId }) } });
   return <section className="panel mt-6 overflow-hidden" data-testid="section-finance-reports">
-    <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">School-scoped reporting</div><h2 className="display-font mt-1 text-xl font-bold">Finance reports</h2><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Live ledger views. Filters travel to the report service; historical receipts and decisions are never rewritten.</p></div>
+    <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><h2 className="display-font mt-1 text-xl font-bold">Finance reports</h2><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">School collections and balances. All methods includes historical payment methods.</p></div>
     <div className="flex gap-1 overflow-x-auto border-b border-[hsl(var(--border))] px-4 py-2">{reportTypes.map(([type, label]) => <button key={type} onClick={() => setReportType(type)} aria-pressed={reportType === type} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold ${reportType === type ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'}`}>{label}</button>)}</div>
     <div className="grid gap-3 border-b border-[hsl(var(--border))] p-5 sm:grid-cols-2 xl:grid-cols-4">
-      <Field label="Session"><select className={input} value={sessionId} onChange={e => { setSessionId(e.target.value); setTermId(''); }}><option value="">All sessions</option>{sessions.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
-      <Field label="Term"><select className={input} value={termId} disabled={!sessionId} onChange={e => setTermId(e.target.value)}><option value="">All terms</option>{terms.data?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
-      <Field label="Class"><select className={input} value={classId} onChange={e => setClassId(e.target.value)}><option value="">All classes</option>{classes.data?.map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}</select></Field>
-      <Field label="Section"><input className={input} maxLength={100} placeholder="All sections" value={section} onChange={e => setSection(e.target.value)} /></Field>
+      <Field label="Session"><select className={input} value={sessionId} onChange={e => { setSessionId(e.target.value); setTermId(''); setSection(''); }}><option value="">All sessions</option>{sessions.data?.filter(s => s.schoolId === schoolId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+      <Field label="Term"><select className={input} value={termId} disabled={!sessionId || terms.isLoading || terms.isError} onChange={e => { setTermId(e.target.value); setSection(''); }}><option value="">All terms</option>{terms.data?.filter(t => t.sessionId === Number(sessionId)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
+      <Field label="Class"><select className={input} value={classId} onChange={e => { setClassId(e.target.value); setSection(''); }}><option value="">All classes</option>{classes.data?.filter(c => c.schoolId === schoolId).map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}</select></Field>
+      <Field label="Section"><select className={input} value={section} disabled={classes.isLoading || classes.isError} data-testid="select-report-section" onChange={e => { setSection(e.target.value); if (classId) setClassId(String(feeSectionClass(classes.data ?? [], schoolId, Number(classId), e.target.value))); }}><option value="">All sections</option>{feeClassSections(classes.data ?? [], schoolId, Number(classId) || undefined).map(s => <option key={s} value={s}>{s}</option>)}</select>{classes.isError ? <button type="button" onClick={() => void classes.refetch()}>Retry sections</button> : !classes.isLoading && classId && !feeClassSections(classes.data ?? [], schoolId, Number(classId)).length && <p className="mt-1 text-xs">This class has no saved sections.</p>}</Field>
       <Field label="Category"><select className={input} value={categoryId} onChange={e => setCategoryId(e.target.value)}><option value="">All categories</option>{categories.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
       <Field label="Student ID (server filter)"><input className={input} type="number" min="1" step="1" inputMode="numeric" value={studentId} onChange={e => setStudentId(e.target.value)} aria-invalid={invalidStudentId} data-testid="input-report-student-id" />{invalidStudentId && <span className="mt-1 block text-xs text-[hsl(var(--destructive))]" role="alert">Enter a positive whole-number student ID.</span>}</Field>
-      <Field label="Payment method"><select className={input} value={method} onChange={e => setMethod(e.target.value as FinanceReportMethod | '')} data-testid="select-report-method"><option value="">All methods</option>{Object.values(GetSchoolFinanceReportMethod).map(value => <option key={value} value={value}>{value === 'BANK_TRANSFER' ? 'Bank transfer' : value.replaceAll('_', ' ')}</option>)}</select></Field>
-      <Field label="Provider"><select className={input} value={provider} onChange={e => setProvider(e.target.value as GetSchoolFinanceReportProvider | '')}><option value="">All providers</option><option value="MANUAL_BANK_TRANSFER">Manual bank transfer</option><option value="REMITA">Remita</option><option value="FLUTTERWAVE">Flutterwave</option><option value="PAYSTACK">Paystack</option></select></Field>
+      <Field label="Payment method"><select className={input} value={method} onChange={e => setMethod(e.target.value as FinanceReportMethod | '')} data-testid="select-report-method"><option value="">All methods</option>{SCHOOL_FEE_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}</select></Field>
       <Field label="Payment date from"><input className={input} type="date" value={from} onChange={e => setFrom(e.target.value)} /></Field>
       <Field label="Payment date to"><input className={input} type="date" min={from || undefined} value={to} onChange={e => setTo(e.target.value)} /></Field>
       <Field label="Status"><input className={input} maxLength={60} placeholder="All statuses" value={status} onChange={e => setStatus(e.target.value)} /></Field>
       <Field label="Returned-row search (student / invoice / reference)"><input className={input} maxLength={150} placeholder="Search returned rows only" value={rowSearch} onChange={e => setRowSearch(e.target.value)} data-testid="input-report-row-search" /><span className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">This only narrows visible rows; it does not alter server totals. Use Student ID or Payment method for total-affecting filters.</span></Field>
-      <div className="flex items-end"><Button variant="quiet" onClick={() => { setSessionId(''); setTermId(''); setClassId(''); setSection(''); setCategoryId(''); setStudentId(''); setMethod(''); setStatus(''); setProvider(''); setFrom(''); setTo(''); setRowSearch(''); }}>Clear filters</Button></div>
+      <div className="flex items-end"><Button variant="quiet" onClick={() => { setSessionId(''); setTermId(''); setClassId(''); setSection(''); setCategoryId(''); setStudentId(''); setMethod(''); setStatus(''); setFrom(''); setTo(''); setRowSearch(''); }}>Clear filters</Button></div>
       {(sessions.isError || classes.isError || categories.isError || terms.isError) && <div className="col-span-full text-xs text-[hsl(var(--destructive))]">Some filter choices are unavailable. <button className="underline" onClick={() => { sessions.refetch(); classes.refetch(); categories.refetch(); if (sessionId) terms.refetch(); }}>Retry filters</button></div>}
     </div>
      {invalidStudentId ? <p role="alert" className="p-6 text-sm text-[hsl(var(--destructive))]">A student ID filter must be a positive whole number; results are paused until it is valid.</p> : from && to && from > to ? <p role="alert" className="p-6 text-sm text-[hsl(var(--destructive))]">The end date must be on or after the start date.</p> : query.isLoading ? <div className="space-y-3 p-6"><div className="skeleton h-24 rounded-xl" /><div className="skeleton h-40 rounded-xl" /></div> : query.isError ? <ErrorState retry={() => query.refetch()} /> : query.data && query.data.schoolId !== schoolId ? <p role="alert" className="p-6">The report returned a different school context. No data is shown.</p> : query.data && <div className="p-5 md:p-6">
