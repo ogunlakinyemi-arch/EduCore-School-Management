@@ -104,7 +104,7 @@ export async function findApprovedDirectReview(c:Db,scope:{schoolId:number;termI
       AND r.school_share_minor=0 AND r.currency='NGN' AND r.billing_period='ACADEMIC_TERM'
       AND r.effective_at<=clock_timestamp() AND (r.ends_at IS NULL OR r.ends_at>clock_timestamp())
       AND t.is_current=true AND upper(t.status)='ACTIVE' AND ses.is_current=true AND upper(ses.status)='ACTIVE'
-      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date
+      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date+7 AND t.end_date
     ORDER BY v.id DESC LIMIT 1`,
     [scope.schoolId,scope.termId,scope.studentId,reportDigest,config.merchantScope,DIRECT_STUDENT_RELEASE,
       config.callbackUrl,config.webhookUrl])).rows[0];
@@ -148,7 +148,7 @@ export async function previewDirectRelease(pool:StudentSubscriptionSqlPool,scope
   const termReady=!!t&&t.is_current&&t.session_current&&String(t.status).toUpperCase()==="ACTIVE"
     &&String(t.session_status).toUpperCase()==="ACTIVE"&&String(t.school_status).toUpperCase()==="ACTIVE";
   const checks=[
-    {code:"COLLECTION_ROLLOUT",label:"School January 2027 second-term collection",status:rollout!.chargeable?"READY":"BLOCKED",
+    {code:"COLLECTION_ROLLOUT",label:"School-saved NFC term and seven-day grace",status:rollout!.chargeable?"READY":"BLOCKED",
       detail:`Policies approved 27 October 2026. Current-term platform access is free; no devices or cards required. ${rollout!.collectionStartDate?`This school's configured collection start is ${rollout!.collectionStartDate}.`:"Configure this school's January 2027 second academic term; no date is assumed."}`},
     {code:"MERCHANT_CONFIG",label:"Dedicated LIVE merchant configuration",status:config.configurationReady&&!!config.merchantScope?"READY":"BLOCKED",detail:"Production LIVE mode, dedicated LIVE key/verifier and a reviewed merchant scope are required. Secret values are never returned."},
     {code:"HTTPS_ENDPOINTS",label:"Callback and webhook configuration",status:config.callbackUrl&&config.webhookReady?"READY":"BLOCKED",detail:"Exact public HTTPS callback and same-origin direct webhook URL required. Dashboard registration needs independent merchant evidence."},

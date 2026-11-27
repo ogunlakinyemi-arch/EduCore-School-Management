@@ -446,7 +446,8 @@ export function FinancePage() {
   </div>;
 }
 
-function FamilyInvoiceRows({ invoices, onTransfer, payment }: { invoices: FeeInvoice[]; onTransfer?: (invoice: FeeInvoice) => void; payment: FeePayment | null }) {
+function FamilyInvoiceRows({ invoices:inputInvoices, onTransfer, payment }: { invoices: FeeInvoice[]; onTransfer?: (invoice: FeeInvoice) => void; payment: FeePayment | null }) {
+  const invoices=[...inputInvoices].sort((a,b)=>(a.dueDate??'9999').localeCompare(b.dueDate??'9999')||a.id-b.id);
   if (!invoices.length) return <EmptyState icon={FileText} title="Nothing due here yet" description="Your school's issued invoices will appear here when they are ready." />;
   return <div className="divide-y divide-[hsl(var(--border))]">{invoices.map(invoice => <article key={invoice.id} className="p-5 md:p-6" data-testid={`card-family-invoice-${invoice.id}`}><div className="flex flex-col justify-between gap-3 sm:flex-row"><div><div className="font-mono text-xs font-bold text-[hsl(var(--primary))]">{invoice.invoiceNumber}</div><h3 className="display-font mt-1 text-lg font-bold">{invoice.studentName}</h3><div className={`mt-1 ${note}`}>Session #{invoice.sessionId} · Term #{invoice.termId}</div></div><div className="flex flex-wrap items-center gap-2"><StatusPill value={invoice.status} /><InvoicePrintDocument invoice={invoice} /></div></div><div className="mt-5 grid gap-3 rounded-xl bg-[hsl(var(--secondary)/.65)] p-4 sm:grid-cols-3"><div><div className="eyebrow">Billed</div><div className="mt-1 font-bold tabular-nums">{naira(invoice.totalMinor)}</div></div><div><div className="eyebrow">Verified paid</div><div className="mt-1 font-bold tabular-nums">{naira(invoice.paidMinor)}</div></div><div><div className="eyebrow">Still due</div><div className="mt-1 font-extrabold tabular-nums text-[hsl(var(--primary))]">{naira(invoice.outstandingMinor)}</div></div></div>{payment?.invoiceId === invoice.id && <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]"><Clock3 size={14} />Transfer {payment.reference} · <StatusPill value={payment.status} />{payment.status === 'PENDING' && 'Awaiting school verification; not counted as paid.'}</div>}{onTransfer && invoice.outstandingMinor > 0 && !['WAIVED', 'CANCELLED'].includes(invoice.status) && <><ParentOnlineMethods invoice={invoice} studentId={invoice.studentId} /><div className="mt-4"><Button variant="outline" onClick={() => onTransfer(invoice)} testId={`button-submit-transfer-${invoice.id}`}><Banknote size={16} />Manual bank transfer</Button></div></>}</article>)}</div>;
 }
@@ -538,7 +539,7 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
     <Link href={`/parent/children/${studentId}`} className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]" data-testid="link-back-child"><ArrowLeft size={15} />Back to child profile</Link>
     <PageHeading eyebrow="Parent portal / Finance" title="Fees & payments" description="Review this child's school-issued invoices. A submitted transfer stays pending until the school verifies it." />
     {query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => query.refetch()} /> : <>
-      <FamilyFeeBalances invoices={invoices} studentId={studentId} />
+      <FamilyFeeBalances invoices={invoices} studentId={studentId} schoolOnly />
       <ParentFeeSelection studentId={studentId} invoices={invoices} onBankTransfer={(item,ids,selectedAmount)=>{
         setInvoice(item);setSelectedBankLineIds(ids);setAmount(minorInput(selectedAmount));setFailure('');
         setBank('');setReference('');setProofUrl('');setReceiptFile(null);setUploadedReceipt(null);setTransferDate(new Date().toISOString().slice(0,10));
@@ -548,7 +549,6 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
         <FamilyInvoiceRows invoices={invoices} payment={payment} onTransfer={item => { setInvoice(item);setSelectedBankLineIds(undefined);setBank('');setReference('');setProofUrl('');setReceiptFile(null);setUploadedReceipt(null);setTransferDate(new Date().toISOString().slice(0,10)); setAmount(minorInput(item.outstandingMinor)); setFailure(''); }} />
       </section>
         <FamilyPaymentHistory audience="parent" studentId={studentId} invoices={invoices} />
-        <StudentNfcObligationsPanel studentId={studentId} compact familyPortal />
       <div className={`mt-4 flex items-start gap-2 ${note}`}><ShieldCheck size={16} className="shrink-0" />Only invoices belonging to linked children are available. Your school will verify transfers against its bank records before they affect the balance or produce a receipt.</div>
     </>}
     {invoice && <Modal title="Bank transfer" eyebrow={invoice.invoiceNumber} onClose={() => setInvoice(null)}>

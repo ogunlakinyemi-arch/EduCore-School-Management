@@ -56,7 +56,7 @@ describe("Owner notification channel governance",()=>{
     expect(allowedNotificationChannels(defaultNotificationPolicy(),"unknown",9)).toEqual([]);
   });
   it("rejects defaults outside Owner allowed channels",()=>{
-    const p=defaultNotificationPolicy();p.events.FINANCE!.defaults=["SMS"];
+    const p=defaultNotificationPolicy();p.events.FINANCE!.allowed=["IN_APP"];p.events.FINANCE!.defaults=["SMS"];
     expect(notificationPolicySchema.safeParse(p).success).toBe(false);
   });
   it("unconfigured/simulated providers and Telegram are unavailable, not delivered",()=>{
@@ -70,7 +70,7 @@ describe("Owner notification channel governance",()=>{
   });
   it("permits non-SMS channels across every default category without making them defaults",()=>{
     for(const [event,rule] of Object.entries(defaultNotificationPolicy().events)){
-      expect(rule?.allowed).toEqual(["IN_APP","EMAIL","PUSH","TELEGRAM",...(["EMERGENCY","ATTENDANCE_ABSENCE"].includes(event)?["SMS"]:[])]);
+      expect(rule?.allowed).toEqual(["IN_APP","EMAIL","PUSH","TELEGRAM",...(["EMERGENCY","ATTENDANCE_ABSENCE","FINANCE","NFC_REMINDER"].includes(event)?["SMS"]:[])]);
       expect(rule?.defaults).toEqual(["IN_APP"]);
     }
   });

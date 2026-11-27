@@ -42,8 +42,8 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
   const rollout=await readStudentRollout(db,schoolId,term.termId,term.today);
   if(!rollout.chargeable){
     const students=await db.query("SELECT id FROM students WHERE school_id=$1 AND lower(status)='active'",[schoolId]);
-    return {schoolId,...term,status:"NOT_REQUIRED",state:"ACTIVE",enforcementDate:term.startDate,
-      inGracePeriod:false,schoolLocked:false,restrictedStudentIds:[] as number[],
+    return {schoolId,...term,status:"NOT_REQUIRED",state:"ACTIVE",enforcementDate:rollout.collectionStartDate??term.startDate,
+      inGracePeriod:rollout.inGracePeriod??false,schoolLocked:false,restrictedStudentIds:[] as number[],
       studentsTotal:students.rows.length,studentsPaid:0,studentsAffected:0,
       ...await readSubscriptionScopeCounts(db,schoolId,[],false),
       amountDueMinor:0,amountPaidMinor:0,outstandingMinor:0,rollout};

@@ -1,4 +1,6 @@
-import { loadNotificationPolicy, effectiveNotificationChannels, notificationEvent, notificationChannelAvailability } from "./notification-channel-policy";
+import { loadNotificationPolicy, effectiveNotificationChannels, notificationEvent, notificationChannelAvailability,financialReminderSelectedChannels } from "./notification-channel-policy";
+import {financialReminderPrefix,parseFinancialReminder,staffFinancialReminder} from "./financial-reminder-policy";
+import {financialReminderStillCurrent} from "./financial-reminder-eligibility";
 import {
   createCommunicationProviders,
   type CommunicationProviderAdapters,
@@ -333,6 +335,8 @@ export async function queueCommunicationNotification(
   input: QueueCommunicationNotificationInput,
 ): Promise<number | null> {
   validateNotificationInput(input);
+  if(input.eventKey?.startsWith(financialReminderPrefix)
+    &&!await financialReminderStillCurrent(client,input))return null;
 
   const recipient = await client.query<{ id: number | string; isParent?: boolean }>(
     activeSchoolRecipientSql,
@@ -433,14 +437,15 @@ export async function queueCommunicationNotification(
   const mappedEvent = notificationEvent(input.category,input.eventKey);
   const schoolChoices = input.schoolId === null ? undefined : (await client.query<{defaults:Record<string,CommunicationDeliveryChannel[]>}>(
     `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`,[input.schoolId])).rows[0]?.defaults;
-  const effective = effectiveNotificationChannels(ownerPolicy, mappedEvent, input.schoolId, schoolChoices);
+  const effective = parseFinancialReminder(input.eventKey)?financialReminderSelectedChannels(ownerPolicy,mappedEvent):
+    effectiveNotificationChannels(ownerPolicy, mappedEvent, input.schoolId, schoolChoices);
   // Automatic triggers use saved selections, not hardcoded channel hints.
   // Explicit campaign selections may narrow, never expand, the effective set.
   let enabledChannels = input.useSchoolDefaults === false
     ? effective.filter(c => input.channels.includes(c)) : effective;
   if(enabledChannels.includes("TELEGRAM")&&await missingTelegramDestination(client,{
     recipientUserId:input.recipientUserId,schoolId:input.schoolId,subjectStudentId:input.subjectStudentId??null,category:input.category,
-  },!!input.eventKey?.startsWith(teacherPeriodPrefix))!=="TELEGRAM_WAITING_FOR_LINK")
+  },!!input.eventKey?.startsWith(teacherPeriodPrefix)||staffFinancialReminder(input.eventKey))!=="TELEGRAM_WAITING_FOR_LINK")
     enabledChannels=enabledChannels.filter(c=>c!=="TELEGRAM");
   if (enabledChannels.includes("SMS")) {
     const consent = await client.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
@@ -1052,6 +1057,12 @@ export async function dispatchCommunicationDeliveries(
         [delivery.id,normalizedDate(now())]);
       summary.skipped++; continue;
     }
+    if(record.eventKey?.startsWith(financialReminderPrefix)&&!await financialReminderStillCurrent(pool,record,now())){
+      await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='FINANCIAL_REMINDER_STALE',
+        last_error='Scheduled day, published charge, balance or recipient eligibility changed; history retained',
+        updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now())]);
+      summary.skipped++;continue;
+    }
     const dispatchEvent=notificationEvent(record.category,record.eventKey);
     if(ownerControls&&delivery.channel==="PUSH"){
       const consent=await pool.query<{enabled:boolean}>(`SELECT enabled FROM communication_preferences
@@ -1070,15 +1081,18 @@ export async function dispatchCommunicationDeliveries(
         ORDER BY CASE WHEN school_id=$3 THEN 0 ELSE 1 END LIMIT 1`,[record.recipientUserId,record.category,record.schoolId]);
       if (!smsNotificationAllowed(record.category,record.eventKey,record.subjectStudentId) || consent.rows[0]?.enabled !== true) {
         await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='SMS_SCOPE_OR_CONSENT_REQUIRED',
-          last_error='SMS requires an emergency or student absence event and explicit recipient consent',
+          last_error='SMS requires an approved event and explicit recipient consent',
           updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now())]);
         summary.skipped++;continue;
       }
     }
     const schoolChoices=record.schoolId===null?undefined:(await pool.query<{defaults:Record<string,string[]>}>(
       `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`,[record.schoolId])).rows[0]?.defaults;
-    if (!effectiveNotificationChannels(await loadNotificationPolicy(pool), dispatchEvent,
-      record.schoolId === null ? null : Number(record.schoolId), schoolChoices).includes(delivery.channel)) {
+    const currentPolicy=await loadNotificationPolicy(pool);
+    const effectiveChannels=parseFinancialReminder(record.eventKey)?financialReminderSelectedChannels(currentPolicy,dispatchEvent):
+      effectiveNotificationChannels(currentPolicy, dispatchEvent,
+        record.schoolId === null ? null : Number(record.schoolId), schoolChoices);
+    if (!effectiveChannels.includes(delivery.channel)) {
       await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='OWNER_CHANNEL_POLICY',
         last_error='Channel is not selected by current effective notification settings',updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,
         [delivery.id,normalizedDate(now())]);
@@ -1115,13 +1129,13 @@ export async function dispatchCommunicationDeliveries(
       summary.skipped++;continue;
     }
     const target = delivery.channel === "TELEGRAM"
-      ? record.eventKey?.startsWith(teacherPeriodPrefix)
+      ? record.eventKey?.startsWith(teacherPeriodPrefix)||staffFinancialReminder(record.eventKey)
         ? record.schoolId===null?null:await teacherTelegramRecipient(pool,Number(record.recipientUserId),Number(record.schoolId))
         : await telegramRecipient(pool,Number(record.recipientUserId),record.schoolId===null?null:Number(record.schoolId),
         record.subjectStudentId==null?null:Number(record.subjectStudentId),record.category)
       : delivery.channel === "SMS" ? record.phone : record.email;
     if(delivery.channel==="TELEGRAM"&&!target){
-      const reason=await missingTelegramDestination(pool,record,!!record.eventKey?.startsWith(teacherPeriodPrefix));
+      const reason=await missingTelegramDestination(pool,record,!!record.eventKey?.startsWith(teacherPeriodPrefix)||staffFinancialReminder(record.eventKey));
       const waiting=reason==="TELEGRAM_WAITING_FOR_LINK";
       await pool.query(`UPDATE communication_deliveries SET status=$3,error_code=$4,
         last_error=$5,attempts=CASE WHEN $6 THEN greatest(attempts-1,0) ELSE attempts END,
@@ -1151,7 +1165,7 @@ export async function dispatchCommunicationDeliveries(
     try {
       const providerResult = delivery.channel === "TELEGRAM"
         ? await telegramProvider!.send({to:target!,idempotencyKey:`communication-${record.notificationId}-telegram`,
-          body:record.subjectStudentId!=null||record.eventKey?.startsWith(teacherPeriodPrefix)?notificationText(`${record.subject??"School update"}\n${record.body}`).slice(0,4096)
+          body:record.subjectStudentId!=null||record.eventKey?.startsWith(teacherPeriodPrefix)||staffFinancialReminder(record.eventKey)?notificationText(`${record.subject??"School update"}\n${record.body}`).slice(0,4096)
             :`Yetenia EduCore: ${dispatchEvent.replaceAll("_"," ").toLowerCase()} update. Sign in to EduCore to view the details.`})
         : delivery.channel === "PUSH"
         ? await dispatchPushDevices(pool, record, pushProvider, options.pushSessionActive)
@@ -1160,7 +1174,7 @@ export async function dispatchCommunicationDeliveries(
           to: target!,
           body: notificationText(record.body),
           idempotencyKey: `communication-${record.notificationId}-sms`,
-          event: dispatchEvent,
+          event: parseFinancialReminder(record.eventKey)?"FINANCIAL_WEEKLY":dispatchEvent,
         })
         : await providers.email.send({
           to: target!,

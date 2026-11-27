@@ -13,6 +13,13 @@ import {
 } from "../services/nfc-payment-links";
 
 const router = Router();
+// Retain the ledger and staff reconciliation routes. Old public platform links
+// must not expose internal subscription amounts or collect directly from families.
+router.use("/public/nfc-payment-links",(_req,res)=>{
+  res.status(410).set("Cache-Control","no-store").json({
+    error:"This payment link is no longer available. Review your school's published invoice or contact your school.",
+  });
+});
 const tokenInput = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();
 const generationInput = z.object({
   termId: z.number().int().positive(),

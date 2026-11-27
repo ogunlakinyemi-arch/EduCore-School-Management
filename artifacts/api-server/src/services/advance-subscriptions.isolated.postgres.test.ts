@@ -26,6 +26,7 @@ beforeEach(async()=>{
  await f.pool.query("TRUNCATE advance_subscription_authorizations,advance_subscription_changes RESTART IDENTITY CASCADE");
  await f.pool.query("DELETE FROM academic_terms WHERE id=4");
  await f.reset(false);
+ await f.pool.query("UPDATE academic_terms SET start_date='2027-01-18' WHERE id=1");
  await f.pool.query("UPDATE academic_terms SET status='PLANNED',is_current=false WHERE id=3");
 });
 async function authorize(termId=1,reviewed=true,reportDigest="b".repeat(64)){
@@ -63,7 +64,14 @@ it("advance approval requires a separate reviewed decision",async()=>{
 it("advance approval rejects a changed reconciliation digest",async()=>{
  await expect(authorize(3,true,"d".repeat(64))).rejects.toThrow("Advance approval requires an exact separately reviewed binding");
 });
-it("native guard allows opening-day obligation only with actual current active school term",async()=>{
+it("native guard rejects checkout during the actual current term's seven-day grace",async()=>{
+ const r=await authorize();
+ await expect(insertObligation(r)).rejects.toThrow("Advance authorization does not permit checkout now");
+});
+it("native guard allows D+7 obligation only with actual current active school term",async()=>{
+ // Fictional saved resumption is seven days before this lab's required real
+ // January 18 clock. This never alters the OS/PostgreSQL clock or app calendar.
+ await f.pool.query("UPDATE academic_terms SET start_date='2027-01-11' WHERE id=1");
  const r=await authorize();
  expect((await insertObligation(r)).rowCount).toBe(1);
 });

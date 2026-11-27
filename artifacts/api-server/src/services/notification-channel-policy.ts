@@ -6,6 +6,8 @@ import {getTelegramHealth} from "./telegram-provider";
 import { notificationLaunchBoundary } from "./notification-launch-boundary";
 import {bulkSmsConfigurationReady} from "./bulksmsnigeria-provider";
 import {smsEventAllowed} from "./sms-event-policy";
+import {financialReminderChannels} from "./financial-reminder-policy";
+const financialEvent=(event:string)=>event==="FINANCE"||event==="NFC_REMINDER";
 export const policyEvents = ["ATTENDANCE_ENTRY","ATTENDANCE_EXIT","ATTENDANCE_ABSENCE","NFC_REMINDER","SUBSCRIPTION",
   "EMERGENCY","ATTENDANCE","ACADEMIC","ASSIGNMENT","FINANCE","PAYMENT","ANNOUNCEMENT","ACCOUNT","SYSTEM","PARTNER","SECURITY"] as const;
 export const policyChannels = ["IN_APP","PUSH","SMS","EMAIL","TELEGRAM"] as const;
@@ -21,7 +23,7 @@ export type NotificationChannelPolicy = z.infer<typeof notificationPolicySchema>
 type Db = {query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>};
 export function defaultNotificationPolicy():NotificationChannelPolicy {
   return {events:Object.fromEntries(policyEvents.map(event=>[event,{
-    allowed:["IN_APP","EMAIL","PUSH","TELEGRAM",...(smsEventAllowed(event)?["SMS"]:[])],
+    allowed:["IN_APP","EMAIL","PUSH","TELEGRAM",...(smsEventAllowed(event)||financialEvent(event)?["SMS"]:[])],
     defaults:["IN_APP"],
   }])),schools:{}} as NotificationChannelPolicy;
 }
@@ -37,7 +39,7 @@ export async function loadNotificationPolicy(db:Db):Promise<NotificationChannelP
 }
 export function globallyAllowedChannels(policy:NotificationChannelPolicy):Set<PolicyChannel>{
   return new Set(Object.entries(policy.events).flatMap(([event,rule])=>
-    (rule?.allowed??[]).filter(channel=>channel!=="SMS"||smsEventAllowed(event))));
+    (rule?.allowed??[]).filter(channel=>channel!=="SMS"||smsEventAllowed(event)||financialEvent(event))));
 }
 export type PolicyValidationIssue = "UNAVAILABLE_DEFAULT" | "OVERRIDE_NOT_GLOBALLY_ALLOWED";
 /**
@@ -91,6 +93,12 @@ export function effectiveNotificationChannels(
     : Array.isArray(override) ? override : [];
   const allowed = allowedNotificationChannels(policy, event, schoolId);
   return [...new Set(selected)].filter((c): c is PolicyChannel => allowed.includes(c as PolicyChannel));
+}
+/** Fixed schedule ignores school campaign selections, never the Owner ceiling
+ * or operational delivery pause. Saved settings are not rewritten. */
+export function financialReminderSelectedChannels(policy:NotificationChannelPolicy,event:string):PolicyChannel[]{
+ const ceiling=policy.events[event as keyof typeof policy.events]?.allowed??[];
+ return financialReminderChannels.filter(c=>ceiling.includes(c));
 }
 export function notificationChannelAvailability(env:NodeJS.ProcessEnv=process.env):Record<PolicyChannel,boolean>{
   if (!notificationLaunchBoundary(env).allowed || developmentPaymentNotificationsSuppressed(env)) {
@@ -156,7 +164,7 @@ export function notificationChannelReadiness(env: NodeJS.ProcessEnv = process.en
   const details:Record<PolicyChannel,string>={
     IN_APP:"In-App is available under existing user and school permissions.",
     SMS:bulkSmsConfigurationReady(env)
-      ?"BulkSMSNigeria is configured for emergency and student absence only. Sender approval was confirmed by the Owner; sender-list discovery is not required. Explicit recipient opt-in, current school/Owner selections and delivery safety controls still apply; sending and receipt are not verified."
+      ?"BulkSMSNigeria is configured for emergency, student absence and fixed Monday/Friday financial reminders. Explicit recipient opt-in and delivery safety controls still apply; sending and receipt are not verified."
       :"SMS requires COMMUNICATION_SMS_PROVIDER=bulksmsnigeria, BULKSMSNIGERIA_API_TOKEN and BULKSMSNIGERIA_SENDER_ID.",
     EMAIL:emailSetupDetail(env),
     PUSH:pushMissing.length

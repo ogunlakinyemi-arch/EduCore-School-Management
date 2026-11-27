@@ -12,32 +12,33 @@ describe("approved free launch and school-owned January collection",()=>{
     expect(STUDENT_LAUNCH_POLICY).toMatchObject({approvedOn:"2026-10-27",effectiveOn:"2026-10-27",
       studentAmountMinor:320000,broAmountMinor:15000,schoolShareMinor:0,collectionBroShareMinor:0});
   });
-  it("keeps the current term free and refuses advance checkout for January",()=>{
-    expect(studentRolloutDecision(terms,1,1,"2026-10-27")).toMatchObject({chargeable:false,freeAccess:true});
+  it("honors each saved term after grace and refuses advance checkout",()=>{
+    expect(studentRolloutDecision(terms,1,1,"2026-10-27")).toMatchObject({chargeable:true,freeAccess:false});
     expect(studentRolloutDecision(terms,1,2,"2027-01-17").chargeable).toBe(false);
     expect(studentRolloutDecision(terms,1,2,"2026-10-27").chargeable).toBe(false);
   });
   it("uses the actual school's January 18 start, never January 1 by default",()=>{
     expect(studentRolloutDecision(terms,1,2,"2027-01-18")).toMatchObject({
-      chargeable:true,collectionStartDate:"2027-01-18",launchTermId:2});
-    expect(studentRolloutDecision(terms,1,3,"2027-05-03").chargeable).toBe(true);
+      chargeable:false,inGracePeriod:true,collectionStartDate:"2027-01-25",launchTermId:2});
+    expect(studentRolloutDecision(terms,1,3,"2027-05-03").chargeable).toBe(false);
+    expect(studentRolloutDecision(terms,1,3,"2027-05-10").chargeable).toBe(true);
   });
   it("never borrows another school's calendar or guesses missing/ambiguous anchors",()=>{
     expect(studentRolloutDecision(terms,2,2,"2027-01-18").chargeable).toBe(false);
-    expect(studentRolloutDecision(terms.filter(t=>t.id!==2),1,3,"2027-05-03").chargeable).toBe(false);
-    expect(studentRolloutDecision([...terms,{...terms[1],id:8}],1,2,"2027-01-18").chargeable).toBe(false);
+    expect(studentRolloutDecision(terms.filter(t=>t.id!==2),1,3,"2027-05-10").chargeable).toBe(true);
+    expect(studentRolloutDecision([...terms,{...terms[1],id:8}],1,undefined,"2027-01-25").chargeable).toBe(false);
     expect(studentRolloutDecision(terms,1,999,"2027-01-18").chargeable).toBe(false);
   });
   it("refuses stale, ended or inactive term checkout",()=>{
     expect(studentRolloutDecision(terms,1,2,"2027-04-10").chargeable).toBe(false);
     expect(studentRolloutDecision(terms.map(t=>({...t,status:"INACTIVE"})),1,2,"2027-01-18").chargeable).toBe(false);
   });
-  it("blocks before any insert or provider access, even with a checkout request",async()=>{
+  it("keeps the independent provider-release gate before any insert or provider access",async()=>{
     const query=vi.fn(async()=>({rows:terms}));
-    const pool={connect:async()=>({query,release:vi.fn()})},scope={schoolId:1,studentId:31,termId:1};
-    expect((await directStudentReadiness(pool,scope)).blockers).toContain("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
+    const pool={connect:async()=>({query,release:vi.fn()})},scope={schoolId:1,studentId:31,termId:2};
+    expect((await directStudentReadiness(pool,scope)).blockers).toContain("LIVE_DIRECT_CONFIGURATION_AND_RELEASE_REVIEW_REQUIRED");
     await expect(startDirectStudentPayment(pool,{...scope,actorId:9,email:"fictional@example.test",
-      idempotencyKey:"fictional-key-no-charge"})).rejects.toThrow("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
+      idempotencyKey:"fictional-key-no-charge"})).rejects.toThrow("LIVE_DIRECT_CONFIGURATION_AND_RELEASE_REVIEW_REQUIRED");
     expect(query.mock.calls.every(([sql]:any)=>!/\b(?:INSERT|UPDATE|DELETE)\b/.test(sql))).toBe(true);
   });
   it("cannot award 150 for current-term, unpaid, legacy or unapproved evidence",()=>{

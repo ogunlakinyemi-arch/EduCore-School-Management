@@ -165,12 +165,15 @@ it.each(["current_bank_credits","current_bulk_allocation_releases","current_bulk
  await expect(tx(c=>c.query(`SET LOCAL ROLE combined_calendar_writer;TRUNCATE public.${table}`))).rejects.toMatchObject({code:"42501"});
 });
 async function retryBatch(c:any){
+ // Financial D+7 scenario only; other calendar rollover fixtures retain their
+ // January 18 resumption. The actual-clock/isolation prerequisites are unchanged.
+ await c.query("UPDATE academic_terms SET start_date='2027-01-11' WHERE id=1");
  await c.query("INSERT INTO students(id,school_id,status,admission_status) VALUES(40,1,'ACTIVE','ADMITTED')");
  const version=(await c.query(`SELECT COALESCE(max(id),0)::text AS version FROM advance_subscription_changes
   WHERE school_id IS NULL OR (school_id=1 AND (academic_term_id IS NULL OR academic_term_id=1)
    AND (academic_session_id IS NULL OR academic_session_id=1))`)).rows[0].version;
- const window=advanceWindow("2027-01-18","2027-04-09"),hash="c".repeat(64);
- const snapshot={release:ADVANCE_RELEASE,calendar:{start_date:"2027-01-18",end_date:"2027-04-09",academic_session_id:1},
+ const window=advanceWindow("2027-01-11","2027-04-09"),hash="c".repeat(64);
+ const snapshot={release:ADVANCE_RELEASE,calendar:{start_date:"2027-01-11",end_date:"2027-04-09",academic_session_id:1},
   eligibleStudentIds:[40],materialVersion:version,reportDigest:hash,merchantScope:"fixture-merchant"};
  const a=(await c.query(`INSERT INTO advance_subscription_authorizations
   (school_id,academic_term_id,rule_id,snapshot,facts_digest,evidence_digest,request_key,merchant_evidence_reference,

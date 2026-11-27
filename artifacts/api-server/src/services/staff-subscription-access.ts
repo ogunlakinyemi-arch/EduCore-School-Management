@@ -38,6 +38,7 @@ export function staffSubscriptionSchools(actor: Actor) {
  */
 export function isStaffSubscriptionOperation(path: string, method: string) {
   const p = path.split("?")[0].replace(/^\/api(?=\/|$)/, "").replace(/\/+$/, "");
+  if(/(?:^|\/)(?:emergency|emergencies|safety|campus-security|pickups?|security)(?:\/|$)/.test(p))return false;
   if (/^\/(?:parent|parents|student|me|staff-nfc|auth|account|help|support|notifications)(?:\/|$)/.test(p)) return false;
   if (/^\/academic\/(?:parents|students\/me)(?:\/|$)/.test(p)) return false;
   const read = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());

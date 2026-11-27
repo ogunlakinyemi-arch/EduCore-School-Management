@@ -10,9 +10,10 @@ export function advanceWindow(start:string,end:string){
  return {notBefore:new Date(`${start}T00:00:00+01:00`).toISOString(),
    expiresAt:new Date(Date.parse(`${end}T00:00:00+01:00`)+86400000).toISOString()};
 }
+import {nfcTermWindow} from "./nfc-term-grace";
 export function advanceCheckoutOpen(today:string,start:string,end:string,termCurrent:boolean,sessionCurrent:boolean,
  termStatus:string,sessionStatus:string){
- return today>=start&&today<=end&&termCurrent&&sessionCurrent&&termStatus==="ACTIVE"&&sessionStatus==="ACTIVE";
+ return nfcTermWindow(start,end,today).checkoutOpen&&termCurrent&&sessionCurrent&&termStatus==="ACTIVE"&&sessionStatus==="ACTIVE";
 }
 /** Only these lifecycle fields may change without a fresh material review. */
 export function materialCalendar(row:Record<string,unknown>){

@@ -89,7 +89,14 @@ function RowPayment({ row, onPaid }: { row: NfcObligationRow; onPaid: () => void
   </p>;
 }
 
-export function StudentNfcObligationsPanel({
+type NfcPanelProps={studentId?:number;schoolId?:number;canSeeSplit?:boolean;teacherView?:boolean;compact?:boolean;manageReturn?:boolean;familyPortal?:boolean};
+export function StudentNfcObligationsPanel(props:NfcPanelProps){
+ const context=useGetAuthorizedContext().data;
+ const finance=context?.isPlatformOwner||(context?.roles??[]).some(r=>r.status==='ACTIVE'&&
+  ['SCHOOL_ADMIN','ACCOUNTANT'].includes(r.role)&&r.schoolId===props.schoolId);
+ return finance&&!props.familyPortal&&!props.teacherView?<FinanceStudentNfcObligationsPanel {...props}/>:null;
+}
+function FinanceStudentNfcObligationsPanel({
   studentId, schoolId, canSeeSplit = false, teacherView = false, compact = false, manageReturn = true, familyPortal = false,
 }: { studentId?: number; schoolId?:number; canSeeSplit?: boolean; teacherView?: boolean; compact?: boolean; manageReturn?: boolean; familyPortal?: boolean }) {
   const qc = useQueryClient();

@@ -89,7 +89,7 @@ export async function readStudentCardReadiness(db:Db,cardId:number,schoolId:numb
      !restrictions.some(r=>!r.overridable) && restrictions.some(r=>r.overridable) && grace.state!=="ACTIVE";
   return {cardId,schoolId,studentId,uid:String(card.uid),status,stage,explanation,
      subscriptionPolicy:{paymentRequired:rollout.chargeable,collectionStartDate:rollout.collectionStartDate,
-       launchTermId:rollout.launchTermId,termId:rollout.termId,reason:rollout.reason,earliestCollectionDate:`${rollout.policy.anchorMonth}-01`},
+       launchTermId:rollout.launchTermId,termId:rollout.termId,reason:rollout.reason,earliestCollectionDate:rollout.collectionStartDate},
      canActivate:status==="locked" && stage!=="SECURITY_LOCK" && blocked.length===0,
      canPrint:status==="active" && blocked.length===0,restrictions,
      version:evidence.version,canLock:status==="active",canGrantGrace:canGrace,

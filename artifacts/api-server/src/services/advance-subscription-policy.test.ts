@@ -14,11 +14,12 @@ describe("advance authorization policy",()=>{
  it.each(["2026-11-27","2027-01-01","2027-01-17"])("refuses early checkout on %s",day=>{
   expect(advanceCheckoutOpen(day,"2027-01-18","2027-04-09",true,true,"ACTIVE","ACTIVE")).toBe(false);
  });
- it("opens only the eligible school's term on opening day",()=>{
+ it("opens only the eligible school's term at D+7",()=>{
   const terms=[school(1,"2027-01-18"),school(2,"2027-01-25")];
-  expect(studentRolloutDecision(terms,1,1,"2027-01-18").chargeable).toBe(true);
-  expect(studentRolloutDecision(terms,2,2,"2027-01-18").chargeable).toBe(false);
-  expect(advanceCheckoutOpen("2027-01-18","2027-01-18","2027-04-09",true,true,"ACTIVE","ACTIVE")).toBe(true);
+  expect(studentRolloutDecision(terms,1,1,"2027-01-25").chargeable).toBe(true);
+  expect(studentRolloutDecision(terms,2,2,"2027-01-25").chargeable).toBe(false);
+  expect(advanceCheckoutOpen("2027-01-24","2027-01-18","2027-04-09",true,true,"ACTIVE","ACTIVE")).toBe(false);
+  expect(advanceCheckoutOpen("2027-01-25","2027-01-18","2027-04-09",true,true,"ACTIVE","ACTIVE")).toBe(true);
  });
  it.each([
   [false,true,"ACTIVE","ACTIVE"],[true,false,"ACTIVE","ACTIVE"],
@@ -26,10 +27,11 @@ describe("advance authorization policy",()=>{
  ] as const)("requires both current active lifecycle records: %s %s %s %s",(tc,sc,ts,ss)=>{
   expect(advanceCheckoutOpen("2027-01-18","2027-01-18","2027-04-09",tc,sc,ts,ss)).toBe(false);
  });
- it("allows the final day, expires after it, and never assumes a missing January anchor",()=>{
+ it("allows the final day, expires after it, and needs no January anchor",()=>{
   expect(advanceCheckoutOpen("2027-04-09","2027-01-18","2027-04-09",true,true,"ACTIVE","ACTIVE")).toBe(true);
   expect(advanceCheckoutOpen("2027-04-10","2027-01-18","2027-04-09",true,true,"ACTIVE","ACTIVE")).toBe(false);
   expect(studentRolloutDecision([school(1,"2027-02-01")],1,1,"2027-02-01").chargeable).toBe(false);
+  expect(studentRolloutDecision([school(1,"2027-02-01")],1,1,"2027-02-08").chargeable).toBe(true);
  });
  it("does not invalidate solely for the expected lifecycle transition",()=>{
   const material={id:1,school_id:1,academic_session_id:1,start_date:"2027-01-18",end_date:"2027-04-09"};

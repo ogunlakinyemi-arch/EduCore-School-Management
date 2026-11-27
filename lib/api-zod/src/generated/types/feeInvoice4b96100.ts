@@ -20,6 +20,12 @@ export interface FeeInvoice4b96100 {
   studentName: string;
   sessionId: number;
   termId: number;
+  dueDate?: string;
+  /** @nullable */
+  sessionName?: string | null;
+  /** @nullable */
+  termName?: string | null;
+  isPriorTerm?: boolean;
   currency: string;
   subtotalMinor: number;
   discountMinor: number;

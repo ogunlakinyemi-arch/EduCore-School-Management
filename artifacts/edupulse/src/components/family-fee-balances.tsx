@@ -1,48 +1,27 @@
-import type { FeeInvoice, StudentNfcObligation } from '@workspace/api-client-react';
-import { useStudentNfcObligations } from './student-nfc-obligations';
-import { ErrorState, money } from './shared';
-
-export function familyFeeBalances(
-  invoices: Pick<FeeInvoice, 'outstandingMinor' | 'paidMinor'>[],
-  nfcRows: Pick<StudentNfcObligation, 'amountMinor' | 'status'>[],
-) {
-  const schoolOutstanding = invoices.reduce((sum, invoice) => sum + invoice.outstandingMinor, 0);
-  const schoolPaid = invoices.reduce((sum, invoice) => sum + invoice.paidMinor, 0);
-  // The NFC ledger is independent: neither a paid school invoice nor a simulated
-  // public-link outcome is evidence of a verified NFC payment.
-  const nfcOutstanding = nfcRows.reduce((sum, row) =>
-    sum + (['UNPAID', 'PENDING', 'FAILED'].includes(row.status) ? row.amountMinor : 0), 0);
-  return { schoolOutstanding, schoolPaid, nfcOutstanding, combinedOutstanding: schoolOutstanding + nfcOutstanding };
+import type { FeeInvoice,StudentNfcObligation } from '@workspace/api-client-react';
+import {money} from './shared';
+export function familyFeeBalances(invoices:Pick<FeeInvoice,'outstandingMinor'|'paidMinor'>[],
+ _retiredNfcRows:Pick<StudentNfcObligation,'amountMinor'|'status'>[]=[]){
+ return {schoolOutstanding:invoices.reduce((sum,i)=>sum+Number(i.outstandingMinor),0),
+  schoolPaid:invoices.reduce((sum,i)=>sum+Number(i.paidMinor),0)};
 }
-
-export function FamilyFeeBalances({ invoices, studentId, schoolOnly = false }: { invoices: FeeInvoice[]; studentId?: number; schoolOnly?: boolean }) {
-  if (!schoolOnly) return <FamilyAndNfcBalances invoices={invoices} studentId={studentId}/>;
-  const totals = familyFeeBalances(invoices, []);
-  return <section aria-label="School-issued fee balances" className="grid gap-4 sm:grid-cols-2">
-    {[['School fees due', totals.schoolOutstanding], ['School fees paid', totals.schoolPaid]].map(([label, value]) =>
-      <div key={label} className="panel p-5"><div className="eyebrow">{label}</div>
-        <strong className="display-font mt-2 block text-2xl">{money(Number(value) / 100)}</strong></div>)}
-  </section>;
-}
-
-function FamilyAndNfcBalances({ invoices, studentId }: { invoices: FeeInvoice[]; studentId?: number }) {
-  const nfc = useStudentNfcObligations({ studentId });
-  const rows = (nfc.data?.rows ?? []).filter(row => studentId == null || row.studentId === studentId);
-  const totals = familyFeeBalances(invoices, rows);
-  const ready = !nfc.isLoading && !nfc.isError && !!nfc.data;
-  return <section aria-label="Independent school and NFC fee balances">
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {[
-        ['Total outstanding', ready ? money(totals.combinedOutstanding / 100) : 'Unavailable', 'School fees + separate NFC subscription'],
-        ['School fees outstanding', money(totals.schoolOutstanding / 100), "Use the school's configured payment methods"],
-        ['NFC outstanding', ready ? money(totals.nfcOutstanding / 100) : 'Unavailable', 'Separate Flutterwave payment when configured'],
-        ['School payments verified', money(totals.schoolPaid / 100), 'Does not mark the NFC subscription paid'],
-      ].map(([label, amount, detail], index) => <div key={label} className={`panel p-5 ${index === 0 ? 'border-[hsl(var(--primary))]' : ''}`}>
-        <div className="eyebrow">{label}</div><div className="mt-2 text-2xl font-bold tabular-nums" data-testid={`family-fee-balance-${index}`}>{amount}</div>
-        <div className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{detail}</div>
-      </div>)}
-    </div>
-    {nfc.isLoading && <p role="status" className="mt-3 text-xs">Checking NFC balances before calculating the combined total...</p>}
-    {nfc.isError && <div className="mt-3"><ErrorState retry={() => nfc.refetch()} message="NFC balances could not be loaded. The combined total is unavailable; ordinary school fees remain separate." /></div>}
-  </section>;
+/** School-published charges only. Legacy flags never fetch the platform ledger. */
+export function FamilyFeeBalances({invoices}:{invoices:FeeInvoice[];studentId?:number;schoolOnly?:boolean}){
+ const active=invoices.filter(i=>!['CANCELLED','WAIVED'].includes(i.status));
+ const totals=familyFeeBalances(active);
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Lagos',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const prior=active.filter(i=>i.isPriorTerm&&i.outstandingMinor>0&&!!i.dueDate&&i.dueDate<=today)
+  .sort((a,b)=>a.dueDate!.localeCompare(b.dueDate!)||a.id-b.id);
+ const arrears=prior.reduce((sum,i)=>sum+i.outstandingMinor,0);
+ return <section aria-label="School-issued fee balances">
+  <div className="grid gap-4 sm:grid-cols-3">
+   {[['School fees due',totals.schoolOutstanding],['School fees paid',totals.schoolPaid],['Prior-term arrears',arrears]].map(([label,value])=>
+    <div key={label} className="panel p-5"><div className="eyebrow">{label}</div>
+     <strong className="display-font mt-2 block text-2xl">{money(Number(value)/100)}</strong></div>)}
+  </div>
+  <p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">Unpaid balances stay on their original invoices across terms. They are not billed again. Original school due dates still apply.</p>
+  {prior.length>0&&<ul aria-label="Original prior-term invoices" className="mt-3 space-y-1 text-sm">
+   {prior.map(i=><li key={i.id}>{i.invoiceNumber} · {i.sessionName??`Session #${i.sessionId}`} · {i.termName??`Term #${i.termId}`} · Due {i.dueDate} · {money(i.outstandingMinor/100)}</li>)}
+  </ul>}
+ </section>;
 }

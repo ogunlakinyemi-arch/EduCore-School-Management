@@ -14,7 +14,7 @@ export async function revalidateBulkRetry(c:CurrentSql,b:any,deps:BulkDependenci
   ON s.id=t.academic_session_id AND s.school_id=t.school_id
   WHERE t.id=$2 AND t.school_id=$1 AND t.is_current=true AND t.status='ACTIVE'
    AND s.is_current=true AND s.status='ACTIVE'
-   AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date
+   AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date+7 AND t.end_date
    AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN s.start_date AND s.end_date
    AND (SELECT count(*) FROM academic_terms x WHERE x.school_id=$1 AND x.is_current)=1
    AND (SELECT count(*) FROM academic_sessions x WHERE x.school_id=$1 AND x.is_current)=1

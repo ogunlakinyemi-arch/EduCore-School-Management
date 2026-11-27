@@ -121,7 +121,7 @@ BEGIN
      AND (SELECT count(*) FROM academic_terms ct WHERE ct.school_id=t.school_id AND ct.is_current=true AND ct.status='ACTIVE')=1
      AND (SELECT count(*) FROM academic_sessions cs WHERE cs.school_id=t.school_id AND cs.is_current=true AND cs.status='ACTIVE')=1
      AND t.start_date::text=a.snapshot->'calendar'->>'start_date' AND t.end_date::text=a.snapshot->'calendar'->>'end_date'
-     AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date)
+      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date+7 AND t.end_date)
  THEN RAISE EXCEPTION 'Advance authorization does not permit checkout now'; END IF;
  RETURN;
 END $$;
@@ -157,7 +157,7 @@ BEGIN
       AND p.school_share_minor=0 AND p.billing_period='ACADEMIC_TERM' AND p.status IN ('ACTIVE','SCHEDULED')
       AND p.effective_at<=clock_timestamp() AND (p.ends_at IS NULL OR p.ends_at>clock_timestamp())
       AND t.is_current AND t.status='ACTIVE' AND s.is_current AND s.status='ACTIVE'
-      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date
+      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date+7 AND t.end_date
       AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN s.start_date AND s.end_date)
    THEN RAISE EXCEPTION 'Bulk retry review or calendar no longer authorizes checkout'; END IF;
    PERFORM assert_advance_subscription_checkout(r.review_id,r.student_id,r.school_id,r.academic_term_id,r.rule_id,r.merchant_scope);

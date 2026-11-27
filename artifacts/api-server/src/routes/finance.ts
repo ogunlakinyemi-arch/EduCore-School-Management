@@ -5,7 +5,9 @@ import { acceptSchoolFeeBankProof, lookupSchoolFeeBank, schoolFeeBankIdentity,
   schoolFeeBankVerified, schoolBankFingerprint, SCHOOL_FEE_BANK_POLICY } from "../services/school-fee-bank-verification";
 import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-provider-validation";
 import { FlutterwavePayrollV3Client } from "../lib/flutterwave-payroll-v3";
-import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions, isSystemNfcCategory } from "../lib/student-nfc-obligations";
+import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions } from "../lib/student-nfc-obligations";
+import {isReservedPlatformNfcCategory as isSystemNfcCategory} from "../lib/student-nfc-policy";
+import {publishedSchoolInvoiceSql} from "../services/school-fee-carry-forward";
 import { assignPublishedClassFees } from "../services/fee-publication";
 import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
 import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
@@ -147,7 +149,16 @@ const invoiceShape = `
   (SELECT COALESCE(jsonb_agg(jsonb_build_object('name',l.category_name_snapshot,'amountMinor',l.amount_minor) ORDER BY l.id),'[]'::jsonb)
     FROM fee_invoice_lines l WHERE l.invoice_id=i.id AND l.school_id=i.school_id) AS "feeItems",
   i.student_name_snapshot AS "studentName", i.academic_session_id AS "sessionId",
-  i.academic_term_id AS "termId", i.currency, i.subtotal_minor AS "subtotalMinor",
+  i.academic_term_id AS "termId",i.due_date::text AS "dueDate",
+  (SELECT name FROM academic_terms WHERE id=i.academic_term_id AND school_id=i.school_id) AS "termName",
+  (SELECT name FROM academic_sessions WHERE id=i.academic_session_id AND school_id=i.school_id) AS "sessionName",
+  EXISTS(SELECT 1 FROM academic_terms previous JOIN academic_terms current_term ON current_term.school_id=previous.school_id
+    JOIN academic_sessions current_session ON current_session.id=current_term.academic_session_id AND current_session.school_id=current_term.school_id
+    WHERE previous.id=i.academic_term_id AND previous.school_id=i.school_id
+     AND current_term.is_current AND upper(current_term.status)='ACTIVE'
+     AND current_session.is_current AND upper(current_session.status)='ACTIVE'
+     AND current_term.start_date>previous.start_date) AS "isPriorTerm",
+  i.currency, i.subtotal_minor AS "subtotalMinor",
   i.discount_minor AS "discountMinor", i.waiver_minor AS "waiverMinor", i.total_minor AS "totalMinor",
   i.paid_minor AS "paidMinor", i.outstanding_minor AS "outstandingMinor", i.status`;
 const paymentShape = `
@@ -450,7 +461,7 @@ async function createStructureLines(client: any, schoolId: number, structureId: 
       [line.categoryId, schoolId],
     );
     if (!category.rows[0]) throw new AuthError(404, "Fee category not found");
-    if(isSystemNfcCategory(category.rows[0].name) || isSystemNfcCategory(line.description??"")) {
+    if(isSystemNfcCategory(category.rows[0].name) || (isSystemNfcCategory(line.description??"")&&!/^school\s+nfc\b/i.test(category.rows[0].name))) {
       throw new AuthError(403,"NFC Card Subscription is a system fee and cannot be added to a school fee schedule");
     }
     await client.query(
@@ -488,7 +499,7 @@ async function createInvoiceForStudent(
 ) {
   await assertFeeStructureNotSuperseded(client,schoolId,Number(structure.id));
   await ensureStudentNfcSubscription(client,schoolId,student.id,structure.academic_session_id,structure.academic_term_id);
-  if(lines.some(l=>isSystemNfcCategory(l.category_name_snapshot??"") || isSystemNfcCategory(l.description_snapshot??""))) {
+  if(lines.some(l=>isSystemNfcCategory(l.category_name_snapshot??"") || (isSystemNfcCategory(l.description_snapshot??"")&&!/^school\s+nfc\b/i.test(l.category_name_snapshot??"")))) {
     throw new AuthError(403,"Legacy school-configured NFC fees cannot be assigned again; use an ordinary-fees-only schedule. NFC is attached automatically.");
   }
   const subtotal = lines.reduce((total: number, line: any) => total + Number(line.amount_minor), 0);
@@ -953,9 +964,9 @@ router.get("/parent/fees/invoices", async (req, res): Promise<void> => {
     const context = getUserContext(req);
     const result = await pool.query(
       `SELECT ${invoiceShape} FROM fee_invoices i
-       WHERE EXISTS (SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
+       WHERE ${publishedSchoolInvoiceSql("i")} AND EXISTS (SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
         WHERE p.user_id=$1 AND p.status='ACTIVE' AND p.school_id=i.school_id AND r.student_id=i.student_id AND r.status='ACTIVE')
-       ORDER BY i.created_at DESC`,
+       ORDER BY i.due_date,i.id`,
       [context.user.id],
     );
     res.json(ListParentFeeInvoicesResponse.parse(result.rows));
@@ -969,7 +980,7 @@ router.get("/student/fees/invoices", async (req, res): Promise<void> => {
     const result = await pool.query(
       `SELECT ${invoiceShape} FROM fee_invoices i
        JOIN students st ON st.id=i.student_id AND st.school_id=i.school_id
-       WHERE st.user_id=$1 ORDER BY i.created_at DESC`,
+       WHERE st.user_id=$1 AND ${publishedSchoolInvoiceSql("i")} ORDER BY i.due_date,i.id`,
       [context.user.id],
     );
     res.json(ListStudentFeeInvoicesResponse.parse(result.rows));
@@ -1023,7 +1034,7 @@ router.get("/parent/fees/payments", async (req, res): Promise<void> => {
        FROM fee_payments p JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
        JOIN schools s ON s.id=p.school_id
        LEFT JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id AND r.invoice_id=p.invoice_id
-       WHERE EXISTS (
+       WHERE ${publishedSchoolInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents pa JOIN parent_student_relationships rel ON rel.parent_id=pa.id
          WHERE pa.user_id=$1 AND pa.status='ACTIVE' AND pa.school_id=p.school_id
            AND rel.student_id=p.student_id AND rel.status='ACTIVE'
@@ -1045,7 +1056,7 @@ router.get("/student/fees/payments", async (req, res): Promise<void> => {
        JOIN schools s ON s.id=p.school_id
        JOIN students st ON st.id=p.student_id AND st.school_id=p.school_id
        LEFT JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id AND r.invoice_id=p.invoice_id
-       WHERE st.user_id=$1 ORDER BY p.created_at DESC,p.id DESC`,
+       WHERE st.user_id=$1 AND ${publishedSchoolInvoiceSql("i")} ORDER BY p.created_at DESC,p.id DESC`,
       [context.user.id],
     );
     res.json(ListStudentFeePaymentsResponse.parse(result.rows));
@@ -1060,7 +1071,7 @@ router.get("/parent/fees/invoices/:invoiceId/bank-details", async (req, res): Pr
     const invoice = await pool.query(
       `SELECT i.id,i.school_id AS "schoolId",i.status,i.outstanding_minor AS "outstandingMinor"
        FROM fee_invoices i
-       WHERE i.id=$1 AND EXISTS (
+       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
          WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
            AND r.student_id=i.student_id AND r.status='ACTIVE'
@@ -1100,7 +1111,7 @@ router.get("/parent/fees/invoices/:invoiceId/payment-methods", async (req, res):
     const invoice = await pool.query(
       `SELECT i.id,i.school_id AS "schoolId",i.status,i.outstanding_minor AS "outstandingMinor",i.currency
        FROM fee_invoices i
-       WHERE i.id=$1 AND EXISTS (
+       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
          WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
            AND r.student_id=i.student_id AND r.status='ACTIVE'
@@ -1154,7 +1165,7 @@ router.get("/parent/fees/invoices/:invoiceId/checkout-policy", async (req, res):
           COALESCE(fs.partial_payments_enabled,false) AS "partialPaymentsEnabled"
        FROM fee_invoices i
        LEFT JOIN fee_school_settings fs ON fs.school_id=i.school_id
-       WHERE i.id=$1 AND EXISTS (
+       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
          WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
            AND r.student_id=i.student_id AND r.status='ACTIVE'
@@ -1204,7 +1215,7 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
     const invoice = await client.query(
       `SELECT i.* FROM fee_invoices i JOIN parents p ON p.school_id=i.school_id AND p.status='ACTIVE'
        JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
-       WHERE i.id=$1 AND p.user_id=$2 FOR UPDATE OF i`,
+       WHERE i.id=$1 AND p.user_id=$2 AND ${publishedSchoolInvoiceSql("i")} FOR UPDATE OF i`,
       [invoiceId, context.user.id],
     );
     if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
@@ -1722,7 +1733,8 @@ router.get("/finance/payments/:paymentId/receipt", async (req, res): Promise<voi
       authorization = `AND p.school_id=$2`;
     } else if (roles.includes("PARENT")) {
       values.push(context.user.id);
-      authorization = `AND EXISTS (SELECT 1 FROM parents pa JOIN parent_student_relationships r ON r.parent_id=pa.id
+      authorization = `AND EXISTS(SELECT 1 FROM fee_invoices i WHERE i.id=p.invoice_id AND i.school_id=p.school_id AND ${publishedSchoolInvoiceSql("i")})
+        AND EXISTS (SELECT 1 FROM parents pa JOIN parent_student_relationships r ON r.parent_id=pa.id
         WHERE pa.user_id=$2 AND pa.status='ACTIVE' AND pa.school_id=p.school_id AND r.student_id=p.student_id AND r.status='ACTIVE')`;
     } else if (roles.includes("STUDENT")) {
       values.push(context.user.id);
@@ -2614,7 +2626,7 @@ router.get("/parent/fees/invoices/:invoiceId/lines",async(req,res):Promise<void>
       ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
       JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
       JOIN school_memberships m ON m.user_id=p.user_id AND m.school_id=p.school_id AND m.role='PARENT' AND m.status='ACTIVE'
-      WHERE i.id=$1`,[invoiceId,getUserContext(req).user.id]);
+      WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")}`,[invoiceId,getUserContext(req).user.id]);
     if(!invoice.rows.length) throw new AuthError(404,"Invoice not found");
     res.json(await feeLineBalances(pool,invoice.rows[0]));
   } catch(error){fail(res,error);}
@@ -2749,7 +2761,7 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
        JOIN parents p ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
        JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
        JOIN school_memberships m ON m.user_id=p.user_id AND m.school_id=p.school_id AND m.role='PARENT' AND m.status='ACTIVE'
-       WHERE i.id=$1 FOR UPDATE OF i`,[invoiceId,context.user.id],
+       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} FOR UPDATE OF i`,[invoiceId,context.user.id],
     );
     if(!invoiceResult.rows.length && adminSchools.length) invoiceResult=await client.query(
       `SELECT i.*,NULL::int AS parent_id FROM fee_invoices i

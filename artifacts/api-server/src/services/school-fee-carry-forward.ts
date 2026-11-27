@@ -1,0 +1,24 @@
+/** A balance projection, never another invoice/debt/payment allocation. The
+ * existing explicit invoice/line selection remains the accounting authority. */
+export type SchoolFeeBalance={id:number;academicTermId:number;dueDate:string;
+ outstandingMinor:number;paidMinor:number;status:string};
+export function schoolFeeCarryForward<T extends SchoolFeeBalance>(invoices:T[],currentTermId:number|null,today:string){
+ const original=invoices.filter(i=>!["CANCELLED","VOIDED","WAIVED"].includes(i.status.toUpperCase()))
+  .sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.id-b.id);
+ const open=original.filter(i=>Number.isSafeInteger(i.outstandingMinor)&&i.outstandingMinor>0);
+ return {invoices:original,
+  outstandingMinor:open.reduce((sum,i)=>sum+i.outstandingMinor,0),
+  arrearsMinor:currentTermId===null?null:open.filter(i=>i.academicTermId!==currentTermId&&i.dueDate<=today)
+    .reduce((sum,i)=>sum+i.outstandingMinor,0),
+  overdueMinor:open.filter(i=>i.dueDate<today).reduce((sum,i)=>sum+i.outstandingMinor,0)};
+}
+/** Original school's published source only; legacy platform bindings are not
+ * school-published charges, irrespective of the numeric price or display name. */
+export function publishedSchoolInvoiceSql(alias="i"){
+ if(!/^[a-z_][a-z0-9_]*$/i.test(alias))throw Error("Invalid invoice alias");
+ return `EXISTS(SELECT 1 FROM fee_structures published_fee
+  WHERE published_fee.id=${alias}.structure_id AND published_fee.school_id=${alias}.school_id
+   AND published_fee.status IN ('PUBLISHED','ARCHIVED') AND published_fee.published_by IS NOT NULL)
+  AND NOT EXISTS(SELECT 1 FROM student_subscription_terms legacy_nfc
+   WHERE legacy_nfc.school_id=${alias}.school_id AND legacy_nfc.legacy_invoice_id=${alias}.id)`;
+}

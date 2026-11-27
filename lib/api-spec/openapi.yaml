@@ -9835,6 +9835,10 @@ components:
         studentName: { type: string }
         sessionId: { type: integer }
         termId: { type: integer }
+        dueDate: { type: string }
+        sessionName: { type: [string, 'null'] }
+        termName: { type: [string, 'null'] }
+        isPriorTerm: { type: boolean }
         currency: { type: string }
         subtotalMinor: { type: integer }
         discountMinor: { type: integer }

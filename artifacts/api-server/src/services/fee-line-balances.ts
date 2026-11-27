@@ -1,5 +1,5 @@
 import { AuthError } from "../middlewares/auth";
-import { isSystemNfcCategory } from "../lib/student-nfc-policy";
+import { isReservedPlatformNfcCategory as isSystemNfcCategory } from "../lib/student-nfc-policy";
 
 export async function feeLineBalances(client: any, invoice: any) {
   const rows = await client.query(`SELECT l.id,l.category_name_snapshot AS name,l.amount_minor AS "amountMinor",
@@ -20,6 +20,7 @@ export async function selectedFeeAmount(client: any, invoice: any, raw: unknown,
     if(existingPayment)return null;
     const legacy=await client.query(`SELECT 1 FROM fee_invoice_lines l WHERE l.invoice_id=$1 AND l.school_id=$2
       AND (l.category_name_snapshot ~* '(nfc.*subscription|subscription.*nfc)' OR l.description_snapshot ~* '(nfc.*subscription|subscription.*nfc)')
+       AND NOT (l.category_name_snapshot ~* '^school[[:space:]]+nfc' AND l.description_snapshot !~* '^(platform|system)[[:space:]]')
       AND l.amount_minor>COALESCE((SELECT sum(a.amount_minor) FROM fee_payment_line_allocations a JOIN fee_payments p
         ON p.id=a.payment_id AND p.school_id=a.school_id WHERE a.line_id=l.id AND a.school_id=l.school_id AND p.status='VERIFIED'),0)
       LIMIT 1`,[invoice.id,invoice.school_id]);

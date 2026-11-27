@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { pool } from "@workspace/db";
-import { getUserContext, isPlatformOwner, requireAuthentication } from "../middlewares/auth";
+import { getUserContext, isPlatformOwner, requireAuthentication,assertRoles } from "../middlewares/auth";
 import { studentNfcReadScope } from "../lib/student-nfc-obligations";
 import { visibleSubscription } from "../lib/subscription-visibility";
 import { studentAllocationPolicy } from "../lib/student-allocation-policy";
@@ -29,6 +29,9 @@ export function nfcObligationStatus(row:any) {
 
 router.get("/student-nfc/obligations",async(req,res,next)=>{
   try {
+    // Historical platform amounts/allocations are finance records, not parent,
+    // student or teacher school-published charges.
+    assertRoles(req,["PLATFORM_OWNER","SCHOOL_ADMIN","ACCOUNTANT"]);
     const f=filters.parse(req.query);
     const values:unknown[]=[];
     const scope=studentNfcReadScope(req,values,"st",true,"binding.academic_session_id");

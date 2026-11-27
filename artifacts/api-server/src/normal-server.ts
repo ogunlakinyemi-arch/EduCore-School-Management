@@ -15,6 +15,7 @@ import { verifyRemovalRuntimeTarget } from "./services/development-settlement-re
 import { queueTeacherPeriodNotifications } from "./services/teacher-period-notifications";
 import {createCalendarRolloverTick} from "./services/academic-calendar-rollover-worker";
 import {createGuardedBackgroundTask} from "./lib/background-task";
+import {queueWeeklyFinancialReminders} from "./services/financial-reminder-worker";
 
 // Route sanitized pool diagnostics (SQLSTATE/category only) into structured logs.
 setDatabaseDiagnosticReporter((event, diagnostic) => {
@@ -60,6 +61,7 @@ app.listen(port, (err) => {
     });
   }
   let lastSubscriptionEvaluation = 0;
+  let lastFinancialReminderEvaluation = 0;
   const dispatch = createIndependentBackgroundTasks([{
     name: "Communication maintenance worker",
     run: async () => {
@@ -73,6 +75,13 @@ app.listen(port, (err) => {
   }, {
     name: "Teacher period notification intent worker",
     run: async () => { await queueTeacherPeriodNotifications(pool); },
+  }, {
+    name: "Monday and Friday financial reminder intent worker",
+    run: async () => {
+      if(Date.now()-lastFinancialReminderEvaluation<60_000)return;
+      await queueWeeklyFinancialReminders(pool);
+      lastFinancialReminderEvaluation=Date.now();
+    },
   }, {
     name: "Communication delivery worker",
     run: async () => {

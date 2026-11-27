@@ -1,3 +1,4 @@
+import {nfcTermWindow} from "./nfc-term-grace";
 export type SubscriptionStudent = {
   studentId: number;
   paid: boolean;
@@ -18,8 +19,7 @@ export function subscriptionPolicy(
   if (![start, end, day].every(Number.isFinite) || end < start || day < start || day > end) {
     throw new Error("Current academic calendar is unavailable");
   }
-  const enforcementDate = new Date(start + 7 * 86_400_000).toISOString().slice(0, 10);
-  const grace = today < enforcementDate;
+  const {enforcementDate,inGracePeriod:grace}=nfcTermWindow(term.startDate,term.endDate,today);
   const covered = students.filter(student => student.paid || student.waived);
   const unpaid = students.filter(student => !student.paid && !student.waived && !student.unknown);
   const restrictedStudentIds = grace ? [] : unpaid.map(student => student.studentId).sort((a, b) => a - b);
