@@ -33,3 +33,17 @@ non-billable and earn no BRO commission. Teacher subscriptions stay fixed at
 without BRO commission or Owner approval. UI cleanup does not authorize
 changing credentials, LIVE configuration, callbacks, webhooks, verification,
 payment records or school calendars.
+
+Owner school-assistance listing is read-only oversight, not authorization to
+activate the full financial ledger. It must support all schools and school
+filters without requiring unrelated financial-writer readiness. Distinguish an
+absent request store explicitly from a genuinely empty installed store, and
+surface real query errors rather than substituting empty results.
+
+**Why:** The user requested repair of the failing school-request panel while
+preserving individual assistance, independent payment verification and existing
+financial safeguards, without Production changes or deployment.
+
+**How to apply:** Keep listing authority Owner-only. Do not install financial
+storage, relax write guards, infer payment or enable provider operations merely
+to make a read-only assistance screen load.

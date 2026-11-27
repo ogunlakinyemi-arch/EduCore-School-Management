@@ -419,6 +419,7 @@ import type {
   GetOwnerFreeAcademicTerms200,
   GetOwnerFreeAcademicTermsParams,
   GetOwnerHardwareCorrection200,
+  GetOwnerSchoolAssistanceRequestsParams,
   GetOwnerStudentCardReadinessParams,
   GetOwnerUidInventoryParams,
   GetParentChildAttendanceParams,
@@ -810,6 +811,7 @@ import type {
   SchoolAdministratorInvitationList,
   SchoolAdministratorInvitationReplacement,
   SchoolAdministratorResult,
+  SchoolAssistanceRequestPage,
   SchoolAttendanceScheduleView,
   SchoolBillingContext,
   SchoolBranding,
@@ -1040,6 +1042,87 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetOwnerSchoolAssistanceRequestsUrl = (params?: GetOwnerSchoolAssistanceRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/current-finance/school-assistance?${stringifiedParams}` : `/api/current-finance/school-assistance`
+}
+
+/**
+ * Owner-only read of school remittance requests; never verifies payment or enables financial operations.
+ */
+export const getOwnerSchoolAssistanceRequests = async (params?: GetOwnerSchoolAssistanceRequestsParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAssistanceRequestPage> => {
+
+  return customFetch<SchoolAssistanceRequestPage>(getGetOwnerSchoolAssistanceRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerSchoolAssistanceRequestsQueryKey = (params?: GetOwnerSchoolAssistanceRequestsParams,) => {
+    return [
+    `/api/current-finance/school-assistance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOwnerSchoolAssistanceRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerSchoolAssistanceRequests>>, TError = ErrorType<void>>(params?: GetOwnerSchoolAssistanceRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerSchoolAssistanceRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerSchoolAssistanceRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerSchoolAssistanceRequests>>> = ({ signal }) => getOwnerSchoolAssistanceRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerSchoolAssistanceRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerSchoolAssistanceRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerSchoolAssistanceRequests>>>
+export type GetOwnerSchoolAssistanceRequestsQueryError = ErrorType<void>
+
+
+
+export function useGetOwnerSchoolAssistanceRequests<TData = Awaited<ReturnType<typeof getOwnerSchoolAssistanceRequests>>, TError = ErrorType<void>>(
+ params?: GetOwnerSchoolAssistanceRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerSchoolAssistanceRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerSchoolAssistanceRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetCurrentFinanceOverviewUrl = (params?: GetCurrentFinanceOverviewParams,) => {
   const normalizedParams = new URLSearchParams();

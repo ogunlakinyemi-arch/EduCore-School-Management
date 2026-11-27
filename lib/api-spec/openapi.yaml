@@ -43,6 +43,8 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /current-finance/school-assistance:
+    $ref: './current-finance.yaml#/paths/~1current-finance~1school-assistance'
   /current-finance/overview:
     $ref: './current-finance.yaml#/paths/~1current-finance~1overview'
   /current-finance/actions:

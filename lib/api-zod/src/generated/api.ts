@@ -8,6 +8,70 @@
 import * as zod from 'zod';
 
 
+/**
+ * Owner-only read of school remittance requests; never verifies payment or enables financial operations.
+ */
+export const getOwnerSchoolAssistanceRequestsQuerySchoolIdMax = 2147483647;
+
+export const getOwnerSchoolAssistanceRequestsQueryPageDefault = 1;
+export const getOwnerSchoolAssistanceRequestsQueryPageMax = 1000000;
+
+export const getOwnerSchoolAssistanceRequestsQueryPageSizeDefault = 20;
+export const getOwnerSchoolAssistanceRequestsQueryPageSizeMax = 100;
+
+
+
+export const GetOwnerSchoolAssistanceRequestsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).max(getOwnerSchoolAssistanceRequestsQuerySchoolIdMax).optional(),
+  "page": zod.coerce.number().int().min(1).max(getOwnerSchoolAssistanceRequestsQueryPageMax).default(getOwnerSchoolAssistanceRequestsQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getOwnerSchoolAssistanceRequestsQueryPageSizeMax).default(getOwnerSchoolAssistanceRequestsQueryPageSizeDefault)
+})
+
+export const getOwnerSchoolAssistanceRequestsResponseTotalMin = 0;
+
+
+
+
+
+export const GetOwnerSchoolAssistanceRequestsResponse = zod.object({
+  "schools": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "total": zod.number().int().min(getOwnerSchoolAssistanceRequestsResponseTotalMin),
+  "page": zod.number().int().min(1),
+  "pageSize": zod.number().int().min(1),
+  "storageAvailable": zod.boolean(),
+  "batches": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "termId": zod.number().int(),
+  "termName": zod.string(),
+  "reference": zod.string(),
+  "state": zod.string(),
+  "amountMinor": zod.number().int(),
+  "method": zod.enum(['COMPANY_BANK']),
+  "checkoutUrl": zod.null(),
+  "bankProof": zod.object({
+  "bankName": zod.string(),
+  "statementReference": zod.string(),
+  "creditDate": zod.string(),
+  "amountMinor": zod.number().int(),
+  "verifiedAt": zod.string(),
+  "verifiedBy": zod.number().int()
+}).optional(),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "state": zod.string(),
+  "error": zod.string().nullable()
+}))
+}))
+})
+
+
 
 
 

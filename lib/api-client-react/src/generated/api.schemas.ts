@@ -13746,6 +13746,64 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type SchoolAssistanceRequestPageSchoolsItem = {
+  id: number;
+  name: string;
+};
+
+export type SchoolAssistanceBatchMethod = typeof SchoolAssistanceBatchMethod[keyof typeof SchoolAssistanceBatchMethod];
+
+
+export const SchoolAssistanceBatchMethod = {
+  COMPANY_BANK: 'COMPANY_BANK',
+} as const;
+
+export type SchoolAssistanceBatchBankProof = {
+  bankName: string;
+  statementReference: string;
+  creditDate: string;
+  amountMinor: number;
+  verifiedAt: string;
+  verifiedBy: number;
+};
+
+export type SchoolAssistanceBatchItemsItem = {
+  id: number;
+  studentId: number;
+  studentName: string;
+  state: string;
+  /** @nullable */
+  error: string | null;
+};
+
+export interface SchoolAssistanceBatch {
+  id: number;
+  schoolId: number;
+  schoolName: string;
+  termId: number;
+  termName: string;
+  reference: string;
+  state: string;
+  amountMinor: number;
+  method: SchoolAssistanceBatchMethod;
+  /** @nullable */
+  checkoutUrl: null;
+  bankProof?: SchoolAssistanceBatchBankProof;
+  items: SchoolAssistanceBatchItemsItem[];
+}
+
+export interface SchoolAssistanceRequestPage {
+  schools: SchoolAssistanceRequestPageSchoolsItem[];
+  /** @minimum 0 */
+  total: number;
+  /** @minimum 1 */
+  page: number;
+  /** @minimum 1 */
+  pageSize: number;
+  storageAvailable: boolean;
+  batches: SchoolAssistanceBatch[];
+}
+
 export type CurrentFinanceActionInputAction = typeof CurrentFinanceActionInputAction[keyof typeof CurrentFinanceActionInputAction];
 
 
@@ -24786,6 +24844,24 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetOwnerSchoolAssistanceRequestsParams = {
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ * @maximum 1000000
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
 
 export type GetCurrentFinanceOverviewParams = {
 /**

@@ -10,6 +10,8 @@ vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: { user: { id: 77 } } }),
   useGetOwnerSubscriptionPaymentRules: st.legacy,
   getGetOwnerSubscriptionPaymentRulesQueryKey: () => ['legacy'],
+  useGetOwnerSchoolAssistanceRequests: st.current,
+  getGetOwnerSchoolAssistanceRequestsQueryKey: (p: unknown) => ['owner-assistance', p],
   recordOwnerSubscriptionBankVerification: st.verify,
 }));
 vi.mock('@/lib/current-finance', () => ({
@@ -35,9 +37,8 @@ let host: HTMLDivElement, root: Root;
 beforeEach(() => {
   vi.clearAllMocks(); Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
-  st.data = { owner: true, schools: [{ id: 4, name: 'Fixture School' }], batches: [
+  st.data = { storageAvailable: true, total: 1, page: 1, pageSize: 20, schools: [{ id: 4, name: 'Fixture School' }], batches: [
     { id: 1, method: 'COMPANY_BANK', reference: 'School request' },
-    { id: 2, method: 'FLUTTERWAVE', reference: 'Ordinary checkout' },
   ] };
   st.current.mockReturnValue({ data: st.data, refetch: st.refresh });
   st.legacy.mockReturnValue({ data: { assistance: [{ id: 9, schoolId: 4, studentId: 5, termId: 6,
@@ -71,5 +72,42 @@ describe('Owner payment assistance', () => {
     expect(host.textContent).toContain('Could not load');
     expect(host.textContent).not.toContain('No school remittance requests');
     expect(st.run).not.toHaveBeenCalled();
+  });
+  it('loads all schools with actor-scoped pagination, then sends the selected school and resets the page', async () => {
+    st.data.total = 41;
+    await render();
+    expect(st.current.mock.calls.at(-1)?.[0]).toEqual({page:1,pageSize:20});
+    expect(st.current.mock.calls.at(-1)?.[1].query.queryKey.slice(-2)).toEqual(['actor',77]);
+    await act(async () => [...host.querySelectorAll('button')].find(b=>b.textContent==='Next')!.click());
+    expect(st.current.mock.calls.at(-1)?.[0].page).toBe(2);
+    await act(async () => {
+      const select=host.querySelector('select')!;select.value='4';select.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+    expect(st.current.mock.calls.at(-1)?.[0]).toEqual({schoolId:4,page:1,pageSize:20});
+    expect(st.run).not.toHaveBeenCalled();
+  });
+  it('shows loading without stale school actions and preserves the individual section',async()=>{
+    st.current.mockReturnValue({data:st.data,isPlaceholderData:true,refetch:st.refresh});
+    await render();
+    expect(host.textContent).toContain('Loading requests…');
+    expect(host.querySelector('[data-bank-request]')).toBeNull();
+    expect(host.textContent).toContain('Existing request');
+  });
+  it('distinguishes an empty response from missing storage and keeps pagination bounded',async()=>{
+    st.data.batches=[];st.data.total=0;
+    await render();
+    expect(host.textContent).toContain('No school remittance requests.');
+    expect([...host.querySelectorAll('button')].filter(b=>['Previous','Next'].includes(b.textContent!)).every(b=>b.disabled)).toBe(true);
+    st.data={...st.data,storageAvailable:false};st.current.mockReturnValue({data:st.data,refetch:st.refresh});
+    await render();
+    expect(host.textContent).toContain('storage is not installed');
+    expect(host.textContent).not.toContain('No school remittance requests.');
+    expect(host.textContent).toContain('Existing request');
+  });
+  it('retries a failed school read without invoking any assistance action',async()=>{
+    st.current.mockReturnValue({isError:true,refetch:st.refresh});
+    await render();
+    await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Could not load. Retry')!.click());
+    expect(st.refresh).toHaveBeenCalled();expect(st.run).not.toHaveBeenCalled();expect(st.verify).not.toHaveBeenCalled();
   });
 });

@@ -23,6 +23,37 @@ it.each(["PARTNER","SCHOOL_ADMIN","ACCOUNTANT","PARENT"])("rejects Owner-only ac
   key:"fictional_request_00001",reason:"Fictional reason"}});
  expect(res.statusCode).toBe(403);expect(calls.pool.connect).not.toHaveBeenCalled();
 });
+const assistanceHandler=(router as any).stack.find((l:any)=>l.route?.path==="/current-finance/school-assistance").route.stack[0].handle;
+it("accepts the Owner, coerces filter/page inputs and validates the returned request document",async()=>{
+ const query=vi.fn(async(sql:string)=>{
+  if(sql.includes("FROM app_users u WHERE"))return {rows:[{id:1,owner:true,partner_id:null}]};
+  if(sql.includes("FROM schools s ORDER"))return {rows:[{id:4,name:"Fictional school"}]};
+  if(sql.includes("to_regclass"))return {rows:[{available:true,credits:false}]};
+  if(sql.includes("count(*) AS total"))return {rows:[{total:"7"}]};
+  return {rows:[]};
+ });
+ calls.pool.connect.mockResolvedValueOnce({query,release:vi.fn()});
+ const res:any={statusCode:200,status(n:number){this.statusCode=n;return this;},json(b:any){this.body=b;}};
+ await assistanceHandler({testRole:"PLATFORM_OWNER",query:{schoolId:"4",page:"2",pageSize:"5"}},res);
+ expect(res.statusCode).toBe(200);
+ expect(res.body).toMatchObject({page:2,pageSize:5,total:7,storageAvailable:true,batches:[]});
+ expect(query.mock.calls.some(call=>call[0].includes("LIMIT $2 OFFSET $3"))).toBe(true);
+ const listCall=(query.mock.calls as any[]).find(call=>call[0].includes("LIMIT $2 OFFSET $3"));
+ expect(listCall[1]).toEqual([4,5,5]);
+});
+it.each(["PARTNER","SCHOOL_ADMIN","ACCOUNTANT","PARENT","TEACHER"])("denies school-assistance listing to %s before database access",async role=>{
+ calls.pool.connect.mockClear();
+ const res:any={status(n:number){this.statusCode=n;return this;},json(b:any){this.body=b;}};
+ await assistanceHandler({testRole:role,query:{}},res);
+ expect(res.statusCode).toBe(403);expect(calls.pool.connect).not.toHaveBeenCalled();
+});
+it.each([{schoolId:"no"},{schoolId:"0"},{schoolId:"1.5"},{page:"0"},{pageSize:"101"},{page:"1000001"}])(
+ "rejects invalid assistance filters/pagination %j before database access",async query=>{
+ calls.pool.connect.mockClear();
+ const res:any={status(n:number){this.statusCode=n;return this;},json(b:any){this.body=b;}};
+ await assistanceHandler({testRole:"PLATFORM_OWNER",query},res);
+ expect(res.statusCode).toBe(400);expect(calls.pool.connect).not.toHaveBeenCalled();
+});
 it("rejects unknown commands and client-supplied settlement evidence before any service",async()=>{
  calls.pool.connect.mockClear();
  for(const body of [{action:"MARK_PAID",payload:{}},{action:"REFUND_REQUEST",payload:{source:"DIRECT",sourceId:1,amountMinor:10000,

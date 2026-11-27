@@ -1,6 +1,23 @@
 openapi: 3.1.0
 info: { title: Current finance and field SMS, version: 1.0.0 }
 paths:
+  /current-finance/school-assistance:
+    get:
+      operationId: getOwnerSchoolAssistanceRequests
+      tags: [current-finance]
+      description: Owner-only read of school remittance requests; never verifies payment or enables financial operations.
+      parameters:
+        - { in: query, name: schoolId, schema: { type: integer, minimum: 1, maximum: 2147483647 } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, maximum: 1000000, default: 1 } }
+        - { in: query, name: pageSize, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Paginated requests; storageAvailable is false only when the request table is absent.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchoolAssistanceRequestPage' }
+        '403':
+          description: Active Platform Owner authorization required.
   /current-finance/overview:
     get:
       operationId: getCurrentFinanceOverview
@@ -121,6 +138,60 @@ paths:
               schema: { $ref: '#/components/schemas/CurrentFinanceDocument' }
 components:
   schemas:
+    SchoolAssistanceRequestPage:
+      type: object
+      required: [schools, batches, total, page, pageSize, storageAvailable]
+      properties:
+        schools:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: integer }
+              name: { type: string }
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+        storageAvailable: { type: boolean }
+        batches:
+          type: array
+          items: { $ref: '#/components/schemas/SchoolAssistanceBatch' }
+    SchoolAssistanceBatch:
+      type: object
+      required: [id, schoolId, schoolName, termId, termName, reference, state, amountMinor, method, checkoutUrl, items]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        termId: { type: integer }
+        termName: { type: string }
+        reference: { type: string }
+        state: { type: string }
+        amountMinor: { type: integer }
+        method: { type: string, enum: [COMPANY_BANK] }
+        checkoutUrl: { type: "null" }
+        bankProof:
+          type: object
+          required: [bankName, statementReference, creditDate, amountMinor, verifiedAt, verifiedBy]
+          properties:
+            bankName: { type: string }
+            statementReference: { type: string }
+            creditDate: { type: string }
+            amountMinor: { type: integer }
+            verifiedAt: { type: string }
+            verifiedBy: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, studentId, studentName, state, error]
+            properties:
+              id: { type: integer }
+              studentId: { type: integer }
+              studentName: { type: string }
+              state: { type: string }
+              error: { type: [string, "null"] }
     CurrentFinanceActionInput:
       type: object
       required: [action, payload]

@@ -18,6 +18,8 @@ import {readCurrentFinanceOverview,readCurrentBulkReceipt} from "../services/cur
 import {requestBankRemittance,bankRemittanceInstructions,verifyBankRemittance,postBankRemittance,
  closeBankRemittance,cancelLegacyAssistance} from "../services/company-bank-remittances";
 import {retryCurrentBulk} from "../services/current-bulk-retry";
+import {readOwnerSchoolAssistance} from "../services/owner-school-assistance";
+import {GetOwnerSchoolAssistanceRequestsQueryParams,GetOwnerSchoolAssistanceRequestsResponse} from "@workspace/api-zod";
 const id=z.number().int().positive().safe(),key=z.string().regex(/^[A-Za-z0-9_-]{16,100}$/),reason=z.string().trim().min(3).max(500);
 const source={source:z.enum(["DIRECT","BULK"]),sourceId:id};
 const sourceValue=(p:{source:"DIRECT"|"BULK";sourceId:number})=>p.source==="DIRECT"?p.sourceId:{allocationId:p.sourceId};
@@ -37,6 +39,14 @@ export function createCurrentFinanceRouter(pool:CurrentPool=appPool,dependencies
    res.setHeader("Cache-Control","no-store");
    try{res.locals.currentActorId=assertRoles(req,["PLATFORM_OWNER","PARTNER","SCHOOL_ADMIN","ACCOUNTANT"]).user.id;next();}
    catch(e){currentFinanceError(res,e);}
+ });
+ router.get("/current-finance/school-assistance",async(req,res)=>{
+  try{
+   const actor=assertRoles(req,["PLATFORM_OWNER"]);
+   const p=GetOwnerSchoolAssistanceRequestsQueryParams.parse(req.query);
+   res.json(GetOwnerSchoolAssistanceRequestsResponse.parse(
+    await readOwnerSchoolAssistance(pool,actor.user.id,p.schoolId,p.page,p.pageSize)));
+  }catch(e){currentFinanceError(res,e);}
  });
  router.get("/current-finance/overview",async(req,res)=>{
   try{const p=GetCurrentFinanceOverviewQueryParams.parse(req.query);
