@@ -3,6 +3,7 @@ import {publishedSchoolInvoiceSql} from "./school-fee-carry-forward";
 import {financialSnapshot,parseFinancialReminder} from "./financial-reminder-policy";
 import {readSchoolSubscription} from "./subscription-enforcement";
 import {readStaffSubscriptionAccess} from "./staff-subscription-access";
+import {readManualSchoolState} from "./school-subscription-lock";
 import {readStudentUsageRollout,lagosDate} from "./student-platform-rollout";
 type Db={query:(sql:string,values?:any[])=>Promise<{rows:any[]}>};
 export type FinancialReminderRecord={eventKey:string|null;schoolId:number|string|null;recipientUserId:number|string;
@@ -42,6 +43,9 @@ export async function staffNfcReminderSnapshot(db:Db,schoolId:number,employeeId:
  const employee=(await db.query(`SELECT id FROM employees WHERE id=$1 AND school_id=$2 AND user_id=$3
   AND upper(employment_status)='ACTIVE' AND upper(employee_type) IN ('TEACHER','STAFF')`,[employeeId,schoolId,userId])).rows[0];
  if(!employee)return null;
+ // An independent Owner lock is not an unpaid entitlement and must not abort
+ // other schools'/guardians' ordinary-fee reminders or suggest payment lifts it.
+ if((await readManualSchoolState(db,schoolId)).schoolLocked)return null;
  const access=await readStaffSubscriptionAccess(db as any,userId,schoolId);
  if(access.termId!==termId||!access.restricted||access.priceMinor<=0||!["UNPAID","PENDING","FAILED","REFUNDED","PARTIALLY_REFUNDED"].includes(access.status))return null;
  return financialSnapshot([schoolId,employeeId,termId,access.status,access.subscriptionId]);

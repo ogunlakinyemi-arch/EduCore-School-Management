@@ -7,7 +7,7 @@ import { requireVerifiedPaymentAccountProvider } from "../lib/payment-account-pr
 import { FlutterwavePayrollV3Client } from "../lib/flutterwave-payroll-v3";
 import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions } from "../lib/student-nfc-obligations";
 import {isReservedPlatformNfcCategory as isSystemNfcCategory} from "../lib/student-nfc-policy";
-import {publishedSchoolInvoiceSql} from "../services/school-fee-carry-forward";
+import {publishedSchoolInvoiceSql,familyPayableInvoiceSql} from "../services/school-fee-carry-forward";
 import { assignPublishedClassFees } from "../services/fee-publication";
 import { createPublishedFeeCorrection,feeCorrectionInput,assertFeeStructureNotSuperseded } from "../services/published-fee-corrections";
 import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
@@ -1034,7 +1034,7 @@ router.get("/parent/fees/payments", async (req, res): Promise<void> => {
        FROM fee_payments p JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
        JOIN schools s ON s.id=p.school_id
        LEFT JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id AND r.invoice_id=p.invoice_id
-       WHERE ${publishedSchoolInvoiceSql("i")} AND EXISTS (
+       WHERE ${familyPayableInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents pa JOIN parent_student_relationships rel ON rel.parent_id=pa.id
          WHERE pa.user_id=$1 AND pa.status='ACTIVE' AND pa.school_id=p.school_id
            AND rel.student_id=p.student_id AND rel.status='ACTIVE'
@@ -1056,7 +1056,7 @@ router.get("/student/fees/payments", async (req, res): Promise<void> => {
        JOIN schools s ON s.id=p.school_id
        JOIN students st ON st.id=p.student_id AND st.school_id=p.school_id
        LEFT JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id AND r.invoice_id=p.invoice_id
-       WHERE st.user_id=$1 AND ${publishedSchoolInvoiceSql("i")} ORDER BY p.created_at DESC,p.id DESC`,
+       WHERE st.user_id=$1 AND ${familyPayableInvoiceSql("i")} ORDER BY p.created_at DESC,p.id DESC`,
       [context.user.id],
     );
     res.json(ListStudentFeePaymentsResponse.parse(result.rows));
@@ -1071,7 +1071,7 @@ router.get("/parent/fees/invoices/:invoiceId/bank-details", async (req, res): Pr
     const invoice = await pool.query(
       `SELECT i.id,i.school_id AS "schoolId",i.status,i.outstanding_minor AS "outstandingMinor"
        FROM fee_invoices i
-       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} AND EXISTS (
+       WHERE i.id=$1 AND ${familyPayableInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
          WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
            AND r.student_id=i.student_id AND r.status='ACTIVE'
@@ -1111,7 +1111,7 @@ router.get("/parent/fees/invoices/:invoiceId/payment-methods", async (req, res):
     const invoice = await pool.query(
       `SELECT i.id,i.school_id AS "schoolId",i.status,i.outstanding_minor AS "outstandingMinor",i.currency
        FROM fee_invoices i
-       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} AND EXISTS (
+       WHERE i.id=$1 AND ${familyPayableInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
          WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
            AND r.student_id=i.student_id AND r.status='ACTIVE'
@@ -1165,7 +1165,7 @@ router.get("/parent/fees/invoices/:invoiceId/checkout-policy", async (req, res):
           COALESCE(fs.partial_payments_enabled,false) AS "partialPaymentsEnabled"
        FROM fee_invoices i
        LEFT JOIN fee_school_settings fs ON fs.school_id=i.school_id
-       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} AND EXISTS (
+       WHERE i.id=$1 AND ${familyPayableInvoiceSql("i")} AND EXISTS (
          SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
          WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
            AND r.student_id=i.student_id AND r.status='ACTIVE'
@@ -1215,7 +1215,7 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
     const invoice = await client.query(
       `SELECT i.* FROM fee_invoices i JOIN parents p ON p.school_id=i.school_id AND p.status='ACTIVE'
        JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
-       WHERE i.id=$1 AND p.user_id=$2 AND ${publishedSchoolInvoiceSql("i")} FOR UPDATE OF i`,
+       WHERE i.id=$1 AND p.user_id=$2 AND ${familyPayableInvoiceSql("i")} FOR UPDATE OF i`,
       [invoiceId, context.user.id],
     );
     if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
@@ -1733,12 +1733,13 @@ router.get("/finance/payments/:paymentId/receipt", async (req, res): Promise<voi
       authorization = `AND p.school_id=$2`;
     } else if (roles.includes("PARENT")) {
       values.push(context.user.id);
-      authorization = `AND EXISTS(SELECT 1 FROM fee_invoices i WHERE i.id=p.invoice_id AND i.school_id=p.school_id AND ${publishedSchoolInvoiceSql("i")})
+      authorization = `AND EXISTS(SELECT 1 FROM fee_invoices i WHERE i.id=p.invoice_id AND i.school_id=p.school_id AND ${familyPayableInvoiceSql("i")})
         AND EXISTS (SELECT 1 FROM parents pa JOIN parent_student_relationships r ON r.parent_id=pa.id
         WHERE pa.user_id=$2 AND pa.status='ACTIVE' AND pa.school_id=p.school_id AND r.student_id=p.student_id AND r.status='ACTIVE')`;
     } else if (roles.includes("STUDENT")) {
       values.push(context.user.id);
-      authorization = `AND EXISTS (SELECT 1 FROM students st WHERE st.id=p.student_id AND st.school_id=p.school_id AND st.user_id=$2)`;
+      authorization = `AND EXISTS(SELECT 1 FROM fee_invoices i WHERE i.id=p.invoice_id AND i.school_id=p.school_id AND ${familyPayableInvoiceSql("i")})
+        AND EXISTS (SELECT 1 FROM students st WHERE st.id=p.student_id AND st.school_id=p.school_id AND st.user_id=$2)`;
     } else {
       throw new AuthError(403, "You are not authorized to view this receipt");
     }
@@ -2626,7 +2627,7 @@ router.get("/parent/fees/invoices/:invoiceId/lines",async(req,res):Promise<void>
       ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
       JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
       JOIN school_memberships m ON m.user_id=p.user_id AND m.school_id=p.school_id AND m.role='PARENT' AND m.status='ACTIVE'
-      WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")}`,[invoiceId,getUserContext(req).user.id]);
+      WHERE i.id=$1 AND ${familyPayableInvoiceSql("i")}`,[invoiceId,getUserContext(req).user.id]);
     if(!invoice.rows.length) throw new AuthError(404,"Invoice not found");
     res.json(await feeLineBalances(pool,invoice.rows[0]));
   } catch(error){fail(res,error);}
@@ -2761,7 +2762,7 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
        JOIN parents p ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
        JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
        JOIN school_memberships m ON m.user_id=p.user_id AND m.school_id=p.school_id AND m.role='PARENT' AND m.status='ACTIVE'
-       WHERE i.id=$1 AND ${publishedSchoolInvoiceSql("i")} FOR UPDATE OF i`,[invoiceId,context.user.id],
+       WHERE i.id=$1 AND ${familyPayableInvoiceSql("i")} FOR UPDATE OF i`,[invoiceId,context.user.id],
     );
     if(!invoiceResult.rows.length && adminSchools.length) invoiceResult=await client.query(
       `SELECT i.*,NULL::int AS parent_id FROM fee_invoices i

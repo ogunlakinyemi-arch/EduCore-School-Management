@@ -4,8 +4,9 @@ import {nfcTermWindow,lagosDate} from "./nfc-term-grace";
 import {studentRolloutDecision} from "./student-platform-rollout";
 import {advanceCheckoutOpen} from "./advance-subscription-policy";
 import {financialScheduleDay,financialReminderScope,financialSnapshot,parseFinancialReminder} from "./financial-reminder-policy";
-import {schoolFeeCarryForward,publishedSchoolInvoiceSql} from "./school-fee-carry-forward";
+import {schoolFeeCarryForward,publishedSchoolInvoiceSql,familyPayableInvoiceSql} from "./school-fee-carry-forward";
 import {isReservedPlatformNfcCategory,isSystemNfcCategory} from "../lib/student-nfc-policy";
+import {isStaffSubscriptionOperation} from "./staff-subscription-access";
 const end="2028-07-31";
 describe("school-saved term dates, not a January/second-term anchor",()=>{
  it.each([
@@ -38,6 +39,9 @@ describe("school-saved term dates, not a January/second-term anchor",()=>{
   expect(lagosDate(new Date("2027-01-24T22:59:59Z"))).toBe("2027-01-24");
   expect(lagosDate(new Date("2027-01-24T23:00:00Z"))).toBe("2027-01-25");
   expect(readFileSync(new URL("./nfc-term-grace.ts",import.meta.url),"utf8")).not.toMatch(/process\.env|clockOverride|FAKE_DATE/);
+  expect(isStaffSubscriptionOperation("/operations/security/pickups","POST")).toBe(false);
+  expect(isStaffSubscriptionOperation("/transport/pickups/1","POST")).toBe(false);
+  expect(isStaffSubscriptionOperation("/academic/assignments/security","POST")).toBe(true);
  });
 });
 describe("fixed weekly schedule and retained original balances",()=>{
@@ -72,5 +76,7 @@ describe("fixed weekly schedule and retained original balances",()=>{
   expect(isReservedPlatformNfcCategory("School NFC Card & EduCore Subscription Fee")).toBe(false);
   expect(isReservedPlatformNfcCategory("NFC Card Subscription")).toBe(true);
   expect(isSystemNfcCategory("School NFC Subscription")).toBe(true); // old detector retained for history
+  expect(familyPayableInvoiceSql()).toContain("card_replacement.student_id=i.student_id");
+  expect(publishedSchoolInvoiceSql()).not.toContain("student_nfc_replacement_requests");
  });
 });

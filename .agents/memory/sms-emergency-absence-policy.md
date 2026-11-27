@@ -33,14 +33,17 @@ exclude onboarded/opted-out/invalid contacts, and never enable automatic outreac
 
 ## Existing parent/school notification restriction
 
-Outside that explicit Field Operations exception, SMS is approved only for
-emergency notifications and student absence notifications.
-Arrival, exit, late entry, finance, invoices, announcements, ordinary messages,
-marketing and all other events are excluded. Emergency SMS still requires an
-explicit recipient opt-in; mandatory in-app security does not imply SMS consent.
+SMS also supports the fixed Monday/Friday WAT financial reminder purpose
+approved on 2026-11-27: positive, fresh school fee balances to relevant
+guardians, and appropriately scoped unpaid NFC reminders. This is not general
+SMS permission for arbitrary finance/invoice messages, arrival, exit, late
+entry, announcements or marketing. Preserve explicit recipient opt-in,
+Owner ceilings and operational delivery pauses; a school does not approve or
+disable each scheduled financial run.
 
-**Why:** The Owner explicitly approved BulkSMSNigeria with this narrow event scope,
-while prohibiting test SMS charges, Production changes and publication.
+**Why:** The user expanded the earlier emergency/absence-only notification scope
+specifically for mandatory scheduled financial reminders, without authorizing
+test charges, operational activation, Production changes or publication.
 
 **How to apply:** Preserve school/Owner selections and tenant authorization, check
 SMS scope and consent at enqueue and dispatch, and retain the provider-level event

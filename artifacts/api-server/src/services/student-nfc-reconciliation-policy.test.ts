@@ -14,6 +14,28 @@ function fixture() {
   return {student,term,session,evidence,schoolId:1,complete:true,today:"2026-10-27"};
 }
 describe("unpaid student NFC reconciliation policy: proposals never apply",()=>{
+  it.each([320000,500000])("keeps a published school NFC charge at %s separate from platform reconciliation",amount=>{
+    const f=fixture();f.evidence.subscriptions=[];f.evidence.student_subscription_terms=[];
+    f.evidence.fee_invoices=[{id:11,school_id:1,student_id:31,academic_term_id:4,total_minor:amount,
+      paid_minor:amount,outstanding_minor:0,school_published_fee:true}];
+    f.evidence.fee_invoice_lines=[{invoice_id:11,school_id:1,category_name_snapshot:"School NFC Card & EduCore Subscription Fee",
+      description_snapshot:"NFC subscription",amount_minor:amount}];
+    const before=structuredClone(f.evidence);
+    expect(classifyStudentNfcPreview(f)).toMatchObject({status:"NEW_OBLIGATION_AFTER_REVIEW",
+      invoiceIds:[],proposedPlatformAmountMinor:320000,paymentReferences:[]});
+    expect(f.evidence).toEqual(before);
+    // Neither a school-looking name nor publication can hide a legacy binding.
+    f.evidence.student_subscription_terms=[{school_id:1,student_id:31,academic_session_id:3,academic_term_id:4,
+      subscription_id:null,legacy_invoice_id:11}];
+    expect(classifyStudentNfcPreview(f).invoiceIds).toEqual([11]);
+  });
+  it("holds school-named NFC evidence without positive publication provenance",()=>{
+    const f=fixture();f.evidence.subscriptions=[];f.evidence.student_subscription_terms=[];
+    f.evidence.fee_invoices=[{id:11,school_id:1,student_id:31,academic_term_id:4,total_minor:500000,
+      paid_minor:0,outstanding_minor:500000}];
+    f.evidence.fee_invoice_lines=[{invoice_id:11,school_id:1,category_name_snapshot:"School NFC subscription",amount_minor:500000}];
+    expect(classifyStudentNfcPreview(f).invoiceIds).toEqual([11]);
+  });
   it("proposes 3200 for a single unattempted unpaid bound obligation without changing it",()=>{
     const f=fixture(), before=JSON.stringify(f);
     expect(classifyStudentNfcPreview(f)).toMatchObject({status:"CANDIDATE_AFTER_REVIEW",originalAmountMinor:500000,

@@ -73,7 +73,8 @@ export function classifyStudentNfcPreview(input: {
   const intents = all("flutterwave_live_subscription_intents").filter(r => relatedSub(r) || (subject(r) && inTerm(r)));
   const boundInvoices = bindings.map(r => Number(r.legacy_invoice_id)).filter(n => n > 0);
   const schoolInvoices = all("fee_invoices").filter(r => (subject(r) && inTerm(r) &&
-    all("fee_invoice_lines").some(l => same(l.invoice_id, r.id) && same(l.school_id,r.school_id) && nfc(l)))
+    all("fee_invoice_lines").some(l => same(l.invoice_id, r.id) && same(l.school_id,r.school_id) && nfc(l)
+      && !(r.school_published_fee===true&&/^school\s+nfc\b/i.test(str(l.category_name_snapshot)))))
     || boundInvoices.includes(Number(r.id)));
   const invoiceIds = unique(schoolInvoices.map(r => Number(r.id))).sort((a,b) => a-b);
   const invoiceRelated = (r: EvidenceRecord) => invoiceIds.includes(Number(r.invoice_id));

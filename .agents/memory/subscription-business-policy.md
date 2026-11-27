@@ -35,32 +35,27 @@ superseding the earlier review-only proposal, and supplied these batch decisions
 approval. Never fabricate unresolved recovery amounts or provider capabilities;
 retain an auditable hold/recovery review when the applicable policy is missing.
 
-## Approved launch and collection timing
+## Current school-date NFC timing
 
-Business-policy approval/effective date for both the ₦3,200 Student platform
-policy and the separate ₦150 BRO policy is 2026-10-27. Schools must be able to
-onboard and use EduCore in the current term without NFC hardware/cards or a new
-student platform charge, obligation, checkout, overdue state or subscription
-restriction.
+The 2026-11-27 instruction supersedes the former January 2027 second-term
+anchor and blanket current-term free pilot for NFC timing. Every saved school
+term, of any number/session, has the same platform-wide NFC grace: D through
+D+6 inclusive; NFC checkout and required enforcement start at D+7. Use the
+school's saved WAT dates, not a national date. Calendar rollover never waits
+for grace or payment. Ordinary school invoices have no NFC grace and keep
+their own original due dates.
 
-Collection starts only from each school's actual configured second academic
-term beginning in January 2027, and later terms. Never substitute a universal
-January start date. Missing or ambiguous calendar evidence cannot authorize
-billing; keep ordinary access available while configuration is resolved.
-This also governs ALL NFC activation and attendance subscription checks,
-including newly assigned, reassigned and replacement student cards. There is
-no interim activation fee; free activation is permission, not a settled payment.
-Owner initial activation still requires confirmation and an audit reason, and
-all genuine non-payment safeguards remain independent.
-The ₦150 liability requires eligible, independently verified exact-student/term
-₦3,200 direct payment for an eligible collection term. It is not a school/BRO
-split, and current-term, unpaid, legacy and review records cannot earn it.
+Student platform price remains ₦3,200. An eligible ₦150 BRO liability is a
+separate independently verified, exactly-once expense, not a collection split.
+Preserve historical prices, amounts, payment evidence, commission eligibility,
+explicit free-term grants and independent manual/security/card controls.
+Parents/students/teachers must not see internal student platform/remittance or
+BRO amounts. Families see only their own school's published charges, even
+where the school chose the same numeric price. Paying the school or uploading
+a receipt is never platform entitlement.
 
-**Why:** The user explicitly deferred subscriptions because the current term
-had progressed too far and NFC devices/cards will not yet be distributed.
-They approved the policies on 27 October, not immediate collection.
-They subsequently clarified that all current-term activations, including
-reassigned cards, are free; NFC-specific checks must not contradict this rule.
+**Why:** The user explicitly replaced the fixed launch anchor with school-date
+NFC-only grace, and separated ordinary school debt and parent-facing fees.
 
 **How to apply:** Separate business effective date, school calendar collection
 start, financial activation/release and actual payment verification. Preserve
@@ -91,7 +86,8 @@ fee receipts, private evidence, reversals and role controls. School assistance
 requires independent Owner verification of actual bank receipt before checkout;
 keep that verification after a failed provider attempt. In chargeable terms, only
 verified Flutterwave success for the student/term plus existing security checks
-grants card eligibility; the current pre-subscription term remains free.
+grants card eligibility; the school-date grace and explicit free-term grants
+remain non-payment entitlements.
 BRO entitlement remains separately idempotent and subject to existing eligibility;
 staff/teacher payments remain separate. Implementation authorizes neither
 Production data/secrets changes, live transactions nor publishing.

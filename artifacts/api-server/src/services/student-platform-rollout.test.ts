@@ -38,7 +38,7 @@ describe("approved free launch and school-owned January collection",()=>{
     const pool={connect:async()=>({query,release:vi.fn()})},scope={schoolId:1,studentId:31,termId:2};
     expect((await directStudentReadiness(pool,scope)).blockers).toContain("LIVE_DIRECT_CONFIGURATION_AND_RELEASE_REVIEW_REQUIRED");
     await expect(startDirectStudentPayment(pool,{...scope,actorId:9,email:"fictional@example.test",
-      idempotencyKey:"fictional-key-no-charge"})).rejects.toThrow("LIVE_DIRECT_CONFIGURATION_AND_RELEASE_REVIEW_REQUIRED");
+      idempotencyKey:"fictional-key-no-charge"})).rejects.toThrow("FINANCIAL_ACTOR_NOT_AUTHORIZED");
     expect(query.mock.calls.every(([sql]:any)=>!/\b(?:INSERT|UPDATE|DELETE)\b/.test(sql))).toBe(true);
   });
   it("cannot award 150 for current-term, unpaid, legacy or unapproved evidence",()=>{

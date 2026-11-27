@@ -8,7 +8,8 @@ vi.mock("./student-platform-rollout",async original=>({...await original<any>(),
 vi.mock("./subscription-enforcement",()=>({readSchoolSubscription:vi.fn()}));
 vi.mock("./staff-subscription-access",()=>({readStaffSubscriptionAccess:vi.fn()}));
 import {queueWeeklyFinancialReminders} from "./financial-reminder-worker";
-import {feeReminderDigest,financialReminderStillCurrent,guardianSchoolFeeSql} from "./financial-reminder-eligibility";
+import {feeReminderDigest,financialReminderStillCurrent,guardianSchoolFeeSql,staffNfcReminderSnapshot} from "./financial-reminder-eligibility";
+import {readStaffSubscriptionAccess} from "./staff-subscription-access";
 import {financialReminderScope,financialReminderChannels} from "./financial-reminder-policy";
 import {defaultNotificationPolicy,financialReminderSelectedChannels} from "./notification-channel-policy";
 import {smsNotificationAllowed,smsEventAllowed} from "./sms-event-policy";
@@ -72,10 +73,34 @@ it("revalidates balance, child, term, guardian/school and day before sending",as
 it("ignores school campaign switches but preserves Owner ceilings and narrow SMS scope",()=>{
  const policy=defaultNotificationPolicy();policy.schools["1"]={enabled:false,allowed:[]};
  expect(financialReminderSelectedChannels(policy,"FINANCE")).toEqual([...financialReminderChannels]);
- policy.events.FINANCE.allowed=["IN_APP"];
+ policy.events.FINANCE!.allowed=["IN_APP"];
  expect(financialReminderSelectedChannels(policy,"FINANCE")).toEqual(["IN_APP"]);
  const key=financialReminderScope("2027-01-25","FEE",44,9)+feeReminderDigest(row());
  expect(smsNotificationAllowed("FINANCE",key,71)).toBe(true);
  expect(smsNotificationAllowed("FINANCE","ORDINARY_FINANCE:44",71)).toBe(false);
  expect(smsEventAllowed("FINANCIAL_WEEKLY")).toBe(true);expect(smsEventAllowed("FINANCE")).toBe(false);
+});
+it("cancels employee reminders after payment, deactivation or an independent Owner lock",async()=>{
+ let locked=false,employed=true;
+ const db={query:vi.fn(async(sql:string)=>{
+  if(sql.includes("FROM employees"))return {rows:employed?[{id:8}]:[]};
+  if(sql.includes("school_subscription_manual_locks"))return {rows:[{schoolLocked:locked}]};
+  if(sql.includes("FROM schools"))return {rows:[{id:1}]};
+  return {rows:[]};
+ })};
+ const staff=vi.mocked(readStaffSubscriptionAccess);
+ const access={schoolId:1,restricted:true,status:"UNPAID" as const,termId:9,subscriptionId:12,priceMinor:200000,renewalPath:"/my-nfc-subscription"};
+ staff.mockResolvedValue(access);
+ const digest=await staffNfcReminderSnapshot(db,1,8,9,4);
+ expect(digest).toMatch(/^[a-f0-9]{64}$/);
+ const record={schoolId:1,recipientUserId:4,subjectStudentId:null,
+  eventKey:financialReminderScope("2027-01-25","STAFF_NFC",8,9)+digest},now=new Date("2027-01-25T10:00:00Z");
+ expect(await financialReminderStillCurrent(db,record,now)).toBe(true);
+ staff.mockResolvedValue({...access,status:"PAID",restricted:false});
+ expect(await financialReminderStillCurrent(db,record,now)).toBe(false);
+ staff.mockResolvedValue(access);employed=false;
+ expect(await financialReminderStillCurrent(db,record,now)).toBe(false);
+ employed=true;locked=true;staff.mockClear();
+ expect(await financialReminderStillCurrent(db,record,now)).toBe(false);
+ expect(staff).not.toHaveBeenCalled();
 });

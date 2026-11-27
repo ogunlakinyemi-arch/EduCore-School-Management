@@ -3,14 +3,15 @@ name: Teacher and Staff subscription policy
 description: Fixed platform-only staff subscriptions, historical preservation, and bounded operational restrictions.
 ---
 
-Teacher/Staff current-term platform access is free effective 27 October 2026:
-no new NGN 2,000 charge/checkout or automatic overdue restriction. Resume only
-from each school's actual January 2027 second term, then later eligible terms;
-missing or ambiguous calendars stay free. Preserve manual locks and historical
-paid/unpaid records. Ordinary authorized platform tasks require no NFC hardware.
+The 2026-11-27 school-date rule supersedes the former January second-term
+anchor: Teacher/Staff NFC has the same D through D+6 grace and D+7 collection
+and required enforcement in every saved school term/session. Missing or
+ambiguous calendars do not establish unpaid entitlement. Preserve independent
+manual locks, explicit free-term grants and historical paid/unpaid records.
+Ordinary authorized platform tasks require no NFC hardware.
 
-**Why:** The user extended the free current-term Student pilot policy explicitly
-to Teacher/Staff on 27 October 2026; this supersedes immediate staff collection.
+**Why:** The user required a fixed platform-wide NFC-only grace based on each
+school's actual saved term dates, not a nationwide launch date.
 
 Normal Teacher/Staff subscriptions remain NGN 2,000 per academic term, paid directly
 to Yetenia through Flutterwave. New payments have no school share, school

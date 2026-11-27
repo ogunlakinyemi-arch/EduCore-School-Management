@@ -87,7 +87,7 @@
 - [Sandbox callback isolation](sandbox-callback-isolation.md) — TEST charges can trigger app writes; verify callback/webhook targets and use dedicated Development aliases consistently.
 - [Settlement removal consent](settlement-profile-removal-consent.md) — building a Development cleanup feature never authorizes deleting existing bank profiles.
 - [Repository references](repository-reference-policy.md) — compare current Replit source with freshly verified GitHub main before fixes; preserve local work and do not infer push permission.
-- [Subscription business policy](subscription-business-policy.md) — free current term; ₦3,200 collection from each school's actual January 2027 second term; preserve history and LIVE gates.
+- [Subscription business policy](subscription-business-policy.md) — school-date NFC grace D..D+6, checkout/enforcement D+7; private ₦3,200 liability, independent school fees and preserved history.
 - [School billing authority](school-billing-authority-policy.md) — server-owned mode and numeric identities; legacy TEST records and redirects never establish LIVE payment.
 - [Bank provider selection](bank-provider-selection-policy.md) — shared cross-role directory; verified payout codes, explicit unavailable fallback and no unapproved schema changes.
 - [Employee deactivation boundary](employee-deactivation-boundary.md) — deny school employment permissions without globally disabling independent family or other-tenant access.
@@ -114,7 +114,7 @@
 - [Managed role lifecycle](managed-role-lifecycle.md) — custom-role upgrade support is not a Publish ACL contract; separate local permission proof from platform provisioning and credential lifecycle.
 - [Payment receipt policy](payment-receipt-policy.md) — private uploads are evidence only; school review controls payment status, and Owners confirm already-completed school transfers.
 - [Owner daily school payouts](owner-school-payout-policy.md) — explicit Owner approval, verified bank/funding, durable references and reconciliation; subaccount support is not payout readiness.
-- [Teacher/Staff subscriptions](staff-subscription-policy.md) — current term free from 27 October; resume NGN 2,000 only at each school's actual January second term.
+- [Teacher/Staff subscriptions](staff-subscription-policy.md) — own-school NFC grace in every saved term; separate NGN 2,000 pricing, bounded restrictions and no family-role lock.
 - [Owner subscription rule governance](owner-rule-governance.md) — intended fees require reviewed effective-dated activation; bank assistance is not a payment.
 - [Retained records and retired payments](retained-records-and-retired-payments.md) — former test rows are now retained real records; archive split/hosted workflows without cleanup.
 - [Financial approval boundaries](financial-approval-boundaries.md) — lossless canonical evidence and no resurrection of older approvals after withdrawal or expiry.
@@ -123,7 +123,8 @@
 - [Hardware identity correction](hardware-identity-correction-policy.md) — retain primary ID/key and both histories; Production execution requires the supported serving workflow and fresh checks.
 - [Owner card grace](owner-student-card-grace-policy.md) — audited administrative controls and exact-card temporary payment permission; never settlement, activation or a safety override.
 - [Invoice logo fallback](invoice-logo-fallback-policy.md) — private school branding must not block parent invoice printing; other document requirements remain separate.
-- [Restricted SMS scope](sms-emergency-absence-policy.md) — emergency/absence plus separately consented Owner field follow-up; preserve pauses and distinguish configuration from sending.
+- [Restricted SMS scope](sms-emergency-absence-policy.md) — emergency/absence, fixed financial reminders and consented Owner field follow-up; preserve consent, ceilings and delivery pauses.
+- [Scheduled financial reminders](scheduled-financial-reminder-policy.md) — Monday/Friday WAT, positive fresh balances and current recipients; preserve invoices, privacy and the existing delivery engine.
 - [Notification time display](notification-time-policy.md) — explicit Africa/Lagos WAT for event/created times; preserve UTC storage, distinguish instants and handle rollover.
 - [Teacher period notices](teacher-period-notification-policy.md) — Production preparation approved; independent consent, separate paused Production controls and no implied migration/send permission.
 - [Owner free academic terms](owner-free-academic-term-policy.md) — any existing school, one saved calendar term; non-payment entitlement, immutable audit and no inherited next-term waiver.

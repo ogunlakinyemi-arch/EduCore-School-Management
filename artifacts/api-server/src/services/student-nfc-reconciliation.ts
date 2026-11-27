@@ -1,6 +1,7 @@
 import { classifyStudentNfcPreview, reconciliationDigest, evidenceInteger,
   RECONCILIATION_REPORT_VERSION, RECONCILED_STUDENT_PRICE_MINOR,
   type EvidenceRecord, type ReconciliationEvidence, type StudentNfcReconciliationReport } from "./student-nfc-reconciliation-policy";
+import {publishedSchoolInvoiceSql} from "./school-fee-carry-forward";
 type StudentNfcReconciliationSource = StudentNfcReconciliationReport["sources"][number];
 
 type Sql = { query: (sql: string, values?: any[]) => Promise<{ rows: any[] }> };
@@ -13,7 +14,7 @@ export const NFC_PREVIEW_SOURCES: Record<string,string[]> = {
   academic_sessions: ["id","school_id","status"], students: ["id","school_id","status","admission_status"],
   subscriptions: ["id","school_id","student_id","term","amount","status","verification_status","provider_reference","expires_at","allocation_snapshot"],
   student_subscription_terms: ["school_id","student_id","academic_session_id","academic_term_id","subscription_id","legacy_invoice_id"],
-  fee_invoices: ["id","school_id","student_id","academic_session_id","academic_term_id","total_minor","paid_minor","outstanding_minor"],
+  fee_invoices: ["id","school_id","student_id","academic_session_id","academic_term_id","structure_id","total_minor","paid_minor","outstanding_minor"],
   student_subscription_payments: ["id","subscription_id","school_id","student_id","academic_session_id","academic_term_id","reference","status","gross_amount_minor"],
   student_subscription_allocations: ["subscription_id","school_id","student_id","payment_id"],
   fee_invoice_lines: ["school_id","invoice_id","category_name_snapshot","description_snapshot","amount_minor"],
@@ -111,7 +112,11 @@ async function collectReconciliation(pool:Pool,scope:{schoolId:number;termId:num
           source.complete=false; source.issues.push("NO_SUPPORTED_SCOPE_LINK"); continue;
         }
       }
-      const rows = await c.query(`SELECT ${record} AS record FROM public."${name}" r
+       // Server-derived publication provenance, not a client-supplied marker or
+       // a numeric-price heuristic. The original invoice remains in the evidence.
+       const projection=name==="fee_invoices"?`(${record}||jsonb_build_object('school_published_fee',
+         (${publishedSchoolInvoiceSql("r")})))`:record;
+       const rows = await c.query(`SELECT ${projection} AS record FROM public."${name}" r
         WHERE ${predicate} ORDER BY ${record}::text LIMIT $${values.length}`, values);
       source.recordCount = Math.min(rows.rows.length,LIMIT);
       if (rows.rows.length>LIMIT) { source.complete=false; source.issues.push("SOURCE_TRUNCATED_NO_CONVERSION_ALLOWED"); }

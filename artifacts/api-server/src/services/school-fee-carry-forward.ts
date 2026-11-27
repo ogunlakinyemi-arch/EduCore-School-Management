@@ -22,3 +22,13 @@ export function publishedSchoolInvoiceSql(alias="i"){
   AND NOT EXISTS(SELECT 1 FROM student_subscription_terms legacy_nfc
    WHERE legacy_nfc.school_id=${alias}.school_id AND legacy_nfc.legacy_invoice_id=${alias}.id)`;
 }
+/** Preserve the separately authorized existing replacement-card payment flow.
+ * This exception does not publish a platform subscription or put replacement
+ * requests into ordinary-fee arrears/reminder selection. Callers must still
+ * enforce the live parent/child or student ownership predicate. */
+export function familyPayableInvoiceSql(alias="i"){
+ const published=publishedSchoolInvoiceSql(alias);
+ return `((${published}) OR EXISTS(SELECT 1 FROM student_nfc_replacement_requests card_replacement
+  WHERE card_replacement.invoice_id=${alias}.id AND card_replacement.school_id=${alias}.school_id
+   AND card_replacement.student_id=${alias}.student_id))`;
+}

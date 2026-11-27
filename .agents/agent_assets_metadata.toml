@@ -1036,3 +1036,17 @@ mtime_ms = 1795786779881
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/43f25a74-41c8-41e6-8a29-d4dbb2f5ca5b/ffd2bcd8-3c53-4a8a-9b29-57a3c3a80465"
 storage_version_token = "1795786886933350"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "yrR0TqLOf-XsKBL5oEGBn"
+uri = "file://docs/school-date-nfc-financial-reminders-validation.md"
+type = "text"
+title = "NFC, arrears and reminders validation report"
+description = "Implemented behavior, all changed files, 236 passing focused checks, and the native PostgreSQL/runtime limitations."
+logical_id = "1a12c7f0-b3c4-4068-939a-be947c69c1b8"
+content_hash = "sha256:510b7dd3db7e7d2f32e764666386b5d0ef0d6b85b3cca46e63f5c7ce3103b90f"
+size = 13098
+mtime_ms = 1795792481157
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/1a12c7f0-b3c4-4068-939a-be947c69c1b8/4f88df43-9ea9-43a8-a6fb-4675ebe9527c"
+storage_version_token = "1795792525089594"
+content_type = "text/markdown"

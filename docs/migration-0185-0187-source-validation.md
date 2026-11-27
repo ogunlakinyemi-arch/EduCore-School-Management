@@ -1,7 +1,12 @@
 # 0185–0187 source corrections and disposable acceptance
 
-**Status: source and tests authored; native, service and policy tests have not
-been executed for this correction. This document is not migration approval.**
+**Original correction status: source and tests authored; native, service and
+policy tests were not executed in that correction. This is not migration approval.**
+
+The later consolidated school-date NFC/arrears/reminder pass and its specifically
+executed source/unit checks are recorded in
+`docs/school-date-nfc-financial-reminders-validation.md`. Native PostgreSQL
+acceptance remains unexecuted; do not infer it from the later unit checks.
 
 No application database, provider, credential, operational setting or release
 flag is needed for static validation. Do not import/start the application to
