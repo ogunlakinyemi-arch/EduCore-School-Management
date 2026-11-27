@@ -9,9 +9,10 @@ import {currentSchoolAuthority,requireCurrentExtensions} from "./current-finance
 import {broEntitlementAmount} from "./bro-commission-policy";
 import {demand,requestKey,type CurrentPool,type CurrentSql} from "./current-financial-contract";
 import {digest} from "./current-financial-store";
+import {bulkProof,bulkCreditSource,activeAllocationPredicate} from "./current-payment-evidence";
 type Review={id:number;rule_id:number;report_digest:string;merchant_scope:string};
 type Proof={transactionId:string;reference:string;amountMinor:number;currency:string;providerReference:string;
- status:"successful"|"failed"|"cancelled"|"pending";providerFeeMinor:number|null;additionalFeeMinor:number|null};
+ status:"successful"|"failed"|"cancelled"|"pending";providerFeeMinor:number|null;additionalFeeMinor:number|null;chargedAmountMinor?:number};
 export type BulkDependencies={
  now?:()=>Date;
  review?:(scope:{schoolId:number;studentId:number;termId:number})=>Promise<Review>;
@@ -27,13 +28,18 @@ export async function bulkEvent(c:CurrentSql,batchId:number,actorId:number,state
 export async function batchState(c:CurrentSql,id:number){
  return (await c.query(`SELECT state FROM current_bulk_events WHERE batch_id=$1 AND allocation_id IS NULL ORDER BY id DESC LIMIT 1`,[id])).rows[0]?.state??"RESERVED";
 }
-async function recordCheckoutOutcome(pool:CurrentPool,id:number,actorId:number,state:"READY"|"UNKNOWN",details:object){
+export async function recordCheckoutOutcome(pool:CurrentPool,id:number,actorId:number,state:"READY"|"UNKNOWN",details:object){
  await financialTransaction(pool,async c=>{
    // The provider may notify us before its checkout POST returns. The shared
    // transaction gate serializes this check with verification/recovery writes;
    // checkout transport evidence must never rewind independently verified facts.
    if(await batchState(c,id)!=="PROCESSING")return;
-   await bulkEvent(c,id,actorId,state,state==="READY"?"checkout-ready":"checkout-unknown",details);
+   const reference=(details as {attemptReference?:string}).attemptReference;
+   if((await c.query("SELECT to_regclass('public.current_bulk_checkout_attempts') IS NOT NULL AS present")).rows[0]?.present){
+     const latest=(await c.query("SELECT reference FROM current_bulk_checkout_attempts WHERE batch_id=$1 ORDER BY id DESC LIMIT 1",[id])).rows[0];
+     if(latest&&latest.reference!==reference)return;
+   }
+   await bulkEvent(c,id,actorId,state,`${state==="READY"?"checkout-ready":"checkout-unknown"}:${reference??"original"}`,details);
  });
 }
 export async function batchRoot(c:CurrentSql,id:number){
@@ -42,8 +48,9 @@ export async function batchRoot(c:CurrentSql,id:number){
 }
 export async function assertNoBulkClaim(c:CurrentSql,scope:{schoolId:number;studentId:number;termId:number}){
  if(!(await c.query(`SELECT to_regclass('public.current_bulk_allocations') IS NOT NULL AS present`)).rows[0]?.present)return;
- demand(!(await c.query(`SELECT id FROM current_bulk_allocations WHERE school_id=$1 AND student_id=$2
-   AND academic_term_id=$3 LIMIT 1`,[scope.schoolId,scope.studentId,scope.termId])).rows[0],"STUDENT_RESERVED_BY_AGGREGATE_PAYMENT");
+ demand(!(await c.query(`SELECT a.id FROM current_bulk_allocations a WHERE a.school_id=$1 AND a.student_id=$2
+   AND a.academic_term_id=$3 AND ${await activeAllocationPredicate(c)} LIMIT 1`,
+   [scope.schoolId,scope.studentId,scope.termId])).rows[0],"STUDENT_RESERVED_BY_AGGREGATE_PAYMENT");
 }
 async function defaultReview(pool:CurrentPool,scope:{schoolId:number;studentId:number;termId:number}):Promise<Review>{
  const r=await directStudentReadiness(pool as any,scope);
@@ -60,7 +67,7 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
  const pre=await financialTransaction(pool,async c=>{
    await currentSchoolAuthority(c,actorId,input.schoolId);await requireCurrentExtensions(c);
    const old=(await c.query("SELECT * FROM current_payment_batches WHERE request_key=$1",[input.key])).rows[0];
-   if(old)demand(Number(old.created_by)===actorId&&Number(old.school_id)===input.schoolId
+   if(old)demand(old.snapshot.method!=="COMPANY_BANK"&&Number(old.created_by)===actorId&&Number(old.school_id)===input.schoolId
      &&Number(old.academic_term_id)===input.termId&&digest(old.snapshot.studentIds)===digest(ids)
      &&old.snapshot.reason===input.reason.trim(),"IDEMPOTENCY_CONTENT_CONFLICT");
    return old;
@@ -76,7 +83,7 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
    demand(rollout.chargeable,"FREE_OR_INELIGIBLE_TERM");
    const prior=(await c.query("SELECT * FROM current_payment_batches WHERE request_key=$1",[input.key])).rows[0];
    if(prior){
-     demand(Number(prior.created_by)===actorId&&Number(prior.school_id)===input.schoolId
+     demand(prior.snapshot.method!=="COMPANY_BANK"&&Number(prior.created_by)===actorId&&Number(prior.school_id)===input.schoolId
        &&Number(prior.academic_term_id)===input.termId&&digest(prior.snapshot.studentIds)===digest(ids)
        &&prior.snapshot.reason===input.reason.trim(),"IDEMPOTENCY_CONTENT_CONFLICT");
      return {row:prior,dispatch:false};
@@ -88,6 +95,8 @@ export async function createCurrentBulk(pool:CurrentPool,actorId:number,input:{
      const st=(await c.query(`SELECT s.* FROM students s WHERE s.id=$1 AND s.school_id=$2
        AND lower(s.status)='active' AND upper(s.admission_status)='ADMITTED'
        AND NOT EXISTS(SELECT 1 FROM student_subscription_terms t WHERE t.student_id=s.id AND t.academic_term_id=$3)
+        AND NOT EXISTS(SELECT 1 FROM subscription_payment_assistance_requests ar
+          WHERE ar.student_id=s.id AND ar.academic_term_id=$3 AND ar.status<>'CANCELLED')
        AND NOT EXISTS(SELECT 1 FROM student_direct_live_obligations o WHERE o.student_id=s.id AND o.academic_term_id=$3
          AND (o.amount_minor<>320000 OR o.assistance_request_id IS NOT NULL OR EXISTS(
            SELECT 1 FROM student_direct_live_attempts a WHERE a.obligation_id=o.id AND a.state<>'FAILED')))
@@ -131,24 +140,38 @@ export async function bulkView(pool:CurrentPool,actorId:number,id:number){
    const ready=(await c.query(`SELECT details->>'checkoutUrl' AS url FROM current_bulk_events
      WHERE batch_id=$1 AND state='READY' ORDER BY id DESC LIMIT 1`,[id])).rows[0];
    const state=await batchState(c,id);
-   return {id,reference:b.reference,state,amountMinor:Number(b.amount_minor),checkoutUrl:state==="READY"?ready?.url??null:null};
+   return {id,reference:b.reference,state,amountMinor:Number(b.amount_minor),
+     method:b.snapshot.method==="COMPANY_BANK"?"COMPANY_BANK":"FLUTTERWAVE",
+     checkoutUrl:state==="READY"?ready?.url??null:null};
  });
 }
-export async function verifyCurrentBulk(pool:CurrentPool,actorId:number|null,id:number,transactionId:string,deps:BulkDependencies={}){
+export async function verifyCurrentBulk(pool:CurrentPool,actorId:number|null,id:number,transactionId:string,deps:BulkDependencies={},callbackReference?:string){
  const b=await financialTransaction(pool,async c=>{
    await requireCurrentExtensions(c);const row=await batchRoot(c,id);
+   demand(row.snapshot.method!=="COMPANY_BANK","BANK_CREDIT_CANNOT_USE_PROVIDER_VERIFICATION");
    if(actorId!==null)await currentSchoolAuthority(c,actorId,Number(row.school_id));
+   const attempts=(await c.query("SELECT to_regclass('public.current_bulk_checkout_attempts') IS NOT NULL AS present")).rows[0]?.present;
+   const latest=attempts?(await c.query("SELECT reference FROM current_bulk_checkout_attempts WHERE batch_id=$1 ORDER BY id DESC LIMIT 1",[id])).rows[0]:null;
+   if(callbackReference&&callbackReference!==row.reference){
+     demand(attempts&&(await c.query("SELECT 1 FROM current_bulk_checkout_attempts WHERE batch_id=$1 AND reference=$2",[id,callbackReference])).rows[0],
+       "CHECKOUT_REFERENCE_NOT_BOUND_TO_BATCH");
+   }
+   row.verification_reference=callbackReference??latest?.reference??row.reference;
    return row;
  });
  const verify=deps.verify??((t,r,a)=>new FlutterwaveLiveTransport(undefined,undefined,"DIRECT_STUDENT").bulkStudentCollection(t,r,a));
- const facts=await verify(transactionId,b.reference,Number(b.amount_minor));
- demand(facts.transactionId===transactionId&&facts.reference===b.reference&&facts.amountMinor===Number(b.amount_minor)
+ const facts=await verify(transactionId,b.verification_reference,Number(b.amount_minor));
+ demand(facts.transactionId===transactionId&&facts.reference===b.verification_reference&&facts.amountMinor===Number(b.amount_minor)
    &&facts.currency==="NGN","AGGREGATE_VERIFICATION_MISMATCH");
  if(facts.status!=="successful"){
    // Only a fresh independently verified no-charge failure is retry evidence.
    return financialTransaction(pool,async c=>{
      if((await c.query("SELECT 1 FROM current_bulk_confirmations WHERE batch_id=$1",[id])).rows[0])
        return {id,state:await batchState(c,id),ignoredStaleProviderOutcome:true};
+     if((await c.query("SELECT to_regclass('public.current_bulk_checkout_attempts') IS NOT NULL AS present")).rows[0]?.present){
+       const latest=(await c.query("SELECT reference FROM current_bulk_checkout_attempts WHERE batch_id=$1 ORDER BY id DESC LIMIT 1",[id])).rows[0];
+       if(latest&&latest.reference!==facts.reference)return {id,state:await batchState(c,id),ignoredStaleAttemptOutcome:true};
+     }
      await bulkEvent(c,id,actorId??Number(b.created_by),facts.status==="pending"?"PENDING":"FAILED",
        `verified-outcome:${digest(facts)}`,facts);
      return {id,state:facts.status==="pending"?"PENDING":"FAILED",moneyMoved:false};
@@ -174,20 +197,25 @@ export async function verifyPublicCurrentBulk(pool:CurrentPool,reference:string,
  demand(/^SCV4_live_bulk_[A-Za-z0-9_-]{8,70}$/.test(reference),"INVALID_AGGREGATE_REFERENCE");
  const c=await pool.connect();let id:number;
  try{const b=(await c.query("SELECT id FROM current_payment_batches WHERE reference=$1",[reference])).rows[0];
-   demand(b,"BATCH_NOT_FOUND");id=Number(b.id);}finally{c.release();}
- return verifyCurrentBulk(pool,null,id,transactionId,deps);
+   let found=b;
+   if(!found&&(await c.query("SELECT to_regclass('public.current_bulk_checkout_attempts') IS NOT NULL AS present")).rows[0]?.present)
+     found=(await c.query("SELECT batch_id AS id FROM current_bulk_checkout_attempts WHERE reference=$1",[reference])).rows[0];
+   demand(found,"BATCH_NOT_FOUND");id=Number(found.id);}finally{c.release();}
+ return verifyCurrentBulk(pool,null,id,transactionId,deps,reference);
 }
 export async function recoverCurrentBulk(pool:CurrentPool,actorId:number,id:number){
  const children=await financialTransaction(pool,async c=>{
    await requireCurrentExtensions(c);const b=await batchRoot(c,id);
-   await currentSchoolAuthority(c,actorId,Number(b.school_id));
-   demand((await c.query("SELECT 1 FROM current_bulk_confirmations WHERE batch_id=$1",[id])).rows[0],"VERIFIED_AGGREGATE_REQUIRED");
+   const actor=await currentSchoolAuthority(c,actorId,Number(b.school_id));
+   demand(b.snapshot.method!=="COMPANY_BANK"||actor.owner,"OWNER_BANK_ALLOCATION_REQUIRED");
+   demand(await bulkProof(c,id),"VERIFIED_AGGREGATE_REQUIRED");
    return (await c.query("SELECT id FROM current_bulk_allocations WHERE batch_id=$1 ORDER BY id",[id])).rows;
  });
  let unresolved=0;
  for(const child of children){
    try{await financialTransaction(pool,async c=>{
-     const b=await batchRoot(c,id);await currentSchoolAuthority(c,actorId,Number(b.school_id));
+     const b=await batchRoot(c,id),actor=await currentSchoolAuthority(c,actorId,Number(b.school_id));
+     demand(b.snapshot.method!=="COMPANY_BANK"||actor.owner,"OWNER_BANK_ALLOCATION_REQUIRED");
      const allocation=(await c.query("SELECT * FROM current_bulk_allocations WHERE id=$1 AND batch_id=$2",[child.id,id])).rows[0];
      const posted=(await c.query("SELECT 1 FROM current_bulk_events WHERE allocation_id=$1 AND state='POSTED'",[child.id])).rows[0];
      if(!posted){
@@ -197,8 +225,19 @@ export async function recoverCurrentBulk(pool:CurrentPool,actorId:number,id:numb
        demand(!conflicting,"ALLOCATION_CONFLICT_REQUIRES_REVIEW");
        await bulkEvent(c,id,actorId,"POSTED",`posted:${child.id}`,{amountMinor:320000,receiptNumber:`YEC-B${id}-S${allocation.student_id}`},Number(child.id));
      }
-     // Retrying a posted child is safe when only accrual was previously blocked.
-     await accrueBulkBro(c,actorId,Number(child.id));
+     // A commission failure must never roll back a verified student's posting.
+     // Savepoint recovery also keeps the transaction usable after SQL errors.
+     await c.query("SAVEPOINT bulk_bro_accrual");
+     try{
+       await accrueBulkBro(c,actorId,Number(child.id));
+       await bulkEvent(c,id,actorId,"BRO_ACCRUAL_CHECKED",`bro-checked:${child.id}:${randomUUID()}`,{},Number(child.id));
+       await c.query("RELEASE SAVEPOINT bulk_bro_accrual");
+     }catch{
+       await c.query("ROLLBACK TO SAVEPOINT bulk_bro_accrual");
+       await c.query("RELEASE SAVEPOINT bulk_bro_accrual");
+       await bulkEvent(c,id,actorId,"BRO_ACCRUAL_PENDING",`bro-pending:${child.id}:${randomUUID()}`,
+         {retryable:true,subscriptionPosted:true},Number(child.id));
+     }
    });}catch(e){
      unresolved++;
      await financialTransaction(pool,c=>bulkEvent(c,id,actorId,"ALLOCATION_ERROR",`error:${child.id}:${randomUUID()}`,
@@ -213,7 +252,7 @@ export async function accrueBulkBro(c:CurrentSql,actorId:number,allocationId:num
  const prior=(await c.query("SELECT id FROM current_bulk_bro_entitlements WHERE allocation_id=$1",[allocationId])).rows[0];if(prior)return;
  const rows=(await c.query(`SELECT a.*,p.verified_at,t.start_date::timestamp AT TIME ZONE 'Africa/Lagos' AS term_start,
    at.id AS attribution_id,at.partner_profile_id
-   FROM current_bulk_allocations a JOIN current_bulk_confirmations p ON p.batch_id=a.batch_id
+   FROM current_bulk_allocations a JOIN ${await bulkCreditSource(c)} p ON p.batch_id=a.batch_id
    JOIN academic_terms t ON t.id=a.academic_term_id AND t.school_id=a.school_id
    JOIN students st ON st.id=a.student_id AND st.school_id=a.school_id AND lower(st.status)='active' AND upper(st.admission_status)='ADMITTED'
    JOIN school_partner_attributions at ON at.school_id=a.school_id AND at.status='ACTIVE'

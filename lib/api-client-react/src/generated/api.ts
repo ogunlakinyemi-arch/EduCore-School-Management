@@ -61,7 +61,6 @@ import type {
   AccountApplicationResult,
   AccrueOwnerBroCommission200,
   AccrueOwnerBroCommissionBody,
-  ActOnCurrentFinanceBody,
   ActivationAssignment,
   ActivationAssignmentInput,
   ActivationDevice,
@@ -233,6 +232,7 @@ import type {
   CreateTransportAssignmentParams,
   CreateTransportBusParams,
   CreateTransportRouteParams,
+  CurrentFinanceActionInput,
   CurrentFinanceDocument,
   CurrentUser,
   CurriculumImportConfirmInput,
@@ -1120,7 +1120,7 @@ export const getActOnCurrentFinanceUrl = () => {
   return `/api/current-finance/actions`
 }
 
-export const actOnCurrentFinance = async (actOnCurrentFinanceBody: ActOnCurrentFinanceBody, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
+export const actOnCurrentFinance = async (currentFinanceActionInput: CurrentFinanceActionInput, options?: Parameters<typeof customFetch>[1]): Promise<CurrentFinanceDocument> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1141,7 +1141,7 @@ return customFetch<CurrentFinanceDocument>(getActOnCurrentFinanceUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(actOnCurrentFinanceBody)
+    body: JSON.stringify(currentFinanceActionInput)
   }
 );}
 
@@ -1179,9 +1179,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ActOnCurrentFinanceMutationResult = NonNullable<Awaited<ReturnType<typeof actOnCurrentFinance>>>
-    export type ActOnCurrentFinanceMutationBody = BodyType<ActOnCurrentFinanceBody>
+    export type ActOnCurrentFinanceMutationBody = BodyType<CurrentFinanceActionInput>
     export type ActOnCurrentFinanceMutationError = ErrorType<unknown>
-    export type ActOnCurrentFinanceMutationVariables = {data: BodyType<ActOnCurrentFinanceBody>}
+    export type ActOnCurrentFinanceMutationVariables = {data: BodyType<CurrentFinanceActionInput>}
 
     export const useActOnCurrentFinance = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof actOnCurrentFinance>>, TError,ActOnCurrentFinanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

@@ -109,8 +109,14 @@ export function readSourceContract(sources) {
     for (const part of splitTop(match[2])) addPart(table, part.replace(/^ADD COLUMN\s+/i, ""));
   }
   for (const match of sql.matchAll(/ALTER TABLE\s+(\w+)\s+DROP CONSTRAINT\s+(\w+);/gi)) {
-    const table = tables.get(match[1]); assert.ok(table?.checks.some(c => c.name === match[2]));
+    const table = tables.get(match[1]); assert.ok(table && [...table.checks,...table.keys].some(c => c.name === match[2]));
     table.checks = table.checks.filter(c => c.name !== match[2]);
+    table.keys = table.keys.filter(c => c.name !== match[2]);
+  }
+  for (const match of sql.matchAll(/ALTER TABLE\s+(\w+)\s+ALTER COLUMN\s+(\w+)\s+DROP NOT NULL;/gi)) {
+    const column=tables.get(match[1])?.columns.find(c=>c.name===match[2]);
+    assert.ok(column?.notNull, `Missing required source column: ${match[1]}.${match[2]}`);
+    column.notNull=false;
   }
   for (const match of sql.matchAll(/ALTER TABLE\s+(\w+)\s+ADD CONSTRAINT\s+(\w+)\s+CHECK\s*\(/gi)) {
     const table = tables.get(match[1]); assert.ok(table);

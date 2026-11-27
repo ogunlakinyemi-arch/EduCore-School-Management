@@ -127,3 +127,4 @@
 - [Notification time display](notification-time-policy.md) — explicit Africa/Lagos WAT for event/created times; preserve UTC storage, distinguish instants and handle rollover.
 - [Teacher period notices](teacher-period-notification-policy.md) — Production preparation approved; independent consent, separate paused Production controls and no implied migration/send permission.
 - [Owner free academic terms](owner-free-academic-term-policy.md) — any existing school, one saved calendar term; non-payment entitlement, immutable audit and no inherited next-term waiver.
+- [Bank remittance entitlement](bank-remittance-entitlement-policy.md) — newly verified aggregate credits can pay students; partial refunds retain access, full refunds remove it.

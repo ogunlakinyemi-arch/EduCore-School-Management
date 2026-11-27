@@ -21,9 +21,9 @@ export const GetCurrentFinanceOverviewResponse = zod.record(zod.string(), zod.un
 
 
 export const ActOnCurrentFinanceBody = zod.object({
-  "action": zod.enum(['REFUND_REQUEST', 'REFUND_APPROVE', 'REFUND_DISPATCH', 'REFUND_RECONCILE', 'COLLECTION_REVERSAL', 'WITHDRAW_REQUEST', 'WITHDRAW_DECIDE', 'PAYOUT_INITIATE', 'PAYOUT_RECONCILE', 'BRO_RECOVERY', 'BULK_CREATE', 'BULK_VERIFY', 'BULK_RECOVER']),
+  "action": zod.enum(['REFUND_REQUEST', 'REFUND_APPROVE', 'REFUND_DISPATCH', 'REFUND_RECONCILE', 'COLLECTION_REVERSAL', 'WITHDRAW_REQUEST', 'WITHDRAW_DECIDE', 'PAYOUT_INITIATE', 'PAYOUT_RECONCILE', 'BRO_RECOVERY', 'BULK_CREATE', 'BULK_VERIFY', 'BULK_RECOVER', 'BULK_RETRY', 'BANK_REQUEST', 'BANK_INSTRUCTIONS', 'BANK_VERIFY', 'BANK_POST', 'BANK_REJECT', 'BANK_CANCEL', 'LEGACY_ASSISTANCE_CANCEL']),
   "payload": zod.record(zod.string(), zod.unknown())
-})
+}).describe('BANK_REQUEST uses schoolId, termId, distinct studentIds, key and reason. BANK_VERIFY uses id, bankName, statementReference, creditDate, exact amountMinor, independentlyChecked=true, key and reason. BANK_POST uses id, key and reason. BANK_REJECT/BANK_CANCEL use id, key and reason, only before verified credit. BULK_RETRY uses id, key and reason; fresh server verification of a retained failed zero-charge transaction is mandatory. No client no-charge assertion is accepted.')
 
 export const ActOnCurrentFinanceResponse = zod.record(zod.string(), zod.unknown()).describe('Domain document validated further by the service; never accepts client money evidence.')
 

@@ -1,6 +1,7 @@
 import {AuthError} from "../middlewares/auth";
 import {lagosDate,readStudentRollout} from "./student-platform-rollout";
 import {verifiedBulkStudentIds} from "./current-bulk-payment-evidence";
+import {positiveDirectStudentIds} from "./current-payment-evidence";
 type Sql={query(sql:string,values?:any[]):Promise<{rows:any[]}>};
 
 /** Shared activation/attendance/replacement subscription boundary.
@@ -40,7 +41,9 @@ export async function assertVerifiedStudentNfcPayment(db:Sql,schoolId:number,stu
       AND EXISTS(SELECT 1 FROM student_direct_live_events ev WHERE ev.attempt_id=a.id
         AND ev.kind='PROVIDER_PAYMENT_VERIFIED' AND ev.details->>'transactionId'=a.provider_transaction_id)
     ) AS nfc_payment_verified`,[schoolId,studentId,today]);
-  if(result.rows[0]?.nfc_payment_verified!==true&&!(await verifiedBulkStudentIds(db,schoolId,rollout.termId!)).has(studentId))throw new AuthError(409,
-    "NFC activation requires a successful, independently server-verified ₦3,200 Flutterwave checkout for this student and current term. Cash, company-account transfers and assistance receipts do not activate NFC.",
+  const direct=result.rows[0]?.nfc_payment_verified===true
+    &&(await positiveDirectStudentIds(db,schoolId,rollout.termId!)).has(studentId);
+  if(!direct&&!(await verifiedBulkStudentIds(db,schoolId,rollout.termId!)).has(studentId))throw new AuthError(409,
+    "NFC requires a verified, posted subscription with positive remaining payment for this student and term. Requests, receipt uploads and beneficiary lookup are not payment.",
     "NFC_FLUTTERWAVE_PAYMENT_REQUIRED");
 }

@@ -1,4 +1,4 @@
-/** Final structural contract of 0182. Procedural guards remain in reviewed SQL. */
+/** Structural contract of 0182 plus 0185. Procedural guards remain in reviewed SQL. */
 import { sql } from "drizzle-orm";
 import { pgTable, bigserial, bigint, integer, text, jsonb, timestamp, unique, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { schools, students, academicTerms, appUsers, partnerProfiles, schoolPartnerAttributions } from "./edupulse";
@@ -23,12 +23,11 @@ export const currentPaymentBatches = pgTable("current_payment_batches", {
 export const currentBulkAllocations = pgTable("current_bulk_allocations", {
   id: bigserial("id", { mode: "number" }).primaryKey(), batchId: bigint("batch_id", { mode: "number" }).notNull(),
   schoolId: integer("school_id").notNull(), studentId: integer("student_id").notNull(), academicTermId: integer("academic_term_id").notNull(),
-  amountMinor: integer("amount_minor").notNull().default(320000), reviewId: bigint("review_id", { mode: "number" }).notNull(),
+  amountMinor: integer("amount_minor").notNull().default(320000), reviewId: bigint("review_id", { mode: "number" }),
 }, t => [
   fk("current_bulk_allocations", t.batchId, currentPaymentBatches.id), fk("current_bulk_allocations", t.schoolId, schools.id),
   fk("current_bulk_allocations", t.studentId, students.id), fk("current_bulk_allocations", t.academicTermId, academicTerms.id),
   fk("current_bulk_allocations", t.reviewId, studentDirectLiveReviews.id),
-  unique(key("current_bulk_allocations", ["student_id", "academic_term_id"])).on(t.studentId, t.academicTermId),
   unique(key("current_bulk_allocations", ["batch_id", "student_id"])).on(t.batchId, t.studentId),
   check("current_bulk_allocations_amount_minor_check", sql`amount_minor=320000`),
 ]);

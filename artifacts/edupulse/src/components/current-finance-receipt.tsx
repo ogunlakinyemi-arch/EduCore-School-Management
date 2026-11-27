@@ -16,10 +16,13 @@ export function CurrentFinanceReceiptView({ receipt }: { receipt: FinanceReceipt
     <dl className="school-document-grid">
       <div className="school-document-field"><dt>Reference</dt><dd>{receipt.reference}</dd></div>
       <div className="school-document-field"><dt>Term</dt><dd>{receipt.termName}</dd></div>
+      <div className="school-document-field"><dt>Payment method</dt><dd>{receipt.paymentMethod==='COMPANY_BANK'?'Independently verified company-bank credit':'Flutterwave verified collection'}</dd></div>
       <div className="school-document-field"><dt>Amount received</dt><dd>{naira(receipt.amountMinor)}</dd></div>
       <div className="school-document-field"><dt>Refunded</dt><dd>{naira(receipt.refundedMinor)}</dd></div>
+      {!!receipt.collectionReversedMinor&&<div className="school-document-field"><dt>Collection reversed</dt><dd>{naira(receipt.collectionReversedMinor)}</dd></div>}
       <div className="school-document-field"><dt>Net paid</dt><dd>{naira(receipt.netPaidMinor)}</dd></div>
-      <div className="school-document-field"><dt>Verified</dt><dd>{receipt.verifiedAt ? new Date(receipt.verifiedAt).toLocaleString('en-NG') : 'Not verified'}</dd></div>
+      <div className="school-document-field"><dt>Verified</dt><dd>{receipt.verifiedAt ? `${new Date(receipt.verifiedAt).toLocaleString('en-NG',{timeZone:'Africa/Lagos'})} WAT` : 'Not verified'}</dd></div>
+      {receipt.bankProof&&<div className="school-document-field"><dt>Company bank credit</dt><dd>{receipt.bankProof.bankName} · {receipt.bankProof.statementReference} · {receipt.bankProof.creditDate}</dd></div>}
     </dl>
     <table className="school-document-table"><thead><tr><th>Receipt no.</th><th>Student</th><th>Amount</th><th>Refunded</th><th>Net</th></tr></thead>
       <tbody>{receipt.items.map(i => <tr key={i.id}><td>{i.receiptNumber}</td><td>{i.studentName}</td><td>{naira(i.amountMinor)}</td><td>{naira(i.refundedMinor)}</td><td>{naira(i.netPaidMinor)}</td></tr>)}</tbody></table>

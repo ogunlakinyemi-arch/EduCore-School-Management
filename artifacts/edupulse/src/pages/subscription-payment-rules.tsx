@@ -3,6 +3,8 @@ import { Link } from 'wouter';
 import { Ban, Eye, FileClock, FilePlus2, Handshake, Landmark, Layers3, Lock, Pencil, PlugZap, RefreshCw, ShieldCheck, WalletCards, XCircle } from 'lucide-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, StatusPill, cx, date } from '@/components/shared';
 import { DirectAssistanceCheckout } from '@/components/direct-assistance-checkout';
+import { useFinanceAction } from '@/lib/current-finance';
+import { act } from '@/components/bank-remittance-batch';
 import {BroCommissionAccruals,type BroCommissionSnapshot} from '@/components/bro-commission-accruals';
 import { GuidedSteps } from '@/components/owner-guided-steps';
 import { useOwnerPaymentOptions } from '@/components/owner-payment-options';
@@ -187,6 +189,15 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
   const [dialog, setDialog] = useState<Dialog>(null);
   const [flash, setFlash] = useState('');
   const [formKey, setFormKey] = useState(0);
+  const fin = useFinanceAction();
+  const [cancelReason, setCancelReason] = useState<Record<number, string>>({});
+  const cancelLegacy = async (id: number) => {
+    if (!window.confirm(`Cancel assistance request #${id}? Only use this when no money was received and no checkout exists.`)) return;
+    const r = await fin.run(`legacy-cancel:${id}`, act('LEGACY_ASSISTANCE_CANCEL'), { id, reason: (cancelReason[id] ?? '').trim() }, true);
+    setFlash(r.ok ? `Assistance request #${id} cancelled.` : r.uncertain ? `${r.message} Outcome uncertain; refresh before trying again.` : r.message);
+    if (r.ok) setCancelReason(c => ({ ...c, [id]: '' }));
+    try { await onRefresh(); } catch { /* surfaced via snapshot.error */ }
+  };
 
   const done = async (msg: string) => { setFlash(msg); setDialog(null); try { await onRefresh(); } catch { /* parent surfaces refresh errors via snapshot.error */ } };
 
@@ -308,7 +319,7 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
         <div className="mb-4 rounded-xl border border-[hsl(var(--destructive)/.4)] bg-[hsl(var(--destructive)/.06)] p-3 text-xs font-semibold leading-5" data-testid="text-assistance-limitation">
           Limitation: a request or upload is <strong>never proof of payment</strong>. Independent bank verification is required for assistance. Direct LIVE checkout stays <strong>unavailable until separately approved</strong> release, effective rule and term reconciliation checks pass; a bank credit alone never authorizes Flutterwave.
         </div>
-        <p className={note}>Cash, bank transfers and confirmed offline receipts are assistance records only: they do not pay a subscription or activate NFC. The Owner may create a separate authorized Flutterwave payment link. Only a successful, independently server-verified ₦3,200 transaction for the exact student and term establishes entitlement. Flutterwave settles the Platform Owner's merchant account without school splits or subaccounts.</p>
+        <p className={note}>Historical cash, bank transfers and offline receipts recorded here are assistance records only: they do not pay a subscription or activate NFC, and they are not reclassified. New company-bank remittances requested from current finance are different: once the Owner independently verifies the exact aggregate credit on the company statement, that credit establishes payment for its students. Requests, uploads and beneficiary lookups are never payment. The Owner may create a separate authorized Flutterwave payment link. Only a successful, independently server-verified ₦3,200 transaction for the exact student and term establishes entitlement. Flutterwave settles the Platform Owner's merchant account without school splits or subaccounts.</p>
         {onRequestAssistance ? <AssistanceForm onSubmit={async input => { await onRequestAssistance(input); await done('Assistance request recorded only. A separate successful, server-verified Flutterwave checkout is required for subscription/NFC activation.'); }} /> : <Unwired what="Assistance requests" />}
       </Section>
 
@@ -323,7 +334,11 @@ export function SubscriptionPaymentRulesPage(props: SubscriptionPaymentRulesProp
                 <div className={cx(note, 'mt-1')}>Requested {ngnMinor(a.amountMinor)} · {a.requestNote || 'No note'}</div>
                 {verified ? <div className="mt-1 text-xs font-semibold" data-testid={`text-verified-${a.id}`}>Offline bank receipt recorded (not subscription payment): {a.bankName ?? '—'} · ref {a.bankStatementReference} · receipt date {a.bankCreditDate ? date(a.bankCreditDate) : '—'} · {ngnMinor(a.verifiedAmountMinor ?? 0)}</div>
                   : <div className={cx(note, 'mt-1 font-semibold')}>Not bank-verified. Not proof of payment.</div>}
-                {verified && <DirectAssistanceCheckout caseFile={a} />}
+                {(verified || a.status === 'REQUESTED') && <DirectAssistanceCheckout caseFile={a} />}
+                {a.status === 'REQUESTED' && !verified && <div className="mt-3 flex flex-wrap items-end gap-2" data-testid={`legacy-cancel-${a.id}`}>
+                  <input className={cx(entry, '!w-56 !py-1.5 text-xs')} placeholder="Reason to cancel request" value={cancelReason[a.id] ?? ''} onChange={e => setCancelReason(c => ({ ...c, [a.id]: e.target.value }))} data-testid={`input-legacy-cancel-${a.id}`} />
+                  <Button variant="quiet" disabled={(cancelReason[a.id] ?? '').trim().length < 3 || fin.busy === `legacy-cancel:${a.id}`} onClick={() => void cancelLegacy(a.id)} testId={`button-legacy-cancel-${a.id}`}>{fin.pendingKey(`legacy-cancel:${a.id}`) ? 'Resubmit same cancel' : 'Cancel request'}</Button>
+                </div>}
                 {!verified && onVerifyBank && <div className="mt-3"><Button variant="outline" onClick={() => setDialog({ kind: 'verify', a })} testId={`button-verify-${a.id}`}><Landmark className="h-3.5 w-3.5" /> Record bank verification</Button></div>}
               </div>;
             })}

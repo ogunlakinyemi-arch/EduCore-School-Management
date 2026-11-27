@@ -1,4 +1,5 @@
 import { z } from "zod";
+import {activeAllocationPredicate,bulkCreditSource} from "./current-payment-evidence";
 import { AuthError } from "../middlewares/auth";
 import { lagosDate } from "./student-platform-rollout";
 import {freeTermStorageReady,readFreeTermGrant} from "./owner-free-academic-term-read";
@@ -59,7 +60,9 @@ export async function changeFreeTermGrant(pool:Pool,actorId:number,raw:FreeTermS
             WHERE o.school_id=$1 AND o.academic_term_id=$2 AND a.state NOT IN ('PAID','FAILED') LIMIT 1`,[input.schoolId,input.termId])
           :table==="current_payment_batches"
             ?await c.query(`SELECT b.id FROM current_payment_batches b WHERE b.school_id=$1 AND b.academic_term_id=$2
-              AND NOT EXISTS(SELECT 1 FROM current_bulk_confirmations f WHERE f.batch_id=b.id) LIMIT 1`,[input.schoolId,input.termId])
+              AND EXISTS(SELECT 1 FROM current_bulk_allocations a WHERE a.batch_id=b.id
+                AND ${await activeAllocationPredicate(c)})
+              AND NOT EXISTS(SELECT 1 FROM ${await bulkCreditSource(c)} f WHERE f.batch_id=b.id) LIMIT 1`,[input.schoolId,input.termId])
             :await c.query(`SELECT id FROM staff_nfc_payments WHERE school_id=$1 AND academic_term_id=$2
               AND status NOT IN ('PAID','FAILED','REFUNDED','PARTIALLY_REFUNDED','REVERSED','CANCELLED') LIMIT 1`,[input.schoolId,input.termId]);
         if(open.rows.length)throw new AuthError(409,"An existing checkout outcome must be reconciled before granting this term. No payment was cancelled or changed.");

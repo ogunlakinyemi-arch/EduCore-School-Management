@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { RefreshCw, Landmark, ShieldAlert, Receipt, CircleAlert } from 'lucide-react';
 import { Button, Field, StatusPill } from '@/components/shared';
 import { CurrentFinanceReceiptButton } from '@/components/current-finance-receipt';
+import { BankRemittanceBatch, act, STUDENT_FEE_MINOR, type BankBatch } from '@/components/bank-remittance-batch';
 import {
   isOverview, isUnavailable, naira, safeHttpsUrl, toMinor, useCurrentFinance, useFinanceAction, apiErrorText,
   type FinanceOverview, type Payment, type Source,
@@ -256,6 +257,14 @@ function BulkCollections({ data, fin, report, schoolId, termId, terms, setTermId
   const eligible = data.eligibleStudents.filter(s => s.eligible);
   const ids = [...picked].filter(id => eligible.some(s => s.id === id)).sort((a, b) => a - b);
   const slot = `bulk:${schoolId}:${termId}`;
+  const bankSlot = `bankreq:${schoolId}:${termId}`;
+  const [retryReason, setRetryReason] = useState<Record<number, string>>({});
+  const requestBank = async () => {
+    if (!window.confirm(`Request a company bank remittance of ${naira(ids.length * STUDENT_FEE_MINOR)} for ${ids.length} student(s)? This is a request only; students are paid only after the Owner verifies the company credit.`)) return;
+    const r = await fin.run(bankSlot, act('BANK_REQUEST'), { schoolId, termId, studentIds: ids, reason: reason.trim() }, true);
+    report(r, 'Bank remittance requested. Nothing is paid yet; open its transfer instructions below.');
+    if (r.ok) { setPicked(new Set()); setReason(''); }
+  };
   const create = async () => {
     const r = await fin.run(slot, 'BULK_CREATE', { schoolId, termId, studentIds: ids, reason: reason.trim() }, true);
     report(r, 'One bulk charge was created for the selected students. Pay through its single checkout, then verify.');
@@ -272,10 +281,15 @@ function BulkCollections({ data, fin, report, schoolId, termId, terms, setTermId
             <span><span className="block text-sm font-semibold">{s.name}</span>{s.reason && <span className={`text-xs ${muted}`}>{s.reason}</span>}</span></label></li>)}</ul>
           <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
             <Field label="Reason"><input value={reason} onChange={e => setReason(e.target.value)} data-testid="input-bulk-reason" /></Field>
-            <Button disabled={!ids.length || reason.trim().length < 3 || fin.busy === slot} onClick={() => void create()} testId="button-create-bulk">{fin.pendingKey(slot) ? 'Resubmit same bulk charge' : `Create one charge for ${ids.length}`}</Button>
-          </div></>}
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={!ids.length || ids.length > 500 || reason.trim().length < 3 || fin.busy === slot} onClick={() => void create()} testId="button-create-bulk">{fin.pendingKey(slot) ? 'Resubmit same bulk charge' : `Create one charge for ${ids.length}`}</Button>
+              <Button variant="outline" disabled={!ids.length || ids.length > 500 || reason.trim().length < 3 || fin.busy === bankSlot} onClick={() => void requestBank()} testId="button-request-bank-remittance">{fin.pendingKey(bankSlot) ? 'Resubmit same bank request' : `Request bank remittance`}</Button>
+            </div>
+          </div>
+          <p className={`mt-2 text-xs ${muted}`} data-testid="text-bank-expected">Expected: {ids.length} × ₦3,200 = <b className="font-mono">{naira(ids.length * STUDENT_FEE_MINOR)}</b>. A bank request is not payment; the Owner must verify the exact credit on the company statement.{ids.length > 500 && ' Select at most 500 students.'}</p></>}
     </>}
-    <div className="mt-5 space-y-3">{data.batches.length === 0 ? <Empty>No bulk collections yet.</Empty> : data.batches.map(b => {
+    <div className="mt-5 space-y-3">{data.batches.length === 0 ? <Empty>No bulk collections yet.</Empty> : (data.batches as BankBatch[]).map(b => {
+      if (b.method === 'COMPANY_BANK') return <BankRemittanceBatch key={b.id} b={b} fin={fin} report={report} owner={data.owner} readOnly={readOnly} />;
       const url = safeHttpsUrl(b.checkoutUrl);
       const unresolved = b.items.filter(i => i.state !== 'POSTED');
       const verified = VERIFIED_PHASES.includes(b.state);
@@ -289,8 +303,18 @@ function BulkCollections({ data, fin, report, schoolId, termId, terms, setTermId
             <input className="!w-48 !py-1.5 text-xs" placeholder="Provider transaction ID" value={tx[b.id] ?? ''} onChange={e => setTx(t => ({ ...t, [b.id]: e.target.value }))} data-testid={`input-batch-tx-${b.id}`} />
             <Button variant="outline" className="h-8 px-3 text-xs" disabled={!(tx[b.id] ?? '').trim() || fin.busy === `bv:${b.id}`} onClick={async () => report(await fin.run(`bv:${b.id}`, 'BULK_VERIFY', { id: b.id, transactionId: (tx[b.id] ?? '').trim() }, false), 'Verification requested with the provider. Only server-verified items are treated as paid.')} testId={`button-verify-batch-${b.id}`}>Verify payment</Button></>}
           {!readOnly && verified && (b.state === 'RECOVERY_REQUIRED' || unresolved.length > 0) && <Button variant="outline" className="h-8 px-3 text-xs" disabled={fin.busy === `br:${b.id}`} onClick={async () => report(await fin.run(`br:${b.id}`, 'BULK_RECOVER', { id: b.id }, false), `Recovery applied to ${unresolved.length} unresolved item(s) only.`)} testId={`button-recover-batch-${b.id}`}>Recover {unresolved.length} unresolved</Button>}
+          {!readOnly && data.owner && verified && b.items.some(i=>i.broAccrualPending) && <Button variant="outline" className="h-8 px-3 text-xs" disabled={fin.busy===`bro-retry:${b.id}`} onClick={async()=>report(await fin.run(`bro-retry:${b.id}`,'BULK_RECOVER',{id:b.id},false),'BRO accrual was checked again; student payments were not resent.')} testId={`button-retry-bro-${b.id}`}>Retry pending BRO accrual</Button>}
+          {!readOnly && b.state === 'FAILED' && <>
+            <input className="!w-48 !py-1.5 text-xs" placeholder="Retry reason" value={retryReason[b.id] ?? ''} onChange={e => setRetryReason(t => ({ ...t, [b.id]: e.target.value }))} data-testid={`input-batch-retry-reason-${b.id}`} />
+            <Button variant="outline" className="h-8 px-3 text-xs" disabled={(retryReason[b.id] ?? '').trim().length < 3 || fin.busy === `bre:${b.id}`} onClick={async () => {
+              if (!window.confirm('Create a new checkout for this failed batch? The server first re-verifies with the provider that no charge occurred.')) return;
+              const r = await fin.run(`bre:${b.id}`, act('BULK_RETRY'), { id: b.id, reason: (retryReason[b.id] ?? '').trim() }, true);
+              report(r, r.ok&&r.result?.state==='READY'?'The server freshly verified no charge and prepared a new checkout.':'The retry outcome is not confirmed ready. Verify the existing attempt; do not submit another payment.'); if (r.ok) setRetryReason(t => ({ ...t, [b.id]: '' }));
+            }} testId={`button-retry-batch-${b.id}`}>{fin.pendingKey(`bre:${b.id}`) ? 'Resubmit same retry' : 'Retry checkout (fresh check)'}</Button></>}
+          {b.state === 'UNKNOWN' && <span className="text-xs font-semibold text-[hsl(var(--destructive))]" data-testid={`text-batch-unknown-${b.id}`}>Outcome unknown. Not retryable; verify the original payment first. Do not pay again.</span>}
           {verified && <CurrentFinanceReceiptButton id={b.id} label="Batch receipt" />}
-        </div></div>;
+        </div>
+        <p className={`mt-2 text-[11px] ${muted}`}>Provider reversal cannot be initiated from EduCore. Partial refunds keep access while verified net paid stays above zero; a full refund or reversal removes access.</p></div>;
     })}</div>
   </Section>;
 }
@@ -312,7 +336,8 @@ function PaymentsAndRefunds({ data, fin, report, owner }: Ctx & { owner: boolean
             <td className="p-2 font-mono">{naira(p.amountMinor)}</td><td className="p-2 font-mono">{naira(p.refundedMinor)}</td><td className="p-2 font-mono font-bold">{naira(p.netPaidMinor)}</td>
             <td className="p-2"><StatusPill value={p.state} /></td>
             <td className="p-2"><span className="flex flex-wrap gap-2">
-              {owner && p.netPaidMinor > 0 && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => { setRefundFor(p); setAmount(''); setReason(''); }} testId={`button-refund-${p.source}-${p.id}`}>Refund</Button>}
+              {owner && p.netPaidMinor > 0 && p.paymentMethod!=='COMPANY_BANK' && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => { setRefundFor(p); setAmount(''); setReason(''); }} testId={`button-refund-${p.source}-${p.id}`}>Refund</Button>}
+              {p.paymentMethod==='COMPANY_BANK' && <span className="text-xs">Company bank · online refund unavailable</span>}
               {owner && <Button variant="quiet" className="h-8 px-3 text-xs" onClick={() => setReversal({ source: p.source, sourceId: p.id, ref: '' })} testId={`button-reversal-${p.source}-${p.id}`}>Record reversal</Button>}
             </span></td></tr>)}</tbody></table></div>}
       {owner && refundFor && refundable.includes(refundFor) && <div className={`${box} mt-4 grid gap-3 p-4 md:grid-cols-[1fr_2fr_auto] md:items-end`} data-testid="form-refund">

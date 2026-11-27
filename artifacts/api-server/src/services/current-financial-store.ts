@@ -3,6 +3,7 @@ import {financialTransaction} from "./financial-transaction";
 import {requireFinancialActor} from "./financial-history-writes";
 import {inspectFinancialGuards} from "./financial-guard-schema";
 import {demand, type CurrentPool, type CurrentSql,type CurrentSource} from "./current-financial-contract";
+import {bulkCreditSource} from "./current-payment-evidence";
 
 function canonical(value: any): any {
   if (Array.isArray(value)) return value.map(canonical);
@@ -93,13 +94,13 @@ export async function createOperation(c: CurrentSql, v: {
 /** Normalized read projection. Bulk never creates a synthetic direct attempt. */
 export async function paidDirect(c: CurrentSql, attemptId: CurrentSource) {
   if(typeof attemptId!=="number"){
-    const a=(await c.query(`SELECT a.*,b.reference,c.provider_transaction_id,c.provider_reference,c.verified_at,
+    const a=(await c.query(`SELECT a.*,b.reference,c.provider_transaction_id,c.provider_reference,c.verified_at,c.payment_method,
       'PAID' AS state,'NGN' AS currency,0 AS school_share_minor,0 AS bro_share_minor
       FROM current_bulk_allocations a JOIN current_payment_batches b ON b.id=a.batch_id
-      JOIN current_bulk_confirmations c ON c.batch_id=b.id AND c.amount_minor=b.amount_minor
+      JOIN ${await bulkCreditSource(c)} c ON c.batch_id=b.id AND c.amount_minor=b.amount_minor
       WHERE a.id=$1 AND EXISTS(SELECT 1 FROM current_bulk_events e WHERE e.allocation_id=a.id AND e.state='POSTED')`,
       [attemptId.allocationId])).rows[0];
-    demand(a&&a.provider_transaction_id&&Number(a.amount_minor)===320000,"CURRENT_VERIFIED_ALLOCATION_REQUIRED");
+    demand(a&&(a.provider_transaction_id||a.payment_method==="COMPANY_BANK")&&Number(a.amount_minor)===320000,"CURRENT_VERIFIED_ALLOCATION_REQUIRED");
     return a;
   }
   const a = (await c.query(`SELECT a.*,o.school_id,o.student_id,o.academic_term_id,

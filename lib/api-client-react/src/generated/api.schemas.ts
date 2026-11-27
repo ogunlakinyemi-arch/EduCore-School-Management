@@ -13740,6 +13740,43 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type CurrentFinanceActionInputAction = typeof CurrentFinanceActionInputAction[keyof typeof CurrentFinanceActionInputAction];
+
+
+export const CurrentFinanceActionInputAction = {
+  REFUND_REQUEST: 'REFUND_REQUEST',
+  REFUND_APPROVE: 'REFUND_APPROVE',
+  REFUND_DISPATCH: 'REFUND_DISPATCH',
+  REFUND_RECONCILE: 'REFUND_RECONCILE',
+  COLLECTION_REVERSAL: 'COLLECTION_REVERSAL',
+  WITHDRAW_REQUEST: 'WITHDRAW_REQUEST',
+  WITHDRAW_DECIDE: 'WITHDRAW_DECIDE',
+  PAYOUT_INITIATE: 'PAYOUT_INITIATE',
+  PAYOUT_RECONCILE: 'PAYOUT_RECONCILE',
+  BRO_RECOVERY: 'BRO_RECOVERY',
+  BULK_CREATE: 'BULK_CREATE',
+  BULK_VERIFY: 'BULK_VERIFY',
+  BULK_RECOVER: 'BULK_RECOVER',
+  BULK_RETRY: 'BULK_RETRY',
+  BANK_REQUEST: 'BANK_REQUEST',
+  BANK_INSTRUCTIONS: 'BANK_INSTRUCTIONS',
+  BANK_VERIFY: 'BANK_VERIFY',
+  BANK_POST: 'BANK_POST',
+  BANK_REJECT: 'BANK_REJECT',
+  BANK_CANCEL: 'BANK_CANCEL',
+  LEGACY_ASSISTANCE_CANCEL: 'LEGACY_ASSISTANCE_CANCEL',
+} as const;
+
+export type CurrentFinanceActionInputPayload = { [key: string]: unknown };
+
+/**
+ * BANK_REQUEST uses schoolId, termId, distinct studentIds, key and reason. BANK_VERIFY uses id, bankName, statementReference, creditDate, exact amountMinor, independentlyChecked=true, key and reason. BANK_POST uses id, key and reason. BANK_REJECT/BANK_CANCEL use id, key and reason, only before verified credit. BULK_RETRY uses id, key and reason; fresh server verification of a retained failed zero-charge transaction is mandatory. No client no-charge assertion is accepted.
+ */
+export interface CurrentFinanceActionInput {
+  action: CurrentFinanceActionInputAction;
+  payload: CurrentFinanceActionInputPayload;
+}
+
 /**
  * Domain document validated further by the service; never accepts client money evidence.
  */
@@ -24628,32 +24665,6 @@ schoolId?: number;
  * @minimum 1
  */
 termId?: number;
-};
-
-export type ActOnCurrentFinanceBodyAction = typeof ActOnCurrentFinanceBodyAction[keyof typeof ActOnCurrentFinanceBodyAction];
-
-
-export const ActOnCurrentFinanceBodyAction = {
-  REFUND_REQUEST: 'REFUND_REQUEST',
-  REFUND_APPROVE: 'REFUND_APPROVE',
-  REFUND_DISPATCH: 'REFUND_DISPATCH',
-  REFUND_RECONCILE: 'REFUND_RECONCILE',
-  COLLECTION_REVERSAL: 'COLLECTION_REVERSAL',
-  WITHDRAW_REQUEST: 'WITHDRAW_REQUEST',
-  WITHDRAW_DECIDE: 'WITHDRAW_DECIDE',
-  PAYOUT_INITIATE: 'PAYOUT_INITIATE',
-  PAYOUT_RECONCILE: 'PAYOUT_RECONCILE',
-  BRO_RECOVERY: 'BRO_RECOVERY',
-  BULK_CREATE: 'BULK_CREATE',
-  BULK_VERIFY: 'BULK_VERIFY',
-  BULK_RECOVER: 'BULK_RECOVER',
-} as const;
-
-export type ActOnCurrentFinanceBodyPayload = { [key: string]: unknown };
-
-export type ActOnCurrentFinanceBody = {
-  action: ActOnCurrentFinanceBodyAction;
-  payload: ActOnCurrentFinanceBodyPayload;
 };
 
 export type GetCurrentFinanceReceiptParams = {

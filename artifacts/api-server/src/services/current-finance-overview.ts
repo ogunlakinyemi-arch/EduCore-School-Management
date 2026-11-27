@@ -5,6 +5,7 @@ import {refundAmounts,state,referenceFor} from "./current-financial-store";
 import {hasCurrentAdverseHold} from "./current-bro-lifecycle";
 import {lagosDate,readStudentRollout} from "./student-platform-rollout";
 import {batchState,batchRoot} from "./current-bulk-subscriptions";
+import {bulkCreditSource,bulkProof,activeAllocationPredicate} from "./current-payment-evidence";
 import {directLiveConfiguration} from "../lib/flutterwave-direct-live-config";
 const name=(r:any)=>[r.first_name,r.last_name].filter(Boolean).join(" ")||`Student #${r.student_id??r.id}`;
 const studentName=`COALESCE(NULLIF(concat_ws(' ',to_jsonb(st)->>'first_name',to_jsonb(st)->>'last_name'),''),'Student #'||st.id::text)`;
@@ -99,16 +100,17 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
       FROM student_direct_live_attempts a JOIN student_direct_live_obligations o ON o.id=a.obligation_id
       JOIN students st ON st.id=o.student_id WHERE a.state='PAID' AND o.amount_minor=320000 AND o.school_id=$1
       AND ($2::int IS NULL OR o.academic_term_id=$2) ORDER BY a.id DESC`,[schoolId,termId??null])).rows;
-    const allocated=(await c.query(`SELECT a.id,a.student_id,a.school_id,a.academic_term_id,b.reference,${studentName} AS student_name
+     const allocated=(await c.query(`SELECT a.id,a.student_id,a.school_id,a.academic_term_id,b.reference,cf.payment_method,${studentName} AS student_name
       FROM current_bulk_allocations a JOIN current_payment_batches b ON b.id=a.batch_id
-      JOIN current_bulk_confirmations cf ON cf.batch_id=b.id AND cf.amount_minor=b.amount_minor
+       JOIN ${await bulkCreditSource(c)} cf ON cf.batch_id=b.id AND cf.amount_minor=b.amount_minor
       JOIN students st ON st.id=a.student_id WHERE a.school_id=$1 AND ($2::int IS NULL OR a.academic_term_id=$2)
       AND EXISTS(SELECT 1 FROM current_bulk_events ev WHERE ev.allocation_id=a.id AND ev.state='POSTED')`,[schoolId,termId??null])).rows;
     for(const [source,rows] of [["DIRECT",direct],["BULK",allocated]] as const)for(const row of rows){
       const money=await refundAmounts(c,source==="DIRECT"?Number(row.id):{allocationId:Number(row.id)});
       payments.push({id:Number(row.id),source,studentId:Number(row.student_id),studentName:row.student_name,schoolId,
-        termId:Number(row.academic_term_id),reference:row.reference,amountMinor:320000,state:money.refundedMinor===320000?"REFUNDED":
-          money.refundedMinor?"PARTIALLY_REFUNDED":"PAID",...money});
+         termId:Number(row.academic_term_id),reference:row.reference,amountMinor:320000,paymentMethod:row.payment_method??"FLUTTERWAVE",
+         state:money.netPaidMinor===0?"REFUNDED_OR_REVERSED":
+           money.netPaidMinor<320000?"PARTIALLY_REFUNDED":"PAID",...money});
     }
     if(actor.owner)for(const r of (await c.query(`SELECT * FROM current_subscription_operations
       WHERE kind='REFUND' AND school_id=$1 AND ($2::int IS NULL OR academic_term_id=$2) ORDER BY id DESC`,[schoolId,termId??null])).rows){
@@ -122,12 +124,21 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
       const checkout=(await c.query(`SELECT details->>'checkoutUrl' AS url FROM current_bulk_events
         WHERE batch_id=$1 AND state='READY' ORDER BY id DESC LIMIT 1`,[b.id])).rows[0];
       const items=(await c.query(`SELECT a.*,EXISTS(SELECT 1 FROM current_bulk_events ev WHERE ev.allocation_id=a.id AND ev.state='POSTED') AS posted,
-        (SELECT details->>'code' FROM current_bulk_events WHERE allocation_id=a.id AND state='ALLOCATION_ERROR' ORDER BY id DESC LIMIT 1) AS error
+         (SELECT details->>'code' FROM current_bulk_events WHERE allocation_id=a.id AND state='ALLOCATION_ERROR' ORDER BY id DESC LIMIT 1) AS error,
+         (SELECT state='BRO_ACCRUAL_PENDING' FROM current_bulk_events WHERE allocation_id=a.id
+           AND state IN ('BRO_ACCRUAL_PENDING','BRO_ACCRUAL_CHECKED') ORDER BY id DESC LIMIT 1) AS bro_pending
         FROM current_bulk_allocations a WHERE batch_id=$1 ORDER BY id`,[b.id])).rows.map(a=>({
           id:Number(a.id),studentId:Number(a.student_id),
           studentName:b.snapshot.students.find((s:any)=>s.studentId===Number(a.student_id))?.studentName??`Student #${a.student_id}`,
-          state:a.posted?"POSTED":"UNRESOLVED",error:phase==="COMPLETED"?null:a.error??null}));
+           state:a.posted?"POSTED":"UNRESOLVED",error:phase==="COMPLETED"?null:a.error??null,
+           ...(actor.owner?{broAccrualPending:a.bro_pending===true}:{})}));
+       const method=b.snapshot.method==="COMPANY_BANK"?"COMPANY_BANK":"FLUTTERWAVE";
+       const credit=method==="COMPANY_BANK"?(await c.query(`SELECT bank_name,statement_reference,credit_date::text AS credit_date,
+         amount_minor,verified_at,verified_by FROM current_bank_credits WHERE batch_id=$1`,[b.id])).rows[0]:null;
       batches.push({id:Number(b.id),reference:b.reference,state:phase,amountMinor:Number(b.amount_minor),
+         method,...(credit?{bankProof:{bankName:credit.bank_name,statementReference:credit.statement_reference,
+           creditDate:credit.credit_date,amountMinor:Number(credit.amount_minor),
+           verifiedAt:new Date(credit.verified_at).toISOString(),verifiedBy:Number(credit.verified_by)}}:{}),
         checkoutUrl:phase==="READY"?checkout?.url??null:null,items});
     }
     if(termId){
@@ -136,7 +147,10 @@ export async function readCurrentFinanceOverview(pool:CurrentPool,actorId:number
         OR EXISTS(SELECT 1 FROM student_direct_live_obligations o WHERE o.student_id=st.id AND o.academic_term_id=$2 AND (
           o.amount_minor<>320000 OR o.assistance_request_id IS NOT NULL OR EXISTS(SELECT 1 FROM student_direct_live_attempts a
             WHERE a.obligation_id=o.id AND a.state<>'FAILED')))
-        OR EXISTS(SELECT 1 FROM current_bulk_allocations a WHERE a.student_id=st.id AND a.academic_term_id=$2) AS occupied
+         OR EXISTS(SELECT 1 FROM current_bulk_allocations a WHERE a.student_id=st.id AND a.academic_term_id=$2
+            AND ${await activeAllocationPredicate(c)})
+         OR EXISTS(SELECT 1 FROM subscription_payment_assistance_requests ar WHERE ar.student_id=st.id
+           AND ar.academic_term_id=$2 AND ar.status<>'CANCELLED') AS occupied
         FROM students st WHERE st.school_id=$1 ORDER BY st.id`,[schoolId,termId])).rows){
         const reason=!rollout.chargeable?"FREE_OR_INELIGIBLE_TERM":st.occupied?"PAYMENT_OR_RESERVATION_EXISTS":
           String(st.status).toLowerCase()!=="active"||String(st.admission_status).toUpperCase()!=="ADMITTED"?"STUDENT_NOT_ACTIVE_ADMITTED":null;
@@ -154,7 +168,7 @@ export async function readCurrentBulkReceipt(pool:CurrentPool,actorId:number,id:
  return financialTransaction(pool,async(c:CurrentSql)=>{
   await requireCurrentExtensions(c);const b=await batchRoot(c,id);
   await currentSchoolAuthority(c,actorId,Number(b.school_id));
-  const confirmation=(await c.query("SELECT * FROM current_bulk_confirmations WHERE batch_id=$1",[id])).rows[0];
+   const confirmation=await bulkProof(c,id);
   demand(confirmation,"VERIFIED_AGGREGATE_REQUIRED");
   const rows=(await c.query(`SELECT a.*,EXISTS(SELECT 1 FROM current_bulk_events ev
     WHERE ev.allocation_id=a.id AND ev.state='POSTED') AS posted FROM current_bulk_allocations a
@@ -170,8 +184,14 @@ export async function readCurrentBulkReceipt(pool:CurrentPool,actorId:number,id:
   }
   const labels=(await c.query(`SELECT COALESCE(to_jsonb(s)->>'name','School #'||s.id::text) AS school_name,t.name AS term_name
     FROM schools s JOIN academic_terms t ON t.school_id=s.id WHERE s.id=$1 AND t.id=$2`,[b.school_id,b.academic_term_id])).rows[0];
-  return {id,reference:b.reference,schoolName:labels.school_name,termName:labels.term_name,currency:"NGN",
+   const bank=confirmation.payment_method==="COMPANY_BANK"?(await c.query(`SELECT bank_name,statement_reference,
+     credit_date::text AS credit_date,verified_by FROM current_bank_credits WHERE batch_id=$1`,[id])).rows[0]:null;
+   return {id,reference:b.reference,schoolName:labels.school_name,termName:labels.term_name,currency:"NGN",paymentMethod:confirmation.payment_method,
+    ...(bank?{bankProof:{bankName:bank.bank_name,statementReference:bank.statement_reference,creditDate:bank.credit_date,
+      amountMinor:Number(confirmation.amount_minor),verifiedAt:new Date(confirmation.verified_at).toISOString(),
+      verifiedBy:Number(bank.verified_by)}}:{}),
     amountMinor:items.length*320000,refundedMinor:items.reduce((s,r)=>s+r.refundedMinor,0),
+    collectionReversedMinor:items.reduce((s,r)=>s+r.collectionReversedMinor,0),
     netPaidMinor:items.reduce((s,r)=>s+r.netPaidMinor,0),items,verifiedAt:new Date(confirmation.verified_at).toISOString()};
  });
 }

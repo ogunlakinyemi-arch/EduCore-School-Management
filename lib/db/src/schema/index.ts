@@ -53,6 +53,7 @@ export * from "./payment-receipts";
 export * from "./teacher-telegram";
 export * from "./owner-free-academic-terms";
 export * from "./current-finance-prerequisites";
+export * from "./current-bank-payments";
 export * from "./direct-student-live-history";
 export * from "./owner-free-academic-terms";
 export * from "./current-bulk-payments";

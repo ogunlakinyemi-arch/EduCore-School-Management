@@ -10,6 +10,7 @@ import {inspectDirectReleaseSchema,findApprovedDirectReview} from "./direct-stud
 import {initialStudentFreePeriod,readStudentRollout} from "./student-platform-rollout";
 import {appendFinancialHistory,requireFinancialActor,transitionDirectAttempt} from "./financial-history-writes";
 import {accrueVerifiedSubscriptionBro} from "./verified-subscription-bro-accrual";
+import {activeAllocationPredicate} from "./current-payment-evidence";
 type Db=Awaited<ReturnType<StudentSubscriptionSqlPool["connect"]>>;
 export class DirectPaymentBlocked extends Error{
   constructor(public readonly code:string,public readonly statusCode=409){super(code);}
@@ -64,8 +65,8 @@ export async function startDirectStudentPayment(pool:StudentSubscriptionSqlPool,
     const {readStudentUsageRollout}=await import("./student-platform-rollout");
     if(!(await readStudentUsageRollout(c,input.schoolId,input.termId)).chargeable)block("FREE_ROLLOUT_NO_PLATFORM_PAYMENT");
     if((await c.query("SELECT to_regclass('public.current_bulk_allocations') IS NOT NULL AS present")).rows[0]?.present){
-      const batchClaim=(await c.query(`SELECT id FROM current_bulk_allocations
-        WHERE school_id=$1 AND student_id=$2 AND academic_term_id=$3 LIMIT 1`,
+       const batchClaim=(await c.query(`SELECT a.id FROM current_bulk_allocations a
+         WHERE a.school_id=$1 AND a.student_id=$2 AND a.academic_term_id=$3 AND ${await activeAllocationPredicate(c)} LIMIT 1`,
         [input.schoolId,input.studentId,input.termId])).rows[0];
       if(batchClaim)block("STUDENT_RESERVED_BY_AGGREGATE_PAYMENT");
     }

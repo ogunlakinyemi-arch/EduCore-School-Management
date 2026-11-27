@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ActOnCurrentFinanceBodyAction = typeof ActOnCurrentFinanceBodyAction[keyof typeof ActOnCurrentFinanceBodyAction];
+export type CurrentFinanceActionInputAction = typeof CurrentFinanceActionInputAction[keyof typeof CurrentFinanceActionInputAction];
 
 
-export const ActOnCurrentFinanceBodyAction = {
+export const CurrentFinanceActionInputAction = {
   REFUND_REQUEST: 'REFUND_REQUEST',
   REFUND_APPROVE: 'REFUND_APPROVE',
   REFUND_DISPATCH: 'REFUND_DISPATCH',
@@ -23,4 +23,12 @@ export const ActOnCurrentFinanceBodyAction = {
   BULK_CREATE: 'BULK_CREATE',
   BULK_VERIFY: 'BULK_VERIFY',
   BULK_RECOVER: 'BULK_RECOVER',
+  BULK_RETRY: 'BULK_RETRY',
+  BANK_REQUEST: 'BANK_REQUEST',
+  BANK_INSTRUCTIONS: 'BANK_INSTRUCTIONS',
+  BANK_VERIFY: 'BANK_VERIFY',
+  BANK_POST: 'BANK_POST',
+  BANK_REJECT: 'BANK_REJECT',
+  BANK_CANCEL: 'BANK_CANCEL',
+  LEGACY_ASSISTANCE_CANCEL: 'LEGACY_ASSISTANCE_CANCEL',
 } as const;

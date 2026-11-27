@@ -10,6 +10,7 @@ export default defineConfig({
       "**/.{idea,git,cache,output,temp}/**",
       "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*",
       "**/src/routes/finance-postgres.integration.test.ts",
+      "**/src/services/company-bank-remittances.isolated.postgres.test.ts",
     ],
   },
 });

@@ -994,3 +994,17 @@ mtime_ms = 1795684841113
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/5cd3aa71-8ec9-453c-8984-0432b940696a/dabeda80-189f-42e7-a876-d9edbc29d674"
 storage_version_token = "1795684892008180"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "j6CbLDRFmNfVhC7Es7w8I"
+uri = "file://docs/payment-remittance-source-review.md"
+type = "text"
+title = "Payment corrections — source review notes"
+description = "Scope, safeguards, passing static checks and blocked native/browser verification. No operational release or migration approval is implied."
+logical_id = "38131972-49f8-497d-8dc4-56d141a57296"
+content_hash = "sha256:fa24f7f90ddda11a16ab658bb73195de2cbe199d9dfb15a2fdbc1f393e3d086d"
+size = 7043
+mtime_ms = 1795777775726
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/38131972-49f8-497d-8dc4-56d141a57296/adb7ee8f-bf19-4d8e-921c-c4322cb3a070"
+storage_version_token = "1795777882586397"
+content_type = "text/markdown"

@@ -14,6 +14,9 @@ import {initiateCurrentBroPayout,reconcileCurrentBroPayout,recordCurrentBroRecov
 import {requestCurrentBroWithdrawal,decideCurrentBroWithdrawal} from "../services/current-bro-withdrawals";
 import {createCurrentBulk,verifyCurrentBulk,recoverCurrentBulk,type BulkDependencies} from "../services/current-bulk-subscriptions";
 import {readCurrentFinanceOverview,readCurrentBulkReceipt} from "../services/current-finance-overview";
+import {requestBankRemittance,bankRemittanceInstructions,verifyBankRemittance,postBankRemittance,
+ closeBankRemittance,cancelLegacyAssistance} from "../services/company-bank-remittances";
+import {retryCurrentBulk} from "../services/current-bulk-retry";
 const id=z.number().int().positive().safe(),key=z.string().regex(/^[A-Za-z0-9_-]{16,100}$/),reason=z.string().trim().min(3).max(500);
 const source={source:z.enum(["DIRECT","BULK"]),sourceId:id};
 const sourceValue=(p:{source:"DIRECT"|"BULK";sourceId:number})=>p.source==="DIRECT"?p.sourceId:{allocationId:p.sourceId};
@@ -50,7 +53,8 @@ export function createCurrentFinanceRouter(pool:CurrentPool=appPool,dependencies
   try{
    const {action,payload}=ActOnCurrentFinanceBody.parse(req.body),actorId=res.locals.currentActorId;
    assertRoles(req,action==="WITHDRAW_REQUEST"?["PARTNER"]:
-     ["BULK_CREATE","BULK_VERIFY","BULK_RECOVER"].includes(action)?["PLATFORM_OWNER","SCHOOL_ADMIN","ACCOUNTANT"]:["PLATFORM_OWNER"]);
+     ["BULK_CREATE","BULK_VERIFY","BULK_RECOVER","BULK_RETRY","BANK_REQUEST","BANK_INSTRUCTIONS","BANK_CANCEL"].includes(action)
+       ?["PLATFORM_OWNER","SCHOOL_ADMIN","ACCOUNTANT"]:["PLATFORM_OWNER"]);
    let result:object;
    switch(action){
     case "REFUND_REQUEST":{
@@ -100,6 +104,34 @@ export function createCurrentFinanceRouter(pool:CurrentPool=appPool,dependencies
     }
     case "BULK_RECOVER":{
      const p=z.object({id}).strict().parse(payload);result=await recoverCurrentBulk(pool,actorId,p.id);break;
+    }
+    case "BANK_REQUEST":{
+     const p=z.object({schoolId:id,termId:id,studentIds:z.array(id).min(1).max(500),key,reason}).strict().parse(payload);
+     result=await requestBankRemittance(pool,actorId,p);break;
+    }
+    case "BANK_INSTRUCTIONS":{
+     const p=z.object({id}).strict().parse(payload);result=await bankRemittanceInstructions(pool,actorId,p.id);break;
+    }
+    case "BANK_VERIFY":{
+     const p=z.object({id,bankName:z.string().trim().min(2).max(100),
+       statementReference:z.string().regex(/^[A-Za-z0-9/._ -]{6,120}$/),
+       creditDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),amountMinor:id,
+       independentlyChecked:z.literal(true),key,reason}).strict().parse(payload);
+     result=await verifyBankRemittance(pool,actorId,p);break;
+    }
+    case "BANK_POST":{
+     const p=z.object({id,key,reason}).strict().parse(payload);result=await postBankRemittance(pool,actorId,p.id,p.key,p.reason);break;
+    }
+    case "BANK_REJECT":case "BANK_CANCEL":{
+     const p=z.object({id,key,reason}).strict().parse(payload);
+     result=await closeBankRemittance(pool,actorId,p.id,p.key,p.reason,action==="BANK_REJECT"?"REJECTED":"CANCELLED");break;
+    }
+    case "LEGACY_ASSISTANCE_CANCEL":{
+     const p=z.object({id,key,reason}).strict().parse(payload);
+     result=await cancelLegacyAssistance(pool,actorId,p.id,p.key,p.reason);break;
+    }
+    case "BULK_RETRY":{
+     const p=z.object({id,key,reason}).strict().parse(payload);result=await retryCurrentBulk(pool,actorId,p,bulk);break;
     }
    }
    res.json(ActOnCurrentFinanceResponse.parse(result!));

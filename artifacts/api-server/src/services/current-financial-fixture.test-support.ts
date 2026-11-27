@@ -34,6 +34,10 @@ export async function currentFinancialFixture() {
     for(const path of migrationPaths)await pool.query(readFileSync(join(root,path),"utf8"));
     await pool.query(readFileSync(join(root,"lib/db/drizzle/0181_current_subscription_lifecycle.sql"),"utf8"));
     await pool.query(`
+      ALTER TABLE subscription_payment_assistance_requests
+        ADD COLUMN IF NOT EXISTS school_id integer, ADD COLUMN IF NOT EXISTS student_id integer,
+        ADD COLUMN IF NOT EXISTS academic_term_id integer, ADD COLUMN IF NOT EXISTS status text DEFAULT 'REQUESTED',
+        ADD COLUMN IF NOT EXISTS bank_statement_reference text, ADD COLUMN IF NOT EXISTS verified_at timestamptz;
       ALTER TABLE app_users ADD COLUMN status text NOT NULL DEFAULT 'ACTIVE';
       ALTER TABLE schools ADD COLUMN status text NOT NULL DEFAULT 'ACTIVE';
       ALTER TABLE commission_ledger ADD COLUMN payment_id integer,

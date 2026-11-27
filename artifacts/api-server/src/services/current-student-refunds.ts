@@ -8,6 +8,7 @@ export async function requestCurrentStudentRefund(pool: CurrentPool, actorId: nu
   positiveMinor(amountMinor);requestKey(key);
   return currentTransaction(pool,actorId,async c=>{
     const a=await paidDirect(c,attemptId);
+    demand(a.payment_method!=="COMPANY_BANK","BANK_REFUND_REQUIRES_INDEPENDENT_MANUAL_RECONCILIATION");
     const existing=(await c.query(`SELECT id FROM current_subscription_operations
       WHERE kind='REFUND' AND request_key=$1`,[key])).rows[0];
     if (!existing) demand((await refundAmounts(c,attemptId)).reservedMinor+amountMinor<=320000,

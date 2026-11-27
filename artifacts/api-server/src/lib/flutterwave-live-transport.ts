@@ -135,7 +135,7 @@ export class FlutterwaveLiveTransport {
     const providerFeeMinor=d.status==="successful"?liveAmountMinor(d.app_fee):null;
     const additionalFeeMinor=d.status==="successful"?liveAmountMinor(d.merchant_fee):null;
     if(providerFeeMinor!==null&&additionalFeeMinor!==null&&providerFeeMinor+additionalFeeMinor>=amountMinor)fail("LIVE_VERIFICATION_MISMATCH");
-    return {transactionId,reference,amountMinor,currency:"NGN",providerReference:d.flw_ref as string,
+    return {transactionId,reference,amountMinor,currency:"NGN",providerReference:d.flw_ref as string,chargedAmountMinor:liveAmountMinor(d.charged_amount),
       status:d.status as "successful"|"failed"|"cancelled"|"pending",providerFeeMinor,additionalFeeMinor};
   }
   async directStudentCollection(transactionId:string,reference:string){

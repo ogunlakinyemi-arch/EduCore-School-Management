@@ -73,10 +73,15 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
       ORDER BY st.id`,
     [schoolId, term.termId],
   );
-  if(students.rows.some(s=>!s.paid)){
+  {
+    const {positiveDirectStudentIds}=await import("./current-payment-evidence");
+    const paidDirect=await positiveDirectStudentIds(db,schoolId,term.termId);
     const {verifiedBulkStudentIds}=await import("./current-bulk-payment-evidence");
     const paidBulk=await verifiedBulkStudentIds(db,schoolId,term.termId);
-    for(const student of students.rows)if(paidBulk.has(student.studentId)){student.paid=true;student.pending=false;}
+    for(const student of students.rows){
+      student.paid=paidDirect.has(student.studentId)||paidBulk.has(student.studentId);
+      if(student.paid)student.pending=false;
+    }
   }
   const policy = subscriptionPolicy(term, students.rows, term.today);
   if (!policy.inGracePeriod && students.rows.some(s => s.unknown)) {

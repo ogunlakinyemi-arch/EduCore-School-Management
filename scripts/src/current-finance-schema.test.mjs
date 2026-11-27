@@ -20,20 +20,21 @@ const paths = ["lib/db/drizzle/0175_owner_subscription_rule_management.sql",
   "lib/db/drizzle/0176_direct_student_live_preparation.sql", "lib/db/drizzle/0177_direct_student_live_release_reviews.sql",
   "lib/db/drizzle/0178_independent_bro_term_commissions.sql", "lib/db/dev-reconciliation/bro-field-operations.sql",
   "lib/db/drizzle/0181_current_subscription_lifecycle.sql", "lib/db/drizzle/0182_current_bulk_withdrawals_field_sms.sql",
-  "lib/db/drizzle/0183_owner_free_academic_terms.sql"];
+  "lib/db/drizzle/0183_owner_free_academic_terms.sql","lib/db/drizzle/0185_company_bank_remittance_recovery.sql"];
 const source = readSourceContract(paths.map(read)), dialect = new PgDialect();
 const expression = value => normalize(is(value, SQL) ? dialect.sqlToQuery(value).sql : String(value));
 const sorted = array => array.sort((a, b) => a.name.localeCompare(b.name));
 const allTables = Object.values(schema).filter(v => { try { return !!getTableConfig(v).name; } catch { return false; } });
 const additional = ["subscriptionRuleProposals", "subscriptionPaymentAssistanceRequests",
   "studentDirectLiveEvents", "studentDirectLiveReleaseRequests", "studentDirectLiveReleaseDecisions",
-  "studentDirectLiveReviewBindings", "ownerFreeAcademicTerms", "ownerFreeAcademicTermEvents"];
+  "studentDirectLiveReviewBindings", "ownerFreeAcademicTerms", "ownerFreeAcademicTermEvents",
+  "currentBankCredits","currentBulkAllocationReleases","currentBulkCheckoutAttempts","currentBulkTermClaims"];
 const wanted = [...new Set([...Object.values(candidate), schema.studentDirectLiveReviews, schema.studentDirectLiveObligations,
   schema.studentDirectLiveAttempts, schema.broTermCommissionEntitlements, schema.broFieldLeads,
   ...additional.map(name => schema[name]).filter(Boolean)])];
 test("direct-payment history, release, rule and free-term models are all registered", () => {
   assert.deepEqual(additional.filter(name => !schema[name]), []);
-  assert.equal(wanted.length, 28);
+  assert.equal(wanted.length, 32);
 });
 for (const table of wanted) {
   const c = getTableConfig(table), expected = source.get(c.name);

@@ -5,7 +5,7 @@ import {
   useActOnCurrentFinance,
   useGetCurrentFinanceOverview,
   getGetCurrentFinanceOverviewQueryKey,
-  type ActOnCurrentFinanceBodyAction,
+  type CurrentFinanceActionInputAction as ActOnCurrentFinanceBodyAction,
 } from '@workspace/api-client-react';
 
 /* Local DTOs matching the backend current-finance contract. */
@@ -15,11 +15,12 @@ export type FinanceSummary = { studentCount: number; earnedMinor: number; pendin
 export type Entitlement = { key: string; studentId: number; studentName: string; schoolId: number; schoolName: string; termId: number; termName: string; amountMinor: number; state: string; requestId: number | null; available: boolean };
 export type RequestLine = { entitlementKey: string; studentName: string; state: string; reason: string | null };
 export type WithdrawalRequest = { id: number; partnerId: number; broName: string; totalMinor: number; createdAt: string; lines: RequestLine[] };
-export type Payment = { id: number; source: Source; studentName: string; studentId: number; schoolId: number; termId: number; reference: string; state: string; amountMinor: number; refundedMinor: number; netPaidMinor: number };
+export type Payment = { id: number; source: Source; paymentMethod?: 'FLUTTERWAVE'|'COMPANY_BANK'; studentName: string; studentId: number; schoolId: number; termId: number; reference: string; state: string; amountMinor: number; refundedMinor: number; netPaidMinor: number };
 export type Refund = { id: number; studentName: string; amountMinor: number; state: string; source: Source; sourceId: number };
 export type Payout = { id: number; entitlementKey: string; amountMinor: number; state: string; reference: string | null; maskedAccountNumber: string | null };
-export type BatchItem = { id: number; studentId: number; studentName: string; state: string; error: string | null };
-export type Batch = { id: number; reference: string; state: string; amountMinor: number; checkoutUrl: string | null; items: BatchItem[] };
+export type BatchItem = { id: number; studentId: number; studentName: string; state: string; error: string | null; broAccrualPending?:boolean };
+export type BankProof = {bankName:string;statementReference:string;creditDate:string;amountMinor:number;verifiedAt:string;verifiedBy:number};
+export type Batch = { id: number; reference: string; state: string; amountMinor: number; checkoutUrl: string | null; items: BatchItem[];method:'FLUTTERWAVE'|'COMPANY_BANK';bankProof?:BankProof };
 export type EligibleStudent = { id: number; name: string; eligible: boolean; reason: string | null };
 export type FinanceOverview = {
   owner: boolean; bro: boolean;
@@ -30,8 +31,8 @@ export type FinanceOverview = {
   payouts: Payout[]; batches: Batch[]; eligibleStudents: EligibleStudent[]; blockers: string[];
 };
 export type FinanceReceipt = {
-  id: number; reference: string; schoolName: string; termName: string; currency: 'NGN';
-  amountMinor: number; refundedMinor: number; netPaidMinor: number; verifiedAt: string | null;
+  id: number; reference: string; schoolName: string; termName: string; currency: 'NGN';paymentMethod?:'FLUTTERWAVE'|'COMPANY_BANK';bankProof?:BankProof;
+  amountMinor: number; refundedMinor: number; collectionReversedMinor?:number; netPaidMinor: number; verifiedAt: string | null;
   items: { id: number; studentId: number; studentName: string; amountMinor: number; refundedMinor: number; netPaidMinor: number; receiptNumber: string }[];
 };
 export type ActionResult = { [key: string]: unknown; checkoutUrl?: string | null };
