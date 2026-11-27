@@ -12,7 +12,10 @@ function fixture(){
  const guards=[
   ...["academic_sessions","academic_terms"].flatMap(relname=>[
    {relname,tgname:"academic_calendar_write_gate",proname:"guard_academic_calendar_write_gate",tgtype:30},
-   {relname,tgname:"academic_calendar_current_scope",proname:"guard_academic_calendar_current_scope",tgtype:31}]),
+   {relname,tgname:"academic_calendar_current_scope",proname:"guard_academic_calendar_current_scope",tgtype:31},
+   {relname,tgname:"academic_calendar_final_state",proname:"guard_academic_calendar_final_state",tgtype:29,
+     tgdeferrable:true,tginitdeferred:true,tgconstraint:1},
+   {relname,tgname:"academic_calendar_truncate",proname:"guard_academic_calendar_truncate",tgtype:34}]),
   {relname:"academic_calendar_rollovers",tgname:"academic_calendar_rollover_history",proname:"guard_academic_calendar_rollover_history",tgtype:27},
   {relname:"academic_calendar_rollovers",tgname:"academic_calendar_rollover_truncate",proname:"guard_academic_calendar_rollover_history",tgtype:34},
  ];

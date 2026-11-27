@@ -46,11 +46,15 @@ export async function previewStudentNfcReconciliation(pool: Pool, scope: { schoo
 export async function previewAdvanceReconciliation(c:Sql,scope:{schoolId:number;termId:number}){
   return collectReconciliation({connect:async()=>({...c,query:c.query.bind(c),release(){}})},scope,true);
 }
-async function collectReconciliation(pool:Pool,scope:{schoolId:number;termId:number},advance=false):Promise<StudentNfcReconciliationReport>{
+/** Ordinary dated evidence on an already pinned transaction; no nested BEGIN. */
+export async function previewPinnedCurrentReconciliation(c:Sql,scope:{schoolId:number;termId:number}){
+ return collectReconciliation({connect:async()=>({...c,query:c.query.bind(c),release(){}})},scope,false,true);
+}
+async function collectReconciliation(pool:Pool,scope:{schoolId:number;termId:number},advance=false,pinned=false):Promise<StudentNfcReconciliationReport>{
   const c = await pool.connect();
   let transaction = false;
   try {
-    if(!advance){await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"); transaction = true;}
+    if(!advance&&!pinned){await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"); transaction = true;}
     await c.query("SET LOCAL statement_timeout = '8s'");
     await c.query("SET LOCAL lock_timeout = '2s'");
     const catalog = await c.query(`SELECT t.relname AS name,t.relkind, row_security_active(t.oid) AS rls,

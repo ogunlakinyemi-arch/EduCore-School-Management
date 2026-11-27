@@ -31,7 +31,7 @@ CREATE TABLE advance_subscription_decisions (
 CREATE INDEX advance_subscription_scope ON advance_subscription_authorizations(school_id,academic_term_id,id DESC);
 CREATE INDEX advance_subscription_latest ON advance_subscription_decisions(authorization_id,id DESC);
 CREATE INDEX advance_subscription_change_scope ON advance_subscription_changes(school_id,id);
-CREATE FUNCTION record_advance_subscription_change() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION record_advance_subscription_change() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog,public,pg_temp AS $$
 DECLARE oldj jsonb; newj jsonb; oldschool integer; newschool integer;
 BEGIN
  IF TG_OP<>'INSERT' THEN oldj:=to_jsonb(OLD); END IF;
@@ -57,22 +57,7 @@ BEGIN
  END IF;
  IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW;
 END $$;
--- Install on every currently present authoritative reconciliation source.
--- Runtime inspection also demands coverage for newly discovered sources.
-DO $$ DECLARE r record; BEGIN
- FOR r IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-  WHERE n.nspname='public' AND c.relkind IN ('r','p') AND
-   (c.relname IN ('schools','academic_terms','academic_sessions','students','subscriptions',
-    'fee_invoices','fee_invoice_lines','fee_payments','fee_receipts','fee_payment_line_allocations',
-    'fee_adjustments','fee_refunds','fee_provider_checkout_sessions','fee_provider_webhook_events',
-    'hosted_checkout_orders','hosted_checkout_events','subscription_rule_proposals',
-    'owner_free_academic_terms','owner_free_academic_term_events')
-    OR c.relname ~ '^(flutterwave_live_|student_subscription_|hosted_checkout_|deferred_commission_)')
- LOOP
-  EXECUTE format('CREATE TRIGGER advance_material_revision AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION record_advance_subscription_change()',r.relname);
- END LOOP;
-END $$;
-CREATE FUNCTION guard_advance_subscription_authorization() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION guard_advance_subscription_authorization() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog,public,pg_temp AS $$
 DECLARE t academic_terms%ROWTYPE; a advance_subscription_authorizations%ROWTYPE; r student_direct_live_reviews%ROWTYPE;
 BEGIN
  IF TG_TABLE_NAME='advance_subscription_authorizations' THEN
@@ -110,26 +95,22 @@ CREATE TRIGGER advance_decision_history BEFORE UPDATE OR DELETE ON advance_subsc
  FOR EACH ROW EXECUTE FUNCTION guard_student_direct_history();
 CREATE TRIGGER advance_changes_history BEFORE UPDATE OR DELETE ON advance_subscription_changes
  FOR EACH ROW EXECUTE FUNCTION guard_student_direct_history();
-CREATE FUNCTION guard_advance_subscription_checkout() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE reviewid bigint; studentid integer; a advance_subscription_authorizations%ROWTYPE;
+CREATE FUNCTION assert_advance_subscription_checkout(p_review bigint,p_student integer,p_school integer,
+ p_term integer,p_rule bigint DEFAULT NULL,p_merchant text DEFAULT NULL) RETURNS void
+  LANGUAGE plpgsql SET search_path=pg_catalog,public,pg_temp AS $$
+DECLARE a public.advance_subscription_authorizations%ROWTYPE;
 BEGIN
- IF TG_TABLE_NAME IN ('student_direct_live_obligations','current_bulk_allocations') THEN reviewid:=NEW.review_id; studentid:=NEW.student_id;
- ELSE SELECT o.review_id,o.student_id INTO reviewid,studentid FROM student_direct_live_obligations o WHERE o.id=NEW.obligation_id; END IF;
  SELECT au.* INTO a FROM advance_subscription_authorizations au JOIN advance_subscription_decisions d
-   ON d.authorization_id=au.id AND d.action='APPROVED' WHERE d.review_id=reviewid;
- IF NOT FOUND THEN RETURN NEW; END IF; -- Ordinary seven-day workflow stays unchanged.
- IF TG_TABLE_NAME='student_direct_live_obligations' THEN
-  IF (NEW.school_id,NEW.academic_term_id,NEW.rule_id,NEW.merchant_scope)
-   IS DISTINCT FROM (a.school_id,a.academic_term_id,a.rule_id,a.snapshot->>'merchantScope')
-  THEN RAISE EXCEPTION 'Advance obligation scope mismatch'; END IF;
- ELSIF TG_TABLE_NAME='current_bulk_allocations' THEN
-  IF (NEW.school_id,NEW.academic_term_id) IS DISTINCT FROM (a.school_id,a.academic_term_id)
-  THEN RAISE EXCEPTION 'Advance allocation scope mismatch'; END IF;
- END IF;
+   ON d.authorization_id=au.id AND d.action='APPROVED' WHERE d.review_id=p_review FOR SHARE OF au;
+ IF NOT FOUND THEN RETURN; END IF; -- Ordinary seven-day workflow stays separate.
+ IF (p_school,p_term) IS DISTINCT FROM (a.school_id,a.academic_term_id)
+   OR (p_rule IS NOT NULL AND p_rule IS DISTINCT FROM a.rule_id)
+   OR (p_merchant IS NOT NULL AND p_merchant IS DISTINCT FROM a.snapshot->>'merchantScope')
+ THEN RAISE EXCEPTION 'Advance checkout scope mismatch'; END IF;
  IF clock_timestamp()<a.not_before OR clock_timestamp()>=a.expires_at
   OR a.id<>(SELECT max(id) FROM advance_subscription_authorizations WHERE school_id=a.school_id AND academic_term_id=a.academic_term_id)
   OR (SELECT action FROM advance_subscription_decisions WHERE authorization_id=a.id ORDER BY id DESC LIMIT 1) IS DISTINCT FROM 'APPROVED'
-  OR (a.snapshot->'eligibleStudentIds' @> to_jsonb(ARRAY[studentid])) IS NOT TRUE
+   OR (a.snapshot->'eligibleStudentIds' @> to_jsonb(ARRAY[p_student])) IS NOT TRUE
   OR (SELECT COALESCE(max(id),0)::text FROM advance_subscription_changes WHERE school_id IS NULL
     OR (school_id=a.school_id AND (academic_term_id IS NULL OR academic_term_id=a.academic_term_id)
      AND (academic_session_id IS NULL OR academic_session_id=(a.snapshot->'calendar'->>'academic_session_id')::integer)))
@@ -142,16 +123,97 @@ BEGIN
      AND t.start_date::text=a.snapshot->'calendar'->>'start_date' AND t.end_date::text=a.snapshot->'calendar'->>'end_date'
      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date)
  THEN RAISE EXCEPTION 'Advance authorization does not permit checkout now'; END IF;
+ RETURN;
+END $$;
+CREATE FUNCTION guard_advance_subscription_checkout() RETURNS trigger LANGUAGE plpgsql
+ SET search_path=pg_catalog,public,pg_temp AS $$
+DECLARE o record; b record; r record; frozen jsonb; n integer:=0;
+BEGIN
+ IF TG_TABLE_NAME='current_bulk_checkout_attempts' THEN
+  SELECT * INTO b FROM current_payment_batches WHERE id=NEW.batch_id FOR SHARE;
+  IF b.id IS NULL OR b.snapshot->>'method'='COMPANY_BANK'
+    OR jsonb_typeof(b.snapshot->'students') IS DISTINCT FROM 'array'
+  THEN RAISE EXCEPTION 'Bulk retry requires retained checkout allocations'; END IF;
+  FOR r IN SELECT a.*,v.rule_id,v.report_digest,v.merchant_scope FROM current_bulk_allocations a
+   JOIN student_direct_live_reviews v ON v.id=a.review_id WHERE a.batch_id=NEW.batch_id
+  LOOP
+   n:=n+1;
+   SELECT value INTO frozen FROM jsonb_array_elements(b.snapshot->'students')
+    WHERE (value->>'studentId')::integer=r.student_id;
+   IF frozen IS NULL OR (frozen->>'reviewId')::bigint IS DISTINCT FROM r.review_id
+    OR (frozen->>'ruleId')::bigint IS DISTINCT FROM r.rule_id
+    OR frozen->>'reviewDigest' IS DISTINCT FROM r.report_digest
+    OR frozen->>'merchantScope' IS DISTINCT FROM r.merchant_scope
+    OR (frozen->>'amountMinor')::bigint IS DISTINCT FROM 320000
+    OR (r.school_id,r.academic_term_id) IS DISTINCT FROM (b.school_id,b.academic_term_id)
+    OR NOT EXISTS(SELECT 1 FROM student_direct_live_reviews v
+     JOIN subscription_rule_proposals p ON p.id=v.rule_id
+     JOIN academic_terms t ON t.id=v.academic_term_id AND t.school_id=v.school_id
+     JOIN academic_sessions s ON s.id=t.academic_session_id AND s.school_id=t.school_id
+     JOIN students st ON st.id=r.student_id AND st.school_id=t.school_id
+     WHERE v.id=r.review_id AND v.expires_at>clock_timestamp() AND v.approved_at<=clock_timestamp()
+      AND v.no_split_confirmed IS TRUE AND lower(st.status)='active' AND st.admission_status='ADMITTED'
+      AND p.product='STUDENT_PLATFORM' AND p.amount_minor=320000 AND p.currency='NGN'
+      AND p.school_share_minor=0 AND p.billing_period='ACADEMIC_TERM' AND p.status IN ('ACTIVE','SCHEDULED')
+      AND p.effective_at<=clock_timestamp() AND (p.ends_at IS NULL OR p.ends_at>clock_timestamp())
+      AND t.is_current AND t.status='ACTIVE' AND s.is_current AND s.status='ACTIVE'
+      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date
+      AND (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date BETWEEN s.start_date AND s.end_date)
+   THEN RAISE EXCEPTION 'Bulk retry review or calendar no longer authorizes checkout'; END IF;
+   PERFORM assert_advance_subscription_checkout(r.review_id,r.student_id,r.school_id,r.academic_term_id,r.rule_id,r.merchant_scope);
+  END LOOP;
+  IF n=0 OR n<>jsonb_array_length(b.snapshot->'students') OR b.amount_minor<>n::bigint*320000
+  THEN RAISE EXCEPTION 'Bulk retry allocation evidence mismatch'; END IF;
+ ELSIF TG_TABLE_NAME IN ('student_direct_live_obligations','current_bulk_allocations') THEN
+  IF TG_TABLE_NAME='student_direct_live_obligations' THEN
+   PERFORM assert_advance_subscription_checkout(NEW.review_id,NEW.student_id,NEW.school_id,NEW.academic_term_id,NEW.rule_id,NEW.merchant_scope);
+  ELSE
+   PERFORM assert_advance_subscription_checkout(NEW.review_id,NEW.student_id,NEW.school_id,NEW.academic_term_id);
+  END IF;
+ ELSE
+  SELECT * INTO o FROM student_direct_live_obligations WHERE id=NEW.obligation_id;
+  PERFORM assert_advance_subscription_checkout(o.review_id,o.student_id,o.school_id,o.academic_term_id,o.rule_id,o.merchant_scope);
+ END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER advance_obligation_calendar BEFORE INSERT ON student_direct_live_obligations
  FOR EACH ROW EXECUTE FUNCTION guard_advance_subscription_checkout();
 CREATE TRIGGER advance_attempt_calendar BEFORE INSERT ON student_direct_live_attempts
  FOR EACH ROW EXECUTE FUNCTION guard_advance_subscription_checkout();
-DO $$ BEGIN
- IF to_regclass('public.current_bulk_allocations') IS NOT NULL THEN
-  CREATE TRIGGER advance_bulk_calendar BEFORE INSERT ON current_bulk_allocations
-   FOR EACH ROW EXECUTE FUNCTION guard_advance_subscription_checkout();
- END IF;
+-- Explicit operator-only installer for initial AND later-created sources.
+-- Call inside the approved table-creation transaction. Never called at runtime.
+-- Runtime coverage inspection fails closed until it has been called.
+CREATE FUNCTION install_advance_subscription_guards() RETURNS void LANGUAGE plpgsql
+ SET search_path=pg_catalog,public,pg_temp AS $$
+DECLARE r record; trigger_name text; fn text; kind integer;
+BEGIN
+ FOR r IN SELECT c.oid,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relkind IN ('r','p') AND
+   (c.relname IN ('schools','academic_terms','academic_sessions','students','subscriptions',
+    'fee_invoices','fee_invoice_lines','fee_payments','fee_receipts','fee_payment_line_allocations',
+    'fee_adjustments','fee_refunds','fee_provider_checkout_sessions','fee_provider_webhook_events',
+    'hosted_checkout_orders','hosted_checkout_events','subscription_rule_proposals',
+    'owner_free_academic_terms','owner_free_academic_term_events',
+    'flutterwave_split_payments','flutterwave_split_adjustments',
+    'current_bulk_allocations','current_bulk_checkout_attempts')
+    OR c.relname ~ '^(flutterwave_live_|student_subscription_|hosted_checkout_|deferred_commission_)')
+ LOOP
+  trigger_name:=CASE r.relname WHEN 'current_bulk_allocations' THEN 'advance_bulk_calendar'
+   WHEN 'current_bulk_checkout_attempts' THEN 'advance_bulk_retry_calendar' ELSE 'advance_material_revision' END;
+  fn:=CASE WHEN r.relname IN ('current_bulk_allocations','current_bulk_checkout_attempts')
+   THEN 'guard_advance_subscription_checkout' ELSE 'record_advance_subscription_change' END;
+  kind:=CASE WHEN fn='record_advance_subscription_change' THEN 29 ELSE 7 END;
+  IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid=r.oid AND tgname=trigger_name) THEN
+   EXECUTE format('CREATE TRIGGER %I %s ON public.%I FOR EACH ROW EXECUTE FUNCTION public.%I()',
+    trigger_name,CASE WHEN kind=29 THEN 'AFTER INSERT OR UPDATE OR DELETE' ELSE 'BEFORE INSERT' END,r.relname,fn);
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_namespace n ON n.oid=p.pronamespace
+   WHERE t.tgrelid=r.oid AND t.tgname=trigger_name AND p.proname=fn AND n.nspname='public'
+    AND t.tgtype=kind AND t.tgenabled='O' AND NOT t.tgisinternal AND t.tgqual IS NULL AND t.tgnargs=0 AND t.tgattr::text=''
+    AND t.tgconstraint=0 AND NOT t.tgdeferrable AND NOT p.prosecdef AND p.pronargs=0)
+  THEN RAISE EXCEPTION 'Unexpected advance guard on %; explicit reconciliation required',r.relname; END IF;
+ END LOOP;
 END $$;
+REVOKE ALL ON FUNCTION install_advance_subscription_guards() FROM PUBLIC;
+SELECT install_advance_subscription_guards();
 COMMIT;

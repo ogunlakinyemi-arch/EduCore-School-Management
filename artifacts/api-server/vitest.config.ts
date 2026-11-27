@@ -13,6 +13,7 @@ export default defineConfig({
       "**/src/services/company-bank-remittances.isolated.postgres.test.ts",
       "**/src/services/advance-subscriptions.isolated.postgres.test.ts",
       "**/src/services/academic-calendar-rollover.isolated.postgres.test.ts",
+      "**/src/services/finance-calendar-upgrade.isolated.postgres.test.ts",
     ],
   },
 });

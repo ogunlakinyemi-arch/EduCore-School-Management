@@ -40,7 +40,10 @@ export const currentBulkCheckoutAttempts=pgTable("current_bulk_checkout_attempts
 },t=>[fk("current_bulk_checkout_attempts",t.batchId,currentPaymentBatches.id),fk("current_bulk_checkout_attempts",t.createdBy,appUsers.id),
  check("current_bulk_checkout_attempts_reference_check",sql`reference ~ '^SCV4_live_bulk_[A-Za-z0-9_-]{8,70}$'`),
  check("current_bulk_checkout_attempts_previous_transaction_id_check",sql`previous_transaction_id ~ '^[1-9][0-9]{0,15}$'`),
- check("current_bulk_checkout_attempts_evidence_check",sql`jsonb_typeof(evidence)='object' AND evidence->>'status' IN ('failed','cancelled') AND (evidence->>'chargedAmountMinor')::bigint=0`),
+  check("current_bulk_checkout_attempts_evidence_check",sql`(CASE WHEN jsonb_typeof(evidence)='object'
+   AND jsonb_typeof(evidence->'status')='string' AND evidence->>'status' IN ('failed','cancelled')
+   AND jsonb_typeof(evidence->'chargedAmountMinor')='number'
+   THEN (evidence->>'chargedAmountMinor')::numeric=0 ELSE false END) IS TRUE`),
  check("current_bulk_checkout_attempts_reason_check",sql`length(btrim(reason)) BETWEEN 3 AND 500`),
 ]);
 export const insertCurrentBankCredit=createInsertSchema(currentBankCredits).omit({verifiedAt:true});

@@ -17,7 +17,7 @@ beforeAll(async()=>{
  const today=(await f.pool.query("SELECT (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date::text AS day")).rows[0].day;
  assert.equal(today,"2027-01-18","Native boundary fixture requires its actual opening-day clock");
  assert.equal(new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()),today);
- await f.pool.query(`ALTER TABLE academic_sessions ADD COLUMN is_current boolean NOT NULL DEFAULT true;
+ await f.pool.query(`ALTER TABLE academic_sessions ADD COLUMN IF NOT EXISTS is_current boolean NOT NULL DEFAULT true;
   INSERT INTO academic_terms VALUES(3,1,1,'2027-01-19','2027-04-09','Future Term',false,'PLANNED')`);
  await f.pool.query(readFileSync(join(f.root,"lib/db/drizzle/0186_advance_subscription_authorizations.sql"),"utf8"));
 },30000);

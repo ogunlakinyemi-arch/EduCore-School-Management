@@ -59,6 +59,20 @@ export async function currentFinancialFixture() {
       VALUES(1,'STUDENT_PLATFORM','ACTIVE',320000,'2026-10-27Z','Fictional approved student policy',1,1,'2026-10-27Z'),
         (2,'BRO_COMMISSION','ACTIVE',15000,'2026-10-27Z','Fictional approved BRO policy',1,1,'2026-10-27Z');
     `);
+    // Actual session columns used by retry/calendar guards. Do not broaden term
+    // dates or replace either real-clock acceptance gate in the native suites.
+    await pool.query(`ALTER TABLE academic_sessions
+      ADD COLUMN name text NOT NULL DEFAULT 'Fictional retained session',
+      ADD COLUMN start_date date NOT NULL DEFAULT '2026-09-01',
+      ADD COLUMN end_date date NOT NULL DEFAULT '2027-07-31',
+      ADD COLUMN is_current boolean NOT NULL DEFAULT true,
+      ADD COLUMN updated_at timestamptz NOT NULL DEFAULT clock_timestamp()`);
+    // Use the exact minimal parent declaration from the retained source. 0182's
+    // lead FK is real: do not skip it or substitute an unconstrained ID stub.
+    const broSource=readFileSync(join(root,"lib/db/dev-reconciliation/bro-field-operations.sql"),"utf8");
+    const broParent=broSource.match(/CREATE TABLE bro_field_leads \([\s\S]*?\n\);/);
+    assert.ok(broParent,"Expected retained BRO lead declaration");
+    await pool.query(broParent[0]);
     const reset=async(withEntitlement=true)=>{
       await pool.query(`TRUNCATE current_subscription_operations,student_direct_live_events,
         bro_term_commission_entitlements,student_direct_live_attempts,student_direct_live_obligations,

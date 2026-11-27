@@ -17,20 +17,27 @@ async function boundedCalendarTransaction<T>(pool:CalendarPool,run:(c:Client)=>P
 export async function requireCalendarRolloverSchema(c:Client){
  const ready=(await c.query(`SELECT to_regclass('public.academic_calendar_rollovers') IS NOT NULL AS ready`)).rows[0]?.ready;
  if(!ready)throw new CalendarRolloverUnavailable("CALENDAR_ROLLOVER_SCHEMA_REQUIRED");
- const guards=(await c.query(`SELECT r.relname,t.tgname,p.proname,t.tgtype FROM pg_trigger t
+ const guards=(await c.query(`SELECT r.relname,t.tgname,p.proname,t.tgtype,t.tgdeferrable,t.tginitdeferred,t.tgconstraint FROM pg_trigger t
   JOIN pg_class r ON r.oid=t.tgrelid JOIN pg_namespace n ON n.oid=r.relnamespace JOIN pg_proc p ON p.oid=t.tgfoid
-  WHERE n.nspname='public' AND p.pronamespace=n.oid AND t.tgenabled='O' AND NOT t.tgisinternal
+  WHERE n.nspname='public' AND p.pronamespace=n.oid AND NOT p.prosecdef AND p.pronargs=0 AND t.tgenabled='O' AND NOT t.tgisinternal
    AND t.tgqual IS NULL AND t.tgattr::text='' AND t.tgnargs=0`)).rows;
  const expected=[
   ["academic_sessions","academic_calendar_write_gate","guard_academic_calendar_write_gate",30],
   ["academic_terms","academic_calendar_write_gate","guard_academic_calendar_write_gate",30],
   ["academic_sessions","academic_calendar_current_scope","guard_academic_calendar_current_scope",31],
   ["academic_terms","academic_calendar_current_scope","guard_academic_calendar_current_scope",31],
+  ["academic_sessions","academic_calendar_final_state","guard_academic_calendar_final_state",29],
+  ["academic_terms","academic_calendar_final_state","guard_academic_calendar_final_state",29],
+  ["academic_sessions","academic_calendar_truncate","guard_academic_calendar_truncate",34],
+  ["academic_terms","academic_calendar_truncate","guard_academic_calendar_truncate",34],
   ["academic_calendar_rollovers","academic_calendar_rollover_history","guard_academic_calendar_rollover_history",27],
   ["academic_calendar_rollovers","academic_calendar_rollover_truncate","guard_academic_calendar_rollover_history",34],
  ] as const;
  if(expected.some(([table,name,fn,type])=>!guards.some(g=>g.relname===table&&g.tgname===name&&g.proname===fn&&Number(g.tgtype)===type)))
   throw new CalendarRolloverUnavailable("CALENDAR_ROLLOVER_GUARDS_REQUIRED");
+ if(["academic_sessions","academic_terms"].some(table=>!guards.some(g=>g.relname===table
+   &&g.tgname==="academic_calendar_final_state"&&g.tgdeferrable===true&&g.tginitdeferred===true&&Number(g.tgconstraint)>0)))
+  throw new CalendarRolloverUnavailable("CALENDAR_FINAL_STATE_CONSTRAINT_REQUIRED");
  const indexes=(await c.query(`SELECT n.relname,i.indisunique,i.indisvalid,pg_get_indexdef(i.indexrelid) AS definition,
    pg_get_expr(i.indpred,i.indrelid) AS predicate FROM pg_index i JOIN pg_class n ON n.oid=i.indexrelid
    JOIN pg_namespace ns ON ns.oid=n.relnamespace WHERE ns.nspname='public' AND n.relname=ANY($1::text[])`,

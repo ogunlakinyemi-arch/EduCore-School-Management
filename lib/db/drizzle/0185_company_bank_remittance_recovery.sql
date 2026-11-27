@@ -28,8 +28,10 @@ CREATE TABLE current_bulk_checkout_attempts (
  reference text NOT NULL UNIQUE CHECK(reference ~ '^SCV4_live_bulk_[A-Za-z0-9_-]{8,70}$'),
  request_key text NOT NULL UNIQUE,
  previous_transaction_id text NOT NULL CHECK(previous_transaction_id ~ '^[1-9][0-9]{0,15}$'),
- evidence jsonb NOT NULL CHECK(jsonb_typeof(evidence)='object'
-   AND evidence->>'status' IN ('failed','cancelled') AND (evidence->>'chargedAmountMinor')::bigint=0),
+ evidence jsonb NOT NULL CHECK((CASE WHEN jsonb_typeof(evidence)='object'
+   AND jsonb_typeof(evidence->'status')='string' AND evidence->>'status' IN ('failed','cancelled')
+   AND jsonb_typeof(evidence->'chargedAmountMinor')='number'
+   THEN (evidence->>'chargedAmountMinor')::numeric=0 ELSE false END) IS TRUE),
  reason text NOT NULL CHECK(length(btrim(reason)) BETWEEN 3 AND 500),
  created_by integer NOT NULL REFERENCES app_users(id), created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
@@ -47,7 +49,7 @@ INSERT INTO current_bulk_term_claims(student_id,academic_term_id,allocation_id)
 ALTER TABLE current_bulk_allocations ALTER COLUMN review_id DROP NOT NULL;
 ALTER TABLE current_bulk_allocations DROP CONSTRAINT current_bulk_allocations_student_id_academic_term_id_key;
 
-CREATE OR REPLACE FUNCTION guard_current_bulk_scope() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION guard_current_bulk_scope() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog,public,pg_temp AS $$
 BEGIN
  IF TG_TABLE_NAME='current_bulk_allocations' THEN
   IF EXISTS(SELECT 1 FROM current_payment_batches b WHERE b.id=NEW.batch_id AND b.snapshot->>'method'='COMPANY_BANK') THEN
@@ -89,7 +91,7 @@ BEGIN
  RETURN NEW;
 END $$;
 
-CREATE FUNCTION guard_current_bank_workflow() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION guard_current_bank_workflow() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog,public,pg_temp AS $$
 DECLARE b current_payment_batches%ROWTYPE; normalized text;
 BEGIN
  IF TG_TABLE_NAME='current_bulk_allocations' THEN
@@ -146,7 +148,7 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
-CREATE FUNCTION guard_current_bulk_term_claims() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION guard_current_bulk_term_claims() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog,public,pg_temp AS $$
 BEGIN
  IF TG_TABLE_NAME='current_bulk_allocations' THEN
   INSERT INTO current_bulk_term_claims(student_id,academic_term_id,allocation_id)

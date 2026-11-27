@@ -1,0 +1,19 @@
+{
+  "purpose": "Disposable PostgreSQL regression only; never an application migration runner",
+  "baseFixture": "current-financial-fixture.test-support.ts",
+  "baseMigrations": ["0175", "0176", "0177", "0178", "0181"],
+  "broPrerequisite": "Exact bro_field_leads CREATE TABLE declaration from lib/db/dev-reconciliation/bro-field-operations.sql, installed by the base fixture before 0182",
+  "prerequisites": [
+    "0182_current_bulk_withdrawals_field_sms.sql",
+    "0183_owner_free_academic_terms.sql"
+  ],
+  "candidates": [
+    "0185_company_bank_remittance_recovery.sql",
+    "0186_advance_subscription_authorizations.sql",
+    "0187_automatic_academic_calendar_rollover.sql"
+  ],
+  "omittedUnrelatedMigration": "0184 preserves a class-assignment index absent from this minimal financial fixture",
+  "requiredActualLagosDate": "2027-01-18",
+  "config": "vitest.finance-calendar-upgrade-isolated.config.ts",
+  "scopeLimit": "Minimal retained financial/calendar schema, not a complete application schema or routed payment acceptance"
+}

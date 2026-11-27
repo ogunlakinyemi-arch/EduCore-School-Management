@@ -44,7 +44,8 @@ export async function advanceSchema(c:Db){
    &&required.every(col=>t.columns?.includes(col)))))fail("ADVANCE_COLUMNS_AND_PRIVILEGES_REQUIRED");
  const guards=(await c.query(`SELECT r.relname,t.tgname,p.proname,t.tgtype FROM pg_trigger t
   JOIN pg_class r ON r.oid=t.tgrelid JOIN pg_namespace n ON n.oid=r.relnamespace JOIN pg_proc p ON p.oid=t.tgfoid
-  WHERE n.nspname='public' AND p.pronamespace=n.oid AND t.tgenabled='O' AND NOT t.tgisinternal
+  WHERE n.nspname='public' AND p.pronamespace=n.oid AND NOT p.prosecdef AND p.pronargs=0 AND t.tgenabled='O' AND NOT t.tgisinternal
+    AND t.tgconstraint=0 AND NOT t.tgdeferrable
     AND t.tgqual IS NULL AND t.tgattr::text='' AND t.tgnargs=0`)).rows;
  if(expectedGuards.some(([table,name,fn,type])=>!guards.some(g=>
    g.relname===table&&g.tgname===name&&g.proname===fn&&Number(g.tgtype)===type)))
@@ -52,6 +53,9 @@ export async function advanceSchema(c:Db){
  const bulk=(await c.query("SELECT to_regclass('public.current_bulk_allocations') IS NOT NULL AS present")).rows[0]?.present;
  if(bulk&&!guards.some(g=>g.relname==="current_bulk_allocations"&&g.tgname==="advance_bulk_calendar"
    &&g.proname==="guard_advance_subscription_checkout"&&Number(g.tgtype)===7))fail("ADVANCE_BULK_CALENDAR_GUARD_REQUIRED");
+ const retries=(await c.query("SELECT to_regclass('public.current_bulk_checkout_attempts') IS NOT NULL AS present")).rows[0]?.present;
+ if(retries&&!guards.some(g=>g.relname==="current_bulk_checkout_attempts"&&g.tgname==="advance_bulk_retry_calendar"
+  &&g.proname==="guard_advance_subscription_checkout"&&Number(g.tgtype)===7))fail("ADVANCE_BULK_RETRY_GUARD_REQUIRED");
  const sources=(await c.query(`SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE n.nspname='public' AND c.relkind IN ('r','p')
     AND (c.relname=ANY($1::text[]) OR c.relname ~ '^(flutterwave_live_|student_subscription_|hosted_checkout_|deferred_commission_)')

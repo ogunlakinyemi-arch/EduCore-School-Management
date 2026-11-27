@@ -20,9 +20,9 @@ beforeAll(async()=>{
  f=await currentFinancialFixture();
  assert.equal((await f.pool.query("SELECT (clock_timestamp() AT TIME ZONE 'Africa/Lagos')::date::text AS day")).rows[0].day,"2027-01-18");
  await f.pool.query(`ALTER TABLE academic_sessions
-  ADD COLUMN name text NOT NULL DEFAULT 'Fictional retained session',
-  ADD COLUMN start_date date NOT NULL DEFAULT '2026-09-01',ADD COLUMN end_date date NOT NULL DEFAULT '2027-07-31',
-  ADD COLUMN is_current boolean NOT NULL DEFAULT false,ADD COLUMN updated_at timestamptz NOT NULL DEFAULT clock_timestamp();
+  ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'Fictional retained session',
+  ADD COLUMN IF NOT EXISTS start_date date NOT NULL DEFAULT '2026-09-01',ADD COLUMN IF NOT EXISTS end_date date NOT NULL DEFAULT '2027-07-31',
+  ADD COLUMN IF NOT EXISTS is_current boolean NOT NULL DEFAULT false,ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT clock_timestamp();
   ALTER TABLE academic_terms ADD COLUMN updated_at timestamptz NOT NULL DEFAULT clock_timestamp();
   CREATE TABLE audit_logs(id bigserial PRIMARY KEY,"user" text,role text,school_id integer,action text,module text,
    record_id bigint,event_type text,result text,metadata jsonb);`);
@@ -88,9 +88,13 @@ it("blocks incomplete calendars, clears invalid current markers and deduplicates
  await rolloverSchoolCalendar(f.pool,104);
  expect((await f.pool.query("SELECT count(*) FROM academic_calendar_rollovers WHERE school_id=104")).rows[0].count).toBe(before);
 });
-it("revalidates a saved overlapping edit rather than activating stale term evidence",async()=>{
- await f.pool.query("UPDATE academic_terms SET start_date='2027-04-01' WHERE id=$1",[calendarFixture(105).terms[2].id]);
- expect((await rolloverSchoolCalendar(f.pool,105)).status).toBe("BLOCKED");expect((await state(105)).some(r=>r.is_current)).toBe(false);
+it("rejects an overlapping current-calendar edit at commit and retains the saved dates",async()=>{
+ await rolloverSchoolCalendar(f.pool,105);
+ const term=calendarFixture(105).terms[2];
+ await expect(f.pool.query("UPDATE academic_terms SET start_date='2027-04-01' WHERE id=$1",[term.id]))
+  .rejects.toThrow("complete unambiguous calendar");
+ expect((await f.pool.query("SELECT start_date::text AS day FROM academic_terms WHERE id=$1",[term.id])).rows[0].day).toBe(term.startDate);
+ expect((await rolloverSchoolCalendar(f.pool,105)).status).toBe("UNCHANGED");
 });
 it("closes a missed prior session and activates only the due saved session",async()=>{
  await rolloverSchoolCalendar(f.pool,106);
@@ -119,6 +123,9 @@ it("waits for a concurrent calendar writer and plans from its committed dates",a
  let ready!:(id:number)=>void;const pidReady=new Promise<number>(r=>{ready=r;});let running:Promise<unknown>|undefined;
  try{
   await editor.query("BEGIN");const editorPid=(await editor.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+   // Close the retained expired marker in the same edit transaction. Leaving it
+   // current at COMMIT is now correctly rejected by transaction-final checks.
+   await editor.query("UPDATE academic_terms SET is_current=false WHERE school_id=109 AND is_current");
   await editor.query("UPDATE academic_terms SET start_date='2027-01-25' WHERE id=$1",[target]);
   running=rolloverSchoolCalendar({connect:async()=>{const c=await f.pool.connect();ready((await c.query("SELECT pg_backend_pid() AS pid")).rows[0].pid);return c;}},109);
   const pid=await pidReady;let blocked=false;
