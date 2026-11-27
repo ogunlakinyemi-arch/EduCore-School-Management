@@ -1,5 +1,5 @@
 import { loadNotificationPolicy, effectiveNotificationChannels, notificationEvent, notificationChannelAvailability,financialReminderSelectedChannels } from "./notification-channel-policy";
-import {financialReminderPrefix,parseFinancialReminder,staffFinancialReminder} from "./financial-reminder-policy";
+import {scheduledReminderKey,parseFinancialReminder,staffFinancialReminder} from "./financial-reminder-policy";
 import {financialReminderStillCurrent} from "./financial-reminder-eligibility";
 import {
   createCommunicationProviders,
@@ -335,7 +335,7 @@ export async function queueCommunicationNotification(
   input: QueueCommunicationNotificationInput,
 ): Promise<number | null> {
   validateNotificationInput(input);
-  if(input.eventKey?.startsWith(financialReminderPrefix)
+  if(scheduledReminderKey(input.eventKey)
     &&!await financialReminderStillCurrent(client,input))return null;
 
   const recipient = await client.query<{ id: number | string; isParent?: boolean }>(
@@ -641,6 +641,7 @@ interface DispatchRecord {
   eventKey: string | null;
   subject: string | null;
   body: string;
+  link: string | null;
   email: string | null;
   phone: string | null;
   schoolAuthorized: boolean;
@@ -757,6 +758,7 @@ async function loadDispatchRecord(
        n.event_key AS "eventKey",
        n.subject,
        n.body,
+       n.link,
        COALESCE(NULLIF(u.email, ''), NULLIF(p.email, '')) AS email,
        COALESCE(NULLIF(u.phone, ''), NULLIF(p.phone, '')) AS phone,
          (
@@ -1057,10 +1059,14 @@ export async function dispatchCommunicationDeliveries(
         [delivery.id,normalizedDate(now())]);
       summary.skipped++; continue;
     }
-    if(record.eventKey?.startsWith(financialReminderPrefix)&&!await financialReminderStillCurrent(pool,record,now())){
-      await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code='FINANCIAL_REMINDER_STALE',
-        last_error='Scheduled day, published charge, balance or recipient eligibility changed; history retained',
-        updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now())]);
+    if(scheduledReminderKey(record.eventKey)&&!await financialReminderStillCurrent(pool,record,now())){
+      const guardian=parseFinancialReminder(record.eventKey)?.kind==="GUARDIAN_NFC";
+      await pool.query(`UPDATE communication_deliveries SET status='CANCELLED',error_code=$3,
+        last_error=$4,
+        updated_at=$2 WHERE id=$1 AND status='PROCESSING'`,[delivery.id,normalizedDate(now()),
+          guardian?"NFC_REMINDER_NO_LONGER_CURRENT":"FINANCIAL_REMINDER_STALE",
+          guardian?"NFC notice no longer current or guardian no longer authorized; history retained":
+            "Scheduled day, published charge, balance or recipient eligibility changed; history retained"]);
       summary.skipped++;continue;
     }
     const dispatchEvent=notificationEvent(record.category,record.eventKey);

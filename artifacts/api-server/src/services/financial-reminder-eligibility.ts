@@ -1,13 +1,38 @@
 import {familyChildSchoolScope} from "../lib/family-child-school-scope";
 import {publishedSchoolInvoiceSql} from "./school-fee-carry-forward";
-import {financialSnapshot,parseFinancialReminder} from "./financial-reminder-policy";
+import {financialSnapshot,parseFinancialReminder,guardianNfcReminderContent} from "./financial-reminder-policy";
 import {readSchoolSubscription} from "./subscription-enforcement";
 import {readStaffSubscriptionAccess} from "./staff-subscription-access";
 import {readManualSchoolState} from "./school-subscription-lock";
 import {readStudentUsageRollout,lagosDate} from "./student-platform-rollout";
 type Db={query:(sql:string,values?:any[])=>Promise<{rows:any[]}>};
 export type FinancialReminderRecord={eventKey:string|null;schoolId:number|string|null;recipientUserId:number|string;
- subjectStudentId?:number|string|null};
+ subjectStudentId?:number|string|null;subjectClassId?:number|string|null;
+ category?:string;subject?:string|null;body?:string;link?:string|null};
+/** Existing live family/tenant scope plus an active guardian role. Deliberately
+ * selects no financial record, amount, name interpolation or private reference. */
+export const guardianStudentNfcSql=`SELECT DISTINCT st.id AS "studentId",st.school_id AS "schoolId",p.user_id AS "recipientUserId"
+ FROM students st JOIN schools sc ON sc.id=st.school_id AND lower(sc.status)='active'
+ JOIN parent_student_relationships rel ON rel.student_id=st.id AND upper(rel.status)='ACTIVE'
+ JOIN parents p ON p.id=rel.parent_id AND upper(p.status)='ACTIVE' AND ${familyChildSchoolScope("p","st")}
+ JOIN app_users u ON u.id=p.user_id AND upper(u.status)='ACTIVE'
+ JOIN school_memberships guardian_role ON guardian_role.user_id=p.user_id AND guardian_role.school_id=st.school_id
+  AND guardian_role.role='PARENT' AND upper(guardian_role.status)='ACTIVE'
+ WHERE st.school_id=$1 AND lower(st.status)='active' AND upper(st.admission_status)='ADMITTED'`;
+export async function guardianNfcReminderSnapshot(db:Db,schoolId:number,studentId:number,termId:number,userId:number,now=new Date()){
+ const authorized=(await db.query(`${guardianStudentNfcSql} AND st.id=$2 AND p.user_id=$3`,
+  [schoolId,studentId,userId])).rows;
+ if(!authorized.length)return null;
+ const rollout=await readStudentUsageRollout(db,schoolId,undefined,lagosDate(now));
+ if(!rollout.chargeable||rollout.inGracePeriod||rollout.termId!==termId)return null;
+ // Reuse the existing entitlement decision, including verified direct/bulk/bank
+ // credits, explicit free terms, legacy holds and per-student exclusions.
+ // Aggregate totals and other students' identities never enter the public digest.
+ const access=await readSchoolSubscription(db,schoolId);
+ if(!access||Number(access.termId)!==termId||!["UNPAID","PENDING","PARTIALLY_PAID","OVERDUE"].includes(access.status)||access.inGracePeriod
+  ||!access.restrictedStudentIds.includes(studentId))return null;
+ return financialSnapshot([schoolId,studentId,termId,rollout.termStartDate,rollout.collectionStartDate,"REQUIRED_NFC_OUTSTANDING"]);
+}
 export const guardianSchoolFeeSql=`SELECT i.id,i.school_id AS "schoolId",i.student_id AS "studentId",
  i.academic_term_id AS "termId",i.invoice_number AS number,i.due_date::text AS due,
  i.total_minor AS total,i.paid_minor AS paid,i.outstanding_minor AS outstanding,
@@ -57,6 +82,12 @@ export async function financialReminderStillCurrent(db:Db,record:FinancialRemind
  const event=parseFinancialReminder(record.eventKey);
  if(!event||event.day!==lagosDate(now)||record.schoolId===null)return false;
  const schoolId=Number(record.schoolId),userId=Number(record.recipientUserId);
+ if(event.kind==="GUARDIAN_NFC"){
+  if(Number(record.subjectStudentId)!==event.entity||record.subjectClassId!=null
+   ||record.category!==guardianNfcReminderContent.category||record.subject!==guardianNfcReminderContent.subject
+   ||record.body!==guardianNfcReminderContent.body||record.link!==null)return false;
+  return await guardianNfcReminderSnapshot(db,schoolId,event.entity,event.term,userId,now)===event.digest;
+ }
  if(event.kind==="FEE"){
   const rows=(await db.query(`${guardianSchoolFeeSql} AND i.id=$3 AND p.user_id=$4`,
    [schoolId,event.day,event.entity,userId])).rows;

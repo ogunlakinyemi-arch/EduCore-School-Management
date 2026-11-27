@@ -9,6 +9,12 @@ For SQL-dependent matching, authorization, or response projection, verify fragil
 
 Object-shaped mocks can also conceal the driver's handling of duplicate column names and null joined records. A successful SQL statement does not establish that its result satisfies the API contract.
 
+SQL mock matchers must distinguish a top-level statement from nested launch or
+authorization subqueries. **Why:** A broad substring match can intercept an
+otherwise valid worker claim and return no records, skipping the delivery
+path the test was meant to exercise. Assert positive claims and mock sends,
+not only the absence of sends in denial cases.
+
 SQL comparisons against nullable values can return NULL rather than false, breaking a required boolean in an otherwise healthy response. Run native projected rows through the actual response schema. Test upstream recipient selection too: downstream child-scoped keys cannot recover sibling contexts already discarded by account-only SQL deduplication.
 
 Native parameter inference and driver types need evidence too: destination-column types do not reliably propagate into CASE branches or boolean expressions. Explicitly prepare timestamp-bearing worker updates in PostgreSQL; mocks can hide text-versus-timestamp inference failures. PostgreSQL bigint identifiers arrive as strings.

@@ -1,6 +1,6 @@
 import {queueCommunicationNotification,type CommunicationDispatchPool} from "./communication-service";
-import {financialReminderChannels,financialReminderScope,financialScheduleDay} from "./financial-reminder-policy";
-import {feeReminderDigest,guardianSchoolFeeSql,studentNfcReminderSnapshot,staffNfcReminderSnapshot} from "./financial-reminder-eligibility";
+import {financialReminderChannels,financialReminderScope,financialScheduleDay,guardianNfcReminderContent,type FinancialReminderKind} from "./financial-reminder-policy";
+import {feeReminderDigest,guardianSchoolFeeSql,studentNfcReminderSnapshot,staffNfcReminderSnapshot,guardianStudentNfcSql,guardianNfcReminderSnapshot} from "./financial-reminder-eligibility";
 import {readStudentUsageRollout} from "./student-platform-rollout";
 /** Existing notification uniqueness + transaction advisory lock make concurrent
  * ticks/restarts idempotent. There is no new outbox, debt ledger or send loop. */
@@ -11,14 +11,16 @@ export async function queueWeeklyFinancialReminders(pool:CommunicationDispatchPo
   await c.query("BEGIN");
   const lock=(await c.query(`SELECT pg_try_advisory_xact_lock(hashtextextended('financial-weekly:'||$1,0)) AS held`,[day])).rows[0];
   if(!lock?.held){await c.query("ROLLBACK");return {queued};}
-  const queue=async(schoolId:number,userId:number,kind:"FEE"|"STUDENT_NFC"|"STAFF_NFC",entity:number,term:number,
-   digest:string,subjectStudentId:number|null,body:string,link:string)=>{
+  const queue=async(schoolId:number,userId:number,kind:FinancialReminderKind,entity:number,term:number,
+   digest:string,subjectStudentId:number|null,body:string,link:string|null)=>{
    const scope=financialReminderScope(day,kind,entity,term);
    // One scheduled reminder even when the balance changes during this day.
    if((await c.query(`SELECT 1 FROM communication_notifications WHERE school_id=$1 AND recipient_user_id=$2
     AND event_key LIKE $3 LIMIT 1`,[schoolId,userId,`${scope}%`])).rows.length)return;
+   const content=kind==="GUARDIAN_NFC"?guardianNfcReminderContent:
+    {category:"FINANCE" as const,subject:"School payment reminder",body,link};
    const id=await queueCommunicationNotification(c,{schoolId,recipientUserId:userId,subjectStudentId,
-    category:"FINANCE",eventKey:`${scope}${digest}`,subject:"School payment reminder",body,link,
+    ...content,eventKey:`${scope}${digest}`,
     channels:[...financialReminderChannels],useSchoolDefaults:false});
    if(id!==null)queued++;
   };
@@ -32,6 +34,16 @@ export async function queueWeeklyFinancialReminders(pool:CommunicationDispatchPo
     `/parent/fees/${r.studentId}`);
    const rollout=await readStudentUsageRollout(c,schoolId);
    if(!rollout.chargeable||!rollout.termId)continue;
+   // A contact-school notice for guardians is separate from all remittance
+   // notices. Its obligation identity is the required student/academic term,
+   // never a financial ledger or payment reference.
+   const guardians=(await c.query(guardianStudentNfcSql,[schoolId])).rows;
+   for(const guardian of guardians){
+    const studentId=Number(guardian.studentId),userId=Number(guardian.recipientUserId);
+    const digest=await guardianNfcReminderSnapshot(c,schoolId,studentId,rollout.termId,userId,now);
+    if(digest)await queue(schoolId,userId,"GUARDIAN_NFC",studentId,rollout.termId,digest,studentId,
+     guardianNfcReminderContent.body,null);
+   }
    // Internal student remittance reminders go only to school finance, never to
    // guardians/students/teachers, even when a guardian has paid the school.
    const finance=(await c.query(`SELECT DISTINCT m.user_id AS id FROM school_memberships m

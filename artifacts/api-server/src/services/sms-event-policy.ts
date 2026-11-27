@@ -11,7 +11,9 @@ export const smsEventAllowed = (event: string) =>
 
 export function smsNotificationAllowed(category: string, eventKey: string | null, studentId: unknown): boolean {
   const key = (eventKey ?? "").toUpperCase();
-  return (category==="FINANCE"&&!!parseFinancialReminder(eventKey))
+  const scheduled=parseFinancialReminder(eventKey);
+  return (scheduled?.kind==="GUARDIAN_NFC"&&category==="SUBSCRIPTION"&&Number(studentId)===scheduled.entity)
+    ||(category==="FINANCE"&&!!scheduled&&scheduled.kind!=="GUARDIAN_NFC")
     || /(?:^|:)EMERGENCY(?:$|:)/.test(key)
     || (category === "ATTENDANCE" && /ABSEN/.test(key)
       && Number.isSafeInteger(Number(studentId)) && Number(studentId) > 0);

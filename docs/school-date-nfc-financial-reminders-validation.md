@@ -70,7 +70,7 @@ completed. Not activated, not deployed, and not native PostgreSQL acceptance.**
 
 ## What was executed
 
-All test commands below ran with a clean child environment and the repository's
+All test commands below ran with a clean child environment and the
 unit-test network safeguards. No application database connection was used.
 Mocks are **not** evidence of real SQL execution or physical message delivery.
 
