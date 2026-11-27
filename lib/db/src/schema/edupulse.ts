@@ -633,6 +633,7 @@ export const academicSessions = pgTable(
     uniqueIndex("academic_sessions_id_school_unique").on(table.id, table.schoolId),
     unique("academic_sessions_id_school_tenant_key").on(table.id, table.schoolId),
     index("academic_sessions_school_status_idx").on(table.schoolId, table.status),
+    uniqueIndex("academic_sessions_one_current_school").on(table.schoolId).where(sql`${table.isCurrent}`),
   ],
 );
 
@@ -662,6 +663,7 @@ export const academicTerms = pgTable(
       name: "academic_terms_session_school_fk",
     }),
     index("academic_terms_school_status_idx").on(table.schoolId, table.status),
+    uniqueIndex("academic_terms_one_current_school").on(table.schoolId).where(sql`${table.isCurrent}`),
   ],
 );
 

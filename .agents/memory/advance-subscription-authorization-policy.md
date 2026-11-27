@@ -10,7 +10,9 @@ configuration changes.
 
 **Why:** The user explicitly requested unattended opening-day collection
 availability without requiring the Owner to approve each school on opening day.
-This is not approval to charge students automatically or change school calendars.
+This is not approval to charge students automatically or rewrite saved calendar
+dates. Separately authorized automatic rollover may update lifecycle markers
+from the school's saved dates, without creating or extending financial approval.
 
 **How to apply:** Keep exact reviewed school/calendar, roster/reconciliation,
 pricing and merchant evidence bound. Permit only the expected lifecycle

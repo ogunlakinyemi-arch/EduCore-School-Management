@@ -129,3 +129,4 @@
 - [Owner free academic terms](owner-free-academic-term-policy.md) — any existing school, one saved calendar term; non-payment entitlement, immutable audit and no inherited next-term waiver.
 - [Bank remittance entitlement](bank-remittance-entitlement-policy.md) — newly verified aggregate credits can pay students; partial refunds retain access, full refunds remove it.
 - [Advance subscription authorization](advance-subscription-authorization-policy.md) — future review permits term-gated checkout, never automatic charges or global LIVE activation.
+- [Automatic calendar lifecycle](academic-calendar-rollover-policy.md) — school-local WAT dates, complete due sessions, catch-up and immutable audits; no charges or invented dates.

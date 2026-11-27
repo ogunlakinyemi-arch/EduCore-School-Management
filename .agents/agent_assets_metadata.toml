@@ -1022,3 +1022,17 @@ mtime_ms = 1795785161920
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/66e3bb46-d280-45e9-a864-50992e8a522b/f203a301-650f-41bc-9fa0-68a774914e44"
 storage_version_token = "1795785192091165"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "yu_vBVO-LxYy5g-oXzQZ4"
+uri = "file://docs/academic-calendar-rollover-source-review.md"
+type = "text"
+title = "Automatic academic-calendar rollover — source review"
+description = "Behavior, safeguards, full 19-file manifest, 70 authored but unexecuted cases, executed static checks and remaining operational blockers."
+logical_id = "43f25a74-41c8-41e6-8a29-d4dbb2f5ca5b"
+content_hash = "sha256:3234eafbd134b7069281aff62e628d19927f268fda7da21b7f34bccdf30ef5e7"
+size = 12662
+mtime_ms = 1795786779881
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/43f25a74-41c8-41e6-8a29-d4dbb2f5ca5b/ffd2bcd8-3c53-4a8a-9b29-57a3c3a80465"
+storage_version_token = "1795786886933350"
+content_type = "text/markdown"

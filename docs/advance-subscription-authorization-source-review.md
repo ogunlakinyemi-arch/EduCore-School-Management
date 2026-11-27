@@ -1,5 +1,9 @@
 # Advance school subscription authorization — source-only delivery
 
+> Follow-on source: [automatic academic calendar rollover](academic-calendar-rollover-source-review.md)
+> supersedes this earlier report's missing-rollover limitation. Both changes
+> remain source-only and operationally unverified.
+
 ## Status
 
 Implemented as candidate source. **Not operationally released or runtime-tested.**

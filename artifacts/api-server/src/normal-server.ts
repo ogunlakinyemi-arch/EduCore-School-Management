@@ -13,6 +13,8 @@ import { assessDevelopmentSchools } from "./services/attendance-scheduler";
 import { queueStudentAttendanceCommunication } from "./routes/attendance";
 import { verifyRemovalRuntimeTarget } from "./services/development-settlement-removal";
 import { queueTeacherPeriodNotifications } from "./services/teacher-period-notifications";
+import {createCalendarRolloverTick} from "./services/academic-calendar-rollover-worker";
+import {createGuardedBackgroundTask} from "./lib/background-task";
 
 // Route sanitized pool diagnostics (SQLSTATE/category only) into structured logs.
 setDatabaseDiagnosticReporter((event, diagnostic) => {
@@ -44,6 +46,12 @@ app.listen(port, (err) => {
   }
   startTelegramWorker();
   startOwnerNotificationWorker(pool);
+  // Independent startup catch-up and retry loop. Retains the existing complete
+  // Development worker pause above; no new environment or LIVE switch is set.
+  const rollover=createGuardedBackgroundTask("Academic calendar rollover",
+    createCalendarRolloverTick(pool,logger),logger);
+  void rollover();
+  setInterval(()=>void rollover(),60_000).unref();
   if (process.env.NODE_ENV === "development" && !process.env.REPLIT_DEPLOYMENT) {
     void verifyRemovalRuntimeTarget().then((verified) => {
       logger.info({ developmentSettlementRemovalIsolation: verified },
